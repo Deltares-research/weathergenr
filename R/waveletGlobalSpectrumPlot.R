@@ -1,6 +1,6 @@
 
 
-#' @title ggplot wrapper for wavelet spectra plot
+#' @title A ggplot wrapper for wavelet spectra plot
 #'
 #' @description This function is simply a ggplot wrapper for displaying results from a wavelet analysis.
 #'

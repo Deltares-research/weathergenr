@@ -1,6 +1,6 @@
 
 
-#' K nearest neighbor sampling
+#' Implementation of K Nearest Neighbor Sampling
 #'
 #' This function applies a simple K nearest neighbors sampling scheme to find
 #' the historical nearest neighbors of the current variable value and to resample
