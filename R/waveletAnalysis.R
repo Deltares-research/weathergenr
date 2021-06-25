@@ -21,6 +21,7 @@ waveletAnalysis <- function(variable = NULL,
                             save.plot = FALSE)
 {
 
+
   #### Define Wavelet function used that returns transform
   waveletf <- function(k,s) {
     nn <- length(k)

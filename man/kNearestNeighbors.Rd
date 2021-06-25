@@ -2,7 +2,7 @@
 % Please edit documentation in R/kNearestNeighbors.R
 \name{kNearestNeighbors}
 \alias{kNearestNeighbors}
-\title{K nearest neighbor sampling}
+\title{Implementation of K Nearest Neighbor Sampling}
 \usage{
 kNearestNeighbors(x, k, s, seed = NULL)
 }

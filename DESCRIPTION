@@ -8,7 +8,7 @@ Description: This is the gridded, recoded version of the stochastic weather gene
   first published by Steinscheineider et al. (2013).
 License: GPL-3
 Depends:
-  R (>= 3.3)
+  R (>= 4.1)
 Imports: 
   dplyr,
   akima,
@@ -24,7 +24,8 @@ Imports:
   ggplot2,
   tibble,
   stringr,
-  ncdf4
+  ncdf4,
+  forecast
 Encoding: UTF-8
 Language: en-US
 LazyData: true

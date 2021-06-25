@@ -10,7 +10,7 @@
 #'
 #' @return
 #' @export
-#'
+#' @import ggplot2
 waveletDecomposition   <- function(variable = NULL,
                                signif.period.list = NULL,
                                background.noise = "white",

@@ -7,6 +7,7 @@
 #' @param wavelet.comps A list object, with different components corresponding to low-frequency signals and the noise
 #'
 #' @export
+#' @import forecast
 #'
 waveletAR <- function(
   wavelet.comps = NULL,

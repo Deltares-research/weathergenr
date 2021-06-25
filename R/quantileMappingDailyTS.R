@@ -1,10 +1,10 @@
 
 #' Function for perturbing climate statistics using Quantile-Mapping
 #'
-#' @param parms
-#' @param base.ts
-#' @param base.dist
-#' @param change.operator
+#' @param parms List of parameters to be passed.
+#' @param base.ts Base time-series to be used.
+#' @param base.dist Base distribution selected.
+#' @param change.operator A character string to specify the type of perturb change operator.
 #'
 #' @return
 #' @export

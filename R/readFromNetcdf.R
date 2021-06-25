@@ -10,7 +10,7 @@
 #'
 #' @return
 #' @export
-#'
+#' @import ncdf4
 readFromNetcdf <- function (
   in.path = NULL,
   in.file = NULL,
@@ -21,7 +21,6 @@ readFromNetcdf <- function (
 
   {
 
-  require(ncdf4)
 
   ncin <- nc_open(paste0(in.path, in.file))
 

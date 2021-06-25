@@ -23,6 +23,7 @@
 #'
 #' @return
 #' @export
+#' @import dplyr
 #'
 waveletARSubset <- function(
   series.obs = NULL,

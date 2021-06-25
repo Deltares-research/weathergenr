@@ -2,7 +2,7 @@
 % Please edit documentation in R/waveletGlobalSpectrumPlot.R
 \name{waveletGlobalSpectrumPlot}
 \alias{waveletGlobalSpectrumPlot}
-\title{ggplot wrapper for wavelet spectra plot}
+\title{A ggplot wrapper for wavelet spectra plot}
 \usage{
 waveletGlobalSpectrumPlot(
   power.period,

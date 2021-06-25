@@ -12,12 +12,8 @@
 #' @return A ggplot2 object
 #' @details place holder
 #' @export
-
+#' @import ggplot2 scales dplyr
 waveletGlobalSpectrumPlot <- function(power.period, power.signif, power.obs, power.sim = NULL) {
-
-  require(ggplot2)
-  require(scales)
-  require(dplyr)
 
   tsn <- length(power.period)
 

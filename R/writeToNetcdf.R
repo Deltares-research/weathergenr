@@ -13,7 +13,7 @@
 #'
 #' @return
 #' @export
-#'
+#' @import ncdf4
 writeToNetcdf <- function(
   in.path = NULL,
   in.file = NULL,
@@ -26,8 +26,6 @@ writeToNetcdf <- function(
   verbose = FALSE)
 
   {
-
-  #browser()
 
   # Open template netcdf file
   ncin <- nc_open(paste0(in.path, in.file))
