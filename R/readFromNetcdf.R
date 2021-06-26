@@ -11,7 +11,6 @@
 #' @return
 #' @export
 #' @import ncdf4
-#' @importFrom magrittr %>%
 readFromNetcdf <- function(
   in.path = NULL,
   in.file = NULL,
@@ -21,6 +20,7 @@ readFromNetcdf <- function(
 
   {
 
+  usethis::use_pipe()
 
   ncin <- nc_open(paste0(in.path, in.file))
 
