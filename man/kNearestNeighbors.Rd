@@ -4,7 +4,7 @@
 \alias{kNearestNeighbors}
 \title{Implementation of K Nearest Neighbor Sampling}
 \usage{
-kNearestNeighbors(x, k, s, seed = NULL)
+kNearestNeighbors(x = NULL, k = 5, s = NULL, seed = NULL)
 }
 \arguments{
 \item{x}{A numeric vector of time-series of weather variables xt, t=1,..,n}

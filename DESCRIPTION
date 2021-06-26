@@ -27,7 +27,7 @@ Imports:
   ncdf4,
   forecast,
   stats,
-  
+  magrittr
 Encoding: UTF-8
 Language: en-US
 LazyData: true

@@ -5,9 +5,9 @@
 \title{A ggplot wrapper for wavelet spectra plot}
 \usage{
 waveletGlobalSpectrumPlot(
-  power.period,
-  power.signif,
-  power.obs,
+  power.period = NULL,
+  power.signif = NULL,
+  power.obs = NULL,
   power.sim = NULL
 )
 }

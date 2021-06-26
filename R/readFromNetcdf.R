@@ -10,7 +10,7 @@
 #'
 #' @return
 #' @export
-#' @import ncdf4
+#' @import ncdf4 magrittr
 readFromNetcdf <- function (
   in.path = NULL,
   in.file = NULL,
