@@ -13,7 +13,14 @@
 #' @details place holder
 #' @export
 #' @import ggplot2 scales dplyr
-waveletGlobalSpectrumPlot <- function(power.period, power.signif, power.obs, power.sim = NULL) {
+waveletGlobalSpectrumPlot <- function(
+  power.period = NULL,
+  power.signif = NULL,
+  power.obs = NULL,
+  power.sim = NULL
+  )
+
+  {
 
   tsn <- length(power.period)
 

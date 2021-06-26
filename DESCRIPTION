@@ -25,7 +25,9 @@ Imports:
   tibble,
   stringr,
   ncdf4,
-  forecast
+  forecast,
+  stats,
+  
 Encoding: UTF-8
 Language: en-US
 LazyData: true

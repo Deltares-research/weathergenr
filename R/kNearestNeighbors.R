@@ -13,7 +13,11 @@
 #' @return numeric, resampled value from the time-series vector x
 #' @export
 #'
-kNearestNeighbors  <- function(x, k, s, seed = NULL) {
+kNearestNeighbors  <- function(
+        x = NULL,
+        k = 5,
+        s = NULL,
+        seed = NULL) {
 
         dis <- sqrt((s - x)^2)
         s.ind <- order(dis)[1:k]
