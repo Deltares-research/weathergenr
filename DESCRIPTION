@@ -10,24 +10,25 @@ License: GPL-3
 Depends:
   R (>= 4.1)
 Imports: 
-  dplyr,
-  akima,
-  viridis,
-  e1071,
-  cowplot,
-  scales,
-  MASS,
-  fitdistrplus,
-  lubridate,
-  tidyr,
-  purrr,
-  ggplot2,
-  tibble,
-  stringr,
-  ncdf4,
-  forecast,
-  stats,
-  usethis
+    dplyr,
+    akima,
+    viridis,
+    e1071,
+    cowplot,
+    scales,
+    MASS,
+    fitdistrplus,
+    lubridate,
+    tidyr,
+    purrr,
+    ggplot2,
+    tibble,
+    stringr,
+    ncdf4,
+    forecast,
+    stats,
+    usethis,
+    magrittr
 Encoding: UTF-8
 Language: en-US
 LazyData: true

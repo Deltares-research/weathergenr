@@ -20,8 +20,6 @@ readFromNetcdf <- function(
 
   {
 
-  usethis::use_pipe()
-
   ncin <- nc_open(paste0(in.path, in.file))
 
   # GET DIMENSIONS
