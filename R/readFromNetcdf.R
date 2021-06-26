@@ -10,14 +10,14 @@
 #'
 #' @return
 #' @export
-#' @import ncdf4 magrittr
-readFromNetcdf <- function (
+#' @import ncdf4
+#' @importFrom magrittr %>%
+readFromNetcdf <- function(
   in.path = NULL,
   in.file = NULL,
   dim.names = NULL,
   variables = NULL,
   origin.date = NULL)
-
 
   {
 
