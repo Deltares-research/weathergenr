@@ -11,6 +11,8 @@
 #' @return
 #' @export
 #' @import ncdf4
+#' @import tidyr
+#' @import dplyr
 readFromNetcdf <- function(
   in.path = NULL,
   in.file = NULL,

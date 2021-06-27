@@ -21,6 +21,7 @@
 #'
 #' @return
 #' @export
+#' @import e1071
 #'
 dailyPerformanceCheck <- function(
   daily.sim = NULL,
@@ -184,7 +185,7 @@ dailyPerformanceCheck <- function(
     scale_x_continuous(breaks = scales::pretty_breaks(5), limits = c(0, 1)) +
     scale_y_continuous(breaks = scales::pretty_breaks(5), limits = c(0, 1))
 
-  ggsave(paste0(out.path,"monthly_correlation_crosssite.png" ),
+  ggsave(paste0(out.path,"monthly_stats_all_crosssite.png" ),
          height = 4 * ceiling(num_vars/2), width = 4 *  ifelse(num_vars > 1, 2, 1))
 
   ### Intersite correlations
@@ -198,7 +199,7 @@ dailyPerformanceCheck <- function(
     scale_x_continuous(breaks = scales::pretty_breaks(5), limits =c(0,1)) +
     scale_y_continuous(breaks = scales::pretty_breaks(5), limits =c(0,1))
 
-  ggsave(paste0(out.path,"monthly_correlation_intersite.png" ),
+  ggsave(paste0(out.path,"monthly_stats_all_intersite.png" ),
          width = 4 * ceiling(num_var_combs/2), height = 4 *  ifelse(num_var_combs > 1, 2, 1))
 
 

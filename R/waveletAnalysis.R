@@ -14,6 +14,7 @@
 #' @return
 #' @export
 #' @import ggplot2
+#' @import cowplot
 waveletAnalysis <- function(variable = NULL,
                             variable.unit = "mm",
                             signif.level = 0.90,

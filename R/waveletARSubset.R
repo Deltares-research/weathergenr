@@ -24,7 +24,7 @@
 #' @return
 #' @export
 #' @import dplyr
-#'
+#' @import readr
 waveletARSubset <- function(
   series.obs = NULL,
   series.sim = NULL,

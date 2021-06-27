@@ -40,3 +40,5 @@ vignettes/*.pdf
 
 # Misc directories
 /other/
+/test/
+/areas/
