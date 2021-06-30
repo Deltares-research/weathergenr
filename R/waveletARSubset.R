@@ -42,7 +42,8 @@ waveletARSubset <- function(
   seed = NULL,
   save.plots = FALSE,
   save.series = TRUE,
-  verbose = FALSE)
+  verbose = FALSE,
+  out.path = out_path)
 
 {
 
@@ -150,7 +151,7 @@ waveletARSubset <- function(
                    power.sim = power.sim[1:pl,sub_clim])  +
           scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    ggsave(paste0(outPath, "warm_subset_wavelet_spectra.png"), width=8, height=6)
+    ggsave(paste0(out.path, "warm_subset_wavelet_spectra.png"), width=8, height=6)
 
     # Boxplots of all stats
     stats_obs_gg <- stats_obs %>% mutate(sim=1) %>%
@@ -166,8 +167,7 @@ waveletARSubset <- function(
     p <- ggplot(mapping = aes(x = par, y = value)) +
       theme_light() +
       facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1) +
-      geom_boxplot(data = stats_sim_gg, color = "black", color = "gray60",
-                   outlier.shape = NA) +
+      geom_boxplot(data = stats_sim_gg, color = "gray60", outlier.shape = NA) +
       geom_jitter(data = stats_sim_gg, alpha = 0.1, color = "gray60") +
       geom_point(aes(fill = type), data = stats_all, size = 5, color = "white",
                  shape = 21) +
@@ -177,17 +177,17 @@ waveletARSubset <- function(
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank())
 
-      ggsave(paste0(outPath, "warm_subset_annual_stats.png"), width=8, height=6)
+      ggsave(paste0(out.path, "warm_subset_annual_stats.png"), width=8, height=6)
 
   }
 
   if(isTRUE(save.series)) {
 
     write_csv(x = series.sim[,sub_clim] %>% as_tibble(),
-             file = paste0(outPath, "warm_sim_annual_set.csv"))
+             file = paste0(out.path, "warm_sim_annual_set.csv"))
 
     write_csv(x = series.sim[,sub_sample] %>% as_tibble(),
-             file = paste0(outPath, "warm_sim_annual_sample.csv"))
+             file = paste0(out.path, "warm_sim_annual_sample.csv"))
 
     }
 

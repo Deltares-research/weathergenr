@@ -195,7 +195,7 @@ waveletAnalysis <- function(variable = NULL,
       scale_y_reverse(expand=c(0,0)) +
       viridis::scale_fill_viridis() +
       labs(x= "Time (years)", y = "Period (years)") +
-      guides(fill = FALSE) +
+      guides(fill = "none") +
       geom_line(data = df2, linetype = "dashed") +
       stat_contour(aes(z = z), data = df3, breaks=c(-99, 1)) +
       ggtitle("Wavelet Power Spectrum")

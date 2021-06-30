@@ -1,7 +1,7 @@
 
-#' A function to surppresses the output messages
+#' A wrapper to surppress the function output messages
 #'
-#' Function first suggested by Hadley Wickham http://r.789695.n4.nabble.com/Suppressing-output-e-g-from-cat-td859876.html
+#' See Hadley Wickham http://r.789695.n4.nabble.com/Suppressing-output-e-g-from-cat-td859876.html
 #'
 #' @param x An R function to surpress the output messages
 #'

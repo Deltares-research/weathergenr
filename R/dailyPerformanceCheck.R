@@ -8,8 +8,6 @@
 # 2) Intersite correlations x num.variables
 # 3) Cross-correlations x num.variables
 
-
-
 #' Function to assess the weather generator skill
 #'
 #' @param daily.sim A matrix of daily time-series of weather variables

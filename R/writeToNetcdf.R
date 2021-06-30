@@ -39,7 +39,7 @@ writeToNetcdf <- function(
   # Define time dimension
   time_vals  <- 1:length(wg_sim_dates)
   time_units <- paste0("days since ",
-                       format(round(as.POSIXct(origin.date), units = "day"), '%Y-%m-%d %M:%H:%S'))
+      format(round(as.POSIXct(origin.date), units = "day"), '%Y-%m-%d %M:%H:%S'))
 
   dim_names <- attributes(ncin$dim)$names
   DIMS <- vector(mode = "list", length = length(dim_names))
@@ -155,7 +155,7 @@ writeToNetcdf <- function(
 
   #Remove missing value attribute
   ATTRIBS <- lapply(1:length(VARS),
-                    function(x) within(ATTRIBS[[x]], rm(`_FillValue`)))
+    function(x) within(ATTRIBS[[x]], rm(`_FillValue`)))
 
 
   # ::::::::: CREATE NETCDF AND PUT VARIABLES ::::::::::::::::::::::::::::::::::
@@ -178,6 +178,7 @@ writeToNetcdf <- function(
                   attval = ATTRIBS[[varc]][[k]]))
     }
   }
+
   # put global attributes
   if(length(nc_atts)>0) {
     sapply(1:length(nc_atts), function(k)
