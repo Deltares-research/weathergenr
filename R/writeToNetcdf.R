@@ -22,6 +22,7 @@ writeToNetcdf <- function(
   out.variables = NULL,
   dim.names = NULL,
   origin.date = NULL,
+  date.length = NULL,
   gridded.data = NULL,
   verbose = FALSE)
 
@@ -37,7 +38,7 @@ writeToNetcdf <- function(
   #::::::::::::::::::::::: DIMENSIONS ::::::::::::::::::::::::::::::::::::::::::
 
   # Define time dimension
-  time_vals  <- 1:length(wg_sim_dates)
+  time_vals  <- 1:date.length
   time_units <- paste0("days since ",
       format(round(as.POSIXct(origin.date), units = "day"), '%Y-%m-%d %M:%H:%S'))
 

@@ -21,7 +21,8 @@ waveletARSubset(
   seed = NULL,
   save.plots = FALSE,
   save.series = TRUE,
-  verbose = FALSE
+  verbose = FALSE,
+  out.path = out_path
 )
 }
 \arguments{

@@ -12,6 +12,7 @@ writeToNetcdf(
   out.variables = NULL,
   dim.names = NULL,
   origin.date = NULL,
+  date.length = NULL,
   gridded.data = NULL,
   verbose = FALSE
 )
