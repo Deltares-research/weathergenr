@@ -53,18 +53,20 @@ generateDailyWeather <- function(
 
   out_path = paste0("./areas/", project_name,"/output/")
 
-
   # GABON/ ERA5-GRIDDED CLIMATE DATA
   climate_input_tidy <- readFromNetcdf(
     in.path = nc.path,
     in.file = nc.file,
     variables = wg_variables,
     dim.names = nc.dimnames,
-    origin.date = wg_date_begin) %>% mutate(id = 1:n(), .before = xind)
+    origin.date = origin.date)
 
 
+  # Number of grid cells (or point-locations)
+  grids  <- climate_input_tidy$id
+  ngrids <- length(grids)
 
-
+  message(cat("\u2713", "|", "Loaded historical climate data: total grids:", ngrids))
 
   # READ-IN & PROCESS CLIMATE DATA -----------------------------------------------
 
@@ -80,8 +82,16 @@ generateDailyWeather <- function(
   ifelse(!dir.exists(file.path(paste0("./areas/", project_name,"./output/"))),
          dir.create(file.path(paste0("./areas/", project_name,"./output/"))), FALSE)
 
-  ##### Essential data for wg
-  climate_obs_daily <- climate_input_tidy$data
+  climate_input_tidyX <- climate_input_tidy
+  climate_input_tidyX$data <- lapply(1:nrow(climate_input_tidy),
+    function(x) filter(climate_input_tidy$data[[x]], date %in% wg_obs_dates))
+
+
+  ##### Set historical gridded data to be inputted to wg
+  climate_obs_daily <- climate_input_tidyX$data
+
+  #wg_date_begin <- as.Date(climate_input_tidy$data[[1]]$date[1])
+  #wg_date_end <- as.Date(climate_input_tidy$data[[1]]$date[length(climate_input_tidy$data[[1]]$date)])
 
   # Date vectors for the historical input series
   wg_obs_dates_leap <- seq.Date(wg_date_begin, wg_date_end, by = "day") #temp var
@@ -95,15 +105,12 @@ generateDailyWeather <- function(
   # Month order for water year
   wg_month_order <- setdiff(c(month(wg_date_begin):12, 1:(month(wg_date_begin)-1)),0)
 
-  # Number of grid cells (or point-locations)
-  grids  <- climate_input_tidy$id
-  ngrids <- length(grids)
+  ############## FIGURE OUT HOW TO START AT A RANDOM DAY?????????
 
-  #### Eliminate
+  #### Eliminate leap days and calculate daily, monthly, and annual values for wg
   climate_obs_daily_wg <- vector("list", ngrids)
   climate_obs_monthly_wg <- vector("list", ngrids)
   climate_obs_annual_wg <- vector("list", ngrids)
-
   for (i in 1:ngrids) {
 
     climate_obs_daily_wg[[i]] <- climate_obs_daily[[i]] %>%
@@ -160,15 +167,21 @@ generateDailyWeather <- function(
                                      signif.level = ssig,
                                      save.plot = TRUE)
 
+  message(cat("\u2713", "|", "Wavelet Analysis"))
+
   ##### WAVELET DECOMPOSITION OF HISTORICAL SERIES
   wavelet_comps <- waveletDecomposition(variable = warm_obs_annual,
                             signif.period.list = warm_obs_power$signif_periods_list,
                             signif.level = ssig)
 
+  message(cat("\u2713", "|", "Wavelet Decomposition"))
+
   ##### Stochastic simuluation of historical annual series
   warm_sim_annual <- waveletAR(wavelet.comps = wavelet_comps$out,
                            num.years = ymax,
                            num.realizations = rmax)
+
+  message(cat("\u2713", "|", "Wavelet AR Model simulation"))
 
   # Wavelet analysis on simulated series
   warm_sim_power <- sapply(1:rmax, function(x)
@@ -196,7 +209,7 @@ generateDailyWeather <- function(
        nmax = nmax,
        save.plots = TRUE,
        save.series = TRUE,
-       verbose = TRUE,
+       verbose = FALSE,
        out.path = out_path)
 
   #::::TEMPORAL/SPATIAL DISSAGGREGATION ::::::::::::::::::::::::::::::::::::::::::
@@ -243,7 +256,7 @@ generateDailyWeather <- function(
 
   }
 
-
+  message(cat("\u2713", "|", "Spatial-temporal dissaggregation of annual simulated series"))
 
   #:::::::::::::::::::::: PERFORMANCE EVALUATION OF DAILY SIMULATED DATA :::::::::
 
@@ -265,7 +278,7 @@ generateDailyWeather <- function(
 
   #:::::::::::::::::::::: CLIMATE CHANGE PERTURBATIONS :::::::::::::::::::::::::::
 
-
+  message(cat("\u2713", "|", "Climate change perturbation matrix created"))
 
 
   for (i in 1:length(PARCC)) {
@@ -298,8 +311,6 @@ generateDailyWeather <- function(
   perturbs_check <- list()
 
   for (s in 1:scn_num) {
-
-    print(s)
 
     # Current synthetic realization & parameters
     ns <- scn_mat$nvar[s]
@@ -339,6 +350,7 @@ generateDailyWeather <- function(
       gridded.data = climate_sim_daily_wg[[ns]])
   }
 
+  message(cat("\u2713", "|", "Results outputted to netcdf files"))
 }
 
 

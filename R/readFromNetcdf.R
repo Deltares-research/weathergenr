@@ -40,18 +40,24 @@ readFromNetcdf <- function(
   }
 
   # TRANSLATE INTO TIDY-FORMAT
-  grid_mat <- VARS[[1]][,,1] %>% as_tibble() %>%
+  grid_mat <- VARS[[1]][,,1] %>%
+    as_tibble() %>%
+    #as_tibble(.name_repair = 'unique') %>%
     setNames(1:length(DIMS[[dim.names$y]])) %>%
     mutate(xind = 1:n(), .before = 1) %>%
     gather(yind, data, -xind) %>%
     mutate(yind = as.numeric(yind)) %>%
-    mutate(x = DIMS[[dim.names$x]][xind], y = DIMS[[dim.names$y]][yind], .after = yind) %>%
+    mutate(x = DIMS[[dim.names$x]][xind],
+           y = DIMS[[dim.names$y]][yind], .after = yind) %>%
     na.omit() %>%
-    mutate(data = list(NA))
+    mutate(data = list(NA)) %>%
+    mutate(id = 1:n(), .before = xind)
 
   ##### Define variable data (as arrays)
   temp <- matrix(0, nrow = length(DIMS$time), ncol = length(variables)+1) %>%
-    as_tibble() %>% setNames(c("date", variables)) %>%
+    #as_tibble(.name_repair = 'unique') %>%
+    as_tibble() %>%
+    setNames(c("date", variables)) %>%
     mutate(date = origin.date + DIMS[[dim.names$time]])
 
   for (n in 1:nrow(grid_mat)) {
