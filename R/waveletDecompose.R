@@ -4,30 +4,28 @@
 #' Function for weather generator decomposition
 #'
 #' @param variable A vector of time-series of weather variables.
-#' @param signif.period.list Significant low-frequency periods in the original time-series.
-#' @param background.noise A logical specifying the type of background noise.
+#' @param signif.periods Significant low-frequency periods in the original time-series.
+#' @param noise A logical specifying the type of background noise.
 #' @param signif.level Significance level for the wavelet analysis.
 #'
 #' @return
 #' @export
 #' @import ggplot2
-waveletDecomposition   <- function(variable = NULL,
-                               signif.period.list = NULL,
-                               background.noise = "white",
+waveletDecompose   <- function(variable = NULL,
+                               signif.periods = NULL,
+                               noise = "white",
                                signif.level = 0.80)
 
 {
 
-
-
   #Number of orthogonal component series that representing a low-freq signal
-  NUM_FINAL_PERIODS <- length(signif.period.list) #OK
+  NUM_FINAL_PERIODS <- length(signif.periods) #OK
 
   #List of all significant periods c(2,3,4...)
-  ALL_SIG_PERIODS <- unlist(signif.period.list, use.names = FALSE) #OK
+  ALL_SIG_PERIODS <- unlist(signif.periods, use.names = FALSE) #OK
 
   #Length of all components (this needs to be length of components e.g. c(len(COMP1), leng(COMP2)
-  NUM_PERIODS_ALL_COMPS <- as.numeric(sapply(signif.period.list, function(x) length(x))) #OK
+  NUM_PERIODS_ALL_COMPS <- as.numeric(sapply(signif.periods, function(x) length(x))) #OK
 
   #### Define Wavelet function used that returns transform
   waveletf <- function(k,s) {
@@ -125,7 +123,7 @@ waveletDecomposition   <- function(variable = NULL,
 
   #for red noise background, lag1 autocorrelation = 0.72,
   #for white noise background, lag1 autocorrelation = 0
-  if (background.noise == "white") {lag1 <- 0} else {lag1 <- .72}
+  if (noise == "white") {lag1 <- 0} else {lag1 <- .72}
 
   freq <- dt / period   # normalized frequency
   fft_theor <- (1-lag1^2) / (1-2*lag1*cos(freq*2*pi)+lag1^2)  # [Eqn(16)]
@@ -154,8 +152,8 @@ waveletDecomposition   <- function(variable = NULL,
 
   #:::::::::::::::: DEFINE TIME-SERIES COMPONENTS  :::::::::::::::::::::::::::::
 
-  COMPS <- array(0, c(length(variable), NUM_FINAL_PERIODS)) %>% as_tibble()
-  colnames(COMPS) <- paste0("COMP", 1:NUM_FINAL_PERIODS)
+  COMPS <- array(0, c(length(variable), NUM_FINAL_PERIODS)) %>%
+    as_tibble(.name_repair = ~paste0("COMP", 1:NUM_FINAL_PERIODS))
 
   #Loop through each component
   for (i in 1:NUM_FINAL_PERIODS) {
@@ -178,22 +176,21 @@ waveletDecomposition   <- function(variable = NULL,
     }
   }
 
+  names(COMPS) <- paste0("COMPS", 1:NUM_FINAL_PERIODS)
   NOISE = current_variable_org - apply(COMPS, 1, sum)
 
 
-  df <- data_frame(year = 1:length(variable), Original = variable)
-  df <- bind_cols(df, as_data_frame(COMPS))
-  df <- bind_cols(df, as_data_frame(NOISE))
-  colnames(df) <- c("Year", "Original", paste0("Component ", 1:NUM_FINAL_PERIODS), "Noise")
-  df <- gather(df, key = variable, value = value, -Year)
-  df$variable <- factor(df$variable, levels = c("Original", paste0("Component ", 1:NUM_FINAL_PERIODS), "Noise"))
+  df <- tibble(Year = 1:length(variable), Original = variable) %>%
+      add_column(COMPS) %>%
+      add_column(NOISE) %>%
+      gather(key = variable, value = value, -Year) %>%
+      mutate(variable = factor(variable, levels = c("Original", paste0("COMPS", 1:NUM_FINAL_PERIODS), "NOISE")))
 
   p <- ggplot(df, aes(x = Year, y = value)) +
-    theme_light() +
+    theme_bw() +
     facet_wrap(~ variable, ncol = 1, scales = "free") +
     geom_line() +
     labs(x = "Time (year)", y = "")
-
 
   return(list(out = COMPS %>% mutate(NOISE = NOISE), plot = p))
 

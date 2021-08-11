@@ -21,7 +21,7 @@
 #' @export
 #' @import e1071
 #'
-dailyPerformanceCheck <- function(
+dailyPerformance <- function(
   daily.sim = NULL,
   daily.obs = NULL,
   out.path = NULL,
@@ -43,7 +43,6 @@ dailyPerformanceCheck <- function(
   num_stats <- length(stat_level)
   num_vars <- length(variables)
   var_combs <- expand_grid(var1=variables, var2=variables)
-  crossing(var1=variables, var2=variables)
   num_var_combs <- choose(num_vars,2)
 
   # Calculate for each simulated trace
@@ -223,7 +222,8 @@ dailyPerformanceCheck <- function(
     #### DAILY STATISTICS
     stats_df1v <- bind_rows(hist_stats_mon, sim_stats_mon_median) %>%
       filter(variable == variables[v]) %>%
-      spread(key = type, value = value)
+      spread(key = type, value = value) %>%
+      filter(stat != "Skewness")
 
     p <- ggplot(stats_df1v, aes(x = Observed, y = Simulated)) +
       theme_light(base_size = 12) +
@@ -237,12 +237,9 @@ dailyPerformanceCheck <- function(
       theme(plot.margin = unit(c(0.5,0.2,0.2,0.2), "cm"))
 
     ggsave(paste0(out.path,"daily_stats_", variables[v],".png" ),
-           height = 4 * ceiling(num_var_combs/2),
-           width = 4 * ifelse(num_var_combs > 1, 2, 1))
+           height = 6, width = 12)
 
   }
-
-
 
 }
 

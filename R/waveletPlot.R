@@ -13,7 +13,7 @@
 #' @details place holder
 #' @export
 #' @import ggplot2 scales dplyr
-waveletGlobalSpectrumPlot <- function(
+waveletPlot <- function(
   power.period = NULL,
   power.signif = NULL,
   power.obs = NULL,

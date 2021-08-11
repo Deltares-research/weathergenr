@@ -49,8 +49,7 @@ waveletARSubset <- function(
 
   # Statistics for simulated realizations
   stats_sim <- series.sim %>%
-    as_tibble(.name_repair = "universal") %>%
-    setNames(1:ncol(series.sim)) %>%
+    as_tibble(.name_repair = ~as.character(1:ncol(series.sim))) %>%
     mutate(yind = 1:n()) %>%
     gather(key = sim, value = value, -yind) %>%
     mutate(sim = as.numeric(sim)) %>%
@@ -144,8 +143,7 @@ waveletARSubset <- function(
     pl <- length(power.period)
     plr <- 5 * ceiling(power.period[pl] / 5)
 
-    p <- waveletGlobalSpectrumPlot(
-                   power.period = power.period[1:pl],
+    p <- waveletPlot(power.period = power.period[1:pl],
                    power.signif = power.signif[1:pl],
                    power.obs = power.obs[1:pl],
                    power.sim = power.sim[1:pl,sub_clim])  +
@@ -183,11 +181,11 @@ waveletARSubset <- function(
 
   if(isTRUE(save.series)) {
 
-    write_csv(x = series.sim[,sub_clim] %>% as_tibble(),
-             file = paste0(out.path, "warm_sim_annual_set.csv"))
+    readr::write_csv(x = series.sim[,sub_clim] %>% as_tibble(),
+        file = paste0(out.path, "warm_sim_annual_set.csv"))
 
-    write_csv(x = series.sim[,sub_sample] %>% as_tibble(),
-             file = paste0(out.path, "warm_sim_annual_sample.csv"))
+    readr::write_csv(x = series.sim[,sub_sample] %>% as_tibble(),
+        file = paste0(out.path, "warm_sim_annual_sample.csv"))
 
     }
 

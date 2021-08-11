@@ -19,7 +19,7 @@ waveletAnalysis <- function(variable = NULL,
                             variable.unit = "mm",
                             signif.level = 0.90,
                             background.noise = "white",
-                            save.plot = FALSE)
+                            plot = FALSE)
 {
 
 
@@ -148,16 +148,17 @@ waveletAnalysis <- function(variable = NULL,
 
   period_lower_limit <- 0
   sig_periods <- which(GWS>GWS_signif & period > period_lower_limit)
-  sig_periods_list <- split(sig_periods, cumsum(c(1, diff(sig_periods) != 1)))
+  signif_periods <- split(sig_periods, cumsum(c(1, diff(sig_periods) != 1)))
 
-  if(save.plot == TRUE) {
+  if(plot == TRUE) {
 
     GWS_gg <- tibble(period = period, GWS = GWS, GWS_signif = GWS_signif)
     var_gg <- tibble(x = 1:length(variable), y = variable)
 
 
-    df <- as_tibble(t(log(POWER,base=2))) %>%
-      setNames(period) %>% mutate(x = 1:n1) %>%
+    df <- t(log(POWER,base=2)) %>%
+      as_tibble(.name_repair = ~ as.character(period)) %>%
+      mutate(x = 1:n1) %>%
       gather(key = y, value = z, -x) %>%
       mutate(across(everything(), as.numeric))
 
@@ -222,7 +223,7 @@ waveletAnalysis <- function(variable = NULL,
   return(list(GWS = GWS,
               GWS_signif = GWS_signif,
               GWS_period = period,
-              signif_periods_list = sig_periods_list,
+              signif_periods = signif_periods,
               plot = p))
 
 }

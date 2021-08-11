@@ -9,7 +9,7 @@ waveletAnalysis(
   variable.unit = "mm",
   signif.level = 0.9,
   background.noise = "white",
-  save.plot = FALSE
+  plot = FALSE
 )
 }
 \arguments{
