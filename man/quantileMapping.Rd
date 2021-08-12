@@ -7,6 +7,10 @@
 quantileMapping(value = NULL, date = NULL, par = NULL, operator = "multiply")
 }
 \arguments{
+\item{value}{To be completed...}
+
+\item{date}{To be completed...}
+
 \item{par}{List of parameters to be passed.}
 
 \item{operator}{A character string to specify the type of perturb change operator.}

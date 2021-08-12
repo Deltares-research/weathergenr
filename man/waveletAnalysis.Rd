@@ -8,8 +8,9 @@ waveletAnalysis(
   variable = NULL,
   variable.unit = "mm",
   signif.level = 0.9,
-  background.noise = "white",
-  plot = FALSE
+  noise = "white",
+  plot = FALSE,
+  out.path = NULL
 )
 }
 \arguments{
@@ -19,9 +20,11 @@ waveletAnalysis(
 
 \item{signif.level}{A numeric value to set the siginificance level of the wavelet analysis (Default= 0.90).}
 
-\item{background.noise}{A character string defining the type of background noise. Currently either "white" (default) or "red".}
+\item{noise}{A character string defining the type of background noise. Currently either "white" (default) or "red".}
 
-\item{save.plot}{A logical to save the results to file.}
+\item{plot}{Draw plot}
+
+\item{out.path}{Output path}
 }
 \value{
 

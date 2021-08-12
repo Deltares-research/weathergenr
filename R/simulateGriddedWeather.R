@@ -25,11 +25,10 @@
 #' @import dplyr
 #' @import tidyr
 #' @import lubridate
-#' @import readr
 #' @import stringr
 #' @import tibble
-#' @import readxl
 #' @import sf
+#' @import patchwork
 simulateGriddedWeather <- function(
   proj.name = NULL,
   output.dir = NULL,
@@ -70,7 +69,7 @@ simulateGriddedWeather <- function(
     mutate(id = 1:n())
 
   # Number of grids
-  grids  <- climate_tidy$id;
+  grids  <- climate_tidy$id
   ngrids <- length(grids)
 
   message(cat("\u2713", "|", "Loaded historical climate: ", ngrids, "grids"))
@@ -135,36 +134,24 @@ simulateGriddedWeather <- function(
   warm_annual <- warm_annual_org
 
   ####  Power spectra of observed annual series
-  warm_power <- waveletAnalysis(variable = warm_annual,
-         variable.unit = "mm", signif.level = ssig)
-
-  # Save results to file
-  ggsave(plot = warm_power$plot, height = 9, width = 12,
-         filename = paste0(out_path, "warm_observed_wavelet.png"))
-
+  warm_power <- waveletAnalysis(variable = warm_annual, variable.unit = "mm",
+    signif.level = ssig, plot = TRUE, out.path = out_path)
   message(cat("\u2713", "|", "Wavelet Analysis"))
 
   ##### WAVELET DECOMPOSITION OF HISTORICAL SERIES
   wavelet_comps <- waveletDecompose(variable = warm_annual,
         signif.periods = warm_power$signif_periods,
-        signif.level = ssig)
-
+        signif.level = ssig, plot = TRUE, out.path = out_path)
   message(cat("\u2713", "|", "Wavelet Decomposition"))
 
   ##### Stochastic simuluation of historical annual series
-  sim_annual <- waveletAR(wavelet.comps = wavelet_comps$out,
-                           num.years = ymax,
-                           num.realizations = rmax)
-
+  sim_annual <- waveletAR(wavelet.comps = wavelet_comps,
+        num.years = ymax, num.realizations = rmax)
   message(cat("\u2713", "|", "Wavelet AR Model simulation"))
 
   # Wavelet analysis on simulated series
   sim_power <- sapply(1:rmax, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = ssig)$GWS)
-
-  #p <- waveletPlot(power.period = warm_power$GWS_period,
-  #    power.signif = warm_power$GWS_signif, power.obs = warm_power$GWS,
-  #    power.sim = sim_power)
 
   ### Choose which parameters to consider for filtering
   sim_annual_sub <- waveletARSubset(
@@ -243,8 +230,10 @@ simulateGriddedWeather <- function(
 
   if(isTRUE(validate)) {
 
+    sample_ngrid <- 20
+
     sampleGrids <- sf::st_as_sf(climate_tidy[,c("x","y")], coords = c("x","y")) %>%
-      st_sample(size=20, type = "regular") %>%
+      st_sample(size = sample_ngrid, type = "regular") %>%
       st_cast("POINT") %>% st_coordinates() %>%
       as_tibble() %>%
       left_join(climate_tidy[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
@@ -263,8 +252,8 @@ simulateGriddedWeather <- function(
 
   #:::::::::::::::::::::: CLIMATE CHANGE PERTURBATIONS :::::::::::::::::::::::::::
 
-  perturb1 <- read_excel(perturb.file, sheet = "par1", range = "B3:D36")
-  perturb2 <- read_excel(perturb.file, sheet = "par2", range = "B3:D36")
+  perturb1 <- readxl::read_excel(perturb.file, sheet = "par1", range = "B3:D36")
+  perturb2 <- readxl::read_excel(perturb.file, sheet = "par2", range = "B3:D36")
 
   PARCC <- list(par1 = list(), par2 = list())
 
@@ -408,7 +397,7 @@ simulateGriddedWeather <- function(
     }
 
     # create netCDF file and put arrays
-    nc_out <- nc_create(paste0(output.dir, proj.name,"_rlz_",s, ".nc"), nc_vars_all, force_v4 = TRUE)
+    nc_out <- nc_create(paste0(output.dir, proj.name,"weather_rlz_",s, ".nc"), nc_vars_all, force_v4 = TRUE)
 
     # Put spatial_def variable
     ncvar_put(nc_out, varid = spatial_ref_def, vals = spatial_ref_val)

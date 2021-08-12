@@ -59,6 +59,8 @@ waveletARSubset(
 \item{save.series}{A logical to write the results to csv files.}
 
 \item{verbose}{A logical to decide if further information to be displayed on the screen.}
+
+\item{out.path}{Output folder path}
 }
 \value{
 

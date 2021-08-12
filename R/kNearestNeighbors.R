@@ -9,6 +9,7 @@
 #' @param x A numeric vector of time-series of weather variables xt, t=1,..,n
 #' @param k A numeric value to set the number of neighbors to resample from
 #' @param s A numeric value for calculating the euclidean distance vector
+#' @param seed seed number
 #'
 #' @return numeric, resampled value from the time-series vector x
 #' @export

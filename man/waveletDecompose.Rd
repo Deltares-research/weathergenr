@@ -8,7 +8,9 @@ waveletDecompose(
   variable = NULL,
   signif.periods = NULL,
   noise = "white",
-  signif.level = 0.8
+  signif.level = 0.8,
+  plot = TRUE,
+  out.path = NULL
 )
 }
 \arguments{
@@ -19,6 +21,10 @@ waveletDecompose(
 \item{noise}{A logical specifying the type of background noise.}
 
 \item{signif.level}{Significance level for the wavelet analysis.}
+
+\item{plot}{Draw plot}
+
+\item{out.path}{Output path}
 }
 \value{
 

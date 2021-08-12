@@ -7,19 +7,21 @@
 #'
 #' @param variable              A numeric vector of time-series of variables, for example, time-series of annual precipitation.
 #' @param signif.level          A numeric value to set the siginificance level of the wavelet analysis (Default= 0.90).
-#' @param background.noise      A character string defining the type of background noise. Currently either "white" (default) or "red".
-#' @param save.plot             A logical to save the results to file.
+#' @param noise                 A character string defining the type of background noise. Currently either "white" (default) or "red".
 #' @param variable.unit         A character string to define the unit of the variable.
+#' @param plot                  Draw plot
+#' @param out.path              Output path
 #'
 #' @return
 #' @export
 #' @import ggplot2
-#' @import cowplot
+#' @import patchwork
 waveletAnalysis <- function(variable = NULL,
                             variable.unit = "mm",
                             signif.level = 0.90,
-                            background.noise = "white",
-                            plot = FALSE)
+                            noise = "white",
+                            plot = FALSE,
+                            out.path = NULL)
 {
 
 
@@ -117,8 +119,8 @@ waveletAnalysis <- function(variable = NULL,
   gamma_fac <- empir[3]  # time-decorrelation factor
   dj0 <- empir[4]       # scale-decorrelation factor
 
-  if (background.noise=="white") {lag1 <- 0}
-  if (background.noise=="red") {lag1 <- .72}
+  if (noise=="white") {lag1 <- 0}
+  if (noise=="red") {lag1 <- .72}
 
   freq <- dt / period   # normalized frequency
   fft_theor <- (1-lag1^2) / (1-2*lag1*cos(freq*2*pi)+lag1^2)  # [Eqn(16)]
@@ -162,21 +164,20 @@ waveletAnalysis <- function(variable = NULL,
       gather(key = y, value = z, -x) %>%
       mutate(across(everything(), as.numeric))
 
-    df <- with(df,
-               akima::interp(x, y, z, extrap = FALSE, linear = TRUE,
+    df <- with(df, akima::interp(x, y, z, extrap = FALSE, linear = TRUE,
                       xo = seq(min(x), max(x), length = 20),
                       yo = seq(min(y), max(y), length = 20)))
 
-    df1 <- as_tibble(df$z)  %>%
-      setNames(df$y) %>% mutate(x = df$x) %>%
+    df1 <- as_tibble(df$z, .name_repair = ~as.character(df$y))  %>%
+      mutate(x = df$x) %>%
       gather(key = y, value = z, -x) %>%
       mutate(across(everything(), as.numeric))
 
 
     df2 <- tibble(x= 1:n1, y = coi) %>% filter(y > min(df1$x))
 
-    df3 <- as_tibble(t(sig95)) %>%
-      setNames(period) %>% mutate(x = 1:n1) %>%
+    df3 <- as_tibble(t(sig95), .name_repair = ~as.character(period)) %>%
+      mutate(x = 1:n1) %>%
       gather(key = y, value = z, -x) %>%
       mutate(across(everything(), as.numeric))
 
@@ -197,7 +198,7 @@ waveletAnalysis <- function(variable = NULL,
       viridis::scale_fill_viridis() +
       labs(x= "Time (years)", y = "Period (years)") +
       guides(fill = "none") +
-      geom_line(data = df2, linetype = "dashed") +
+      geom_line(data = df2, linetype = "dashed", color = "red") +
       stat_contour(aes(z = z), data = df3, breaks=c(-99, 1)) +
       ggtitle("Wavelet Power Spectrum")
 
@@ -213,18 +214,18 @@ waveletAnalysis <- function(variable = NULL,
       ggtitle("Global Wavelet Power Spectrum")
 
 
-    p23 <- plot_grid(p2, p3, nrow = 1, rel_widths = c(2,1), labels = c("b)", "c)"))
-    p <- plot_grid(p1, p23, nrow = 2, rel_heights = c(1,2.5), labels = c("a)", ""))
+    p <- p1 + (p2 + p3 + plot_layout(widths = c(2, 1.2))) +
+         plot_layout(heights = c(1,2.5), nrow = 2)
 
-  } else {
-    p <- NULL
+    # Save results to file
+    ggsave(paste0(out.path, "warm_observed_wavelet.png"), height=9, width=10)
+
   }
 
   return(list(GWS = GWS,
               GWS_signif = GWS_signif,
               GWS_period = period,
-              signif_periods = signif_periods,
-              plot = p))
+              signif_periods = signif_periods))
 
 }
 

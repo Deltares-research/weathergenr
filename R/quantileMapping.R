@@ -3,6 +3,8 @@
 #'
 #' @param par List of parameters to be passed.
 #' @param operator A character string to specify the type of perturb change operator.
+#' @param value To be completed...
+#' @param date  To be completed...
 #'
 #' @return
 #' @export

@@ -11,7 +11,7 @@ Depends:
   R (>= 4.1)
 Imports: 
     akima,
-    cowplot,
+    patchwork,
     dplyr,
     e1071,
     fitdistrplus,
@@ -29,7 +29,9 @@ Imports:
     tibble,   
     tidyr,
     usethis,
-    viridis
+    viridis,
+    readxl,
+    sf
 Encoding: UTF-8
 Language: en-US
 LazyData: true

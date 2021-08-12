@@ -7,15 +7,18 @@
 #' @param signif.periods Significant low-frequency periods in the original time-series.
 #' @param noise A logical specifying the type of background noise.
 #' @param signif.level Significance level for the wavelet analysis.
+#' @param plot         Draw plot
+#' @param out.path    Output path
 #'
 #' @return
 #' @export
 #' @import ggplot2
-waveletDecompose   <- function(variable = NULL,
-                               signif.periods = NULL,
-                               noise = "white",
-                               signif.level = 0.80)
-
+waveletDecompose <- function(variable = NULL,
+       signif.periods = NULL,
+       noise = "white",
+       signif.level = 0.80,
+       plot = TRUE,
+       out.path = NULL)
 {
 
   #Number of orthogonal component series that representing a low-freq signal
@@ -186,12 +189,21 @@ waveletDecompose   <- function(variable = NULL,
       gather(key = variable, value = value, -Year) %>%
       mutate(variable = factor(variable, levels = c("Original", paste0("COMPS", 1:NUM_FINAL_PERIODS), "NOISE")))
 
-  p <- ggplot(df, aes(x = Year, y = value)) +
-    theme_bw() +
-    facet_wrap(~ variable, ncol = 1, scales = "free") +
-    geom_line() +
-    labs(x = "Time (year)", y = "")
+  if(plot == TRUE) {
 
-  return(list(out = COMPS %>% mutate(NOISE = NOISE), plot = p))
+    p <- ggplot(df, aes(x = Year, y = value)) +
+        theme_bw() +
+        facet_wrap(~ variable, ncol = 1, scales = "free") +
+        geom_line() +
+        labs(x = "Time (year)", y = "")
+
+    # Save plot to file
+    ggsave(paste0(out.path, "warm_decomposition.png"), height=9, width=10)
+
+
+
+  }
+
+  return(COMPS %>% mutate(NOISE = NOISE))
 
 }

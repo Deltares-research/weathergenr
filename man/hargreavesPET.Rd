@@ -7,14 +7,13 @@
 hargreavesPET(months, temp, tdiff, lat)
 }
 \arguments{
-\item{months}{a time-series date object}
+\item{months}{To be completed...}
 
-\item{temp}{a vector of average temperature values (°C)}
+\item{temp}{To be completed...}
 
-\item{lat}{latitude information (negative values for southern hemisphere)}
+\item{tdiff}{To be completed...}
 
-\item{tdif}{a vector of differences computed from maximum and minimum
-temperatures}
+\item{lat}{To be completed...}
 }
 \value{
 the output is a vector of PET values

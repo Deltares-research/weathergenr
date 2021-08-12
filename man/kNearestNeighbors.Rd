@@ -12,6 +12,8 @@ kNearestNeighbors(x = NULL, k = 5, s = NULL, seed = NULL)
 \item{k}{A numeric value to set the number of neighbors to resample from}
 
 \item{s}{A numeric value for calculating the euclidean distance vector}
+
+\item{seed}{seed number}
 }
 \value{
 numeric, resampled value from the time-series vector x

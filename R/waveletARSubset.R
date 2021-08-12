@@ -20,6 +20,7 @@
 #' @param nmax A numeric value to define the final sample size.
 #' @param save.series A logical to write the results to csv files.
 #' @param verbose A logical to decide if further information to be displayed on the screen.
+#' @param out.path Output folder path
 #'
 #' @return
 #' @export
