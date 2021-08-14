@@ -13,26 +13,28 @@ Imports:
     akima,
     patchwork,
     dplyr,
-    e1071,
     fitdistrplus,
     forecast,
     ggplot2,
     lubridate,
     MASS,
-    magrittr,
     ncdf4,
     purrr,
-    readr,
     scales,  
     stats,
-    stringr,
     tibble,   
     tidyr,
-    usethis,
     viridis,
     readxl,
     sf
+Suggests:
+    rmarkdown,
+    knitr,
+    magrittr,
+    stringr,
+    usethis
 Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.1.1
+VignetteBuilder: knitr

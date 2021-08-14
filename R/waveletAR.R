@@ -8,7 +8,6 @@
 #'
 #' @export
 #' @import forecast
-#'
 waveletAR <- function(
   wavelet.comps = NULL,
   num.years = NULL,
@@ -26,14 +25,14 @@ waveletAR <- function(
     MEAN  <- mean(wavelet.comps[[k]])
     CENTERED  <- wavelet.comps[[k]] - MEAN
 
-    MODEL[[k]] <-  auto.arima(CENTERED, max.p = 2,max.q = 2,max.P = 0,max.Q = 0,
+    MODEL[[k]] <-  forecast::auto.arima(CENTERED, max.p = 2,max.q = 2,max.P = 0,max.Q = 0,
       stationary = TRUE, seasonal = FALSE)
 
     INTERCEPT <- ifelse(length(which(names(MODEL[[k]]$coef)=="intercept")) > 0,
                         as.vector(MODEL[[k]]$coef)[which(names(MODEL[[k]]$coef)=="intercept")],0)
 
     SIM[[k]] <- replicate(num.realizations,
-                          simulate(MODEL[[k]], num.years, sd = sqrt(NOISE_MODEL$sigma2)) + INTERCEPT + MEAN)
+         simulate(MODEL[[k]], num.years, sd = sqrt(NOISE_MODEL$sigma2)) + INTERCEPT + MEAN)
   }
 
   return(Reduce(`+`, SIM))

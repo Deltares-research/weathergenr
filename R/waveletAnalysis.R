@@ -16,6 +16,7 @@
 #' @export
 #' @import ggplot2
 #' @import patchwork
+#' @import dplyr
 waveletAnalysis <- function(variable = NULL,
                             variable.unit = "mm",
                             signif.level = 0.90,

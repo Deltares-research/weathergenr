@@ -18,49 +18,78 @@ readNetcdf <- function(
   in.file = NULL,
   dim.names = NULL,
   variables = NULL,
-  origin.date = NULL)
+  origin.date = NULL,
+  leap.days = TRUE)
   {
 
-
-  get_dim_names <- function(f, v) {
-    return(unlist(lapply(f$var[[v]]$dim, function(x) return(x$name))))
+   ncGetDimNames <- function(f, v) {
+      return(unlist(lapply(f$var[[v]]$dim, function(x) return(x$name))))
     }
 
-  # Read-in file with netcdf4
-  ncin <- nc_open(paste0(in.path, in.file))
+  # ::::::::: Load & prepare climate data ::::::::::::::::::::::::::::::::::::::
+
+  # Open template netcdf file
+  nc_in <- nc_open(paste0(in.path, in.file))
 
   # GET DIMENSIONS
-  dim_names <- attributes(ncin$dim)$names
-  DIMS <- lapply(1:length(dim_names), function(x) ncvar_get(ncin,dim_names[x]))
-  names(DIMS) <- dim_names
+  nc_dim_names <- attributes(nc_in$dim)$names
+  nc_dims <- lapply(1:length(nc_dim_names), function(x) ncvar_get(nc_in,nc_dim_names[x]))
+  nc_dim_order <- sapply(variables, function(y) sapply(dim.names, function(x) which(x == ncGetDimNames(nc_in, y))))
+  names(nc_dims) <- nc_dim_names
 
   # GET VARIABLES AND REORDER DIMENSIONS (x=lon,y=lat,time)
-  VARS <- lapply(1:length(variables), function(x) ncvar_get(ncin,variables[x]))
-  dim_ord <- sapply(variables, function(y) sapply(dim.names, function(x) which(x == get_dim_names(ncin, y))))
-  VARS <- lapply(1:length(VARS), function(x) aperm(VARS[[x]], dim_ord[,x]))
+  nc_vars <- lapply(1:length(variables), function(x) ncvar_get(nc_in, variables[x]))
+  nc_vars <- lapply(1:length(nc_vars), function(x) aperm(nc_vars[[x]], nc_dim_order[,x]))
 
+  # GET SPATIAL REF VARIABLE AND ATTRIBUTES
+  nc_spatial_ref_name <- "spatial_ref"
+  nc_spatial_ref_value <- ncvar_get(nc_in, nc_spatial_ref_name)
+  nc_spatial_ref_attribs <- ncatt_get(nc_in,nc_spatial_ref_name)
+  nc_spatial_ref_def <- ncvar_def(name = nc_spatial_ref_name,
+    units = nc_in$var[[nc_spatial_ref_name]]$units,
+    dim = nc_in$var[[nc_spatial_ref_name]]$dims, prec = "integer")
+
+
+  # GET GLOBAL ATTRIBUTES
+  nc_global_attribs <- ncatt_get(nc_in, 0)
+
+  # Define date vector based on leap_day choice
+  if(isTRUE(leap.days)) {
+    datev <- origin.date-1 + 1:length(nc_dims[[dim.names$time]])
+  } else {
+    ymax <- round(length(nc_dims[[dim.names$time]])/365)
+    datev <- tibble(date = seq.Date(origin.date, origin.date + years(ymax), by = "day")) %>%
+      filter(!(month(date) == 2 & (day(date) == 29))) %>% slice(1:(ymax*365)) %>% pull(date)
+  }
+
+  temp <- matrix(0, nrow = length(nc_dims$time), ncol = length(variables)) %>%
+    as_tibble(.name_repair = ~variables) %>%
+    mutate(date = datev, .before = 1)
 
 
   # translate variables to tidy format
-  grid_mat <- VARS[[1]][,,1] %>%
-    as_tibble(.name_repair = ~as.character(1:length(DIMS[[dim.names$y]]))) %>%
+  grid_mat <- nc_vars[[1]][,,1] %>%
+    as_tibble(.name_repair = ~as.character(1:length(nc_dims[[dim.names$y]]))) %>%
     mutate(xind = 1:n(), .before = 1) %>%
     gather(yind, data, -xind) %>%
     na.omit() %>%
     mutate(yind = as.numeric(yind)) %>%
     mutate(id = 1:n(), .before = xind) %>%
-    mutate(x = DIMS[[dim.names$x]][xind],
-           y = DIMS[[dim.names$y]][yind], .after = yind,
-           data = list(NA))
-
-  ##### Define variable data (as arrays)
-  temp <- matrix(0, nrow = length(DIMS$time), ncol = length(variables)+1) %>%
-    as_tibble(.name_repair = ~c("date", variables)) %>%
-    mutate(date = origin.date + DIMS[[dim.names$time]])
+    mutate(x = nc_dims[[dim.names$x]][xind],
+           y = nc_dims[[dim.names$y]][yind], .after = yind,
+           data = list(temp))
 
   for (n in 1:nrow(grid_mat)) {
-    temp[,-1] <- sapply(VARS, function(x) x[grid_mat$xind[n], grid_mat$yind[n], ])
-    grid_mat$data[[n]] <- temp
+    grid_mat$data[[n]][,-1] <- sapply(nc_vars, function(x) x[grid_mat$xind[n], grid_mat$yind[n], ])
   }
-  return(grid_mat)
+
+    out <- list(grid_mat = grid_mat, nc_dims = nc_dims, nc_vars = nc_vars,
+              nc_global_attribs = nc_global_attribs,
+              nc_spatial_ref = list(name = nc_spatial_ref_name,
+                                  value = nc_spatial_ref_value,
+                                  attribs = nc_spatial_ref_attribs,
+                                  def = nc_spatial_ref_def))
+
+  return(out)
+
 }

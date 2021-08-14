@@ -51,7 +51,7 @@ quantileMapping <- function(
     pind_permon <- sapply(1:12, function(x) which(month(date[pind]) == x))
 
     # Fit base distribution and estimate parameters
-    bdist[["fit"]][pmon] <- lapply(pmon, function(x) quiet(fitdist(value[pind][pind_permon[[x]]], distr = "gamma", method = "mle")))
+    bdist[["fit"]][pmon] <- lapply(pmon, function(x) quiet(fitdistrplus::fitdist(value[pind][pind_permon[[x]]], distr = "gamma", method = "mle")))
     bdist[["shape"]][pmon] <- sapply(pmon, function(x) bdist[["fit"]][[x]]$estimate[[1]])
     bdist[["scale"]][pmon] <- sapply(pmon, function(x) 1/(bdist[["fit"]][[x]]$estimate[[2]]))
     bdist[["mean"]][pmon] <- sapply(pmon, function(x) bdist[["shape"]][[x]] * bdist[["scale"]][[x]])

@@ -11,18 +11,18 @@ waveletARSubset(
   power.sim = NULL,
   power.period = NULL,
   power.signif = NULL,
-  mean.bounds = c(0.8, 1.2),
-  sdev.bounds = c(0.8, 1.2),
-  max.bounds = c(0.9, 1.25),
-  min.bounds = c(0.8, 1.1),
-  power.bounds = c(0.25, 3),
-  nonsig.threshold = 2,
   nmax = NULL,
   seed = NULL,
-  save.plots = FALSE,
+  save.plots = TRUE,
   save.series = TRUE,
   verbose = FALSE,
-  out.path = out_path
+  out.path = out_path,
+  mean.bounds = c(0.97, 1.03),
+  sdev.bounds = c(0.97, 1.05),
+  max.bounds = c(0.95, 1.1),
+  min.bounds = c(0.9, 1.05),
+  power.bounds = c(0.7, 2),
+  nonsig.threshold = 0.8
 )
 }
 \arguments{
@@ -38,18 +38,6 @@ waveletARSubset(
 
 \item{power.signif}{A time-series of power significance.}
 
-\item{mean.bounds}{A numeric vector, defining the minimum and maximum limits for the mean value of the time-series when resampling.}
-
-\item{sdev.bounds}{A numeric vector, defining the minimum and maximum limits for the standard deviation of the time-series when resampling.}
-
-\item{max.bounds}{A numeric vector, defining the minimum and maximum limits for the maximum value of the time-series when resampling.}
-
-\item{min.bounds}{A numeric vector, defining the minimum and maximum limits for the minimum value of the time-series when resampling.}
-
-\item{power.bounds}{A numeric vector, defining the minimum and maximum limits for power spectra.}
-
-\item{nonsig.threshold}{A numeric vector to define a resampling threshold for sampling.}
-
 \item{nmax}{A numeric value to define the final sample size.}
 
 \item{seed}{A numeric value to define a seed for resampling.}
@@ -61,6 +49,18 @@ waveletARSubset(
 \item{verbose}{A logical to decide if further information to be displayed on the screen.}
 
 \item{out.path}{Output folder path}
+
+\item{mean.bounds}{A numeric vector, defining the minimum and maximum limits for the mean value of the time-series when resampling.}
+
+\item{sdev.bounds}{A numeric vector, defining the minimum and maximum limits for the standard deviation of the time-series when resampling.}
+
+\item{max.bounds}{A numeric vector, defining the minimum and maximum limits for the maximum value of the time-series when resampling.}
+
+\item{min.bounds}{A numeric vector, defining the minimum and maximum limits for the minimum value of the time-series when resampling.}
+
+\item{power.bounds}{A numeric vector, defining the minimum and maximum limits for power spectra.}
+
+\item{nonsig.threshold}{A numeric vector to define a resampling threshold for sampling.}
 }
 \value{
 

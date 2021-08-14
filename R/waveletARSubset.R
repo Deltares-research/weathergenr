@@ -25,7 +25,7 @@
 #' @return
 #' @export
 #' @import dplyr
-#' @import readr
+#' @importFrom utils write.csv
 waveletARSubset <- function(
   series.obs = NULL,
   series.sim = NULL,
@@ -33,18 +33,18 @@ waveletARSubset <- function(
   power.sim = NULL,
   power.period =  NULL,
   power.signif =  NULL,
-  mean.bounds = c(0.80, 1.20),
-  sdev.bounds = c(0.80, 1.20),
-  max.bounds  = c(0.90, 1.25),
-  min.bounds  = c(0.80, 1.10),
-  power.bounds = c(0.25, 3.0),
-  nonsig.threshold = 2.0,
   nmax = NULL,
   seed = NULL,
-  save.plots = FALSE,
+  save.plots = TRUE,
   save.series = TRUE,
   verbose = FALSE,
-  out.path = out_path)
+  out.path = out_path,
+  mean.bounds = c(0.97, 1.03),
+  sdev.bounds = c(0.97, 1.05),
+  max.bounds  = c(0.95, 1.10),
+  min.bounds  = c(0.90, 1.05),
+  power.bounds = c(0.70, 2),
+  nonsig.threshold = 0.8)
 
 {
 
@@ -182,15 +182,15 @@ waveletARSubset <- function(
 
   if(isTRUE(save.series)) {
 
-    readr::write_csv(x = series.sim[,sub_clim] %>% as_tibble(),
+    utils::write.csv(x = series.sim[,sub_clim], row.names = FALSE,
         file = paste0(out.path, "warm_sim_annual_set.csv"))
 
-    readr::write_csv(x = series.sim[,sub_sample] %>% as_tibble(),
+    utils::write.csv(x = series.sim[,sub_sample], row.names = FALSE,
         file = paste0(out.path, "warm_sim_annual_sample.csv"))
 
     }
 
-  return(list(sampled=series.sim[,sub_sample], subsetted = series.sim[,sub_clim]))
+  return(list(subsetted = series.sim[,sub_clim], sampled = series.sim[,sub_sample]))
 
 }
 

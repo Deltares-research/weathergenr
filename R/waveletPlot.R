@@ -17,9 +17,7 @@ waveletPlot <- function(
   power.period = NULL,
   power.signif = NULL,
   power.obs = NULL,
-  power.sim = NULL
-  )
-
+  power.sim = NULL)
   {
 
   tsn <- length(power.period)

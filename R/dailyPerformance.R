@@ -19,7 +19,8 @@
 #'
 #' @return
 #' @export
-#' @import e1071
+#' @import dplyr
+#' @import ggplot2
 #'
 dailyPerformance <- function(
   daily.sim = NULL,
@@ -27,7 +28,8 @@ dailyPerformance <- function(
   out.path = NULL,
   variables = NULL,
   variable.labels = NULL,
-  variable.units = NULL)
+  variable.units = NULL,
+  nmax = NULL)
 
   {
 
@@ -167,7 +169,6 @@ dailyPerformance <- function(
     unite(variable, c("variable1", "variable2"),sep=":") %>%
     filter(variable %in% var_combs) %>%
     spread(key = type, value = value)
-
 
   #:::::::::::::::::::::::::::: PLOTS ::::::::::::::::::::::::::::::::::::::::::
 

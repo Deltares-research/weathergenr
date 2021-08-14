@@ -10,7 +10,8 @@ dailyPerformance(
   out.path = NULL,
   variables = NULL,
   variable.labels = NULL,
-  variable.units = NULL
+  variable.units = NULL,
+  nmax = NULL
 )
 }
 \arguments{
