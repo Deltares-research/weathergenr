@@ -10,7 +10,7 @@ readNetcdf(
   dim.names = NULL,
   variables = NULL,
   origin.date = NULL,
-  leap.days = TRUE
+  leap.year = TRUE
 )
 }
 \arguments{

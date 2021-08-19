@@ -101,30 +101,30 @@ imposeClimateChanges <- function(
     dim.names = list(x = "lon", y = "lat", time = "time"),
     variables = wg.vars,
     origin.date = sim.date.begin,
-    leap.days = FALSE)
+    leap.year = FALSE)
 
   # TRANSLATE INTO TIDY-FORMAT
-  coordGrid <- nc_data$grid_mat %>% mutate(data = list(NA))
+  coordGrid <- nc_data$tidy_data %>% mutate(data = list(NA))
 
   # Number of grids
   grids  <- coordGrid$id
   ngrids <- length(grids)
 
-  sim_dates <- nc_data$grid_mat$data[[1]]$date
+  sim_dates <- nc_data$tidy_data$data[[1]]$date
 
   # Dimensions in the outputted variable (order matters!)
-  dim_ord <- c("time","y","x")
-  ncout_dims <- list()
+  dim_ord <- names(nc_data$nc_dimensions)
 
+  ncout_dims <- list()
   ncout_dims[[nc.dimnames$time]] <- ncdim_def(name = nc.dimnames$time,
-      units = paste0("days since ", format(round(as.POSIXct(sim.date.begin), units = "day"),
+      units = paste0("days since ", format(round(as.POSIXct(wg.date.begin), units = "day"),
         '%Y-%m-%d %M:%H:%S')), vals = 1:length(sim_dates), calendar = "no leap")
 
-  ncout_dims[[nc.dimnames$y]] <- ncdim_def(name = nc.dimnames$y,
-        units= "", vals = nc_data$nc_dims[[nc.dimnames$y]])
+  ncout_dims[[nc.dimnames$y]] <- ncdim_def(nc.dimnames$y,
+        units= "", vals = nc_data$nc_dimensions[[nc.dimnames$y]])
 
   ncout_dims[[nc.dimnames$x]] <- ncdim_def(name = nc.dimnames$x,
-        units= "", vals = nc_data$nc_dims[[nc.dimnames$x]])
+        units= "", vals = nc_data$nc_dimensions[[nc.dimnames$x]])
 
   ncout_dim_reorder <- unname(sapply(names(nc.dimnames), function(x) which(x == dim_ord)))
 
@@ -132,7 +132,7 @@ imposeClimateChanges <- function(
   ncout_varnames <- c(wg.vars, "pet")
   ncout_varunits <- c(wg.var.units, "mm/day")
   ncout_compression <- 4
-  ncout_chunksize <- c(1,length(nc_data$nc_dims[[2]]),length(nc_data$nc_dims[[3]]))
+  ncout_chunksize <- c(1,length(nc_data$nc_dimensions[[2]]),length(nc_data$nc_dimensions[[3]]))
 
   # ncout variables
   ncout_vars <- lapply(1:length(ncout_varnames), function(x) ncvar_def(
@@ -146,7 +146,8 @@ imposeClimateChanges <- function(
         compression = ncout_compression,
         chunksizes= ncout_chunksize))
 
-  ncout_vars[[length(ncout_vars)+1]] <- nc_data$nc_spatial_ref$def
+  ncout_vars[[length(ncout_vars)+1]] <- nc_data$nc_variables$spatial_ref
+
 
   # template to store data from wg variables
   var_empty <- array(NA, c(
@@ -155,7 +156,7 @@ imposeClimateChanges <- function(
     ncout_dims[[nc.dimnames$x]]$len))
 
   #Loop through each variable and write data to netcdf
-    ncout_vardata <- var_empty
+  ncout_vardata <- var_empty
 
 
   #::::::::::::::::::: LOOP THROUGH CLIMATE CHANGES ::::::::::::::::::::::::::::
@@ -163,11 +164,11 @@ imposeClimateChanges <- function(
   # Loop through each scenario
   for (s in 1:smax) {
 
-    ncout_file <- nc_create(paste0(out.path, proj.name,"_climate_rlz_",file.suffix,"_", s, ".nc"),
+    ncout_file <- nc_create(paste0(out.path, proj.name,"_clim_rlz_",file.suffix,"_", s, ".nc"),
       ncout_vars, force_v4 = TRUE)
 
     # New object to store the results
-    daily_rlz <- nc_data$grid_mat$data
+    daily_rlz <- nc_data$tidy_data$data
 
     # Current perturbation scenario for each variable
     perturb_par1 <- list(mean = PARCC[[1]]$mean$steps[scn_mat$par1[s],],
@@ -200,10 +201,10 @@ imposeClimateChanges <- function(
     #Loop through each variable and write data to netcdf
     for (i in 1:length(ncout_varnames)) {
 
-      ncout_vardata[1:length(ncout_vardata)] <- var_empty
+      ncout_vardata[1:length(ncout_vardata)] <- NA
 
       for (c in 1:nrow(coordGrid)) {
-        ncout_vardata[, coordGrid$yind[c],coordGrid$xind[c]] <- daily_rlz[[c]][[ncout_varnames[i]]]
+        ncout_vardata[, coordGrid$yind[c], coordGrid$xind[c]] <- daily_rlz[[c]][[ncout_varnames[i]]]
       }
 
       # Put variables
@@ -211,24 +212,23 @@ imposeClimateChanges <- function(
     }
 
     # Put spatial_def variable and attributes
-    ncvar_put(ncout_file, varid = nc_data$nc_spatial_ref$name,
-              vals = nc_data$nc_spatial_ref$value)
+    ncvar_put(ncout_file, varid = nc_data$nc_variables$spatial_ref$name,
+              vals = nc_data$nc_variable_data$spatial_ref)
+    sapply(1:length(nc_data$nc_attributes$spatial_ref), function(k)
+      ncatt_put(ncout_file,
+                varid = nc_data$nc_variables$spatial_ref$name,
+                attname = names(nc_data$nc_attributes$spatial_ref)[k],
+                attval = nc_data$nc_attributes$spatial_ref[[k]]))
 
-    sapply(1:length(nc_data$nc_spatial_ref$attribs),
-        function(k) ncatt_put(ncout_file,
-                  varid = nc_data$nc_spatial_ref$name,
-                  attname = names(nc_data$nc_spatial_ref$attribs)[k],
-                  attval = nc_data$nc_spatial_ref$attribs[[k]]))
 
    # Put global attributes
-    if(length(nc_data$nc_global_attribs)>0) {
+    if(length(nc_data$nc_attributes$global)>0) {
 
-      sapply(1:length(nc_data$nc_global_attribs),
+      sapply(1:length(nc_data$nc_attributes$global),
         function(k) ncatt_put(ncout_file, varid = 0,
-                attname = names(nc_data$nc_global_attribs)[k],
-                attval = nc_data$nc_global_attribs[[k]]))
+                attname = names(nc_data$nc_attributes$global)[k],
+                attval = nc_data$nc_attributes$global[[k]]))
     }
-
 
     nc_close(ncout_file)
   }

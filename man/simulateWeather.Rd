@@ -7,6 +7,7 @@
 simulateWeather(
   proj.name = NULL,
   output.dir = NULL,
+  climate_tidy = NULL,
   wg.date.begin = NULL,
   wg.vars = NULL,
   wg.var.labs = NULL,
@@ -16,8 +17,6 @@ simulateWeather(
   ymax = 40,
   rmax = 20000,
   nmax = 5,
-  nc.path = NULL,
-  nc.file = NULL,
   nc.dimnames = NULL,
   validate = FALSE,
   ...
@@ -46,13 +45,13 @@ simulateWeather(
 
 \item{nmax}{Placeholder.}
 
-\item{nc.path}{Placeholder.}
-
-\item{nc.file}{Placeholder.}
-
 \item{nc.dimnames}{Placeholder.}
 
 \item{validate}{Placeholder.}
+
+\item{nc.path}{Placeholder.}
+
+\item{nc.file}{Placeholder.}
 }
 \value{
 

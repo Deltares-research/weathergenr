@@ -2,12 +2,12 @@
 
 #' @title A ggplot wrapper for wavelet spectra plot
 #'
-#' @description This function is simply a ggplot wrapper for displaying results from a wavelet analysis.
+#' @description ggplot wrapper for visualization of wavelet spectral analysis
 #'
-#' @param power.period A numeric vector of fourier periods.
-#' @param power.signif A numeric value to set the sigicance level.
-#' @param power.obs A numeric vector of observed global wavelet spectra.
-#' @param power.sim A numeric matrix of simulated global wavelet spectrum.
+#' @param power.period A numeric vector of fourier periods from wavelet analysis
+#' @param power.signif A numeric value to set the sigicance level of the spectral analysis
+#' @param power.obs A numeric vector of observed  global wavelet spectra.
+#' @param power.sim A numeric matrix of simulated global wavelet spectrum. Each column is an independent observation
 #'
 #' @return A ggplot2 object
 #' @details place holder

@@ -12,19 +12,19 @@ waveletPlot(
 )
 }
 \arguments{
-\item{power.period}{A numeric vector of fourier periods.}
+\item{power.period}{A numeric vector of fourier periods from wavelet analysis}
 
-\item{power.signif}{A numeric value to set the sigicance level.}
+\item{power.signif}{A numeric value to set the sigicance level of the spectral analysis}
 
-\item{power.obs}{A numeric vector of observed global wavelet spectra.}
+\item{power.obs}{A numeric vector of observed  global wavelet spectra.}
 
-\item{power.sim}{A numeric matrix of simulated global wavelet spectrum.}
+\item{power.sim}{A numeric matrix of simulated global wavelet spectrum. Each column is an independent observation}
 }
 \value{
 A ggplot2 object
 }
 \description{
-This function is simply a ggplot wrapper for displaying results from a wavelet analysis.
+ggplot wrapper for visualization of wavelet spectral analysis
 }
 \details{
 place holder
