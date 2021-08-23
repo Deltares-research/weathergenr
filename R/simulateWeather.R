@@ -115,12 +115,12 @@ simulateWeather <- function(
 
   ####  Power spectra of observed annual series
   warm_power <- waveletAnalysis(variable = warm_annual, variable.unit = "mm",
-    signif.level = ssig, plot = TRUE, out.path = out_path)
+    signif.level = ssig, plot = TRUE, out.path = output.dir)
 
   ##### WAVELET DECOMPOSITION OF HISTORICAL SERIES
   wavelet_comps <- waveletDecompose(variable = warm_annual,
         signif.periods = warm_power$signif_periods,
-        signif.level = ssig, plot = TRUE, out.path = out_path)
+        signif.level = ssig, plot = TRUE, out.path = output.dir)
 
   message(cat("\u2713", "|", "Wavelet analysis: low frequency components defined", "\r"))
 
@@ -148,7 +148,7 @@ simulateWeather <- function(
        power.period = warm_power$GWS_period,
        power.signif = warm_power$GWS_signif,
        nmax = nmax,
-       out.path = out_path,
+       out.path = output.dir,
        ...)
 
   message(cat("\u2713", "|", "Stochastic traces selected:", ncol(sim_annual_sub$subsetted),
@@ -214,7 +214,12 @@ simulateWeather <- function(
 
   if(isTRUE(validate)) {
 
-    sample_ngrid <- 20
+    ## Check existing directories and create as needed
+
+    out_path_performance <- paste0(output.dir, "performance/")
+    if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
+
+    sample_ngrid <- min(20, ngrids)
 
     sampleGrids <- sf::st_as_sf(climate_tidy[,c("x","y")], coords = c("x","y")) %>%
       sf::st_sample(size = sample_ngrid, type = "regular") %>%
@@ -227,7 +232,7 @@ simulateWeather <- function(
 
     dailyPerformance(daily.sim = sim_daily_wg_sample,
                         daily.obs = climate_obs_daily[sampleGrids],
-                        out.path = out_path,
+                        out.path = out_path_performance,
                         variables = wg.vars[c(1,3,4)],
                         variable.labels = wg.var.labs[c(1,3,4)],
                         variable.units = wg.var.units[c(1,3,4)],
@@ -241,7 +246,8 @@ simulateWeather <- function(
   #::::::::::::::::::::: OUTPUT HISTORICAL REALIZATIONS TO FILE ::::::::::::::::
 
 
-  out_path_hist <- paste0(out_path, "hist_rlz/")
+  out_path_hist <- paste0(output.dir, "historical/")
+  if (!dir.exists(out_path_hist)) {dir.create(out_path_hist)}
 
   # Dimensions in the outputted variable (order matters!)
   dim_ord <- names(nc_data$nc_dimensions)

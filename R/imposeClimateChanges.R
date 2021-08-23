@@ -19,6 +19,8 @@
 #' @return
 #' @export
 #' @import dplyr
+#' @import ncdf4
+#' @import lubridate
 imposeClimateChanges <- function(
   proj.name = NULL,
   in.path = NULL,
@@ -116,14 +118,14 @@ imposeClimateChanges <- function(
   dim_ord <- names(nc_data$nc_dimensions)
 
   ncout_dims <- list()
-  ncout_dims[[nc.dimnames$time]] <- ncdim_def(name = nc.dimnames$time,
-      units = paste0("days since ", format(round(as.POSIXct(wg.date.begin), units = "day"),
+  ncout_dims[[nc.dimnames$time]] <- ncdf4::ncdim_def(name = nc.dimnames$time,
+      units = paste0("days since ", format(round(as.POSIXct(sim.date.begin), units = "day"),
         '%Y-%m-%d %M:%H:%S')), vals = 1:length(sim_dates), calendar = "no leap")
 
-  ncout_dims[[nc.dimnames$y]] <- ncdim_def(nc.dimnames$y,
+  ncout_dims[[nc.dimnames$y]] <- ncdf4::ncdim_def(nc.dimnames$y,
         units= "", vals = nc_data$nc_dimensions[[nc.dimnames$y]])
 
-  ncout_dims[[nc.dimnames$x]] <- ncdim_def(name = nc.dimnames$x,
+  ncout_dims[[nc.dimnames$x]] <- ncdf4::ncdim_def(name = nc.dimnames$x,
         units= "", vals = nc_data$nc_dimensions[[nc.dimnames$x]])
 
   ncout_dim_reorder <- unname(sapply(names(nc.dimnames), function(x) which(x == dim_ord)))
@@ -135,7 +137,7 @@ imposeClimateChanges <- function(
   ncout_chunksize <- c(1,length(nc_data$nc_dimensions[[2]]),length(nc_data$nc_dimensions[[3]]))
 
   # ncout variables
-  ncout_vars <- lapply(1:length(ncout_varnames), function(x) ncvar_def(
+  ncout_vars <- lapply(1:length(ncout_varnames), function(x) ncdf4::ncvar_def(
         name = ncout_varnames[x],
         units = ncout_varunits[x],
         dim = ncout_dims,
@@ -161,10 +163,14 @@ imposeClimateChanges <- function(
 
   #::::::::::::::::::: LOOP THROUGH CLIMATE CHANGES ::::::::::::::::::::::::::::
 
+
+  #Create output directory if doesn't exist
+  if (!dir.exists(out.path)) {dir.create(out.path)}
+
   # Loop through each scenario
   for (s in 1:smax) {
 
-    ncout_file <- nc_create(paste0(out.path, proj.name,"_clim_rlz_",file.suffix,"_", s, ".nc"),
+    ncout_file <- ncdf4::nc_create(paste0(out.path, proj.name,"_climate_change_",file.suffix,"_", s, ".nc"),
       ncout_vars, force_v4 = TRUE)
 
     # New object to store the results
@@ -208,14 +214,15 @@ imposeClimateChanges <- function(
       }
 
       # Put variables
-      ncvar_put(ncout_file, varid = ncout_varnames[i], vals = ncout_vardata)
+      ncdf4::ncvar_put(ncout_file, varid = ncout_varnames[i], vals = ncout_vardata)
     }
 
     # Put spatial_def variable and attributes
-    ncvar_put(ncout_file, varid = nc_data$nc_variables$spatial_ref$name,
+    ncdf4::ncvar_put(ncout_file, varid = nc_data$nc_variables$spatial_ref$name,
               vals = nc_data$nc_variable_data$spatial_ref)
+
     sapply(1:length(nc_data$nc_attributes$spatial_ref), function(k)
-      ncatt_put(ncout_file,
+      ncdf4::ncatt_put(ncout_file,
                 varid = nc_data$nc_variables$spatial_ref$name,
                 attname = names(nc_data$nc_attributes$spatial_ref)[k],
                 attval = nc_data$nc_attributes$spatial_ref[[k]]))
@@ -225,12 +232,12 @@ imposeClimateChanges <- function(
     if(length(nc_data$nc_attributes$global)>0) {
 
       sapply(1:length(nc_data$nc_attributes$global),
-        function(k) ncatt_put(ncout_file, varid = 0,
+        function(k) ncdf4::ncatt_put(ncout_file, varid = 0,
                 attname = names(nc_data$nc_attributes$global)[k],
                 attval = nc_data$nc_attributes$global[[k]]))
     }
 
-    nc_close(ncout_file)
+    ncdf4::nc_close(ncout_file)
   }
 
   message(cat("\u2713", "|", "Results outputted to", s, "netcdf files at: ", out_path))

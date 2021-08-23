@@ -17,12 +17,12 @@ waveletARSubset(
   save.series = TRUE,
   verbose = FALSE,
   out.path = out_path,
-  mean.bounds = c(0.97, 1.03),
-  sdev.bounds = c(0.97, 1.05),
-  max.bounds = c(0.95, 1.1),
-  min.bounds = c(0.9, 1.05),
-  power.bounds = c(0.7, 2),
-  nonsig.threshold = 0.8
+  mean.bounds = NULL,
+  sdev.bounds = NULL,
+  max.bounds = NULL,
+  min.bounds = NULL,
+  power.bounds = NULL,
+  nonsig.threshold = NULL
 )
 }
 \arguments{

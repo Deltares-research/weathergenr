@@ -6,6 +6,7 @@
 library(gridwegen)
 library(tidyr)
 library(dplyr)
+
 # Path to input files and results outputted
 path0 <- "C:/Users/taner/OneDrive - Stichting Deltares/_DELTARES/02 Projects/11206634 Gabon/05 Models/wegen/"
 nc_path <- paste0(path0, "input/")
@@ -23,14 +24,13 @@ nc_data <- readNetcdf(
 
 #Remove extra grids from tidy data table
 grid_select <- which(sapply(1:nrow(nc_data$tidy_data), function(x)
-  !is.na(mean(nc_data$tidy_data$data[[x]]$temp_min))))
+  !is.na(mean(nc_data$tidy_data$data[[x]]$temp_min))))[1:20]
 climate_tidy <- nc_data$tidy_data[grid_select,] %>% mutate(id = 1:n())
 
-
 simulateWeather(
-  proj.name = "ntoum",
+  proj.name = "ntoum_test",
   output.dir = out_path,
-  climate_tidy = nc_data$tidy_data,
+  climate_tidy = climate_tidy,
   wg.date.begin = as.Date("1981-01-01"),
   wg.vars = c("precip", "temp", "temp_min", "temp_max"),
   wg.var.labs = c("Precipitation", "Avg. Temperature", "Min. Temperature","Max. Temperature"),
@@ -41,24 +41,26 @@ simulateWeather(
   nmax = 5,
   nc.dimnames = list(x = "lon", y = "lat", time = "time"),
   validate = TRUE,
-  mean.bounds = c(0.85, 1.25),
-  sdev.bounds = c(0.85, 1.25),
-  max.bounds  = c(0.80, 1.20),
-  min.bounds  = c(0.80, 1.20)
+  mean.bounds = NULL,
+  sdev.bounds = NULL,
+  max.bounds  = NULL,
+  min.bounds  = NULL,
+  power.bounds = NULL,
+  nonsig.threshold = NULL
 )
 
 # natural variability realizations in the input folder
-nvar_filenames <- list.files(paste0(out_path,"hist_rlz/"))
+nvar_filenames <- list.files(paste0(out_path,"historical/"))
 nmax <- length(nvar_filenames)
 
-for(n in 2:5) {
+for(n in 2:nmax) {
 
-  imposeLongTermChanges(
+  imposeClimateChanges(
       proj.name = "ntoum",
-      in.path = paste0(out_path,"hist_rlz/"),
+      in.path = paste0(out_path,"historical/"),
       in.file = nvar_filenames[n],
       file.suffix = n,
-      out.path = paste0(out_path,"clim_change/"),
+      out.path = paste0(out_path,"future/"),
       sim.date.begin = as.Date("2020-01-01"),
       wg.vars = c("precip", "temp", "temp_min", "temp_max"),
       wg.var.units = c("mm/day", "°C", "°C", "°C", "mm/day"),
@@ -70,16 +72,18 @@ for(n in 2:5) {
 }
 
 
-library(fitdistrplus)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(tibble)
-library(lubridate)
-library(ncdf4)
-library(readxl)
-library(patchwork)
 
 
 
 
+
+
+# library(fitdistrplus)
+# library(dplyr)
+# library(tidyr)
+# library(ggplot2)
+# library(tibble)
+# library(lubridate)
+# library(ncdf4)
+# library(readxl)
+# library(patchwork)

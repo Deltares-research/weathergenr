@@ -39,12 +39,12 @@ waveletARSubset <- function(
   save.series = TRUE,
   verbose = FALSE,
   out.path = out_path,
-  mean.bounds = c(0.97, 1.03),
-  sdev.bounds = c(0.97, 1.05),
-  max.bounds  = c(0.95, 1.10),
-  min.bounds  = c(0.90, 1.05),
-  power.bounds = c(0.70, 2),
-  nonsig.threshold = 0.8)
+  mean.bounds = NULL,
+  sdev.bounds = NULL,
+  max.bounds  = NULL,
+  min.bounds  = NULL,
+  power.bounds = NULL,
+  nonsig.threshold = NULL)
 
 {
 
@@ -80,6 +80,8 @@ waveletARSubset <- function(
         all((power.sim[-periods_sig,x] < power.signif[-periods_sig]*nonsig.threshold))))
 
     sub_power <- intersect(intersect(sub_power1, sub_power2),sub_power3)
+  } else {
+    sub_power  <- 1:ncol(series.sim)
   }
 
 
