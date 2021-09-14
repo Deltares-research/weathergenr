@@ -106,13 +106,14 @@ imposeClimateChanges <- function(
     leap.year = FALSE)
 
   # TRANSLATE INTO TIDY-FORMAT
-  coordGrid <- nc_data$tidy_data %>% mutate(data = list(NA))
+  coordGrid <- nc_data$tidy_data %>% dplyr::select(-data)
 
   # Number of grids
   grids  <- coordGrid$id
   ngrids <- length(grids)
 
-  sim_dates <- nc_data$tidy_data$data[[1]]$date
+
+   sim_dates <- nc_data$tidy_data$data[[1]]$date
 
   # Dimensions in the outputted variable (order matters!)
   dim_ord <- names(nc_data$nc_dimensions)
@@ -161,8 +162,8 @@ imposeClimateChanges <- function(
   ncout_vardata <- var_empty
 
 
-  #::::::::::::::::::: LOOP THROUGH CLIMATE CHANGES ::::::::::::::::::::::::::::
 
+  #::::::::::::::::::: LOOP THROUGH CLIMATE CHANGES ::::::::::::::::::::::::::::
 
   #Create output directory if doesn't exist
   if (!dir.exists(out.path)) {dir.create(out.path)}
@@ -183,12 +184,14 @@ imposeClimateChanges <- function(
     perturb_par2 <- list(mean = PARCC[[2]]$mean$steps[scn_mat$par2[s],],
            var = PARCC[[2]]$var$steps[scn_mat$par2[s],])
 
+
     # Loop through each grid cell
     for (x in 1:ngrids) {
 
       # Perturb daily precipitation
       daily_rlz[[x]]$precip <- quantileMapping(value = daily_rlz[[x]]$precip,
             date = sim_dates, par = perturb_par1, operator = "multiply")
+
 
       # Perturb temp, temp_min, and temp_max
       daily_rlz[[x]]$temp <- quantileMapping(value = daily_rlz[[x]]$temp,
@@ -207,10 +210,10 @@ imposeClimateChanges <- function(
     #Loop through each variable and write data to netcdf
     for (i in 1:length(ncout_varnames)) {
 
-      ncout_vardata[1:length(ncout_vardata)] <- NA
+      ncout_vardata <- var_empty
 
-      for (c in 1:nrow(coordGrid)) {
-        ncout_vardata[, coordGrid$yind[c], coordGrid$xind[c]] <- daily_rlz[[c]][[ncout_varnames[i]]]
+      for (x in 1:ngrids) {
+        ncout_vardata[, coordGrid$yind[x], coordGrid$xind[x]] <- daily_rlz[[x]][[ncout_varnames[i]]]
       }
 
       # Put variables
@@ -243,10 +246,4 @@ imposeClimateChanges <- function(
   message(cat("\u2713", "|", "Results outputted to", s, "netcdf files at: ", out_path))
 
 }
-
-
-
-
-
-
 

@@ -7,13 +7,15 @@ library(gridwegen)
 library(tidyr)
 library(dplyr)
 
-# Path to input files and results outputted
+# Path to output files
 path0 <- "C:/Users/taner/OneDrive - Stichting Deltares/_DELTARES/02 Projects/11206634 Gabon/05 Models/wegen/"
+out_path <- paste0(path0, "results/")
+
+# Path to historical gridded data
 nc_path <- paste0(path0, "input/")
 nc_file <- "localP_chirpsP_era5T_19810101_chunks.nc"
-out_path <- paste0(path0, "TEST/")
 
-# GABON/ ERA5-GRIDDED CLIMATE DATA
+# Read-in gridded weather data from netcdf
 nc_data <- readNetcdf(
     in.path = nc_path,
     in.file = nc_file,
@@ -22,9 +24,9 @@ nc_data <- readNetcdf(
     origin.date = as.Date("1981-01-01"),
     leap.year = TRUE)
 
-#Remove extra grids from tidy data table
+# Remove unnecessary/empty grids from tidy data table
 grid_select <- which(sapply(1:nrow(nc_data$tidy_data), function(x)
-  !is.na(mean(nc_data$tidy_data$data[[x]]$temp_min))))[1:20]
+  !is.na(mean(nc_data$tidy_data$data[[x]]$temp_min))))
 climate_tidy <- nc_data$tidy_data[grid_select,] %>% mutate(id = 1:n())
 
 simulateWeather(
@@ -53,7 +55,7 @@ simulateWeather(
 nvar_filenames <- list.files(paste0(out_path,"historical/"))
 nmax <- length(nvar_filenames)
 
-for(n in 2:nmax) {
+for(n in 2:2) {
 
   imposeClimateChanges(
       proj.name = "ntoum",
@@ -63,20 +65,13 @@ for(n in 2:nmax) {
       out.path = paste0(out_path,"future/"),
       sim.date.begin = as.Date("2020-01-01"),
       wg.vars = c("precip", "temp", "temp_min", "temp_max"),
-      wg.var.units = c("mm/day", "°C", "°C", "°C", "mm/day"),
+      wg.var.units = c("mm/day", "°C", "°C", "°C"),
       nc.dimnames = list(x = "lon", y = "lat", time = "time"),
       change.settings = paste0(nc_path, "change_factors.xlsx"),
       save.scenario.matrix = FALSE
   )
 
 }
-
-
-
-
-
-
-
 
 # library(fitdistrplus)
 # library(dplyr)
@@ -87,3 +82,4 @@ for(n in 2:nmax) {
 # library(ncdf4)
 # library(readxl)
 # library(patchwork)
+

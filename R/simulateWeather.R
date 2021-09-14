@@ -51,7 +51,7 @@ simulateWeather <- function(
   ngrids <- length(grids)
 
   #browser()
-  cat("\u2059", "|", "Preprocessing historical data", "\r")
+  message(cat("\u2713", "|", "Historical data loaded. Data has", ngrids, "grids."))
 
   ##### Set historical gridded data to be inputted to wg (remove leap days!)
   noleap_index <- with(climate_tidy$data[[1]], which(!(month(date) == 2 & day(date) == 29)))
@@ -102,12 +102,7 @@ simulateWeather <- function(
     mutate(ind = 1:n()) %>%
     spread(key = day, value = ind)
 
-  cat("\u2713", "|", "Preprocessing historical data completed", "\r")
-
-
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
-
-  message(cat("\u2059", "|", "Wavelet analysis of annual series", "\n"))
 
   #####  Wavelet analysis on observed annual series
   warm_annual_org <- climate_annual_wg_aavg %>% pull({{warm.var}})
@@ -122,18 +117,13 @@ simulateWeather <- function(
         signif.periods = warm_power$signif_periods,
         signif.level = ssig, plot = TRUE, out.path = output.dir)
 
-  message(cat("\u2713", "|", "Wavelet analysis: low frequency components defined", "\r"))
-
-  message(cat("\u2059", "|", "Stochastic annual series generation started", "\n"))
+  message(cat("\u2713", "|", "Wavelet analysis:", length(wavelet_comps)-1, "low frequency components defined"))
 
   ##### Stochastic simuluation of historical annual series
   sim_annual <- waveletAR(wavelet.comps = wavelet_comps,
         num.years = ymax, num.realizations = rmax)
 
-  message(cat("\u2713", "|", "Stochastic annual series generated completed", "\r"))
-
-
-  message(cat("\u2059", "|", "Initial subsetting of stochastic series started", "\n"))
+  message(cat("\u2713", "|", rmax, "stochastic annual series generated"))
 
   # Wavelet analysis on simulated series
   sim_power <- sapply(1:rmax, function(x)
@@ -151,8 +141,7 @@ simulateWeather <- function(
        out.path = output.dir,
        ...)
 
-  message(cat("\u2713", "|", "Stochastic traces selected:", ncol(sim_annual_sub$subsetted),
-    "out of", ncol(sim_annual_sub$sampled), "meeting selection criteria", "\r"))
+  message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "annual traces selected"))
 
   #::::TEMPORAL/SPATIAL DISSAGGREGATION ::::::::::::::::::::::::::::::::::::::::::
 
@@ -208,7 +197,7 @@ simulateWeather <- function(
 
   }
 
-  message(cat("\u2713", "|", "Spatial-temporal dissaggregation completed"))
+  message(cat("\u2713", "|", "Spatial-temporal dissaggregation through knn sampling and method of fragments"))
 
   #:::::::::::::::::::::: PERFORMANCE EVALUATION OF DAILY SIMULATED DATA :::::::
 
@@ -223,7 +212,7 @@ simulateWeather <- function(
 
     sampleGrids <- sf::st_as_sf(climate_tidy[,c("x","y")], coords = c("x","y")) %>%
       sf::st_sample(size = sample_ngrid, type = "regular") %>%
-      sf::st_cast("POINT") %>% st_coordinates() %>%
+      sf::st_cast("POINT") %>% sf::st_coordinates() %>%
       as_tibble() %>%
       left_join(climate_tidy[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
       pull(id)
@@ -238,7 +227,7 @@ simulateWeather <- function(
                         variable.units = wg.var.units[c(1,3,4)],
                         nmax = nmax)
 
-    message(cat("\u2713", "|", "Validation plots generated and saved"))
+    message(cat("\u2713", "|", "Validation plots saved to output folder"))
   }
 
 
@@ -253,14 +242,14 @@ simulateWeather <- function(
   dim_ord <- names(nc_data$nc_dimensions)
 
   ncout_dims <- list()
-  ncout_dims[[nc.dimnames$time]] <- ncdim_def(name = nc.dimnames$time,
+  ncout_dims[[nc.dimnames$time]] <- ncdf4::ncdim_def(name = nc.dimnames$time,
       units = paste0("days since ", format(round(as.POSIXct(wg.date.begin), units = "day"),
         '%Y-%m-%d %M:%H:%S')), vals = 1:length(sim_dates), calendar = "no leap")
 
-  ncout_dims[[nc.dimnames$y]] <- ncdim_def(nc.dimnames$y,
+  ncout_dims[[nc.dimnames$y]] <- ncdf4::ncdim_def(nc.dimnames$y,
         units= "", vals = nc_data$nc_dimensions[[nc.dimnames$y]])
 
-  ncout_dims[[nc.dimnames$x]] <- ncdim_def(name = nc.dimnames$x,
+  ncout_dims[[nc.dimnames$x]] <- ncdf4::ncdim_def(name = nc.dimnames$x,
         units= "", vals = nc_data$nc_dimensions[[nc.dimnames$x]])
 
   ncout_dim_reorder <- unname(sapply(names(nc.dimnames), function(x) which(x == dim_ord)))
@@ -272,7 +261,7 @@ simulateWeather <- function(
   ncout_chunksize <- c(1,length(nc_data$nc_dimensions[[2]]),length(nc_data$nc_dimensions[[3]]))
 
   # ncout variables
-  ncout_vars <- lapply(1:length(ncout_varnames), function(x) ncvar_def(
+  ncout_vars <- lapply(1:length(ncout_varnames), function(x) ncdf4::ncvar_def(
         name = ncout_varnames[x],
         units = ncout_varunits[x],
         dim = ncout_dims,
@@ -302,7 +291,7 @@ simulateWeather <- function(
   for (n in 1:nmax) {
 
     # create netCDF file and put arrays
-    ncout_file <- nc_create(paste0(out_path_hist, proj.name,"_hist_rlz_",n, ".nc"),
+    ncout_file <- ncdf4::nc_create(paste0(out_path_hist, proj.name,"_hist_rlz_",n, ".nc"),
       ncout_vars, force_v4 = TRUE)
 
     # New object to store the results
@@ -327,16 +316,16 @@ simulateWeather <- function(
       }
 
       # Put variables
-      ncvar_put(ncout_file, varid = ncout_varnames[i], vals = ncout_vardata)
+      ncdf4::ncvar_put(ncout_file, varid = ncout_varnames[i], vals = ncout_vardata)
 
     }
 
     # Put spatial_def variable and attributes
-    ncvar_put(ncout_file, varid = nc_data$nc_variables$spatial_ref$name,
+    ncdf4::ncvar_put(ncout_file, varid = nc_data$nc_variables$spatial_ref$name,
               vals = nc_data$nc_variable_data$spatial_ref)
 
     sapply(1:length(nc_data$nc_attributes$spatial_ref), function(k)
-      ncatt_put(ncout_file,
+      ncdf4::ncatt_put(ncout_file,
                 varid = nc_data$nc_variables$spatial_ref$name,
                 attname = names(nc_data$nc_attributes$spatial_ref)[k],
                 attval = nc_data$nc_attributes$spatial_ref[[k]]))
@@ -346,14 +335,14 @@ simulateWeather <- function(
     if(length(nc_data$nc_attributes$global)>0) {
 
       sapply(1:length(nc_data$nc_attributes$global),
-        function(k) ncatt_put(ncout_file, varid = 0,
+        function(k) ncdf4::ncatt_put(ncout_file, varid = 0,
                 attname = names(nc_data$nc_attributes$global)[k],
                 attval = nc_data$nc_attributes$global[[k]]))
     }
 
-    nc_close(ncout_file)
+    ncdf4::nc_close(ncout_file)
 
   }
-   message(cat("\u2713", "|", nmax, " stochastic realizations saved"))
+   message(cat("\u2713", "|", nmax, "Daily gridded weather realizations saved to output folder"))
 
 }
