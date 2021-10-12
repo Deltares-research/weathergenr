@@ -3,6 +3,7 @@
 # Load package
 #devtools::install_github("tanerumit/gridwegen@dev")
 
+library(lubridate)
 library(gridwegen)
 library(tidyr)
 library(dplyr)
@@ -30,25 +31,25 @@ grid_select <- which(sapply(1:nrow(nc_data$tidy_data), function(x)
 climate_tidy <- nc_data$tidy_data[grid_select,] %>% mutate(id = 1:n())
 
 simulateWeather(
-  proj.name = "ntoum_test",
-  output.dir = out_path,
-  climate_tidy = climate_tidy,
-  wg.date.begin = as.Date("1981-01-01"),
-  wg.vars = c("precip", "temp", "temp_min", "temp_max"),
-  wg.var.labs = c("Precipitation", "Avg. Temperature", "Min. Temperature","Max. Temperature"),
-  wg.var.units = c("mm/day", "°C", "°C", "°C", "mm/day"),
-  warm.var = "precip",
-  ymax = 40,
-  rmax = 5000,
-  nmax = 5,
-  nc.dimnames = list(x = "lon", y = "lat", time = "time"),
-  validate = TRUE,
-  mean.bounds = NULL,
-  sdev.bounds = NULL,
-  max.bounds  = NULL,
-  min.bounds  = NULL,
-  power.bounds = NULL,
-  nonsig.threshold = NULL
+      proj.name = "ntoum_test",
+      output.dir = out_path,
+      climate_tidy = climate_tidy,
+      wg.date.begin = as.Date("1981-01-01"),
+      wg.vars = c("precip", "temp", "temp_min", "temp_max"),
+      wg.var.labs = c("Precipitation", "Avg. Temperature", "Min. Temperature","Max. Temperature"),
+      wg.var.units = c("mm/day", "°C", "°C", "°C", "mm/day"),
+      warm.var = "precip",
+      ymax = 40,
+      rmax = 5000,
+      nmax = 5,
+      nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+      validate = TRUE,
+      mean.bounds = NULL,
+      sdev.bounds = NULL,
+      max.bounds  = NULL,
+      min.bounds  = NULL,
+      power.bounds = NULL,
+      nonsig.threshold = NULL
 )
 
 # natural variability realizations in the input folder
@@ -82,4 +83,29 @@ for(n in 2:2) {
 # library(ncdf4)
 # library(readxl)
 # library(patchwork)
+
+
+
+
+
+
+proj.name = "ntoum_test"
+output.dir = out_path
+climate_tidy = climate_tidy
+wg.date.begin = as.Date("1981-01-01")
+wg.vars = c("precip", "temp", "temp_min", "temp_max")
+wg.var.labs = c("Precipitation", "Avg. Temperature", "Min. Temperature","Max. Temperature")
+wg.var.units = c("mm/day", "°C", "°C", "°C", "mm/day")
+warm.var = "precip"
+ymax = 40
+rmax = 5000
+nmax = 5
+nc.dimnames = list(x = "lon", y = "lat", time = "time")
+validate = TRUE
+mean.bounds = NULL
+sdev.bounds = NULL
+max.bounds  = NULL
+min.bounds  = NULL
+power.bounds = NULL
+nonsig.threshold = NULL
 

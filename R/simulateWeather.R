@@ -56,6 +56,7 @@ simulateWeather <- function(
   ##### Set historical gridded data to be inputted to wg (remove leap days!)
   noleap_index <- with(climate_tidy$data[[1]], which(!(month(date) == 2 & day(date) == 29)))
   climate_obs_daily <- lapply(climate_tidy$data, function(x) x[noleap_index, ])
+
   wg_dates <- climate_obs_daily[[1]]$date
 
   # Month order for water year
@@ -125,112 +126,165 @@ simulateWeather <- function(
 
   message(cat("\u2713", "|", rmax, "stochastic annual series generated"))
 
-  # Wavelet analysis on simulated series
-  sim_power <- sapply(1:rmax, function(x)
-    waveletAnalysis(sim_annual[, x], signif.level = ssig)$GWS)
-
-  ### Choose which parameters to consider for filtering
-  sim_annual_sub <- waveletARSubset(
-       series.obs = warm_annual,
-       series.sim = sim_annual,
-       power.obs = warm_power$GWS,
-       power.sim = sim_power,
-       power.period = warm_power$GWS_period,
-       power.signif = warm_power$GWS_signif,
-       nmax = nmax,
-       out.path = output.dir,
-       ...)
-
-  message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "annual traces selected"))
-
-  #::::TEMPORAL/SPATIAL DISSAGGREGATION ::::::::::::::::::::::::::::::::::::::::::
+  # # Wavelet analysis on simulated series
+  # sim_power <- sapply(1:rmax, function(x)
+  #   waveletAnalysis(sim_annual[, x], signif.level = ssig)$GWS)
+  #
+  # ### Choose which parameters to consider for filtering
+  # sim_annual_sub <- waveletARSubset(
+  #      series.obs = warm_annual,
+  #      series.sim = sim_annual,
+  #      power.obs = warm_power$GWS,
+  #      power.sim = sim_power,
+  #      power.period = warm_power$GWS_period,
+  #      power.signif = warm_power$GWS_signif,
+  #      nmax = nmax,
+  #      out.path = output.dir,
+  #      ...)
+  #
+  # message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "annual traces selected"))
 
   # Subsetted realizations of annual simulated time-series
-  sim_annual_final <- sim_annual_sub$sampled
+  #sim_annual_final <- sim_annual_sub$sampled
 
-  # For each simulated annual value, find the year with closest value
-  closest_yr_index <- apply(sim_annual_final, c(1,2), function(x)
-    which.min(abs(x - warm_annual)))
+  sim_annual_final <- sim_annual[,c(1,2,3,4,5)]
 
-  #Monthly factors
-  sim_monthly_ini <- lapply(1:nmax, function(x)
-    wg_monthly_factors[closest_yr_index[,x],] * sim_annual_final[,x])
+  #::::MCMC MODELING COMES HERE! ::::::::::::;;;;;;;;;;::::::::::::::::::::::::::::::
 
-  #:::::::::::::::::::::: KNN-SAMPLING :::::::::::::::::::::::::::::::::::::::::
+  ###################################################################################
 
-  sim_daily_wg <- vector(mode = "list", length = nmax)
-  knn_optimk <- ceiling(sqrt(length(warm_annual)))
+  k1 = 1
+  num_year_sim = 40
+  PRCP_FINAL_ANNUAL_SIM = sim_annual_final[,k1]
+  ANNUAL_PRCP = warm_annual
 
-  sim_dates <- tibble(date = seq.Date(wg.date.begin, wg.date.begin-1 + years(ymax), by = "day")) %>%
-    filter(!(month(date)==2 & day(date)==29)) %>% pull(date)
+  PRCP = climate_daily_wg_aavg$precip
+  TEMP = climate_daily_wg_aavg$temp
+  TMAX = climate_daily_wg_aavg$temp_max
+  TMIN = climate_daily_wg_aavg$temp_min
 
-  for (n in 1:nmax) {
+  # Date indices of historical data
+  WATER_YEAR_A = unique(year(wg_dates))
+  WATER_YEAR_D = year(wg_dates)
 
-    #Obtain KNN table with sampled years for each month
-    knn_sample <- sapply(1:12, function(m) sapply(1:ymax, function(y)
-      kNearestNeighbors(sim_monthly_ini[[n]][y,m], knn_optimk,
-                        wg_variable_matrix[,m]))) %>%
-        as.data.frame() %>% setNames(1:12) %>%
-        mutate(syear = 1:n()) %>%
-      gather(key = mon, value = year, -syear) %>%
-      mutate(mon = as.numeric(mon)) %>%
-      arrange(syear, mon)
+  DATE_D = wg_dates
+  MONTH_D = month(wg_dates)
+  YEAR_D = WATER_YEAR_D
+  MONTH_DAY_D = as.matrix(wg_dates_adjusted[,c(2,3)])
+  colnames(MONTH_DAY_D) <- c("MONTH_D", "DAY_D")
 
-    # Find the indices of sampled days
-    rlz_index <- knn_sample %>%
-      left_join(wg_day_of_year, by = c("year","mon")) %>%
-      gather(key = day, value = value, -syear, -mon, -year) %>%
-      arrange(syear, mon) %>% dplyr::select(-year) %>% na.omit() %>% pull(value)
+  month_list = wy_months
+  water_year_start = WATER_YEAR_A[1]
+  water_year_end = WATER_YEAR_A[length(WATER_YEAR_A)]
 
-    rlz_index2 <- knn_sample %>%
-      left_join(wg_day_of_year, by = c("year","mon")) %>%
-      gather(key = day, value = value, -syear, -mon, -year) %>%
-      arrange(syear, mon) %>% dplyr::select(-year) %>% pull(value)
+  sim.date.begin <- as.Date("2020-01-01")
+  sim.date.end   <- as.Date("2059-12-31")
+  sim.dates.ini  <- seq.Date(sim.date.begin, sim.date.end, by = "day")
+  sim_noleap_index <- which(!(month(sim.dates.ini) == 2 & day(sim.dates.ini) == 29))
+  sim.dates <- sim.dates.ini[sim_noleap_index]
+
+  # Date indices of simulated series
+  START_YEAR_SIM <- 2020
+  END_YEAR_SIM <- START_YEAR_SIM + num_year_sim
+  DATE_SIM <- seq(as.Date(paste(START_YEAR_SIM,"-1-01",sep="")),as.Date(paste(END_YEAR_SIM,"-12-31",sep="")),by="day")
+  DAY_SIM <- as.numeric(format(DATE_SIM,"%d"))
+  MONTH_SIM <- as.numeric(format(DATE_SIM,"%m"))
+  YEAR_SIM <- as.numeric(format(DATE_SIM,"%Y"))
+  no_leap <- which(MONTH_SIM!=2 | DAY_SIM!= 29)
+  DAY_SIM <- DAY_SIM[no_leap]
+  MONTH_SIM <- MONTH_SIM[no_leap]
+  YEAR_SIM <- YEAR_SIM[no_leap]
+  WATER_YEAR_SIM <- YEAR_SIM
+  #if (water_yr_change) {WATER_YEAR_SIM[which(MONTH_SIM>=month_list[1])] <- WATER_YEAR_SIM[which(MONTH_SIM>=month_list[1])] + 1}
+  WATER_YEAR_LOCATIONS_SIM <- which(WATER_YEAR_SIM>=(START_YEAR_SIM+1) & WATER_YEAR_SIM<=END_YEAR_SIM)
+  WATER_YEAR_SIM <- WATER_YEAR_SIM[WATER_YEAR_LOCATIONS_SIM]
+  YEAR_SIM <- YEAR_SIM[WATER_YEAR_LOCATIONS_SIM]
+  MONTH_SIM <- MONTH_SIM[WATER_YEAR_LOCATIONS_SIM]
+  DAY_SIM <- DAY_SIM[WATER_YEAR_LOCATIONS_SIM]
+  DATE_SIM <- as.Date(paste(WATER_YEAR_SIM,MONTH_SIM,DAY_SIM,sep="-"))
+  SIM_LENGTH <- length(DATE_SIM)
+  DATE_M_SIM <- subset(DATE_SIM,DAY_SIM==1)
+  YEAR_M_SIM <- as.numeric(format(DATE_M_SIM,"%Y"))
+  MONTH_M_SIM <- as.numeric(format(DATE_M_SIM,"%m"))
+  DATE_A_SIM <- subset(DATE_M_SIM,MONTH_M_SIM==month_list[1])
+  WATER_YEAR_A_SIM <- as.numeric(format(DATE_A_SIM,"%Y"))
 
 
-    # Construct final dataset
-    sim_daily_wg[[n]] <- lapply(1:ngrids, function(x) {
-        climate_daily_wg[[x]][rlz_index, ] %>%
-            dplyr::select({{wg.vars}}) %>%
-            mutate(date = sim_dates, .before = 1)
-    })
 
-  }
 
-  message(cat("\u2713", "|", "Spatial-temporal dissaggregation through knn sampling and method of fragments"))
+
+
+
+
+
+
+
+
+
+
+
+
+  # MONTH_SIM <- month(sim.dates)
+  # DAY_SIM <- sim.dates
+  # WATER_YEAR_SIM <- year(sim.dates)
+  # START_YEAR_SIM <- WATER_YEAR_SIM[1]-1
+  # SIM_LENGTH <- length(sim.dates)
+
+  # Sample size in KNN_ANNUAL sampling
+  kk <- max(round(sqrt(length(ANNUAL_PRCP)),0),round(length(ANNUAL_PRCP),0)*.5)
+
+  # Set thresholds for the Markov chain simulation
+  thresh1 <- .3
+  extreme_quantile <- 0.8
+  y_sample_size = 10
+
+  source(file = "C:/Users/taner/OneDrive - Stichting Deltares/_WS/ScottWG/new_functions/GET_PI.R")
+  source(file = "C:/Users/taner/OneDrive - Stichting Deltares/_WS/ScottWG/new_functions/KNN_DAILY.R")
+  source(file = "C:/Users/taner/OneDrive - Stichting Deltares/_WS/ScottWG/new_functions/KNN_ANNUAL.R")
+  source(file = "C:/Users/taner/OneDrive - Stichting Deltares/_WS/ScottWG/new_functions/DAILY_WEGEN_SIMPLIFIED.R")
+
+  # KNN RETURNS... return(c(FINAL_PRCP,FINAL_TEMP,FINAL_TMAX,FINAL_TMIN,FINAL_DATE))
+
+  start.time <- Sys.time()
+  DAILY_RESULTS2 <- sapply(1:5, function(n)
+    DAILY_WEATHER_GENERATOR(n, num_year_sim, sim_annual_final[, n],
+	    ANNUAL_PRCP, WATER_YEAR_A, WATER_YEAR_D, PRCP, TEMP, TMAX, TMIN, DATE_D, MONTH_D, YEAR_D, MONTH_DAY_D,
+	    month_list, water_year_start, water_year_end, y_sample_size = 20)
+  )
+  Sys.time() -start.time
+
+  message(cat("\u2713", "|", "KNN and MCMC Simulation"))
 
   #:::::::::::::::::::::: PERFORMANCE EVALUATION OF DAILY SIMULATED DATA :::::::
 
-  if(isTRUE(validate)) {
-
-    ## Check existing directories and create as needed
-
-    out_path_performance <- paste0(output.dir, "performance/")
-    if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
-
-    sample_ngrid <- min(20, ngrids)
-
-    sampleGrids <- sf::st_as_sf(climate_tidy[,c("x","y")], coords = c("x","y")) %>%
-      sf::st_sample(size = sample_ngrid, type = "regular") %>%
-      sf::st_cast("POINT") %>% sf::st_coordinates() %>%
-      as_tibble() %>%
-      left_join(climate_tidy[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
-      pull(id)
-
-    sim_daily_wg_sample <- lapply(1:nmax, function(x) sim_daily_wg[[x]][sampleGrids])
-
-    dailyPerformance(daily.sim = sim_daily_wg_sample,
-                        daily.obs = climate_obs_daily[sampleGrids],
-                        out.path = out_path_performance,
-                        variables = wg.vars[c(1,3,4)],
-                        variable.labels = wg.var.labs[c(1,3,4)],
-                        variable.units = wg.var.units[c(1,3,4)],
-                        nmax = nmax)
-
-    message(cat("\u2713", "|", "Validation plots saved to output folder"))
-  }
-
-
+  # if(isTRUE(validate)) {
+  #
+  #   ## Check existing directories and create as needed
+  #
+  #   out_path_performance <- paste0(output.dir, "performance/")
+  #   if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
+  #
+  #   sample_ngrid <- min(20, ngrids)
+  #
+  #   sampleGrids <- sf::st_as_sf(climate_tidy[,c("x","y")], coords = c("x","y")) %>%
+  #     sf::st_sample(size = sample_ngrid, type = "regular") %>%
+  #     sf::st_cast("POINT") %>% sf::st_coordinates() %>%
+  #     as_tibble() %>%
+  #     left_join(climate_tidy[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
+  #     pull(id)
+  #
+  #   sim_daily_wg_sample <- lapply(1:nmax, function(x) sim_daily_wg[[x]][sampleGrids])
+  #
+  #   dailyPerformance(daily.sim = sim_daily_wg_sample,
+  #                       daily.obs = climate_obs_daily[sampleGrids],
+  #                       out.path = out_path_performance,
+  #                       variables = wg.vars[c(1,3,4)],
+  #                       variable.labels = wg.var.labs[c(1,3,4)],
+  #                       variable.units = wg.var.units[c(1,3,4)],
+  #                       nmax = nmax)
+  #
+  #   message(cat("\u2713", "|", "Validation plots saved to output folder"))
+  # }
 
   #::::::::::::::::::::: OUTPUT HISTORICAL REALIZATIONS TO FILE ::::::::::::::::
 
