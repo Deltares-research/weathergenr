@@ -152,10 +152,10 @@ simulateWeather <- function(
   #::::MCMC MODELING COMES HERE! ::::::::::::;;;;;;;;;;::::::::::::::::::::::::::::::
 
   ###################################################################################
+  ###################################################################################
+  ###################################################################################
 
-  k1 = 1
   num_year_sim = 40
-  PRCP_FINAL_ANNUAL_SIM = sim_annual_final[,k1]
   ANNUAL_PRCP = warm_annual
 
   PRCP = climate_daily_wg_aavg$precip
@@ -185,6 +185,7 @@ simulateWeather <- function(
 
   # Date indices of simulated series
   START_YEAR_SIM <- 2020
+
   END_YEAR_SIM <- START_YEAR_SIM + num_year_sim
   DATE_SIM <- seq(as.Date(paste(START_YEAR_SIM,"-1-01",sep="")),as.Date(paste(END_YEAR_SIM,"-12-31",sep="")),by="day")
   DAY_SIM <- as.numeric(format(DATE_SIM,"%d"))
@@ -194,41 +195,23 @@ simulateWeather <- function(
   DAY_SIM <- DAY_SIM[no_leap]
   MONTH_SIM <- MONTH_SIM[no_leap]
   YEAR_SIM <- YEAR_SIM[no_leap]
+
   WATER_YEAR_SIM <- YEAR_SIM
   #if (water_yr_change) {WATER_YEAR_SIM[which(MONTH_SIM>=month_list[1])] <- WATER_YEAR_SIM[which(MONTH_SIM>=month_list[1])] + 1}
+
   WATER_YEAR_LOCATIONS_SIM <- which(WATER_YEAR_SIM>=(START_YEAR_SIM+1) & WATER_YEAR_SIM<=END_YEAR_SIM)
   WATER_YEAR_SIM <- WATER_YEAR_SIM[WATER_YEAR_LOCATIONS_SIM]
   YEAR_SIM <- YEAR_SIM[WATER_YEAR_LOCATIONS_SIM]
   MONTH_SIM <- MONTH_SIM[WATER_YEAR_LOCATIONS_SIM]
   DAY_SIM <- DAY_SIM[WATER_YEAR_LOCATIONS_SIM]
   DATE_SIM <- as.Date(paste(WATER_YEAR_SIM,MONTH_SIM,DAY_SIM,sep="-"))
+
   SIM_LENGTH <- length(DATE_SIM)
   DATE_M_SIM <- subset(DATE_SIM,DAY_SIM==1)
   YEAR_M_SIM <- as.numeric(format(DATE_M_SIM,"%Y"))
   MONTH_M_SIM <- as.numeric(format(DATE_M_SIM,"%m"))
   DATE_A_SIM <- subset(DATE_M_SIM,MONTH_M_SIM==month_list[1])
   WATER_YEAR_A_SIM <- as.numeric(format(DATE_A_SIM,"%Y"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  # MONTH_SIM <- month(sim.dates)
-  # DAY_SIM <- sim.dates
-  # WATER_YEAR_SIM <- year(sim.dates)
-  # START_YEAR_SIM <- WATER_YEAR_SIM[1]-1
-  # SIM_LENGTH <- length(sim.dates)
 
   # Sample size in KNN_ANNUAL sampling
   kk <- max(round(sqrt(length(ANNUAL_PRCP)),0),round(length(ANNUAL_PRCP),0)*.5)
@@ -246,45 +229,67 @@ simulateWeather <- function(
   # KNN RETURNS... return(c(FINAL_PRCP,FINAL_TEMP,FINAL_TMAX,FINAL_TMIN,FINAL_DATE))
 
   start.time <- Sys.time()
-  DAILY_RESULTS2 <- sapply(1:5, function(n)
-    DAILY_WEATHER_GENERATOR(n, num_year_sim, sim_annual_final[, n],
-	    ANNUAL_PRCP, WATER_YEAR_A, WATER_YEAR_D, PRCP, TEMP, TMAX, TMIN, DATE_D, MONTH_D, YEAR_D, MONTH_DAY_D,
-	    month_list, water_year_start, water_year_end, y_sample_size = 20)
-  )
-  Sys.time() -start.time
+
+  sim_dates <- tibble(date = seq.Date(wg.date.begin, wg.date.begin-1 + years(ymax), by = "day")) %>%
+    filter(!(month(date)==2 & day(date)==29)) %>% pull(date)
+
+
+  rlz_daily_index <- lapply(1:5, function(n)
+    DAILY_WEATHER_GENERATOR(k1 = n, num_year_sim = num_year_sim, PRCP_FINAL_ANNUAL_SIM = sim_annual_final[, n],
+	  ANNUAL_PRCP = ANNUAL_PRCP, WATER_YEAR_A = WATER_YEAR_A, WATER_YEAR_D = WATER_YEAR_D,
+    PRCP = PRCP, TEMP = TEMP, DATE_D = DATE_D, MONTH_D = MONTH_D, YEAR_D = YEAR_D, MONTH_DAY_D = MONTH_DAY_D,
+    month_list = month_list, water_year_start = water_year_start, water_year_end = water_year_end, y_sample_size = 100))
+  Sys.time() - start.time
 
   message(cat("\u2713", "|", "KNN and MCMC Simulation"))
 
+  rlz_daily_index[[1]][100]
+  rlz_daily_index[[2]][100]
+
+  sim_daily_wg <- list()
+
+  for (n in 1:nmax) {
+
+    day_order <- match(rlz_daily_index[[n]], wg_dates)
+    sim_daily_wg[[n]] <- lapply(climate_daily_wg, function(x)
+      x[day_order,] %>%
+         mutate(date = sim_dates, .before = 1))
+  }
+
+
+
+
+
   #:::::::::::::::::::::: PERFORMANCE EVALUATION OF DAILY SIMULATED DATA :::::::
 
-  # if(isTRUE(validate)) {
-  #
-  #   ## Check existing directories and create as needed
-  #
-  #   out_path_performance <- paste0(output.dir, "performance/")
-  #   if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
-  #
-  #   sample_ngrid <- min(20, ngrids)
-  #
-  #   sampleGrids <- sf::st_as_sf(climate_tidy[,c("x","y")], coords = c("x","y")) %>%
-  #     sf::st_sample(size = sample_ngrid, type = "regular") %>%
-  #     sf::st_cast("POINT") %>% sf::st_coordinates() %>%
-  #     as_tibble() %>%
-  #     left_join(climate_tidy[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
-  #     pull(id)
-  #
-  #   sim_daily_wg_sample <- lapply(1:nmax, function(x) sim_daily_wg[[x]][sampleGrids])
-  #
-  #   dailyPerformance(daily.sim = sim_daily_wg_sample,
-  #                       daily.obs = climate_obs_daily[sampleGrids],
-  #                       out.path = out_path_performance,
-  #                       variables = wg.vars[c(1,3,4)],
-  #                       variable.labels = wg.var.labs[c(1,3,4)],
-  #                       variable.units = wg.var.units[c(1,3,4)],
-  #                       nmax = nmax)
-  #
-  #   message(cat("\u2713", "|", "Validation plots saved to output folder"))
-  # }
+  if(isTRUE(validate)) {
+
+    ## Check existing directories and create as needed
+
+    out_path_performance <- paste0(output.dir, "performance3/")
+    if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
+
+    sample_ngrid <- min(20, ngrids)
+
+    sampleGrids <- sf::st_as_sf(climate_tidy[,c("x","y")], coords = c("x","y")) %>%
+      sf::st_sample(size = sample_ngrid, type = "regular") %>%
+      sf::st_cast("POINT") %>% sf::st_coordinates() %>%
+      as_tibble() %>%
+      left_join(climate_tidy[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
+      pull(id)
+
+    sim_daily_wg_sample <- lapply(1:nmax, function(x) sim_daily_wg[[x]][sampleGrids])
+
+    dailyPerformance(daily.sim = sim_daily_wg_sample,
+                        daily.obs = climate_obs_daily[sampleGrids],
+                        out.path = out_path_performance,
+                        variables = wg.vars[c(1,2)],
+                        variable.labels = wg.var.labs[c(1,2)],
+                        variable.units = wg.var.units[c(1,2)],
+                        nmax = nmax)
+
+    message(cat("\u2713", "|", "Validation plots saved to output folder"))
+  }
 
   #::::::::::::::::::::: OUTPUT HISTORICAL REALIZATIONS TO FILE ::::::::::::::::
 

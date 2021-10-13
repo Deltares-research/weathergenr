@@ -193,6 +193,7 @@ imposeClimateChanges <- function(
             date = sim_dates, par = perturb_par1, operator = "multiply")
 
 
+      #################################################################################
       # Perturb temp, temp_min, and temp_max
       daily_rlz[[x]]$temp <- quantileMapping(value = daily_rlz[[x]]$temp,
             date = sim_dates, par = perturb_par2, operator = "add")
@@ -200,6 +201,8 @@ imposeClimateChanges <- function(
             date = sim_dates, par = perturb_par2, operator = "add")
       daily_rlz[[x]]$temp_max <- quantileMapping(value = daily_rlz[[x]]$temp_max,
             date = sim_dates, par = perturb_par2, operator = "add")
+
+      #################################################################################
 
       # Calculate PET from temp, temp_min, temp_max
       daily_rlz[[x]]$pet <- with(daily_rlz[[x]],
