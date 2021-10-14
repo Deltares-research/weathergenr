@@ -15,7 +15,7 @@ simulateWeather(
   warm.var = NULL,
   ssig = 0.9,
   ymax = 40,
-  rmax = 20000,
+  rmax = 5000,
   nmax = 5,
   nc.dimnames = NULL,
   validate = FALSE,

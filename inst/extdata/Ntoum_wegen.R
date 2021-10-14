@@ -3,14 +3,17 @@
 # Load package
 #devtools::install_github("tanerumit/gridwegen@dev")
 
-library(lubridate)
+
 library(gridwegen)
+
 library(tidyr)
 library(dplyr)
+library(lubridate)
+
 
 # Path to output files
 path0 <- "C:/Users/taner/OneDrive - Stichting Deltares/_DELTARES/02 Projects/11206634 Gabon/05 Models/wegen/"
-out_path <- paste0(path0, "results/")
+out_path <- paste0(path0, "results_new/")
 
 # Path to historical gridded data
 nc_path <- paste0(path0, "input/")
@@ -44,12 +47,12 @@ simulateWeather(
       nmax = 5,
       nc.dimnames = list(x = "lon", y = "lat", time = "time"),
       validate = TRUE,
-      mean.bounds = NULL,
-      sdev.bounds = NULL,
-      max.bounds  = NULL,
-      min.bounds  = NULL,
-      power.bounds = NULL,
-      nonsig.threshold = NULL
+      mean.bounds = c(0.95,1.05),
+      sdev.bounds = c(0.90,1.10),
+      max.bounds  = c(0.90,1.10),
+      min.bounds  = c(0.90,1.10),
+      power.bounds = c(0.75,2.50),
+      nonsig.threshold = 0.8
 )
 
 # natural variability realizations in the input folder
@@ -63,7 +66,7 @@ for(n in 2:2) {
       in.path = paste0(out_path,"historical/"),
       in.file = nvar_filenames[n],
       file.suffix = n,
-      out.path = paste0(out_path,"future/"),
+      out.path = paste0(out_path,"future2/"),
       sim.date.begin = as.Date("2020-01-01"),
       wg.vars = c("precip", "temp", "temp_min", "temp_max"),
       wg.var.units = c("mm/day", "°C", "°C", "°C"),
