@@ -4,7 +4,13 @@
 \alias{quantileMapping}
 \title{Function for perturbing climate statistics using Quantile-Mapping}
 \usage{
-quantileMapping(value = NULL, date = NULL, par = NULL, operator = "multiply")
+quantileMapping(
+  value = NULL,
+  date = NULL,
+  par = NULL,
+  mon.ts = NULL,
+  year.ts = NULL
+)
 }
 \arguments{
 \item{value}{To be completed...}

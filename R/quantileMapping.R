@@ -14,13 +14,10 @@ quantileMapping <- function(
   value = NULL,
   date = NULL,
   par = NULL,
-  operator = "multiply")
+  mon.ts = NULL,
+  year.ts = NULL)
 
   {
-
-  #Date objects
-  mon.ts <- month(date)
-  year.ts <- year(date) - min(year(date)) + 1
 
   emp1 <- matrix(0, nrow = 12, ncol = max(year.ts))
   emp2 <- vector("list", 12)
@@ -30,13 +27,7 @@ quantileMapping <- function(
 
   # Identify months to be perturbed
   nochange_var = 1
-  if(operator == "multiply") {
-    nochange_mean <- 1
-  } else if(operator == "add") {
-    nochange_mean <- 0
-  } else {
-    stop("change operator can be either 'multiply' or 'add'")
-  }
+  nochange_mean <- 1
 
   # Vector of means and variances (row=years, column=months)
   parms_yearly <- list()
@@ -55,16 +46,12 @@ quantileMapping <- function(
 
   # Non-zero days in each month
   value_nz_pmon <- lapply(1:12, function(x) value_nz[which(mon.ts_nz == x)])
-  #value_pmon <- lapply(1:12, function(x) value[which(mon.ts == x)])
-
 
   # Values to be changed (non-zero and ONLY perturbation months!)
   pind <- which((mon.ts %in% pmon) & (value > 0))
 
   #If no precip days, exit
-  if (length(pind) == 0) {
-    return(value)
-  } else {
+  if (length(pind) == 0) return(value)
 
   # Fit base distribution and estimate parameters
   invisible(capture.output(bdist[["fit"]][pmon] <- lapply(pmon,
@@ -76,22 +63,13 @@ quantileMapping <- function(
   bdist[["mean"]][pmon]  <- lapply(pmon, function(x) bdist[["shape"]][[x]] * bdist[["scale"]][[x]])
   bdist[["var"]][pmon]   <- lapply(pmon, function(x) bdist[["shape"]][[x]] * bdist[["scale"]][[x]]^2)
 
-  if (operator == "multiply") {
-
-    # Define the mean, variance of the target distribution
-    tdist[["mean"]][pmon, ] <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) bdist[["mean"]][[m]] * parms_yearly[["mean"]][y, m]))
-    tdist[["var"]][pmon, ]  <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) bdist[["var"]][[m]]  * parms_yearly[["var"]][y, m]))
-
-  } else {
-
-    tdist[["mean"]][pmon,] <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) bdist[["mean"]][[m]] + parms_yearly[["mean"]][y, m]))
-    tdist[["var"]][pmon,]  <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) bdist[["var"]][[m]] * parms_yearly[["var"]][y, m]))
-  }
+  # Define the mean, variance of the target distribution
+  tdist[["mean"]][pmon, ] <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) bdist[["mean"]][[m]] * parms_yearly[["mean"]][y, m]))
+  tdist[["var"]][pmon, ]  <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) bdist[["var"]][[m]]  * parms_yearly[["var"]][y, m]))
 
   # Define the shape and scale parameters of the target distribution
   tdist[["scale"]][pmon,] <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) tdist[["var"]][m,y] / tdist[["mean"]][m,y]))
   tdist[["shape"]][pmon,] <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) tdist[["mean"]][m,y]^2 / tdist[["var"]][m,y]))
-
 
   # Estimate quantiles from base distribution
   qtile <- pgamma(value[pind], shape = unlist(bdist[["shape"]][mon.ts[pind]]), scale = unlist(bdist[["scale"]][mon.ts[pind]]))
@@ -104,6 +82,4 @@ quantileMapping <- function(
   value[pind] <- qgamma(qtile, shape = shape_vec, scale = scale_vec)
 
   return(value)
-
-  }
 }

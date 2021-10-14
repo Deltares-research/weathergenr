@@ -126,28 +126,33 @@ simulateWeather <- function(
 
   message(cat("\u2713", "|", rmax, "stochastic annual series generated"))
 
-  # # Wavelet analysis on simulated series
-  # sim_power <- sapply(1:rmax, function(x)
-  #   waveletAnalysis(sim_annual[, x], signif.level = ssig)$GWS)
-  #
-  # ### Choose which parameters to consider for filtering
-  # sim_annual_sub <- waveletARSubset(
-  #      series.obs = warm_annual,
-  #      series.sim = sim_annual,
-  #      power.obs = warm_power$GWS,
-  #      power.sim = sim_power,
-  #      power.period = warm_power$GWS_period,
-  #      power.signif = warm_power$GWS_signif,
-  #      nmax = nmax,
-  #      out.path = output.dir,
-  #      ...)
-  #
-  # message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "annual traces selected"))
+  # Wavelet analysis on simulated series
+  sim_power <- sapply(1:rmax, function(x)
+    waveletAnalysis(sim_annual[, x], signif.level = ssig)$GWS)
+
+  ### Choose which parameters to consider for filtering
+  sim_annual_sub <- waveletARSubset(
+       series.obs = warm_annual,
+       series.sim = sim_annual,
+       power.obs = warm_power$GWS,
+       power.sim = sim_power,
+       power.period = warm_power$GWS_period,
+       power.signif = warm_power$GWS_signif,
+       nmax = nmax,
+       out.path = output.dir,
+       #...)
+       mean.bounds = c(0.95,1.05),
+       sdev.bounds = c(0.95,1.10),
+       max.bounds  = c(0.95,1.15),
+       min.bounds  = c(0.80,1.05),
+       power.bounds = c(0.8,2.5),
+       nonsig.threshold = 0.9)
+
+  message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "annual traces selected"))
 
   # Subsetted realizations of annual simulated time-series
-  #sim_annual_final <- sim_annual_sub$sampled
+  sim_annual_final <- sim_annual_sub$sampled
 
-  sim_annual_final <- sim_annual[,c(1,2,3,4,5)]
 
   #::::MCMC MODELING COMES HERE! ::::::::::::;;;;;;;;;;::::::::::::::::::::::::::::::
 

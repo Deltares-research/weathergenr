@@ -112,8 +112,12 @@ imposeClimateChanges <- function(
   grids  <- coordGrid$id
   ngrids <- length(grids)
 
-
-   sim_dates <- nc_data$tidy_data$data[[1]]$date
+  # Date indices
+  sim_dates <- nc_data$tidy_data$data[[1]]$date
+  year_series <- year(sim_dates)
+  month_series <- month(sim_dates)
+  year_index <- year_series - min(year_series) + 1
+  year_num <- length(unique(year_series))
 
   # Dimensions in the outputted variable (order matters!)
   dim_ord <- names(nc_data$nc_dimensions)
@@ -161,8 +165,6 @@ imposeClimateChanges <- function(
   #Loop through each variable and write data to netcdf
   ncout_vardata <- var_empty
 
-
-
   #::::::::::::::::::: LOOP THROUGH CLIMATE CHANGES ::::::::::::::::::::::::::::
 
   #Create output directory if doesn't exist
@@ -178,36 +180,31 @@ imposeClimateChanges <- function(
     daily_rlz <- nc_data$tidy_data$data
 
     # Current perturbation scenario for each variable
-    perturb_par1 <- list(mean = PARCC[[1]]$mean$steps[scn_mat$par1[s],],
+    perturb_precip <- list(mean = PARCC[[1]]$mean$steps[scn_mat$par1[s],],
            var = PARCC[[1]]$var$steps[scn_mat$par1[s],])
+    perturb_temp <- list(mean = PARCC[[2]]$mean$steps[scn_mat$par2[s],])
 
-    perturb_par2 <- list(mean = PARCC[[2]]$mean$steps[scn_mat$par2[s],],
-           var = PARCC[[2]]$var$steps[scn_mat$par2[s],])
-
+    temp_delta_factors <- sapply(1:12, function(x)
+      seq(0, perturb_temp$mean[x], length.out = 40))
+    temp_deltas <- sapply(1:length(year_series), function(x)
+      temp_delta_factors[year_index[x], month_series[x]])
 
     # Loop through each grid cell
     for (x in 1:ngrids) {
 
-      # Perturb daily precipitation
+      # Perturb daily precipitation using quantile mapping
       daily_rlz[[x]]$precip <- quantileMapping(value = daily_rlz[[x]]$precip,
-            date = sim_dates, par = perturb_par1, operator = "multiply")
+        mon.ts = month_series, year.ts = year_index, par = perturb_precip)
 
-
-      #################################################################################
-      # Perturb temp, temp_min, and temp_max
-      daily_rlz[[x]]$temp <- quantileMapping(value = daily_rlz[[x]]$temp,
-            date = sim_dates, par = perturb_par2, operator = "add")
-      daily_rlz[[x]]$temp_min <- quantileMapping(value = daily_rlz[[x]]$temp_min,
-            date = sim_dates, par = perturb_par2, operator = "add")
-      daily_rlz[[x]]$temp_max <- quantileMapping(value = daily_rlz[[x]]$temp_max,
-            date = sim_dates, par = perturb_par2, operator = "add")
-
-      #################################################################################
+      # Perturb temp, temp_min, and temp_max by delta factors
+      daily_rlz[[x]]$temp <- daily_rlz[[x]]$temp + temp_deltas
+      daily_rlz[[x]]$temp_min <- daily_rlz[[x]]$temp_min + temp_deltas
+      daily_rlz[[x]]$temp_max <- daily_rlz[[x]]$temp_max + temp_deltas
 
       # Calculate PET from temp, temp_min, temp_max
-      daily_rlz[[x]]$pet <- with(daily_rlz[[x]],
-          hargreavesPET(months = month(date), temp = temp,
-            tdiff = temp_max - temp_min, lat = coordGrid$y[x]))
+      daily_rlz[[x]]$pet <- with(daily_rlz[[x]], hargreavesPET(
+        months = month_series, temp = temp, tdiff = temp_max - temp_min,
+        lat = coordGrid$y[x]))
     }
 
     #Loop through each variable and write data to netcdf
@@ -232,7 +229,6 @@ imposeClimateChanges <- function(
                 varid = nc_data$nc_variables$spatial_ref$name,
                 attname = names(nc_data$nc_attributes$spatial_ref)[k],
                 attval = nc_data$nc_attributes$spatial_ref[[k]]))
-
 
    # Put global attributes
     if(length(nc_data$nc_attributes$global)>0) {
