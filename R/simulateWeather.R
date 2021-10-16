@@ -63,8 +63,10 @@ simulateWeather <- function(
 
   #Reference data date variables
   wg_dates <- climate_obs_daily[[1]]$date
+
   # Month order for water year
   wy_months <- setdiff(c(month(wg_dates[1]):12, 1:(month(wg_dates[1])-1)),0)
+
   # Date template table with water-year adjustment
   wg_dates_adjusted <- tibble(year = year(wg_dates) - min(year(wg_dates)) + 1,
       mon = month(wg_dates), day = day(wg_dates)) %>%
@@ -154,6 +156,15 @@ simulateWeather <- function(
 
   #####  Wavelet analysis on observed annual series
   warm_annual_org <- climate_annual_wg_aavg %>% pull({{warm.var}})
+
+  ############
+  # Normality tests come here.........
+
+
+
+
+  ###########
+
   warm_annual <- warm_annual_org
 
   ####  Power spectra of observed annual series
