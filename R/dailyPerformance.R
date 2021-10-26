@@ -172,6 +172,15 @@ dailyPerformance <- function(
 
   #:::::::::::::::::::::::::::: PLOTS ::::::::::::::::::::::::::::::::::::::::::
 
+  base_len <- 5
+
+  g.hght1 <- ifelse(num_vars > 2, base_len*2, base_len)
+  g.wdth1 <- ifelse(num_vars > 1, base_len*2, base_len)
+
+  g.hght2 <- if(num_var_combs > 2) base_len*2 else if (num_var_combs > 4) base_len*3 else base_len
+  g.wdth2 <- if(num_var_combs > 1) base_len*2 else if (num_var_combs > 6) base_len*3 else base_len
+
+
   ### Cross site correlations
   p <- ggplot(stats_cross, aes(x = Observed, y = Simulated)) +
     theme_light(base_size = 12) +
@@ -179,12 +188,12 @@ dailyPerformance <- function(
     geom_abline(color = "blue", size = 1) +
     geom_point(alpha = 0.6, size = 1.5) +
     labs(x = "Observed", y = "Simulated") +
-    facet_wrap(variable ~ ., scales = "free", ncol = ceiling(num_vars/2)) +
+    facet_wrap(variable ~ ., scales = "free", ncol = g.wdth1/base_len) +
     scale_x_continuous(breaks = scales::pretty_breaks(5), limits = c(0, 1)) +
     scale_y_continuous(breaks = scales::pretty_breaks(5), limits = c(0, 1))
 
-  ggsave(paste0(out.path,"monthly_stats_all_crosssite.png" ),
-         height = 4 * ceiling(num_vars/2), width = 4 *  ifelse(num_vars > 1, 2, 1))
+  ggsave(paste0(out.path,"monthly_stats_all_crosssite.png"),
+         height = g.hght1, width = g.wdth1)
 
   ### Intersite correlations
   p <- ggplot(stats_inter, aes(x = Observed, y = Simulated)) +
@@ -193,13 +202,12 @@ dailyPerformance <- function(
     geom_abline(color = "blue", size = 1) +
     geom_point(alpha = 0.6, size = 1.5) +
     labs(x = "Observed", y = "Simulated") +
-    facet_wrap(variable ~ ., scales = "free", ncol = ceiling(num_var_combs/2)) +
+    facet_wrap(variable ~ ., scales = "free", ncol = g.wdth2/base_len) +
     scale_x_continuous(breaks = scales::pretty_breaks(5), limits =c(0,1)) +
     scale_y_continuous(breaks = scales::pretty_breaks(5), limits =c(0,1))
 
   ggsave(paste0(out.path,"monthly_stats_all_intersite.png" ),
-         width = 4 * ceiling(num_var_combs/2), height = 4 *  ifelse(num_var_combs > 1, 2, 1))
-
+         width = g.wdth2, height = g.hght2)
 
   for (v in 1:length(variables)) {
 
@@ -215,10 +223,8 @@ dailyPerformance <- function(
                  color = "red") +
       labs(x = "Months", y = variable.units[v])
 
-
     ggsave(paste0(out.path,"monthly_stats_", variables[v],".png" ),
-           height = 4 * ceiling(num_var_combs/2),
-           width = 4 * ifelse(num_var_combs > 1, 2, 1))
+           height = base_len*2, width = base_len*2)
 
     #### DAILY STATISTICS
     stats_df1v <- bind_rows(hist_stats_mon, sim_stats_mon_median) %>%
@@ -238,7 +244,7 @@ dailyPerformance <- function(
       theme(plot.margin = unit(c(0.5,0.2,0.2,0.2), "cm"))
 
     ggsave(paste0(out.path,"daily_stats_", variables[v],".png" ),
-           height = 6, width = 12)
+           height = g.hght1, width = g.wdth1)
 
   }
 

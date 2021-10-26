@@ -16,7 +16,6 @@ Imports:
     fitdistrplus,
     forecast,
     ggplot2,
-    lubridate,
     MASS,
     ncdf4,
     purrr,

@@ -42,6 +42,9 @@ simulateWeather <- function(
   nmax = 5,
   nc.dimnames = NULL,
   validate = FALSE,
+  sim.start.year = 2020,
+  month.list = 1:12,
+  validation.grid.num = 20,
   ...)
 
  {
@@ -57,112 +60,70 @@ simulateWeather <- function(
   out_path_warm <- paste0(output.dir, "warm/")
   if (!dir.exists(out_path_warm)) {dir.create(out_path_warm)}
 
-  ##### Set historical gridded data to be inputted to wg (remove leap days!)
-  noleap_index <- with(climate_tidy$data[[1]], which(!(month(date) == 2 & day(date) == 29)))
-  climate_obs_daily <- lapply(climate_tidy$data, function(x) x[noleap_index, ])
+  date_seq <- climate_tidy$data[[1]]$date
+  year_seq <- as.numeric(format(date_seq,"%Y"))
 
-  #Reference data date variables
-  wg_dates <- climate_obs_daily[[1]]$date
+  water_year_start <- year_seq[1]
+  water_year_end <- year_seq[length(year_seq)]
 
-  # Month order for water year
-  wy_months <- setdiff(c(month(wg_dates[1]):12, 1:(month(wg_dates[1])-1)),0)
+  # Historical data matrix tables
+  dates_d <- tibble(year = as.numeric(format(date_seq,"%Y")),
+          wyear = getWaterYear(date=date_seq, month.list=month.list),
+          month = as.numeric(format(date_seq,"%m")),
+          day = as.numeric(format(date_seq,"%d"))) %>%
+      filter(wyear >= water_year_start & wyear <= water_year_end) %>%
+      mutate(date = as.Date(paste(wyear, month, day, sep = "-")), .before=1)
+  dates_m <- dates_d %>% dplyr::filter(day == 1)
 
-  # Date template table with water-year adjustment
-  wg_dates_adjusted <- tibble(year = year(wg_dates) - min(year(wg_dates)) + 1,
-      mon = month(wg_dates), day = day(wg_dates)) %>%
-      mutate(mon = as.numeric(as.character(factor(mon, levels = wy_months, labels= 1:12))))
+  dates_a <- dates_m %>% dplyr::filter(month == month.list[1])
+  wyear_index <- which(dates_d$date %in% date_seq)
 
-  WATER_YEAR_A = unique(year(wg_dates))
-  month_list = wy_months
-  water_year_start = WATER_YEAR_A[1]
-  water_year_end = WATER_YEAR_A[length(WATER_YEAR_A)]
-
-  # Daily format
-  DATE_D = wg_dates
-  MONTH_D = month(wg_dates)
-  DAY_D = day(wg_dates)
-  WATER_YEAR_D = year(wg_dates)
-  YEAR_D = WATER_YEAR_D
-  MONTH_DAY_D = as.matrix(data.frame(MONTH_D=MONTH_D, DAY_D=DAY_D))
+  # Historical data for the correct period
+  climate_obs_ini <- lapply(climate_tidy$data, function(x) x)
+  climate_obs_daily <- lapply(climate_obs_ini, function(x) x[wyear_index, ])
 
   # Date indices of simulated series
-  START_YEAR_SIM <- 2020
-  END_YEAR_SIM <- START_YEAR_SIM + ymax
-  DATE_SIM <- seq(as.Date(paste(START_YEAR_SIM,"-1-01",sep="")),as.Date(paste(END_YEAR_SIM,"-12-31",sep="")),by="day")
-  DAY_SIM <- as.numeric(format(DATE_SIM,"%d"))
-  MONTH_SIM <- as.numeric(format(DATE_SIM,"%m"))
-  YEAR_SIM <- as.numeric(format(DATE_SIM,"%Y"))
-  no_leap <- which(MONTH_SIM!=2 | DAY_SIM!= 29)
-  DAY_SIM <- DAY_SIM[no_leap]
-  MONTH_SIM <- MONTH_SIM[no_leap]
-  YEAR_SIM <- YEAR_SIM[no_leap]
+  sim.start.year <- 2020
+  END_YEAR_SIM <- sim.start.year + ymax
 
-  WATER_YEAR_SIM <- YEAR_SIM
-  #if (water_yr_change) {WATER_YEAR_SIM[which(MONTH_SIM>=month_list[1])] <- WATER_YEAR_SIM[which(MONTH_SIM>=month_list[1])] + 1}
-  WATER_YEAR_LOCATIONS_SIM <- which(WATER_YEAR_SIM>=(START_YEAR_SIM+1) & WATER_YEAR_SIM<=END_YEAR_SIM)
-  WATER_YEAR_SIM <- WATER_YEAR_SIM[WATER_YEAR_LOCATIONS_SIM]
-  YEAR_SIM <- YEAR_SIM[WATER_YEAR_LOCATIONS_SIM]
-  MONTH_SIM <- MONTH_SIM[WATER_YEAR_LOCATIONS_SIM]
-  DAY_SIM <- DAY_SIM[WATER_YEAR_LOCATIONS_SIM]
-  DATE_SIM <- as.Date(paste(WATER_YEAR_SIM,MONTH_SIM,DAY_SIM,sep="-"))
+  date_sim <- seq(as.Date(paste(sim.start.year,"-1-01",sep="")),as.Date(paste(END_YEAR_SIM,"-12-31",sep="")),by="day")
 
-  SIM_LENGTH <- length(DATE_SIM)
-  DATE_M_SIM <- subset(DATE_SIM,DAY_SIM==1)
-  YEAR_M_SIM <- as.numeric(format(DATE_M_SIM,"%Y"))
-  MONTH_M_SIM <- as.numeric(format(DATE_M_SIM,"%m"))
-  DATE_A_SIM <- subset(DATE_M_SIM,MONTH_M_SIM==month_list[1])
-  WATER_YEAR_A_SIM <- as.numeric(format(DATE_A_SIM,"%Y"))
+  sim_dates_d <- tibble(year = as.numeric(format(date_sim,"%Y")),
+          wyear = getWaterYear(date=date_sim, month.list=month.list),
+          month = as.numeric(format(date_sim,"%m")),
+          day = as.numeric(format(date_sim,"%d"))) %>%
+      filter(month!=2 | day!=29) %>%
+      filter(wyear >= (sim.start.year+1) & wyear <= END_YEAR_SIM) %>%
+      mutate(date = as.Date(paste(wyear, month, day, sep = "-")), .before=1)
 
-  sim_dates <- tibble(date = seq.Date(wg_dates[1], wg_dates[1]-1 + years(ymax), by = "day")) %>%
-    filter(!(month(date)==2 & day(date)==29)) %>% pull(date)
+  sim_dates_m <- sim_dates_d %>% dplyr::filter(day == 1)
+  sim_dates_a <- sim_dates_m %>% dplyr::filter(month == month.list[1])
+  sim_wyear_index <- which(sim_dates_d$date %in% date_sim)
 
   # Prepare tables for daily, monthly, and annual values
-  climate_daily_wg <- lapply(1:ngrids, function(i)
+  wg_dates_adjusted <- tibble(year=dates_d$wyear, month=dates_d$month, day=dates_d$day)
+
+  climate_d <- lapply(1:ngrids, function(i)
         bind_cols(wg_dates_adjusted, climate_obs_daily[[i]][,-1]) %>%
-        arrange(year, mon, day))
+        arrange(year, month, day))
 
-  climate_monthly_wg <- lapply(1:ngrids, function(i)
-        climate_daily_wg[[i]] %>% group_by(year, mon) %>%
-        summarize(across({{wg.vars}}, mean)) %>%
-        ungroup() %>% suppressMessages())
-
-  climate_annual_wg <- lapply(1:ngrids, function(i)
-        climate_monthly_wg[[i]] %>%
+  climate_a <- lapply(1:ngrids, function(i)
+        climate_d[[i]] %>%
         group_by(year) %>%
         summarize(across({{wg.vars}}, mean)) %>%
         ungroup() %>% suppressMessages())
 
   # Obtain scalar (area-averaged) weather time-series for each variable
-  climate_daily_wg_aavg   <- Reduce(`+`, climate_daily_wg) / ngrids
-  climate_monthly_wg_aavg <- Reduce(`+`, climate_monthly_wg) / ngrids
-  climate_annual_wg_aavg  <- Reduce(`+`, climate_annual_wg) / ngrids
-
-  # Matrix of monthly historical means (rows = years, columns=month 1 to 12)
-  wg_variable_matrix <- climate_monthly_wg_aavg %>%
-    dplyr::select(year, mon, {{warm.var}}) %>%
-    spread(mon, {{warm.var}}) %>%
-    dplyr::select(-year)
-
-  # Matrix of monthly historical means normalized over the period
-  wg_monthly_factors <- t(apply(wg_variable_matrix, 1, function(x) x/mean(x)))
-
-  # Indices of all days (rows = year & mon combination, columns= days 1 to 31)
-  wg_day_of_year <- climate_daily_wg_aavg %>%
-    dplyr::select(year, mon, day) %>%
-    mutate(ind = 1:n()) %>%
-    spread(key = day, value = ind)
+  climate_d_aavg <- Reduce(`+`, climate_d) / ngrids
+  climate_a_aavg <- Reduce(`+`, climate_a) / ngrids
 
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   #####  Wavelet analysis on observed annual series
-  warm_annual_org <- climate_annual_wg_aavg %>% pull({{warm.var}})
+  warm_annual_org <- climate_a_aavg %>% pull({{warm.var}})
 
   ############
   # Normality tests come here.........
-
-
-
-
   ###########
 
   warm_annual <- warm_annual_org
@@ -211,7 +172,7 @@ simulateWeather <- function(
   sim_annual_final <- sim_annual_sub$sampled
 
   # Plot simulated warm-series
-  df1 <- sim_annual_sub$sampled %>%
+  df1 <- sim_annual_final %>%
     as_tibble(.name_repair = ~paste0("rlz",1:nmax)) %>%
     mutate(x = 1:ymax) %>%
     gather(key = variable, value=y, -x) %>%
@@ -231,7 +192,7 @@ simulateWeather <- function(
   ggsave(filename = paste0(out_path_warm, "warm_simulated_series.png"),.,
     height = 5, width = 10)
 
-  message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "annual traces selected"))
+  message(cat("\u2713", "|", ncol(sim_annual_final), "annual traces selected"))
 
   #::::MCMC MODELING COMES HERE! ::::::::::::;;;;;;;;;;::::::::::::::::::::::::::::::
 
@@ -239,23 +200,38 @@ simulateWeather <- function(
   kk <- max(round(sqrt(length(warm_annual)),0), round(length(warm_annual),0)*.5)
 
   rlz_daily_index <- lapply(1:nmax, function(n)
-    DAILY_WEATHER_GENERATOR(k1 = n, ymax = ymax,
-      PRCP_FINAL_ANNUAL_SIM = sim_annual_final[, n], ANNUAL_PRCP = warm_annual,
-      WATER_YEAR_A = WATER_YEAR_A, WATER_YEAR_D = WATER_YEAR_D,
-      PRCP = climate_daily_wg_aavg$precip, TEMP = climate_daily_wg_aavg$temp, DATE_D = DATE_D, MONTH_D = MONTH_D, YEAR_D = YEAR_D,
-      MONTH_DAY_D = MONTH_DAY_D, month_list = month_list, water_year_start = water_year_start,
-      water_year_end = water_year_end, y_sample_size = 20, SIM_LENGTH = length(sim_dates),
-      kk = kk, MONTH_SIM = MONTH_SIM, WATER_YEAR_SIM = WATER_YEAR_SIM, START_YEAR_SIM = START_YEAR_SIM,
-      DAY_SIM = DAY_SIM)
+    resampleDailyWeather(
+      ANNUAL_PRCP = warm_annual,
+      PRCP_FINAL_ANNUAL_SIM = sim_annual_final[, n],
+      WATER_YEAR_A = dates_a$wyear,
+      WATER_YEAR_D = dates_d$wyear,
+      PRCP = climate_d_aavg$precip,
+      TEMP = climate_d_aavg$temp,
+      DATE_D = dates_d$date,
+      MONTH_D = dates_d$month,
+      YEAR_D = year_seq,
+      MONTH_DAY_D = dates_d[,c("month","day")],
+      month_list = month.list,
+      water_year_start = water_year_start,
+      water_year_end = water_year_end,
+      y_sample_size = 20,
+      k1 = n,
+      ymax = ymax,
+      SIM_LENGTH = length(sim_dates_d$date),
+      kk = kk,
+      MONTH_SIM = sim_dates_d$month,
+      WATER_YEAR_SIM = sim_dates_d$wyear,
+      START_YEAR_SIM = sim.start.year,
+      DAY_SIM = sim_dates_d$day)
   )
 
   sim_daily_wg <- list()
 
   for (n in 1:nmax) {
 
-    day_order <- match(rlz_daily_index[[n]], wg_dates)
-    sim_daily_wg[[n]] <- lapply(climate_daily_wg, function(x)
-      x[day_order,] %>% mutate(date = sim_dates, .before = 1))
+    day_order <- match(rlz_daily_index[[n]], date_seq)
+    sim_daily_wg[[n]] <- lapply(climate_d, function(x)
+      x[day_order,] %>% mutate(date = sim_dates_d$date, .before = 1))
   }
 
   message(cat("\u2713", "|", "Spatial & temporal dissaggregation through markov-chain knn completed."))
@@ -266,10 +242,10 @@ simulateWeather <- function(
 
     ## Check existing directories and create as needed
 
-    out_path_performance <- paste0(output.dir, "performance/")
+    out_path_performance <- paste0(output.dir, "performanceX/")
     if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
 
-    sample_ngrid <- min(20, ngrids)
+    sample_ngrid <- min(validation.grid.num, ngrids)
 
     sampleGrids <- sf::st_as_sf(climate_tidy[,c("x","y")], coords = c("x","y")) %>%
       sf::st_sample(size = sample_ngrid, type = "regular") %>%
@@ -281,20 +257,19 @@ simulateWeather <- function(
     sim_daily_wg_sample <- lapply(1:nmax, function(x) sim_daily_wg[[x]][sampleGrids])
 
     dailyPerformance(daily.sim = sim_daily_wg_sample,
-                        daily.obs = climate_obs_daily[sampleGrids],
-                        out.path = out_path_performance,
-                        variables = wg.vars,
-                        variable.labels = wg.var.labs,
-                        variable.units = wg.var.units,
-                        nmax = nmax)
+                     daily.obs = climate_obs_ini[sampleGrids],
+                     out.path = out_path_performance,
+                     variables = wg.vars,
+                     variable.labels = wg.var.labs,
+                     variable.units = wg.var.units,
+                     nmax = nmax)
 
     message(cat("\u2713", "|", "Validation plots saved to output folder"))
   }
 
   #::::::::::::::::::::: OUTPUT HISTORICAL REALIZATIONS TO FILE ::::::::::::::::
 
-
-  out_path_hist <- paste0(output.dir, "historical/")
+  out_path_hist <- paste0(output.dir, "historicalX/")
   if (!dir.exists(out_path_hist)) {dir.create(out_path_hist)}
 
   # Dimensions in the outputted variable (order matters!)
@@ -303,7 +278,7 @@ simulateWeather <- function(
   ncout_dims <- list()
   ncout_dims[[nc.dimnames$time]] <- ncdf4::ncdim_def(name = nc.dimnames$time,
       units = paste0("days since ", format(round(as.POSIXct(wg.date.begin), units = "day"),
-        '%Y-%m-%d %M:%H:%S')), vals = 1:length(sim_dates), calendar = "no leap")
+        '%Y-%m-%d %M:%H:%S')), vals = 1:length(sim_dates_d$date), calendar = "no leap")
 
   ncout_dims[[nc.dimnames$y]] <- ncdf4::ncdim_def(nc.dimnames$y,
         units= "", vals = nc_data$nc_dimensions[[nc.dimnames$y]])

@@ -19,6 +19,9 @@ simulateWeather(
   nmax = 5,
   nc.dimnames = NULL,
   validate = FALSE,
+  sim.start.year = 2020,
+  month.list = 1:12,
+  validation.grid.num = 20,
   ...
 )
 }

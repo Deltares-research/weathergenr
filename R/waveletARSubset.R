@@ -1,6 +1,4 @@
 
-
-
 #' A function to resample from WARM model results
 #'
 #' @param mean.bounds A numeric vector, defining the minimum and maximum limits for the mean value of the time-series when resampling.

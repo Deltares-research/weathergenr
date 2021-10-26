@@ -21,8 +21,8 @@
 #'
 #' @return
 #' @export
-DAILY_WEATHER_GENERATOR <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM = NULL, ANNUAL_PRCP = NULL,
-  WATER_YEAR_A, WATER_YEAR_D,PRCP, TEMP ,DATE_D,MONTH_D, YEAR_D, MONTH_DAY_D,
+resampleDailyWeather <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM = NULL, ANNUAL_PRCP = NULL,
+  WATER_YEAR_A, WATER_YEAR_D, PRCP, TEMP ,DATE_D, MONTH_D, YEAR_D, MONTH_DAY_D,
   month_list, water_year_start, water_year_end, y_sample_size = 20, SIM_LENGTH = NULL, kk = NULL, thresh1 = 0.3,
   extreme_quantile = 0.8, MONTH_SIM = NULL, WATER_YEAR_SIM = NULL, START_YEAR_SIM = NULL,
   DAY_SIM = NULL)
@@ -42,10 +42,10 @@ DAILY_WEATHER_GENERATOR <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SI
 
 	# Vetor to store simulated results???
 	OCCURENCES <- array(0,c(SIM_LENGTH))
-	SIM_PRCP <- array(0,c(SIM_LENGTH))
-	SIM_TEMP <- array(25,c(SIM_LENGTH))
+	SIM_PRCP <- array(0, c(SIM_LENGTH))
+	SIM_TEMP <- array(25, c(SIM_LENGTH))
 
-	SIM_DATE <- rep(as.Date("1981-01-01"), SIM_LENGTH) #vector("numeric", length = SIM_LENGTH)
+	SIM_DATE <- rep(as.Date("1900-01-01"), SIM_LENGTH) #vector("numeric", length = SIM_LENGTH)
 
 	# Current Stochastic trace....
 	count <- 1
@@ -53,8 +53,6 @@ DAILY_WEATHER_GENERATOR <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SI
 
 	# Generate random numbers btw 0 and 1 for each day of the simulation period
 	rn_all <- runif(SIM_LENGTH,0,1)
-
-
 
 	# For each year start sampling....
 	for (y in 1:ymax) {
@@ -95,12 +93,12 @@ DAILY_WEATHER_GENERATOR <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SI
 		}
 
 		#Define lagged variables on daily time-series (for current year set)
-		PRCP_LAG0 <- PRCP_CURRENT[2:length(PRCP_CURRENT)]
-		PRCP_LAG1 <- PRCP_CURRENT[1:(length(PRCP_CURRENT)-1)]
+		PRCP_LAG0  <- PRCP_CURRENT[2:length(PRCP_CURRENT)]
+		PRCP_LAG1  <- PRCP_CURRENT[1:(length(PRCP_CURRENT)-1)]
 		MONTH_LAG0 <- MONTH_D_CURRENT[2:length(PRCP_CURRENT)]
 		MONTH_LAG1 <- MONTH_D_CURRENT[1:(length(PRCP_CURRENT)-1)]
-		YEAR_LAG0 <- YEAR_D_CURRENT[2:length(PRCP_CURRENT)]
-		YEAR_LAG1 <- YEAR_D_CURRENT[1:(length(PRCP_CURRENT)-1)]
+		YEAR_LAG0  <- YEAR_D_CURRENT[2:length(PRCP_CURRENT)]
+		YEAR_LAG1  <- YEAR_D_CURRENT[1:(length(PRCP_CURRENT)-1)]
 
 		# Calculate monthly trahsition probabilities
 		for (m in 1:12) {

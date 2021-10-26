@@ -5,11 +5,9 @@
 
 
 library(gridwegen)
-
 library(tidyr)
 library(dplyr)
 library(lubridate)
-
 
 # Path to output files
 path0 <- "C:/Users/taner/OneDrive - Stichting Deltares/_DELTARES/02 Projects/11206634 Gabon/05 Models/wegen/"
