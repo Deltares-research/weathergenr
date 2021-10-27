@@ -21,6 +21,12 @@ imposeClimateChanges(
 \arguments{
 \item{proj.name}{To be completed...}
 
+\item{in.path}{Placeholder.}
+
+\item{in.file}{Placeholder.}
+
+\item{file.suffix}{Placeholder.}
+
 \item{out.path}{To be completed...}
 
 \item{sim.date.begin}{To be completed...}
@@ -33,9 +39,7 @@ imposeClimateChanges(
 
 \item{change.settings}{To be completed...}
 
-\item{input.dir}{To be completed...}
-
-\item{wg.var.labs}{To be completed...}
+\item{save.scenario.matrix}{Placeholder.}
 }
 \value{
 

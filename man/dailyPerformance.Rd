@@ -26,6 +26,8 @@ dailyPerformance(
 \item{variable.labels}{A vector object specifying the names of weather variable labels.}
 
 \item{variable.units}{A vector object specifying the names of weather variable units.}
+
+\item{nmax}{Placeholder}
 }
 \value{
 

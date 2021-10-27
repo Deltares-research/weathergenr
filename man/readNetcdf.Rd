@@ -23,6 +23,8 @@ readNetcdf(
 \item{variables}{A list object specifying variable names}
 
 \item{origin.date}{A character string to specify the date of origin}
+
+\item{leap.year}{placeholder}
 }
 \value{
 

@@ -5,42 +5,40 @@
 \title{Main wrapper function for daily weather generation}
 \usage{
 simulateWeather(
-  proj.name = NULL,
-  output.dir = NULL,
-  climate_tidy = NULL,
-  wg.date.begin = NULL,
-  wg.vars = NULL,
-  wg.var.labs = NULL,
-  wg.var.units = NULL,
-  warm.var = NULL,
-  ssig = 0.9,
+  output.path = NULL,
+  hist.climate = NULL,
+  hist.date.start = NULL,
+  variables = NULL,
+  variable.labels = NULL,
+  variable.units = NULL,
+  warm.variable = NULL,
+  warm.signif.level = 0.9,
   ymax = 40,
   rmax = 5000,
   nmax = 5,
-  nc.dimnames = NULL,
-  validate = FALSE,
-  sim.start.year = 2020,
+  validate = TRUE,
+  sim.year.start = 2020,
   month.list = 1:12,
-  validation.grid.num = 20,
+  validation.grid.num = 50,
   ...
 )
 }
 \arguments{
-\item{proj.name}{Placeholder.}
+\item{output.path}{Placeholder.}
 
-\item{output.dir}{}
+\item{hist.climate}{Placeholder.}
 
-\item{wg.date.begin}{Placeholder.}
+\item{hist.date.start}{Placeholder.}
 
-\item{wg.vars}{Placeholder.}
+\item{variables}{Placeholder.}
 
-\item{wg.var.labs}{Placeholder.}
+\item{variable.labels}{Placeholder.}
 
-\item{wg.var.units}{Placeholder.}
+\item{variable.units}{Placeholder.}
 
-\item{warm.var}{Placeholder.}
+\item{warm.variable}{Placeholder.}
 
-\item{ssig}{Placeholder.}
+\item{warm.signif.level}{Placeholder.}
 
 \item{ymax}{Placeholder.}
 
@@ -48,13 +46,15 @@ simulateWeather(
 
 \item{nmax}{Placeholder.}
 
-\item{nc.dimnames}{Placeholder.}
-
 \item{validate}{Placeholder.}
 
-\item{nc.path}{Placeholder.}
+\item{sim.year.start}{Placeholder.}
 
-\item{nc.file}{Placeholder.}
+\item{month.list}{Placeholder.}
+
+\item{validation.grid.num}{Placeholder.}
+
+\item{...}{Placeholder.}
 }
 \value{
 

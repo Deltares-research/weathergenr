@@ -16,12 +16,12 @@
 #' @param variables A vector object specifying the names of weather variables.
 #' @param variable.labels A vector object specifying the names of weather variable labels.
 #' @param variable.units A vector object specifying the names of weather variable units.
+#' @param nmax Placeholder
 #'
 #' @return
 #' @export
-#' @import dplyr
-#' @import ggplot2
-#'
+#' @import utils ggplot2 dplyr
+#' @importFrom stats cor median
 dailyPerformance <- function(
   daily.sim = NULL,
   daily.obs = NULL,
@@ -54,7 +54,8 @@ dailyPerformance <- function(
     sim_stats <- bind_rows(sim_stats,
        daily.sim[[n]] %>%
        bind_rows(.id = "id") %>%
-       mutate(year = year(date), mon = month(date), id = as.numeric(id)) %>%
+       mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m")),
+            id = as.numeric(id)) %>%
        group_by(id, year, mon) %>%
        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness), .names = "{.col}:{.fn}")) %>%
        gather(key = variable, value = value, -id, -year, -mon) %>%
@@ -66,7 +67,7 @@ dailyPerformance <- function(
     sim_stats_aavg <- bind_rows(sim_stats_aavg,
         daily.sim[[n]] %>%
         bind_rows(.id = "id") %>%
-        mutate(year = year(date), mon = month(date)) %>%
+        mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m"))) %>%
         group_by(year, mon) %>%
         summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness), .names = "{.col}:{.fn}")) %>%
         gather(key = variable, value = value, -year, -mon) %>%
@@ -78,7 +79,8 @@ dailyPerformance <- function(
     sim_stats_icor <- bind_rows(sim_stats_icor,
         daily.sim[[n]] %>%
         bind_rows(.id = "id") %>%
-        mutate(year = year(date), mon = month(date), day = day(date), id = as.numeric(id)) %>%
+        mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m")),
+          day = as.numeric(format(date,"%d")), id = as.numeric(id)) %>%
         dplyr::select(id, year, mon, day, {{variables}}) %>%
         gather(key = variable, value = value, -id, -year, -mon, -day) %>%
         unite(id_variable, c("id","variable"), sep = ":") %>%
@@ -98,7 +100,8 @@ dailyPerformance <- function(
 
   hist_stats <- lapply(1:length(daily.obs), function(x) mutate(daily.obs[[x]], id = x)) %>%
     do.call("rbind", .) %>%
-    mutate(year = year(date), mon = month(date), id = as.numeric(id)) %>%
+    mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m")),
+           id = as.numeric(id)) %>%
     group_by(id, year, mon) %>%
     summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = value,-id, -year, -mon) %>%
@@ -107,7 +110,7 @@ dailyPerformance <- function(
 
   hist_stats_aavg <- lapply(1:length(daily.obs), function(x) mutate(daily.obs[[x]], id = x)) %>%
     do.call("rbind", .) %>%
-    mutate(mon = month(date)) %>%
+    mutate(mon = as.numeric(format(date,"%m"))) %>%
     group_by(mon) %>%
     summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = value,-mon) %>%
@@ -116,7 +119,8 @@ dailyPerformance <- function(
 
   hist_stats_icor <- lapply(1:length(daily.obs), function(x) mutate(daily.obs[[x]], id = x)) %>%
     do.call("rbind", .) %>%
-    mutate(year = year(date), mon = month(date), day = day(date)) %>%
+      mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m")),
+        day = as.numeric(format(date,"%d"))) %>%
     dplyr::select(id, year, mon, day, {{variables}}) %>%
     gather(key = variable, value = value, -id, -year, -mon, -day) %>%
     unite(id_variable, c("id","variable"),sep = ":") %>%
@@ -217,7 +221,7 @@ dailyPerformance <- function(
       theme_light(base_size = 12) +
       ggtitle(variable.labels[v]) +
       geom_boxplot() +
-      stat_summary(fun.y="mean", color="blue")+
+      stat_summary(fun="mean", color="blue")+
       facet_wrap(~ stat, scales = "free", ncol = ceiling(num_stats/2)) +
       geom_point(data = filter(hist_stats_aavg, variable == variables[v]),
                  color = "red") +
@@ -244,7 +248,7 @@ dailyPerformance <- function(
       theme(plot.margin = unit(c(0.5,0.2,0.2,0.2), "cm"))
 
     ggsave(paste0(out.path,"daily_stats_", variables[v],".png" ),
-           height = g.hght1, width = g.wdth1)
+           height = g.hght2, width = g.wdth2)
 
   }
 

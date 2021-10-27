@@ -21,10 +21,29 @@
 #'
 #' @return
 #' @export
-resampleDailyWeather <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM = NULL, ANNUAL_PRCP = NULL,
-  WATER_YEAR_A, WATER_YEAR_D, PRCP, TEMP ,DATE_D, MONTH_D, YEAR_D, MONTH_DAY_D,
-  month_list, water_year_start, water_year_end, y_sample_size = 20, SIM_LENGTH = NULL, kk = NULL, thresh1 = 0.3,
-  extreme_quantile = 0.8, MONTH_SIM = NULL, WATER_YEAR_SIM = NULL, START_YEAR_SIM = NULL,
+resampleDates <- function(k1 = NULL,
+  ymax = NULL,
+  PRCP_FINAL_ANNUAL_SIM = NULL,
+  ANNUAL_PRCP = NULL,
+  WATER_YEAR_A ,
+  WATER_YEAR_D,
+  PRCP,
+  TEMP ,
+  DATE_D,
+  MONTH_D,
+  YEAR_D,
+  MONTH_DAY_D,
+  month_list,
+  water_year_start,
+  water_year_end,
+  y_sample_size = 20,
+  SIM_LENGTH = NULL,
+  kk = NULL,
+  thresh1 = 0.3,
+  extreme_quantile = 0.8,
+  MONTH_SIM = NULL,
+  WATER_YEAR_SIM = NULL,
+  START_YEAR_SIM = NULL,
   DAY_SIM = NULL)
 
   {
@@ -45,14 +64,14 @@ resampleDailyWeather <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM =
 	SIM_PRCP <- array(0, c(SIM_LENGTH))
 	SIM_TEMP <- array(25, c(SIM_LENGTH))
 
-	SIM_DATE <- rep(as.Date("1900-01-01"), SIM_LENGTH) #vector("numeric", length = SIM_LENGTH)
+	SIM_DATE <- rep(as.Date(DATE_D[1]), SIM_LENGTH)
 
 	# Current Stochastic trace....
 	count <- 1
 	set.seed(k1)
 
 	# Generate random numbers btw 0 and 1 for each day of the simulation period
-	rn_all <- runif(SIM_LENGTH,0,1)
+	rn_all <- stats::runif(SIM_LENGTH,0,1)
 
 	# For each year start sampling....
 	for (y in 1:ymax) {
@@ -61,22 +80,20 @@ resampleDailyWeather <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM =
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
 
 		# Sample 100 similar years from the historical record for the current year
-		CUR_YEARS <- KNN_ANNUAL(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A,
+		CUR_YEARS <- knnAnnual(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A,
 		  kk, k1, y, y_sample_size = y_sample_size)
 
 		# Find indices of days in all sampled years in CUR_YEARS
 		conditional_selection <- NULL
 
 		#Indices of days in the selected 100 years....
-		for (yy in 1:length(CUR_YEARS)) {conditional_selection <- c(conditional_selection, which(WATER_YEAR_D==CUR_YEARS[yy]))}
+		for (yy in 1:length(CUR_YEARS)) {
+		  conditional_selection <- c(conditional_selection, which(WATER_YEAR_D==CUR_YEARS[yy]))
+		}
 
 		# Find all variables and date indices in the current selection years
 		PRCP_CURRENT <- PRCP[conditional_selection]
 		TEMP_CURRENT <- TEMP[conditional_selection]
-
-		#TMAX_CURRENT <- TMAX[conditional_selection]
-		#TMIN_CURRENT <- TMIN[conditional_selection]
-
 
 		DATE_D_CURRENT <- DATE_D[conditional_selection]
 		MONTH_D_CURRENT <- MONTH_D[conditional_selection]
@@ -89,7 +106,7 @@ resampleDailyWeather <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM =
 		# Calculate thresholds for each month
 		for (m in 1:12) {
 			x <- which(MONTH_D_CURRENT==month_list[m] & PRCP_CURRENT>thresh1)
-			thresh2[m] <- quantile(PRCP_CURRENT[x],(extreme_quantile))[[1]]
+			thresh2[m] <- stats::quantile(PRCP_CURRENT[x],(extreme_quantile))[[1]]
 		}
 
 		#Define lagged variables on daily time-series (for current year set)
@@ -122,7 +139,9 @@ resampleDailyWeather <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM =
 			p21_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]>thresh1 & PRCP_LAG0[x]<=thresh2[m])) / length(which(PRCP_LAG1[x]>thresh2[m]))
 			p22_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]>thresh2[m])) / length(which(PRCP_LAG1[x]>thresh2[m]))
 
-			PI_new <- GET_PI(p00_final[r][1],p01_final[r][1],p02_final[r][1],p10_final[r][1],p11_final[r][1],p12_final[r][1],p20_final[r][1],p21_final[r][1],p22_final[r][1])
+			PI_new <- getPI(p00_final[r][1], p01_final[r][1], p02_final[r][1],
+			                p10_final[r][1], p11_final[r][1], p12_final[r][1],
+			                p20_final[r][1], p21_final[r][1], p22_final[r][1])
 
 		} #month-counter close
 
@@ -165,7 +184,6 @@ resampleDailyWeather <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM =
   			} else {
   				OCCURENCES[count] <- 2
   			}
-
 
   			# Current day's month of the year and day of the year indices
   			m <- MONTH_SIM[(count-1)]
@@ -224,18 +242,19 @@ resampleDailyWeather <- function(k1 = NULL, ymax = NULL, PRCP_FINAL_ANNUAL_SIM =
   			cur_sim_TEMP <- SIM_TEMP[(count-1)]
 
   			mm <- which(MONTH_D_CURRENT==m)
-  			mm_p <- which(MONTH_D_CURRENT==m & PRCP_CURRENT>0)
+  			mm_p <- which(MONTH_D_CURRENT==m & PRCP_CURRENT > 0)
 
-  			sd_monthly_TEMP <- sd(TEMP_CURRENT[mm],na.rm=TRUE)
-  			sd_monthly_PRCP <- sd(PRCP_CURRENT[mm_p],na.rm=TRUE)
+  			sd_monthly_TEMP <- stats::sd(TEMP_CURRENT[mm], na.rm=TRUE)
+  			sd_monthly_PRCP <- stats::sd(PRCP_CURRENT[mm_p], na.rm=TRUE)
 
-  			mean_monthly_TEMP <- mean(TEMP_CURRENT[mm],na.rm=TRUE)
-  			mean_monthly_PRCP <- mean(PRCP_CURRENT[mm_p],na.rm=TRUE)
+  			mean_monthly_TEMP <- mean(TEMP_CURRENT[mm], na.rm=TRUE)
+  			mean_monthly_PRCP <- mean(PRCP_CURRENT[mm_p], na.rm=TRUE)
 
   			k <- round(sqrt(length(possible_days)))
 
-  			RESULT <- KNN_DAILY(cur_sim_PRCP, cur_sim_TEMP, PRCP_TODAY, TEMP_TODAY, DATE_TOMORROW, k, sd_monthly_PRCP,
-	        sd_monthly_TEMP, mean_monthly_PRCP, mean_monthly_TEMP, k1, count)
+  			RESULT <- knnDaily(cur_sim_PRCP, cur_sim_TEMP, PRCP_TODAY, TEMP_TODAY,
+  			  DATE_TOMORROW, k, sd_monthly_PRCP, sd_monthly_TEMP, mean_monthly_PRCP,
+  			  mean_monthly_TEMP, k1, count)
 
   			SIM_DATE[count] <- DATE_D_CURRENT[which(as.numeric(DATE_D_CURRENT)==RESULT)][1]
 

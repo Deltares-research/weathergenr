@@ -37,12 +37,12 @@ waveletARSubset <- function(
   save.series = TRUE,
   verbose = FALSE,
   out.path = out_path,
-  mean.bounds = NULL,
-  sdev.bounds = NULL,
-  max.bounds  = NULL,
-  min.bounds  = NULL,
-  power.bounds = NULL,
-  nonsig.threshold = NULL)
+  mean.bounds = c(0.95,1.05),
+  sdev.bounds = c(0.90,1.10),
+  max.bounds  = c(0.90,1.10),
+  min.bounds  = c(0.90,1.10),
+  power.bounds = c(0.75,2.50),
+  nonsig.threshold = 0.8)
 
 {
 
@@ -77,7 +77,7 @@ waveletARSubset <- function(
     sub_power3 <- which(sapply(1:ncol(power.sim), function(x)
         all((power.sim[-periods_sig,x] < power.signif[-periods_sig]*nonsig.threshold))))
 
-    sub_power <- intersect(intersect(sub_power1, sub_power2),sub_power3)
+    sub_power <- base::intersect(base::intersect(sub_power1, sub_power2),sub_power3)
   } else {
     sub_power  <- 1:ncol(series.sim)
   }
@@ -114,7 +114,7 @@ waveletARSubset <- function(
   }
 
   #Select intersection
-  sub_clim <- Reduce(intersect, list(sub_mean, sub_sdev, sub_power,
+  sub_clim <- Reduce(base::intersect, list(sub_mean, sub_sdev, sub_power,
                                      sub_min, sub_max))
 
   # Stochastically select from the initial dataset

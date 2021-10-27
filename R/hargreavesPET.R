@@ -8,7 +8,7 @@
 #'
 #' @return the output is a vector of PET values
 #' @export
-hargreavesPET <- function(months, temp, tdiff, lat) {
+hargreavesPet <- function(months, temp, tdiff, lat) {
 
   days.j = c(15, 46, 75, 106, 136, 167, 197, 228, 259, 289, 320, 350)
 

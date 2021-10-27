@@ -2,20 +2,23 @@
 #' Climate Change perturbations function
 #'
 #' @param proj.name To be completed...
-#' @param input.dir  To be completed...
 #' @param out.path To be completed...
 #' @param sim.date.begin To be completed...
 #' @param wg.vars To be completed...
-#' @param wg.var.labs To be completed...
 #' @param wg.var.units To be completed...
 #' @param nc.dimnames To be completed...
 #' @param change.settings To be completed...
+#' @param in.path Placeholder.
+#' @param in.file Placeholder.
+#' @param file.suffix Placeholder.
+#' @param save.scenario.matrix Placeholder.
 #'
 #' @return
 #' @export
 #' @import dplyr
 #' @import ncdf4
-#' @import lubridate
+#' @importFrom utils write.csv
+#' @importFrom readxl read_excel
 imposeClimateChanges <- function(
   proj.name = NULL,
   in.path = NULL,
@@ -108,9 +111,9 @@ imposeClimateChanges <- function(
   ngrids <- length(grids)
 
   # Date indices
-  sim_dates <- nc_data$tidy_data$data[[1]]$date
-  year_series <- year(sim_dates)
-  month_series <- month(sim_dates)
+  sim_dates <- nc_data$nc_dates
+  year_series <- as.numeric(format(sim_dates,"%Y"))
+  month_series <- as.numeric(format(sim_dates,"%m"))
   year_index <- year_series - min(year_series) + 1
   year_num <- length(unique(year_series))
 
@@ -197,7 +200,7 @@ imposeClimateChanges <- function(
       daily_rlz[[x]]$temp_max <- daily_rlz[[x]]$temp_max + temp_deltas
 
       # Calculate PET from temp, temp_min, temp_max
-      daily_rlz[[x]]$pet <- with(daily_rlz[[x]], hargreavesPET(
+      daily_rlz[[x]]$pet <- with(daily_rlz[[x]], hargreavesPet(
         months = month_series, temp = temp, tdiff = temp_max - temp_min,
         lat = coordGrid$y[x]))
     }

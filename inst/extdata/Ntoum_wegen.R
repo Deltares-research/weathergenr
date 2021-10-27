@@ -3,61 +3,94 @@
 # Load package
 #devtools::install_github("tanerumit/gridwegen@dev")
 
-
+# Packages needed
 library(gridwegen)
 library(tidyr)
 library(dplyr)
-library(lubridate)
 
 # Path to output files
 path0 <- "C:/Users/taner/OneDrive - Stichting Deltares/_DELTARES/02 Projects/11206634 Gabon/05 Models/wegen/"
-out_path <- paste0(path0, "results_new/")
 
 # Path to historical gridded data
+out_path <- paste0(path0, "TEST02/")
 nc_path <- paste0(path0, "input/")
 nc_file <- "localP_chirpsP_era5T_19810101_chunks.nc"
+nc_dimnames <- list(x = "lon", y = "lat", time = "time")
+origin_date <- as.Date("1981-01-01")
+sim_origin_date <- as.Date("2020-01-01")
+wg_variables <- c("precip", "temp", "temp_min", "temp_max")
+wg_variable_labels <- c("Precipitation", "Avg. Temperature", "Min. Temperature","Max. Temperature")
+wg_variable_units  <- c("mm/day", "°C", "°C", "°C", "mm/day")
+project_name = "ntoum_test"
+month_list <- 1:12
+rlz_num = 5
+sim_years = 40
+
 
 # Read-in gridded weather data from netcdf
 nc_data <- readNetcdf(
-    in.path = nc_path,
-    in.file = nc_file,
-    dim.names = list(x = "lon", y = "lat", time = "time"),
-    variables = c("precip", "temp", "temp_min", "temp_max"),
-    origin.date = as.Date("1981-01-01"),
+    nc.path = nc_path,
+    nc.file = nc_file,
+    nc.dimnames = nc_dimnames,
+    nc.variables = wg_variables,
+    origin.date = origin_date,
     leap.year = TRUE)
 
-# Remove unnecessary/empty grids from tidy data table
-grid_select <- which(sapply(1:nrow(nc_data$tidy_data), function(x)
-  !is.na(mean(nc_data$tidy_data$data[[x]]$temp_min))))
-climate_tidy <- nc_data$tidy_data[grid_select,] %>% mutate(id = 1:n())
+sim_dates <- tibble(date = sim_origin_date + 0:(ymax*366)) %>%
+  mutate(year = as.numeric(format(date,"%Y")),
+         month = as.numeric(format(date,"%m")),
+         day = as.numeric(format(date,"%d"))) %>%
+  filter(month!=2 | day!=29) %>%
+  slice(1:(ymax*365))
 
-simulateWeather(
-      proj.name = "ntoum_test",
-      output.dir = out_path,
-      climate_tidy = climate_tidy,
-      wg.date.begin = as.Date("1981-01-01"),
-      wg.vars = c("precip", "temp", "temp_min", "temp_max"),
-      wg.var.labs = c("Precipitation", "Avg. Temperature", "Min. Temperature","Max. Temperature"),
-      wg.var.units = c("mm/day", "°C", "°C", "°C", "mm/day"),
-      warm.var = "precip",
-      ymax = 40,
-      rmax = 5000,
-      nmax = 5,
-      nc.dimnames = list(x = "lon", y = "lat", time = "time"),
-      validate = TRUE,
-      mean.bounds = c(0.95,1.05),
-      sdev.bounds = c(0.90,1.10),
-      max.bounds  = c(0.90,1.10),
-      min.bounds  = c(0.90,1.10),
-      power.bounds = c(0.75,2.50),
-      nonsig.threshold = 0.8
-)
+dates_res <- simulateWeather(
+  output.path = out_path,
+  hist.climate = nc_data$tidy_data,
+  hist.date.start = origin_date,
+  sim.year.start = as.numeric(format(sim_origin_date,"%Y")),
+  month.list = month_list,
+  variables = wg_variables,
+  variable.labels = wg_variable_labels,
+  variable.units = wg_variable_units,
+  warm.variable = "precip",
+  warm.signif.level = 0.90,
+  ymax = sim_years,
+  nmax = rlz_num)
+
+#### Calculate PET and save to netcdf file
+for (n in 1:rlz_num) {
+
+  day_order <- match(dates_res[[n]], nc_data$nc_dates)
+
+  # Sample realizations
+  rlz <- lapply(nc_data$tidy_data, function(x) x[day_order,])
+
+  # Calculate PET based on Hargreaves Eq.
+  rlz <- lapply(1:length(rlz), function(x)
+    mutate(rlz[[x]], pet = hargreavesPet(months = sim_dates$month, temp = rlz[[x]]$temp,
+            tdiff = rlz[[x]]$temp_max - rlz[[x]]$temp_min, lat = climate_tidy$y[x])))
+
+  writeNetcdf(
+      data = rlz,
+      output.path = paste0(out_path,"historical/"),
+      nc.dimensions = names(nc_data$nc_dimensions),
+      nc.dimnames = nc_dimnames,
+      origin.date = sim_origin_date,
+      calendar.type = "no leap",
+      variables = c(wg_variables, "pet"),
+      variable.units = c(wg_variable_units, "mm/day"),
+      file.suffix = n
+  )
+}
+
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
 
 # natural variability realizations in the input folder
 nvar_filenames <- list.files(paste0(out_path,"historical/"))
 nmax <- length(nvar_filenames)
 
-for(n in 2:2) {
+for(n in 1:rlz_num) {
 
   imposeClimateChanges(
       proj.name = "ntoum",
@@ -75,38 +108,4 @@ for(n in 2:2) {
 
 }
 
-# library(fitdistrplus)
-# library(dplyr)
-# library(tidyr)
-# library(ggplot2)
-# library(tibble)
-# library(lubridate)
-# library(ncdf4)
-# library(readxl)
-# library(patchwork)
-
-
-
-
-
-
-proj.name = "ntoum_test"
-output.dir = out_path
-climate_tidy = climate_tidy
-wg.date.begin = as.Date("1981-01-01")
-wg.vars = c("precip", "temp", "temp_min", "temp_max")
-wg.var.labs = c("Precipitation", "Avg. Temperature", "Min. Temperature","Max. Temperature")
-wg.var.units = c("mm/day", "°C", "°C", "°C", "mm/day")
-warm.var = "precip"
-ymax = 40
-rmax = 5000
-nmax = 5
-nc.dimnames = list(x = "lon", y = "lat", time = "time")
-validate = TRUE
-mean.bounds = NULL
-sdev.bounds = NULL
-max.bounds  = NULL
-min.bounds  = NULL
-power.bounds = NULL
-nonsig.threshold = NULL
 

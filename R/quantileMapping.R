@@ -9,7 +9,7 @@
 #' @return
 #' @export
 #' @importFrom fitdistrplus fitdist
-#'
+#' @importFrom utils capture.output
 quantileMapping <- function(
   value = NULL,
   date = NULL,
@@ -72,14 +72,14 @@ quantileMapping <- function(
   tdist[["shape"]][pmon,] <- sapply(1:max(year.ts), function(y) sapply(pmon, function(m) tdist[["mean"]][m,y]^2 / tdist[["var"]][m,y]))
 
   # Estimate quantiles from base distribution
-  qtile <- pgamma(value[pind], shape = unlist(bdist[["shape"]][mon.ts[pind]]), scale = unlist(bdist[["scale"]][mon.ts[pind]]))
+  qtile <- stats::pgamma(value[pind], shape = unlist(bdist[["shape"]][mon.ts[pind]]), scale = unlist(bdist[["scale"]][mon.ts[pind]]))
 
   # Find time-series of shape and scale parameters for the fitted distribution
   shape_vec <- sapply(pind, function(x) tdist[["shape"]][mon.ts[x], year.ts[x]])
   scale_vec <- sapply(pind, function(x) tdist[["scale"]][mon.ts[x], year.ts[x]])
 
   # Replace the original matrix
-  value[pind] <- qgamma(qtile, shape = shape_vec, scale = scale_vec)
+  value[pind] <- stats::qgamma(qtile, shape = shape_vec, scale = scale_vec)
 
   return(value)
 }

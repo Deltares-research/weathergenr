@@ -7,7 +7,9 @@
 getWaterYear(date = NULL, month.list = 1:12)
 }
 \arguments{
-\item{month_list}{}
+\item{date}{placeholder}
+
+\item{month.list}{placeholder}
 }
 \value{
 

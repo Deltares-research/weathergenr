@@ -179,31 +179,32 @@ waveletDecompose <- function(variable = NULL,
     }
   }
 
-  names(COMPS) <- paste0("COMPS", 1:NUM_FINAL_PERIODS)
-  NOISE = current_variable_org - apply(COMPS, 1, sum)
+  names(COMPS) <- paste0("Component_", 1:NUM_FINAL_PERIODS)
+  Noise = current_variable_org - apply(COMPS, 1, sum)
 
 
   df <- tibble(Year = 1:length(variable), Original = variable) %>%
       add_column(COMPS) %>%
-      add_column(NOISE) %>%
+      add_column(Noise) %>%
       gather(key = variable, value = value, -Year) %>%
-      mutate(variable = factor(variable, levels = c("Original", paste0("COMPS", 1:NUM_FINAL_PERIODS), "NOISE")))
+      mutate(variable = factor(variable,
+        levels = c("Original", paste0("Component_", 1:NUM_FINAL_PERIODS), "Noise")))
 
   if(plot == TRUE) {
 
     p <- ggplot(df, aes(x = Year, y = value)) +
-        theme_bw() +
+        theme_light(base_size = 12) +
         facet_wrap(~ variable, ncol = 1, scales = "free") +
         geom_line() +
         labs(x = "Time (year)", y = "")
 
     # Save plot to file
-    ggsave(paste0(out.path, "warm_decomposition.png"), height=9, width=10)
+    ggsave(paste0(out.path, "warm_decomposition.png"), height=6, width=8)
 
 
 
   }
 
-  return(COMPS %>% mutate(NOISE = NOISE))
+  return(COMPS %>% mutate(NOISE = Noise))
 
 }

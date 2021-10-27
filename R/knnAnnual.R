@@ -11,8 +11,7 @@
 #'
 #' @return
 #' @export
-
-KNN_ANNUAL <- function(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A, kk,
+knnAnnual <- function(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A, kk,
 	  k1, y, y_sample_size = 20) {
 
 	  var_order <- 1:length(ANNUAL_PRCP)
@@ -20,11 +19,12 @@ KNN_ANNUAL <- function(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A, kk,
 
 		ordered_distances <- matrix(cbind(var_order,distance)[order(distance),],ncol=2)
 		K_Distances <- matrix(ordered_distances[1:kk,],ncol=2)
-		PROBS <- (1/row(K_Distances)[,1]) / sum((1/row(K_Distances)[,1]))
+		probs <- (1/row(K_Distances)[,1]) / sum((1/row(K_Distances)[,1]))
 
 		set.seed(k1*y)
-
-		selection <- sample(row(K_Distances)[,1],size=y_sample_size,prob=PROBS,replace=TRUE)
+		selection <- sample(row(K_Distances)[,1], size=y_sample_size, prob=probs, replace=TRUE)
 		FINAL_YEARS <- WATER_YEAR_A[K_Distances[selection,1]]
+
+		return(FINAL_YEARS)
 	}
 
