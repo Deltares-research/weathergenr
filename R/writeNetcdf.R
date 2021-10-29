@@ -17,6 +17,7 @@
 #'
 writeNetcdf <- function(
   data = NULL,
+  coord.grid = NULL,
   output.path = NULL,
   nc.dimensions = NULL,
   nc.dimnames = NULL,
@@ -25,32 +26,34 @@ writeNetcdf <- function(
   variables = NULL,
   variable.units = NULL,
   nc.compression = 4,
-  file.suffix = 1
+  file.prefix = "clim_change_rlz",
+  file.suffix = "")
 
-) {
+{
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
 
   sim.length = nrow(data[[1]])
 
-  # Dimensions in the outputted variable (order matters!)
-  dim_ord <- nc.dimensions
 
   ncout_dims <- list()
+
+  #time
   ncout_dims[[nc.dimnames$time]] <- ncdf4::ncdim_def(name = nc.dimnames$time,
       units = paste0("days since ", format(round(as.POSIXct(origin.date), units = "day"),
         '%Y-%m-%d %M:%H:%S')), vals = 1:sim.length, calendar = "no leap")
 
+  #y = latitude
   ncout_dims[[nc.dimnames$y]] <- ncdf4::ncdim_def(nc.dimnames$y,
-        units= "", vals = nc_data$nc_dimensions[[nc.dimnames$y]])
+        units= "", vals = nc.dimensions[[nc.dimnames$y]])
 
+  #x = longitude
   ncout_dims[[nc.dimnames$x]] <- ncdf4::ncdim_def(name = nc.dimnames$x,
-        units= "", vals = nc_data$nc_dimensions[[nc.dimnames$x]])
-
-  ncout_dim_reorder <- unname(sapply(names(nc.dimnames), function(x) which(x == dim_ord)))
+        units= "", vals = nc.dimensions[[nc.dimnames$x]])
 
   # Other nc attributes
-  ncout_chunksize <- c(1,length(nc_data$nc_dimensions[[2]]),length(nc_data$nc_dimensions[[3]]))
+  ncout_chunksize <- c(1,length(nc.dimensions[[nc.dimnames$y]]),
+    length(nc.dimensions[[nc.dimnames$x]]))
 
   # ncout variables
   ncout_vars <- lapply(1:length(variables), function(x) ncdf4::ncvar_def(
@@ -68,7 +71,7 @@ writeNetcdf <- function(
   names(ncout_vars) <- c(variables, "spatial_ref")
 
   # TRANSLATE INTO TIDY-FORMAT
-  coordGrid <- climate_tidy %>% mutate(date = list(NA))
+  coord.grid <- coord.grid %>% mutate(date = list(NA))
 
   # template to store data from wg variables
   var_empty <- array(NA, c(
@@ -80,7 +83,7 @@ writeNetcdf <- function(
   ncout_vardata <- var_empty
 
   # create netCDF file and put arrays
-  ncout_file <- ncdf4::nc_create(paste0(output.path, "hist_rlz_",file.suffix, ".nc"),
+  ncout_file <- ncdf4::nc_create(paste0(output.path, file.prefix,"_",file.suffix, ".nc"),
     ncout_vars, force_v4 = TRUE)
 
   #Loop through each variable and write data to netcdf
@@ -88,8 +91,8 @@ writeNetcdf <- function(
 
     ncout_vardata[1:length(ncout_vardata)] <- var_empty
 
-    for (c in 1:nrow(coordGrid)) {
-      ncout_vardata[, coordGrid$yind[c], coordGrid$xind[c]] <- data[[c]][[variables[i]]]
+    for (c in 1:nrow(coord.grid)) {
+      ncout_vardata[, coord.grid$yind[c], coord.grid$xind[c]] <- data[[c]][[variables[i]]]
     }
 
     # Put variables

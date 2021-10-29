@@ -5,26 +5,27 @@
 \title{Function to read climate data from netcdf files}
 \usage{
 readNetcdf(
-  in.path = NULL,
-  in.file = NULL,
-  dim.names = NULL,
-  variables = NULL,
+  nc.path = NULL,
+  nc.file = NULL,
+  nc.dimnames = NULL,
+  nc.variables = NULL,
   origin.date = NULL,
-  leap.year = TRUE
+  leap.year = TRUE,
+  omit.nans = TRUE
 )
 }
 \arguments{
-\item{in.path}{A character string to define the path of template netcdf file.}
+\item{nc.path}{A character string to define the path of template netcdf file.}
 
-\item{in.file}{A character string to define the name of the template netcdf file.}
+\item{nc.file}{A character string to define the name of the template netcdf file.}
 
-\item{dim.names}{A list object specifying the dimension names.}
-
-\item{variables}{A list object specifying variable names}
+\item{nc.dimnames}{A list object specifying the dimension names.}
 
 \item{origin.date}{A character string to specify the date of origin}
 
 \item{leap.year}{placeholder}
+
+\item{variables}{A list object specifying variable names}
 }
 \value{
 

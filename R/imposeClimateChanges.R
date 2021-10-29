@@ -1,15 +1,14 @@
 
 #' Climate Change perturbations function
 #'
-#' @param proj.name To be completed...
-#' @param out.path To be completed...
-#' @param sim.date.begin To be completed...
-#' @param wg.vars To be completed...
-#' @param wg.var.units To be completed...
+#' @param output.path To be completed...
+#' @param sim.date.start To be completed...
+#' @param variables To be completed...
+#' @param variable.units To be completed...
 #' @param nc.dimnames To be completed...
 #' @param change.settings To be completed...
-#' @param in.path Placeholder.
-#' @param in.file Placeholder.
+#' @param input.path Placeholder.
+#' @param input.data Placeholder.
 #' @param file.suffix Placeholder.
 #' @param save.scenario.matrix Placeholder.
 #'
@@ -20,17 +19,18 @@
 #' @importFrom utils write.csv
 #' @importFrom readxl read_excel
 imposeClimateChanges <- function(
-  proj.name = NULL,
-  in.path = NULL,
-  in.file = NULL,
+  input.path = NULL,
+  input.data = NULL,
   file.suffix = "",
-  out.path = NULL,
-  sim.date.begin = NULL,
-  wg.vars = NULL,
-  wg.var.units = NULL,
+  file.prefix = "clim_change_rlz",
+  output.path = NULL,
+  sim.date.start = NULL,
+  variables = NULL,
+  variable.units = NULL,
   nc.dimnames = NULL,
   change.settings = NULL,
-  save.scenario.matrix = TRUE)
+  save.scenario.matrix = TRUE,
+  step = TRUE)
 
 {
 
@@ -67,7 +67,6 @@ imposeClimateChanges <- function(
   PARCC$par1$sind <- 1:PARCC$par1$increments
   PARCC$par2$sind <- 1:PARCC$par2$increments
 
-
   for (i in 1:length(PARCC)) {
 
     PARCC[[i]]$mean$steps <- sapply(1:12, function(m)
@@ -86,7 +85,7 @@ imposeClimateChanges <- function(
     mutate(precip_change_variance = PARCC[[1]]$var$steps[par1,1], temp_change_variance = PARCC[[2]]$var$steps[par2,1])
 
   if(isTRUE(save.scenario.matrix)) {
-    write.csv(x = scn_mat, file = paste0(out.path, "scenario_matrix.csv"))
+    write.csv(x = scn_mat, file = paste0(output.path, "scenario_matrix.csv"))
   }
 
   smax <- nrow(scn_mat)
@@ -96,11 +95,11 @@ imposeClimateChanges <- function(
   #::::::::::::::::::::::: TEMPLATE FOR WRITING TO NETCDF ::::::::::::::::::::::
 
   nc_data <- readNetcdf(
-    in.path = in.path,
-    in.file = in.file,
-    dim.names = list(x = "lon", y = "lat", time = "time"),
-    variables = wg.vars,
-    origin.date = sim.date.begin,
+    nc.path = input.path,
+    nc.file = input.data,
+    nc.dimnames = nc.dimnames,
+    nc.variables = variables,
+    origin.date = sim.date.start,
     leap.year = FALSE)
 
   # TRANSLATE INTO TIDY-FORMAT
@@ -117,73 +116,25 @@ imposeClimateChanges <- function(
   year_index <- year_series - min(year_series) + 1
   year_num <- length(unique(year_series))
 
-  # Dimensions in the outputted variable (order matters!)
-  dim_ord <- names(nc_data$nc_dimensions)
-
-  ncout_dims <- list()
-  ncout_dims[[nc.dimnames$time]] <- ncdf4::ncdim_def(name = nc.dimnames$time,
-      units = paste0("days since ", format(round(as.POSIXct(sim.date.begin), units = "day"),
-        '%Y-%m-%d %M:%H:%S')), vals = 1:length(sim_dates), calendar = "no leap")
-
-  ncout_dims[[nc.dimnames$y]] <- ncdf4::ncdim_def(nc.dimnames$y,
-        units= "", vals = nc_data$nc_dimensions[[nc.dimnames$y]])
-
-  ncout_dims[[nc.dimnames$x]] <- ncdf4::ncdim_def(name = nc.dimnames$x,
-        units= "", vals = nc_data$nc_dimensions[[nc.dimnames$x]])
-
-  ncout_dim_reorder <- unname(sapply(names(nc.dimnames), function(x) which(x == dim_ord)))
-
-  # Other nc attributes
-  ncout_varnames <- c(wg.vars, "pet")
-  ncout_varunits <- c(wg.var.units, "mm/day")
-  ncout_compression <- 4
-  ncout_chunksize <- c(1,length(nc_data$nc_dimensions[[2]]),length(nc_data$nc_dimensions[[3]]))
-
-  # ncout variables
-  ncout_vars <- lapply(1:length(ncout_varnames), function(x) ncdf4::ncvar_def(
-        name = ncout_varnames[x],
-        units = ncout_varunits[x],
-        dim = ncout_dims,
-        missval = NA,
-        longname = ncout_varnames[x],
-        prec =  "float",
-        shuffle = FALSE,
-        compression = ncout_compression,
-        chunksizes= ncout_chunksize))
-
-  ncout_vars[[length(ncout_vars)+1]] <- nc_data$nc_variables$spatial_ref
-
-
-  # template to store data from wg variables
-  var_empty <- array(NA, c(
-    ncout_dims[[nc.dimnames$time]]$len,
-    ncout_dims[[nc.dimnames$y]]$len,
-    ncout_dims[[nc.dimnames$x]]$len))
-
-  #Loop through each variable and write data to netcdf
-  ncout_vardata <- var_empty
-
-  #::::::::::::::::::: LOOP THROUGH CLIMATE CHANGES ::::::::::::::::::::::::::::
 
   #Create output directory if doesn't exist
-  if (!dir.exists(out.path)) {dir.create(out.path)}
+  if (!dir.exists(output.path)) {dir.create(output.path)}
 
   # Loop through each scenario
   for (s in 1:smax) {
 
-    ncout_file <- ncdf4::nc_create(paste0(out.path, proj.name,"_climate_change_",file.suffix,"_", s, ".nc"),
-      ncout_vars, force_v4 = TRUE)
-
     # New object to store the results
-    daily_rlz <- nc_data$tidy_data$data
+    rlz <- nc_data$tidy_data$data
 
     # Current perturbation scenario for each variable
     perturb_precip <- list(mean = PARCC[[1]]$mean$steps[scn_mat$par1[s],],
            var = PARCC[[1]]$var$steps[scn_mat$par1[s],])
+
     perturb_temp <- list(mean = PARCC[[2]]$mean$steps[scn_mat$par2[s],])
 
     temp_delta_factors <- sapply(1:12, function(x)
-      seq(0, perturb_temp$mean[x], length.out = 40))
+      seq(0, perturb_temp$mean[x], length.out = year_num))
+
     temp_deltas <- sapply(1:length(year_series), function(x)
       temp_delta_factors[year_index[x], month_series[x]])
 
@@ -191,53 +142,34 @@ imposeClimateChanges <- function(
     for (x in 1:ngrids) {
 
       # Perturb daily precipitation using quantile mapping
-      daily_rlz[[x]]$precip <- quantileMapping(value = daily_rlz[[x]]$precip,
-        mon.ts = month_series, year.ts = year_index, par = perturb_precip)
+      rlz[[x]]$precip <- quantileMapping(value = rlz[[x]]$precip,
+        mon.ts = month_series, year.ts = year_index, par = perturb_precip, step.change = step)
 
       # Perturb temp, temp_min, and temp_max by delta factors
-      daily_rlz[[x]]$temp <- daily_rlz[[x]]$temp + temp_deltas
-      daily_rlz[[x]]$temp_min <- daily_rlz[[x]]$temp_min + temp_deltas
-      daily_rlz[[x]]$temp_max <- daily_rlz[[x]]$temp_max + temp_deltas
+      rlz[[x]]$temp <- rlz[[x]]$temp + temp_deltas
+      rlz[[x]]$temp_min <- rlz[[x]]$temp_min + temp_deltas
+      rlz[[x]]$temp_max <- rlz[[x]]$temp_max + temp_deltas
 
       # Calculate PET from temp, temp_min, temp_max
-      daily_rlz[[x]]$pet <- with(daily_rlz[[x]], hargreavesPet(
+      rlz[[x]]$pet <- with(rlz[[x]], hargreavesPet(
         months = month_series, temp = temp, tdiff = temp_max - temp_min,
         lat = coordGrid$y[x]))
     }
 
-    #Loop through each variable and write data to netcdf
-    for (i in 1:length(ncout_varnames)) {
-
-      ncout_vardata <- var_empty
-
-      for (x in 1:ngrids) {
-        ncout_vardata[, coordGrid$yind[x], coordGrid$xind[x]] <- daily_rlz[[x]][[ncout_varnames[i]]]
-      }
-
-      # Put variables
-      ncdf4::ncvar_put(ncout_file, varid = ncout_varnames[i], vals = ncout_vardata)
-    }
-
-    # Put spatial_def variable and attributes
-    ncdf4::ncvar_put(ncout_file, varid = nc_data$nc_variables$spatial_ref$name,
-              vals = nc_data$nc_variable_data$spatial_ref)
-
-    sapply(1:length(nc_data$nc_attributes$spatial_ref), function(k)
-      ncdf4::ncatt_put(ncout_file,
-                varid = nc_data$nc_variables$spatial_ref$name,
-                attname = names(nc_data$nc_attributes$spatial_ref)[k],
-                attval = nc_data$nc_attributes$spatial_ref[[k]]))
-
-   # Put global attributes
-    if(length(nc_data$nc_attributes$global)>0) {
-
-      sapply(1:length(nc_data$nc_attributes$global),
-        function(k) ncdf4::ncatt_put(ncout_file, varid = 0,
-                attname = names(nc_data$nc_attributes$global)[k],
-                attval = nc_data$nc_attributes$global[[k]]))
-    }
-
-    ncdf4::nc_close(ncout_file)
+    # Write to netcdf
+    writeNetcdf(
+        data = rlz,
+        coord.grid = coordGrid,
+        output.path = output.path,
+        nc.dimensions = nc_data$nc_dimensions,
+        nc.dimnames = nc.dimnames,
+        origin.date = sim.date.start,
+        calendar.type = "no leap",
+        variables = c(variables, "pet"),
+        variable.units = c(variable.units, "mm/day"),
+        file.prefix = file.prefix,
+        file.suffix = s
+    )
   }
 
   message(cat("\u2713", "|", "Results outputted to", s, "netcdf files at: ", out_path))

@@ -6,6 +6,7 @@
 \usage{
 writeNetcdf(
   data = NULL,
+  coord.grid = NULL,
   output.path = NULL,
   nc.dimensions = NULL,
   nc.dimnames = NULL,
@@ -14,7 +15,8 @@ writeNetcdf(
   variables = NULL,
   variable.units = NULL,
   nc.compression = 4,
-  file.suffix = 1
+  file.prefix = "clim_change_rlz",
+  file.suffix = ""
 )
 }
 \arguments{

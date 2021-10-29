@@ -13,6 +13,7 @@ simulateWeather(
   variable.units = NULL,
   warm.variable = NULL,
   warm.signif.level = 0.9,
+  knn.annual.sample.size = 20,
   ymax = 40,
   rmax = 5000,
   nmax = 5,

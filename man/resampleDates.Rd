@@ -20,7 +20,7 @@ resampleDates(
   month_list,
   water_year_start,
   water_year_end,
-  y_sample_size = 20,
+  knn.annual.sample.size = 20,
   SIM_LENGTH = NULL,
   kk = NULL,
   thresh1 = 0.3,
@@ -62,7 +62,7 @@ resampleDates(
 
 \item{water_year_end}{placeholder}
 
-\item{y_sample_size}{placeholder}
+\item{knn.annual.sample.size}{placeholder}
 
 \item{SIM_LENGTH}{placeholder}
 }

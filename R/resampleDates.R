@@ -16,7 +16,7 @@
 #' @param month_list placeholder
 #' @param water_year_start placeholder
 #' @param water_year_end placeholder
-#' @param y_sample_size placeholder
+#' @param knn.annual.sample.size placeholder
 #' @param SIM_LENGTH placeholder
 #'
 #' @return
@@ -36,7 +36,7 @@ resampleDates <- function(k1 = NULL,
   month_list,
   water_year_start,
   water_year_end,
-  y_sample_size = 20,
+  knn.annual.sample.size = 20,
   SIM_LENGTH = NULL,
   kk = NULL,
   thresh1 = 0.3,
@@ -81,7 +81,7 @@ resampleDates <- function(k1 = NULL,
 
 		# Sample 100 similar years from the historical record for the current year
 		CUR_YEARS <- knnAnnual(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A,
-		  kk, k1, y, y_sample_size = y_sample_size)
+		  kk, k1, y, y_sample_size = knn.annual.sample.size)
 
 		# Find indices of days in all sampled years in CUR_YEARS
 		conditional_selection <- NULL

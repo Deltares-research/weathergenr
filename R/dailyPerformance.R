@@ -22,7 +22,7 @@
 #' @export
 #' @import utils ggplot2 dplyr
 #' @importFrom stats cor median
-dailyPerformance <- function(
+wgPerformance <- function(
   daily.sim = NULL,
   daily.obs = NULL,
   out.path = NULL,
@@ -34,6 +34,8 @@ dailyPerformance <- function(
   {
 
   nsgrids <- length(daily.sim[[1]])
+
+  variable_labels2 <- paste0(variable.labels, " (", variable.units, ")")
 
   sim_stats <- NULL
   sim_stats_aavg <- NULL
@@ -219,18 +221,18 @@ dailyPerformance <- function(
     p <- ggplot(filter(sim_stats_aavg, variable == variables[v]),
                 aes(x = as.factor(mon), y=value)) +
       theme_light(base_size = 12) +
-      ggtitle(variable.labels[v]) +
+      ggtitle(variable_labels2[v]) +
       geom_boxplot() +
       stat_summary(fun="mean", color="blue")+
       facet_wrap(~ stat, scales = "free", ncol = ceiling(num_stats/2)) +
       geom_point(data = filter(hist_stats_aavg, variable == variables[v]),
                  color = "red") +
-      labs(x = "Months", y = variable.units[v])
+      labs(x = "", y = "")
 
     ggsave(paste0(out.path,"monthly_stats_", variables[v],".png" ),
            height = base_len*2, width = base_len*2)
 
-    #### DAILY STATISTICS
+    #### DAILY STATISTICS ######################################################
     stats_df1v <- bind_rows(hist_stats_mon, sim_stats_mon_median) %>%
       filter(variable == variables[v]) %>%
       spread(key = type, value = value) %>%
@@ -248,7 +250,7 @@ dailyPerformance <- function(
       theme(plot.margin = unit(c(0.5,0.2,0.2,0.2), "cm"))
 
     ggsave(paste0(out.path,"daily_stats_", variables[v],".png" ),
-           height = g.hght2, width = g.wdth2)
+           height = base_len, width = g.wdth2)
 
   }
 

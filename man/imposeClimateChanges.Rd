@@ -5,35 +5,34 @@
 \title{Climate Change perturbations function}
 \usage{
 imposeClimateChanges(
-  proj.name = NULL,
-  in.path = NULL,
-  in.file = NULL,
+  input.path = NULL,
+  input.data = NULL,
   file.suffix = "",
-  out.path = NULL,
-  sim.date.begin = NULL,
-  wg.vars = NULL,
-  wg.var.units = NULL,
+  file.prefix = "clim_change_rlz",
+  output.path = NULL,
+  sim.date.start = NULL,
+  variables = NULL,
+  variable.units = NULL,
   nc.dimnames = NULL,
   change.settings = NULL,
-  save.scenario.matrix = TRUE
+  save.scenario.matrix = TRUE,
+  step = TRUE
 )
 }
 \arguments{
-\item{proj.name}{To be completed...}
+\item{input.path}{Placeholder.}
 
-\item{in.path}{Placeholder.}
-
-\item{in.file}{Placeholder.}
+\item{input.data}{Placeholder.}
 
 \item{file.suffix}{Placeholder.}
 
-\item{out.path}{To be completed...}
+\item{output.path}{To be completed...}
 
-\item{sim.date.begin}{To be completed...}
+\item{sim.date.start}{To be completed...}
 
-\item{wg.vars}{To be completed...}
+\item{variables}{To be completed...}
 
-\item{wg.var.units}{To be completed...}
+\item{variable.units}{To be completed...}
 
 \item{nc.dimnames}{To be completed...}
 

@@ -31,6 +31,7 @@ simulateWeather <- function(
   variable.units = NULL,
   warm.variable = NULL,
   warm.signif.level = 0.90,
+  knn.annual.sample.size = 20,
   ymax = 40,
   rmax = 5000,
   nmax = 5,
@@ -38,6 +39,7 @@ simulateWeather <- function(
   sim.year.start = 2020,
   month.list = 1:12,
   validation.grid.num = 50,
+  return.sampled.date.indices = TRUE,
   ...)
 
  {
@@ -153,12 +155,6 @@ simulateWeather <- function(
        nmax = nmax,
        out.path = warm_path,
        ...)
-       #mean.bounds = c(0.95,1.05),
-       #sdev.bounds = c(0.95,1.10),
-       #max.bounds  = c(0.95,1.10),
-       #min.bounds  = c(0.90,1.05),
-       #power.bounds = c(0.8,2.5),
-       #nonsig.threshold = 0.9)
 
   # Subsetted realizations of annual simulated time-series
   sim_annual_final <- sim_annual_sub$sampled
@@ -206,7 +202,7 @@ simulateWeather <- function(
       month_list = month.list,
       water_year_start = water_year_start,
       water_year_end = water_year_end,
-      y_sample_size = 50,
+      knn.annual.sample.size = knn.annual.sample.size,
       k1 = n,
       ymax = ymax,
       SIM_LENGTH = length(sim_dates_d$date),
@@ -219,21 +215,21 @@ simulateWeather <- function(
 
   message(cat("\u2713", "|", "Spatial & temporal dissaggregation completed."))
 
-  if(validate) {
-
-    ## Check existing directories and create as needed
-    out_path_performance <- paste0(output.path, "performance/")
-    if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
-
-    sim_daily_wg <- list()
-
-    for (n in 1:nmax) {
+  sim_daily_wg <- list()
+  for (n in 1:nmax) {
 
       day_order <- match(dates_resampled[[n]], date_seq)
       sim_daily_wg[[n]] <- lapply(climate_d, function(x)
         x[day_order,] %>% mutate(date = sim_dates_d$date, .before = 1) %>%
           select(-year,-month,-day))
-    }
+  }
+
+
+  if(validate) {
+
+    ## Check existing directories and create as needed
+    out_path_performance <- paste0(output.path, "performance/")
+    if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
 
     sampleGrids <- sf::st_as_sf(hist.climate[,c("x","y")], coords = c("x","y")) %>%
       sf::st_sample(size = min(validation.grid.num, ngrids), type = "regular") %>%
@@ -246,18 +242,46 @@ simulateWeather <- function(
     hist_daily_sample <- lapply(climate_obs_ini[sampleGrids], function(x)
       dplyr::mutate(x, date = date_seq, .before = 1))
 
-    dailyPerformance(daily.sim = sim_daily_sample,
-                     daily.obs = hist_daily_sample,
-                     out.path = out_path_performance,
-                     variables = variables,
-                     variable.labels = variable.labels,
-                     variable.units = variable.units,
-                     nmax = nmax)
+    wgPerformance(daily.sim = sim_daily_sample,
+       daily.obs = hist_daily_sample,
+       out.path = out_path_performance,
+       variables = variables,
+       variable.labels = variable.labels,
+       variable.units = variable.units,
+       nmax = nmax)
 
     message(cat("\u2713", "|", "Validation plots saved to output folder"))
 
   }
-  return(dates_resampled)
+
+  if(save.to.netcdf) {
+
+    message(cat("\u2713", "|", "saving to netcdf files"))
+
+    for (n in 1:nmax) {
+
+      writeNetcdf(
+        data = sim_daily_wg[[n]],
+        coord.grid = nc_data$tidy_data,
+        output.path = paste0(out_path,"historical/"),
+        nc.dimensions = nc_data$nc_dimensions,
+        nc.dimnames = nc_dimnames,
+        origin.date = sim_origin_date,
+        calendar.type = "no leap",
+        variables = wg_variables,
+        variable.units = wg_variable_units,
+        file.suffix = n)
+    }
+  }
+
+  if(return.sampled.date.indices) {
+    message(cat("\u2713", "|", "output date orders"))
+    return(day_order)
+
+  } else {
+    message(cat("\u2713", "|", "output multivariate series"))
+    return(sim_daily_wg)
+  }
 
 }
 

@@ -9,7 +9,8 @@ quantileMapping(
   date = NULL,
   par = NULL,
   mon.ts = NULL,
-  year.ts = NULL
+  year.ts = NULL,
+  step.change = TRUE
 )
 }
 \arguments{

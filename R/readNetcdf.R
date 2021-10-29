@@ -64,7 +64,8 @@ readNetcdf <- function(
     } else {
       ymax <- round(length(nc_dims[[nc.dimnames$time]])/365)
       datev <- tibble(date = seq.Date(origin.date, origin.date + ymax*366, by = "day")) %>%
-        filter(!(as.numeric(format(date,"%m")) == 2 & ( as.numeric(format(date_sim,"%d"))))) %>%
+        mutate(month = as.numeric(format(date,"%m")), day = as.numeric(format(date,"%d"))) %>%
+        filter(!(month == 2 & day == 29 )) %>%
         slice(1:(ymax*365)) %>% pull(date)
     }
 
