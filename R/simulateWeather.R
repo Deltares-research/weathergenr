@@ -164,31 +164,9 @@ simulateWeather <- function(
   # Subsetted realizations of annual simulated time-series
   sim_annual_final <- sim_annual_sub$sampled
 
-  # Plot simulated warm-series
-  df1 <- sim_annual_final %>%
-    as_tibble(.name_repair = ~paste0("rlz",1:rlz.num)) %>%
-    mutate(x = 1:sim.year.num) %>%
-    gather(key = variable, value=y, -x) %>%
-    mutate(y = y * 365)
-
-  df2 <- tibble(x=1:length(warm_variable_org), y = warm_variable_org*365)
-
-  p <- ggplot(df1, aes(x = x, y = y)) +
-    theme_light(base_size = 12) +
-    geom_line(aes(y = y, group = variable, color = variable), alpha = 0.6) +
-    geom_line(aes(y=y), data = df2, color = "black", size = 1) +
-    scale_x_continuous(limits = c(0,sim.year.num), breaks = seq(0,sim.year.num, 5)) +
-    guides(color = "none") +
-    scale_color_brewer(palette = "PuOr") +
-    labs(y = "Precip (mm)", x = "Year index")
-
-  ggsave(paste0(warm_path, "warm_simulated_series.png"), height = 5, width = 10)
-
   message(cat("\u2713", "|", ncol(sim_annual_final), "annual traces selected"))
 
   # Sample size in KNN_ANNUAL sampling
-  kk <- round(max(round(sqrt(length(warm_variable)),0), round(length(warm_variable),0)*.5))
-
   dates_resampled <- lapply(1:rlz.num, function(n)
     resampleDates(
       ANNUAL_PRCP = warm_variable,
@@ -208,7 +186,6 @@ simulateWeather <- function(
       k1 = n,
       ymax = sim.year.num,
       SIM_LENGTH = length(sim_dates_d$date),
-      kk = kk,
       MONTH_SIM = sim_dates_d$month,
       WATER_YEAR_SIM = sim_dates_d$wyear,
       START_YEAR_SIM = sim.year.start,
@@ -221,7 +198,6 @@ simulateWeather <- function(
   day_order <- sapply(1:rlz.num, function(n) match(dates_resampled[[n]], date_seq))
 
   for (n in 1:rlz.num) {
-
       rlz[[n]] <- lapply(climate_d, function(x)
         x[day_order[,n],] %>% select(-year,-month,-day))
   }

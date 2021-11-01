@@ -7,10 +7,10 @@
 #'
 #' @param variable              A numeric vector of time-series of variables, for example, time-series of annual precipitation.
 #' @param signif.level          A numeric value to set the siginificance level of the wavelet analysis (Default= 0.90).
-#' @param noise                 A character string defining the type of background noise. Currently either "white" (default) or "red".
+#' @param noise.type            A character string defining the type of background noise.type. Currently either "white" (default) or "red".
 #' @param variable.unit         A character string to define the unit of the variable.
 #' @param plot                  Draw plot
-#' @param out.path              Output path
+#' @param output.path           Output path
 #'
 #' @return
 #' @export
@@ -20,9 +20,9 @@
 waveletAnalysis <- function(variable = NULL,
                             variable.unit = "mm",
                             signif.level = 0.90,
-                            noise = "white",
+                            noise.type = "white",
                             plot = FALSE,
-                            out.path = NULL)
+                            output.path = NULL)
 {
 
 
@@ -120,8 +120,8 @@ waveletAnalysis <- function(variable = NULL,
   gamma_fac <- empir[3]  # time-decorrelation factor
   dj0 <- empir[4]       # scale-decorrelation factor
 
-  if (noise=="white") {lag1 <- 0}
-  if (noise=="red") {lag1 <- .72}
+  if (noise.type=="white") {lag1 <- 0}
+  if (noise.type=="red") {lag1 <- .72}
 
   freq <- dt / period   # normalized frequency
   fft_theor <- (1-lag1^2) / (1-2*lag1*cos(freq*2*pi)+lag1^2)  # [Eqn(16)]
@@ -219,7 +219,7 @@ waveletAnalysis <- function(variable = NULL,
          plot_layout(heights = c(1,2.5), nrow = 2)
 
     # Save results to file
-    ggsave(paste0(out.path, "warm_observed_wavelet.png"), height=9, width=10)
+    ggsave(paste0(output.path, "warm_observed_wavelet.png"), height=9, width=10)
 
   }
 

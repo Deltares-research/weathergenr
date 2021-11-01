@@ -15,14 +15,15 @@
 #' @param power.signif A time-series of power significance.
 #' @param power.bounds A numeric vector, defining the minimum and maximum limits for power spectra.
 #' @param nonsig.threshold A numeric vector to define a resampling threshold for sampling.
-#' @param nmax A numeric value to define the final sample size.
+#' @param rlz.num A numeric value to define the final sample size.
 #' @param save.series A logical to write the results to csv files.
 #' @param verbose A logical to decide if further information to be displayed on the screen.
-#' @param out.path Output folder path
+#' @param output.path Output folder path
 #'
 #' @return
 #' @export
 #' @import dplyr
+#' @import ggplot2
 #' @importFrom utils write.csv
 waveletARSubset <- function(
   series.obs = NULL,
@@ -31,12 +32,12 @@ waveletARSubset <- function(
   power.sim = NULL,
   power.period =  NULL,
   power.signif =  NULL,
-  nmax = NULL,
+  rlz.num = NULL,
   seed = NULL,
   save.plots = TRUE,
   save.series = TRUE,
   verbose = FALSE,
-  out.path = out_path,
+  output.path = NULL,
   mean.bounds = c(0.95,1.05),
   sdev.bounds = c(0.90,1.10),
   max.bounds  = c(0.90,1.10),
@@ -120,7 +121,7 @@ waveletARSubset <- function(
   # Stochastically select from the initial dataset
   if(!is.null(seed)) set.seed(seed)
 
-  sub_sample <- sample(sub_clim, min(nmax, length(sub_clim)))
+  sub_sample <- sample(sub_clim, min(rlz.num, length(sub_clim)))
 
   if(isTRUE(verbose)) {
     print(tribble(
@@ -133,7 +134,7 @@ waveletARSubset <- function(
         "final", paste0(length(sub_clim), " out of ", ncol(series.sim))))
   }
 
-  if(length(sub_sample) < nmax) {
+  if(length(sub_sample) < rlz.num) {
     stop('subsetted traces less than the desired amount.
          Please relax the decision criteria and repeat.')
   }
@@ -150,7 +151,7 @@ waveletARSubset <- function(
                    power.sim = power.sim[1:pl,sub_clim])  +
           scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    ggsave(paste0(out.path, "warm_subset_wavelet_spectra.png"), width=8, height=6)
+    ggsave(paste0(output.path, "warm_subset_wavelet_spectra.png"), width=8, height=6)
 
     # Boxplots of all stats
     stats_obs_gg <- stats_obs %>% mutate(sim=1) %>%
@@ -176,17 +177,39 @@ waveletARSubset <- function(
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank())
 
-      ggsave(paste0(out.path, "warm_subset_annual_stats.png"), width=8, height=6)
+      ggsave(paste0(output.path, "warm_subset_annual_stats.png"), width=8, height=6)
+
+    # Plot simulated warm-series
+    sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
+
+    df1 <- series.sim[,sub_clim_plot] %>%
+      as_tibble(.name_repair = ~paste0("rlz",1:length(sub_clim_plot))) %>%
+      mutate(x = 1:sim.year.num) %>%
+      gather(key = variable, value=y, -x) %>%
+      mutate(y = y * 365)
+
+    df2 <- tibble(x=1:length(series.obs), y = series.obs*365)
+
+    p <- ggplot(df1, aes(x = x, y = y)) +
+      theme_light(base_size = 12) +
+      geom_line(aes(y = y, group = variable), color = "gray60", alpha = 0.6) +
+      geom_line(aes(y=y), data = df2, color = "black", size = 1) +
+      scale_x_continuous(limits = c(0,sim.year.num), breaks = seq(0,sim.year.num, 5)) +
+      guides(color = "none") +
+      labs(y = "Precipitation (mm/year)", x = "Year index")
+
+    ggsave(paste0(output.path, "warm_simulated_series.png"), height = 5, width = 10)
+
 
   }
 
   if(isTRUE(save.series)) {
 
     utils::write.csv(x = series.sim[,sub_clim], row.names = FALSE,
-        file = paste0(out.path, "warm_sim_annual_set.csv"))
+        file = paste0(output.path, "warm_sim_annual_set.csv"))
 
     utils::write.csv(x = series.sim[,sub_sample], row.names = FALSE,
-        file = paste0(out.path, "warm_sim_annual_sample.csv"))
+        file = paste0(output.path, "warm_sim_annual_sample.csv"))
 
     }
 

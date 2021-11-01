@@ -4,7 +4,7 @@
 # Add step changes......
 
 # Load package
-#devtools::install_github("tanerumit/gridwegen@mcmc_dev")
+devtools::install_github("tanerumit/gridwegen@mcmc_dev")
 
 # Packages needed
 library(gridwegen)
@@ -59,8 +59,6 @@ out <- simulateWeather(
   )
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
-
-
 for(n in 1:rlz_num) {
 
   imposeClimateChanges(
@@ -71,7 +69,7 @@ for(n in 1:rlz_num) {
       sim.date.start = sim_origin_date,
       variables = wg_variables,
       variable.units = wg_variable_units,
-      nc.dimnames = nc_dimnames,8
+      nc.dimnames = nc_dimnames,
       change.settings = paste0(nc_path, "change_factors.xlsx"),
       save.scenario.matrix = FALSE,
       step = TRUE,

@@ -3,22 +3,22 @@
 
 #' Function for weather generator decomposition
 #'
-#' @param variable A vector of time-series of weather variables.
+#' @param variable        A vector of time-series of weather variables.
 #' @param signif.periods Significant low-frequency periods in the original time-series.
-#' @param noise A logical specifying the type of background noise.
-#' @param signif.level Significance level for the wavelet analysis.
-#' @param plot         Draw plot
-#' @param out.path    Output path
+#' @param noise.type     A logical specifying the type of background noise.
+#' @param signif.level   Significance level for the wavelet analysis.
+#' @param plot           Draw plot
+#' @param output.path    Output path
 #'
 #' @return
 #' @export
 #' @import ggplot2
 waveletDecompose <- function(variable = NULL,
        signif.periods = NULL,
-       noise = "white",
+       noise.type = "white",
        signif.level = 0.80,
        plot = TRUE,
-       out.path = NULL)
+       output.path = NULL)
 {
 
   #Number of orthogonal component series that representing a low-freq signal
@@ -126,7 +126,7 @@ waveletDecompose <- function(variable = NULL,
 
   #for red noise background, lag1 autocorrelation = 0.72,
   #for white noise background, lag1 autocorrelation = 0
-  if (noise == "white") {lag1 <- 0} else {lag1 <- .72}
+  if (noise.type == "white") {lag1 <- 0} else {lag1 <- .72}
 
   freq <- dt / period   # normalized frequency
   fft_theor <- (1-lag1^2) / (1-2*lag1*cos(freq*2*pi)+lag1^2)  # [Eqn(16)]
@@ -199,7 +199,7 @@ waveletDecompose <- function(variable = NULL,
         labs(x = "Time (year)", y = "")
 
     # Save plot to file
-    ggsave(paste0(out.path, "warm_decomposition.png"), height=6, width=8)
+    ggsave(paste0(output.path, "warm_decomposition.png"), height=6, width=8)
 
 
 

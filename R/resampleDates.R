@@ -16,7 +16,7 @@
 #' @param month_list placeholder
 #' @param water_year_start placeholder
 #' @param water_year_end placeholder
-#' @param knn.annual.sample.size placeholder
+#' @param knn.annual.sample.num placeholder
 #' @param SIM_LENGTH placeholder
 #'
 #' @return
@@ -36,7 +36,7 @@ resampleDates <- function(k1 = NULL,
   month_list,
   water_year_start,
   water_year_end,
-  knn.annual.sample.size = 20,
+  knn.annual.sample.num = 20,
   SIM_LENGTH = NULL,
   kk = NULL,
   thresh1 = 0.3,
@@ -47,6 +47,10 @@ resampleDates <- function(k1 = NULL,
   DAY_SIM = NULL)
 
   {
+
+  if(is.null(kk)) {
+    kk <- round(max(round(sqrt(length(ANNUAL_PRCP)),0), round(length(ANNUAL_PRCP),0)*.5))
+  }
 
 	# Vectors to store transition probabilities
 	p00_final <- array(NA,SIM_LENGTH)
@@ -81,7 +85,7 @@ resampleDates <- function(k1 = NULL,
 
 		# Sample 100 similar years from the historical record for the current year
 		CUR_YEARS <- knnAnnual(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A,
-		  kk, k1, y, y_sample_size = knn.annual.sample.size)
+		  kk, k1, y, y_sample_size = knn.annual.sample.num)
 
 		# Find indices of days in all sampled years in CUR_YEARS
 		conditional_selection <- NULL
