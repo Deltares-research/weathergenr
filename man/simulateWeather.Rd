@@ -21,6 +21,8 @@ simulateWeather(
   sim.year.start = 2020,
   month.list = 1:12,
   validation.grid.num = 50,
+  return.sampled.date.indices = TRUE,
+  save.to.netcdf = FALSE,
   ...
 )
 }

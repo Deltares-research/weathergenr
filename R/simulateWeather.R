@@ -9,18 +9,23 @@
 #' @param variable.units Placeholder.
 #' @param warm.variable Placeholder.
 #' @param warm.signif.level Placeholder.
-#' @param ymax Placeholder.
-#' @param rmax Placeholder.
-#' @param nmax Placeholder.
-#' @param validate Placeholder.
-#' @param validation.grid.num Placeholder.
+#' @param sim.year.num Placeholder.
+#' @param warm.sample.num Placeholder.
+#' @param rlz.num Placeholder.
+#' @param check.stats Placeholder.
+#' @param check.grid.num Placeholder.
 #' @param sim.year.start Placeholder.
 #' @param month.list Placeholder.
 #' @param ... Placeholder.
 #'
 #' @return
 #' @export
-#' @import ggplot2 tibble tidyr patchwork ncdf4 dplyr
+#' @import ggplot2
+#' @import tibble
+#' @import tidyr
+#' @import patchwork
+#' @import ncdf4
+#' @import dplyr
 #' @importFrom sf st_as_sf st_sample st_cast st_coordinates
 simulateWeather <- function(
   output.path = NULL,
@@ -31,25 +36,25 @@ simulateWeather <- function(
   variable.units = NULL,
   warm.variable = NULL,
   warm.signif.level = 0.90,
-  knn.annual.sample.size = 20,
-  ymax = 40,
-  rmax = 5000,
-  nmax = 5,
-  validate = TRUE,
+  warm.sample.num = 20000,
+  knn.annual.sample.num = 20,
+  sim.year.num = 40,
   sim.year.start = 2020,
+  rlz.num = 5,
+  check.stats = TRUE,
   month.list = 1:12,
-  validation.grid.num = 50,
-  return.sampled.date.indices = TRUE,
+  check.grid.num = 50,
+  return.date.indices = TRUE,
+  save.to.netcdf = FALSE,
   ...)
 
  {
 
   # Number of grids
-  grids  <- hist.climate$id
-  ngrids <- length(grids)
+  ngrids <- length(hist.climate$id)
 
   #browser()
-  message(cat("\u2713", "|", "Historical data loaded. Data has", ngrids, "grids."))
+  message(cat("\u2713", "|", "Historical data loaded. Data has", ngrids, "grids"))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
   warm_path <- paste0(output.path, "warm/")
@@ -73,13 +78,8 @@ simulateWeather <- function(
   dates_a <- dates_m %>% dplyr::filter(month == month.list[1])
   wyear_index <- which(dates_d$date %in% date_seq)
 
-  # Historical data for the correct period
-  climate_obs_ini <- lapply(hist.climate$data, function(x) x)
-  climate_obs_daily <- lapply(climate_obs_ini, function(x) x[wyear_index, ])
-
   # Date indices of simulated series
-  sim.end.year <- sim.year.start + ymax
-
+  sim.end.year <- sim.year.start + sim.year.num
   date_sim <- seq(as.Date(paste(sim.year.start,"-1-01",sep="")),
     as.Date(paste(sim.end.year,"-12-31",sep="")), by="day")
 
@@ -98,8 +98,9 @@ simulateWeather <- function(
   # Prepare tables for daily, monthly, and annual values
   dates_wy <- tibble(year=dates_d$wyear, month=dates_d$month, day=dates_d$day)
 
+  climate_obs_d <- lapply(hist.climate$data, function(x) x[wyear_index, ])
   climate_d <- lapply(1:ngrids, function(i)
-        bind_cols(dates_wy, climate_obs_daily[[i]]) %>%
+        bind_cols(dates_wy, climate_obs_d[[i]]) %>%
         arrange(year, month, day))
 
   climate_a <- lapply(1:ngrids, function(i)
@@ -117,31 +118,35 @@ simulateWeather <- function(
   warm_variable_org <- climate_a_aavg %>% pull({{warm.variable}})
 
   ############
+
+
   # Normality tests come here.........
+
+
   ###########
 
   warm_variable <- warm_variable_org
 
   ####  Power spectra of observed annual series
   warm_power <- waveletAnalysis(variable = warm_variable, variable.unit = "mm",
-    signif.level = warm.signif.level, plot = TRUE, out.path = warm_path)
+    signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
   ##### WAVELET DECOMPOSITION OF HISTORICAL SERIES
   wavelet_comps <- waveletDecompose(variable = warm_variable,
         signif.periods = warm_power$signif_periods,
-        signif.level = warm.signif.level, plot = TRUE, out.path = warm_path)
+        signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
   message(cat("\u2713", "|", "Wavelet analysis:", length(wavelet_comps)-1,
     "low frequency components defined"))
 
   ##### Stochastic simuluation of historical annual series
   sim_annual <- waveletAR(wavelet.comps = wavelet_comps,
-        num.years = ymax, num.realizations = rmax)
+        num.years = sim.year.num, num.realizations = warm.sample.num)
 
-  message(cat("\u2713", "|", rmax, "stochastic annual series generated"))
+  message(cat("\u2713", "|", warm.sample.num, "stochastic annual series generated"))
 
   # Wavelet analysis on simulated series
-  sim_power <- sapply(1:rmax, function(x)
+  sim_power <- sapply(1:warm.sample.num, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
 
   ### Choose which parameters to consider for filtering
@@ -152,8 +157,8 @@ simulateWeather <- function(
        power.sim = sim_power,
        power.period = warm_power$GWS_period,
        power.signif = warm_power$GWS_signif,
-       nmax = nmax,
-       out.path = warm_path,
+       rlz.num = rlz.num,
+       output.path = warm_path,
        ...)
 
   # Subsetted realizations of annual simulated time-series
@@ -161,33 +166,30 @@ simulateWeather <- function(
 
   # Plot simulated warm-series
   df1 <- sim_annual_final %>%
-    as_tibble(.name_repair = ~paste0("rlz",1:nmax)) %>%
-    mutate(x = 1:ymax) %>%
+    as_tibble(.name_repair = ~paste0("rlz",1:rlz.num)) %>%
+    mutate(x = 1:sim.year.num) %>%
     gather(key = variable, value=y, -x) %>%
     mutate(y = y * 365)
 
   df2 <- tibble(x=1:length(warm_variable_org), y = warm_variable_org*365)
 
-  (ggplot(df1, aes(x = x, y = y)) +
+  p <- ggplot(df1, aes(x = x, y = y)) +
     theme_light(base_size = 12) +
     geom_line(aes(y = y, group = variable, color = variable), alpha = 0.6) +
     geom_line(aes(y=y), data = df2, color = "black", size = 1) +
-    scale_x_continuous(limits = c(0,ymax), breaks = seq(0,ymax, 5)) +
-    #scale_y_continuous(limits = c(1500, 3500), breaks = seq(1500,3500,500)) +
+    scale_x_continuous(limits = c(0,sim.year.num), breaks = seq(0,sim.year.num, 5)) +
     guides(color = "none") +
     scale_color_brewer(palette = "PuOr") +
-    labs(y = "Precip (mm)", x = "Year index")) %>%
-  ggsave(filename = paste0(warm_path, "warm_simulated_series.png"),.,
-    height = 5, width = 10)
+    labs(y = "Precip (mm)", x = "Year index")
+
+  ggsave(paste0(warm_path, "warm_simulated_series.png"), height = 5, width = 10)
 
   message(cat("\u2713", "|", ncol(sim_annual_final), "annual traces selected"))
-
-  #::::MCMC MODELING COMES HERE! ::::::::::::;;;;;;;;;;::::::::::::::::::::::::::::::
 
   # Sample size in KNN_ANNUAL sampling
   kk <- round(max(round(sqrt(length(warm_variable)),0), round(length(warm_variable),0)*.5))
 
-  dates_resampled <- lapply(1:nmax, function(n)
+  dates_resampled <- lapply(1:rlz.num, function(n)
     resampleDates(
       ANNUAL_PRCP = warm_variable,
       PRCP_FINAL_ANNUAL_SIM = sim_annual_final[, n],
@@ -202,9 +204,9 @@ simulateWeather <- function(
       month_list = month.list,
       water_year_start = water_year_start,
       water_year_end = water_year_end,
-      knn.annual.sample.size = knn.annual.sample.size,
+      knn.annual.sample.num = knn.annual.sample.num,
       k1 = n,
-      ymax = ymax,
+      ymax = sim.year.num,
       SIM_LENGTH = length(sim_dates_d$date),
       kk = kk,
       MONTH_SIM = sim_dates_d$month,
@@ -213,44 +215,45 @@ simulateWeather <- function(
       DAY_SIM = sim_dates_d$day)
   )
 
-  message(cat("\u2713", "|", "Spatial & temporal dissaggregation completed."))
+  message(cat("\u2713", "|", "Spatial & temporal dissaggregation completed"))
 
-  sim_daily_wg <- list()
-  for (n in 1:nmax) {
+  rlz <- list()
+  day_order <- sapply(1:rlz.num, function(n) match(dates_resampled[[n]], date_seq))
 
-      day_order <- match(dates_resampled[[n]], date_seq)
-      sim_daily_wg[[n]] <- lapply(climate_d, function(x)
-        x[day_order,] %>% mutate(date = sim_dates_d$date, .before = 1) %>%
-          select(-year,-month,-day))
+  for (n in 1:rlz.num) {
+
+      rlz[[n]] <- lapply(climate_d, function(x)
+        x[day_order[,n],] %>% select(-year,-month,-day))
   }
 
 
-  if(validate) {
+  if(check.stats) {
 
     ## Check existing directories and create as needed
-    out_path_performance <- paste0(output.path, "performance/")
-    if (!dir.exists(out_path_performance)) {dir.create(out_path_performance)}
+    if (!dir.exists(paste0(output.path, "check/"))) {
+              dir.create(paste0(output.path, "check/"))}
 
     sampleGrids <- sf::st_as_sf(hist.climate[,c("x","y")], coords = c("x","y")) %>%
-      sf::st_sample(size = min(validation.grid.num, ngrids), type = "regular") %>%
+      sf::st_sample(size = min(check.grid.num, ngrids), type = "regular") %>%
       sf::st_cast("POINT") %>% sf::st_coordinates() %>%
       as_tibble() %>%
       left_join(hist.climate[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
       pull(id)
 
-    sim_daily_sample <- lapply(1:nmax, function(x) sim_daily_wg[[x]][sampleGrids])
-    hist_daily_sample <- lapply(climate_obs_ini[sampleGrids], function(x)
+    sim_daily_sample <- lapply(1:rlz.num, function(x) rlz[[x]][sampleGrids] %>%
+                                 mutate(date = sim_dates_d$date, .before = 1))
+    hist_daily_sample <- lapply(hist.climate$data[sampleGrids], function(x)
       dplyr::mutate(x, date = date_seq, .before = 1))
 
     wgPerformance(daily.sim = sim_daily_sample,
        daily.obs = hist_daily_sample,
-       out.path = out_path_performance,
+       output.path = paste0(output.path, "check/"),
        variables = variables,
        variable.labels = variable.labels,
        variable.units = variable.units,
-       nmax = nmax)
+       rlz.num = rlz.num)
 
-    message(cat("\u2713", "|", "Validation plots saved to output folder"))
+    message(cat("\u2713", "|", "control plots saved"))
 
   }
 
@@ -258,29 +261,29 @@ simulateWeather <- function(
 
     message(cat("\u2713", "|", "saving to netcdf files"))
 
-    for (n in 1:nmax) {
+    for (n in 1:rlz.num) {
 
       writeNetcdf(
-        data = sim_daily_wg[[n]],
+        data = rlz[[n]],
         coord.grid = nc_data$tidy_data,
         output.path = paste0(out_path,"historical/"),
         nc.dimensions = nc_data$nc_dimensions,
         nc.dimnames = nc_dimnames,
         origin.date = sim_origin_date,
         calendar.type = "no leap",
-        variables = wg_variables,
-        variable.units = wg_variable_units,
+        variables = variables,
+        variable.units = variable.units,
         file.suffix = n)
     }
   }
 
-  if(return.sampled.date.indices) {
+  if(return.date.indices) {
     message(cat("\u2713", "|", "output date orders"))
     return(day_order)
 
   } else {
     message(cat("\u2713", "|", "output multivariate series"))
-    return(sim_daily_wg)
+    return(rlz)
   }
 
 }

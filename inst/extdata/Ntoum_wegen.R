@@ -4,37 +4,30 @@
 # Add step changes......
 
 # Load package
-#devtools::install_github("tanerumit/gridwegen@dev")
+#devtools::install_github("tanerumit/gridwegen@mcmc_dev")
 
 # Packages needed
-library(ncdf4)
-library(dplyr)
-library(tidyr)
-library(fitdistrplus)
 library(gridwegen)
 
 # Path to output files
-path0 <- "C:/Users/taner/OneDrive - Stichting Deltares/_DELTARES/02 Projects/11206634 Gabon/05 Models/wegen/"
-out_path <- paste0(path0, "TEST03/")
+path0 <- "C:/wegentest/"
+out_path <- paste0(path0, "TEST/")
 nc_path <- paste0(path0, "input/")
 
 # Path to historical gridded data
-nc_file <- "localP_chirpsP_era5T_19810101_chunks.nc"
+nc_file <- "ntoum.nc"
+
 nc_dimnames <- list(x = "lon", y = "lat", time = "time")
 origin_date <- as.Date("1981-01-01")
 sim_origin_date <- as.Date("2020-01-01")
-wg_variables <- c("precip", "temp", "temp_min", "temp_max", "pet")
-wg_variable_labels <- c("Precipitation", "Avg. Temperature", "Min. Temperature","Max. Temperature")
+wg_variables <- c("precip", "temp", "temp_min", "temp_max")
+wg_variable_labels <- c("Precipitation", "Avg. Temperature", "Min. Temperature", "Max. Temperature")
 wg_variable_units  <- c("mm/day", "°C", "°C", "°C")
-
 warm_variable <- "precip"
-
 water_year_months <- 1:12
 rlz_num = 5
 sim_years = 40
-ymax = 40
 knn_annual_sample_size = 20
-n=1
 
 # Read-in gridded weather data from netcdf
 nc_data <- readNetcdf(
@@ -58,22 +51,27 @@ out <- simulateWeather(
   knn.annual.sample.size = knn_annual_sample_size,
   warm.signif.level = 0.90,
   ymax = sim_years,
-  nmax = rlz_num)
+  nmax = rlz_num,
+  validate = FALSE,
+  save.to.netcdf = FALSE,
+  return.sampled.date.indices = FALSE
+
+  )
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
 
 
-for(n in 1:nmax) {
+for(n in 1:rlz_num) {
 
   imposeClimateChanges(
-      input.path = paste0(out_path,"historical/"),
-      input.data = nvar_filenames[n],
+      input.data = out[[n]],
+      coordGrid = nc_data$tidy_data %>% dplyr::select(-data),
       file.suffix = n,
       output.path = paste0(out_path,"future/"),
-      sim.date.start = as.Date("2020-01-01"),
-      variables = c("precip", "temp", "temp_min", "temp_max"),
-      variable.units = c("mm/day", "°C", "°C", "°C"),
-      nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+      sim.date.start = sim_origin_date,
+      variables = wg_variables,
+      variable.units = wg_variable_units,
+      nc.dimnames = nc_dimnames,8
       change.settings = paste0(nc_path, "change_factors.xlsx"),
       save.scenario.matrix = FALSE,
       step = TRUE,

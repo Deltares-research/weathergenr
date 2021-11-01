@@ -19,8 +19,8 @@
 #' @importFrom utils write.csv
 #' @importFrom readxl read_excel
 imposeClimateChanges <- function(
-  input.path = NULL,
   input.data = NULL,
+  coordGrid = NULL,
   file.suffix = "",
   file.prefix = "clim_change_rlz",
   output.path = NULL,
@@ -93,17 +93,6 @@ imposeClimateChanges <- function(
   message(cat("\u2713", "|", "scenario matrix created: ", smax, "scenarios in total"))
 
   #::::::::::::::::::::::: TEMPLATE FOR WRITING TO NETCDF ::::::::::::::::::::::
-
-  nc_data <- readNetcdf(
-    nc.path = input.path,
-    nc.file = input.data,
-    nc.dimnames = nc.dimnames,
-    nc.variables = variables,
-    origin.date = sim.date.start,
-    leap.year = FALSE)
-
-  # TRANSLATE INTO TIDY-FORMAT
-  coordGrid <- nc_data$tidy_data %>% dplyr::select(-data)
 
   # Number of grids
   grids  <- coordGrid$id
