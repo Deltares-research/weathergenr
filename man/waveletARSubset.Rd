@@ -11,12 +11,12 @@ waveletARSubset(
   power.sim = NULL,
   power.period = NULL,
   power.signif = NULL,
-  nmax = NULL,
+  rlz.num = NULL,
   seed = NULL,
   save.plots = TRUE,
   save.series = TRUE,
   verbose = FALSE,
-  out.path = out_path,
+  output.path = NULL,
   mean.bounds = c(0.95, 1.05),
   sdev.bounds = c(0.9, 1.1),
   max.bounds = c(0.9, 1.1),
@@ -38,7 +38,7 @@ waveletARSubset(
 
 \item{power.signif}{A time-series of power significance.}
 
-\item{nmax}{A numeric value to define the final sample size.}
+\item{rlz.num}{A numeric value to define the final sample size.}
 
 \item{seed}{A numeric value to define a seed for resampling.}
 
@@ -48,7 +48,7 @@ waveletARSubset(
 
 \item{verbose}{A logical to decide if further information to be displayed on the screen.}
 
-\item{out.path}{Output folder path}
+\item{output.path}{Output folder path}
 
 \item{mean.bounds}{A numeric vector, defining the minimum and maximum limits for the mean value of the time-series when resampling.}
 

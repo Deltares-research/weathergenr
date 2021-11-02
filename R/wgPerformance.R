@@ -12,24 +12,24 @@
 #'
 #' @param daily.sim A matrix of daily time-series of weather variables
 #' @param daily.obs A vector of daily time-series of observed weather series
-#' @param out.path  A character string to define the path of resulting netcdf file.
+#' @param output.path  A character string to define the path of resulting netcdf file.
 #' @param variables A vector object specifying the names of weather variables.
 #' @param variable.labels A vector object specifying the names of weather variable labels.
 #' @param variable.units A vector object specifying the names of weather variable units.
-#' @param nmax Placeholder
+#' @param realization.num Placeholder
 #'
 #' @return
 #' @export
 #' @import utils ggplot2 dplyr
 #' @importFrom stats cor median
-wgPerformance <- function(
+wegenCheck <- function(
   daily.sim = NULL,
   daily.obs = NULL,
-  out.path = NULL,
+  output.path = NULL,
   variables = NULL,
   variable.labels = NULL,
   variable.units = NULL,
-  nmax = NULL)
+  realization.num = NULL)
 
   {
 
@@ -50,7 +50,7 @@ wgPerformance <- function(
   num_var_combs <- choose(num_vars,2)
 
   # Calculate for each simulated trace
-  for (n in 1:nmax) {
+  for (n in 1:realization.num) {
 
     # Grid-based statistics (id:sample grids, rlz = realizations)
     sim_stats <- bind_rows(sim_stats,
@@ -62,7 +62,7 @@ wgPerformance <- function(
        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness), .names = "{.col}:{.fn}")) %>%
        gather(key = variable, value = value, -id, -year, -mon) %>%
        separate(variable, c("variable","stat"), sep =":") %>%
-       add_column(rlz = n, .before = 1)
+       mutate(rlz = n, .before = 1)
     )
 
     # Area-averaged statistics
@@ -74,7 +74,7 @@ wgPerformance <- function(
         summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness), .names = "{.col}:{.fn}")) %>%
         gather(key = variable, value = value, -year, -mon) %>%
         separate(variable, c("variable","stat"), sep =":") %>%
-        add_column(rlz = n, .before = 1)
+        mutate(rlz = n, .before = 1)
     )
 
     # Intersite/cross-site correlations
@@ -89,7 +89,7 @@ wgPerformance <- function(
         spread(id_variable, value) %>%
         dplyr::select(-year, -mon, -day) %>%
         cor(.$value) %>% as_tibble() %>%
-        add_column(rlz = n, .before = 1)
+        mutate(rlz = n, .before = 1)
     )
 
   }
@@ -148,7 +148,7 @@ wgPerformance <- function(
     mutate(type = "Observed")
 
   sim_intercor_median <- sim_stats_icor %>%
-    mutate(id_variable1 = rep(colnames(sim_stats_icor)[-1], nmax), .before = 2) %>%
+    mutate(id_variable1 = rep(colnames(sim_stats_icor)[-1], realization.num), .before = 2) %>%
     gather(key = id_variable2, value = value, -rlz, -id_variable1) %>%
     separate(id_variable1, c("id1","variable1"),sep=":") %>%
     separate(id_variable2, c("id2","variable2"),sep=":") %>%
@@ -195,10 +195,10 @@ wgPerformance <- function(
     geom_point(alpha = 0.6, size = 1.5) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = g.wdth1/base_len) +
-    scale_x_continuous(breaks = scales::pretty_breaks(5), limits = c(0, 1)) +
-    scale_y_continuous(breaks = scales::pretty_breaks(5), limits = c(0, 1))
+    scale_x_continuous(breaks = pretty(n=5), limits = c(0, 1)) +
+    scale_y_continuous(breaks = pretty(n=5), limits = c(0, 1))
 
-  ggsave(paste0(out.path,"monthly_stats_all_crosssite.png"),
+  ggsave(paste0(output.path,"monthly_stats_all_crosssite.png"),
          height = g.hght1, width = g.wdth1)
 
   ### Intersite correlations
@@ -209,10 +209,10 @@ wgPerformance <- function(
     geom_point(alpha = 0.6, size = 1.5) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = g.wdth2/base_len) +
-    scale_x_continuous(breaks = scales::pretty_breaks(5), limits =c(0,1)) +
-    scale_y_continuous(breaks = scales::pretty_breaks(5), limits =c(0,1))
+    scale_x_continuous(breaks = pretty(n=5), limits =c(0,1)) +
+    scale_y_continuous(breaks = pretty(n=5), limits =c(0,1))
 
-  ggsave(paste0(out.path,"monthly_stats_all_intersite.png" ),
+  ggsave(paste0(output.path,"monthly_stats_all_intersite.png" ),
          width = g.wdth2, height = g.hght2)
 
   for (v in 1:length(variables)) {
@@ -229,7 +229,7 @@ wgPerformance <- function(
                  color = "red") +
       labs(x = "", y = "")
 
-    ggsave(paste0(out.path,"monthly_stats_", variables[v],".png" ),
+    ggsave(paste0(output.path,"monthly_stats_", variables[v],".png" ),
            height = base_len*2, width = base_len*2)
 
     #### DAILY STATISTICS ######################################################
@@ -245,11 +245,11 @@ wgPerformance <- function(
       geom_abline(color = "blue", size = 1) +
       labs(x = "Observed", y = "Simulated") +
       facet_wrap(stat ~ ., scales = "free", ncol = ceiling(num_stats/2)) +
-      scale_x_continuous(breaks = scales::pretty_breaks(5), limits = c(0, NA)) +
-      scale_y_continuous(breaks = scales::pretty_breaks(5), limits = c(0, NA)) +
+      scale_x_continuous(breaks = pretty(n=5), limits = c(0, NA)) +
+      scale_y_continuous(breaks = pretty(n=5), limits = c(0, NA)) +
       theme(plot.margin = unit(c(0.5,0.2,0.2,0.2), "cm"))
 
-    ggsave(paste0(out.path,"daily_stats_", variables[v],".png" ),
+    ggsave(paste0(output.path,"daily_stats_", variables[v],".png" ),
            height = base_len, width = g.wdth2)
 
   }

@@ -7,10 +7,10 @@
 waveletDecompose(
   variable = NULL,
   signif.periods = NULL,
-  noise = "white",
+  noise.type = "white",
   signif.level = 0.8,
   plot = TRUE,
-  out.path = NULL
+  output.path = NULL
 )
 }
 \arguments{
@@ -18,13 +18,13 @@ waveletDecompose(
 
 \item{signif.periods}{Significant low-frequency periods in the original time-series.}
 
-\item{noise}{A logical specifying the type of background noise.}
+\item{noise.type}{A logical specifying the type of background noise.}
 
 \item{signif.level}{Significance level for the wavelet analysis.}
 
 \item{plot}{Draw plot}
 
-\item{out.path}{Output path}
+\item{output.path}{Output path}
 }
 \value{
 

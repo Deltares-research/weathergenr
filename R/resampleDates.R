@@ -21,32 +21,37 @@
 #'
 #' @return
 #' @export
-resampleDates <- function(k1 = NULL,
-  ymax = NULL,
+resampleDates <- function(
   PRCP_FINAL_ANNUAL_SIM = NULL,
   ANNUAL_PRCP = NULL,
-  WATER_YEAR_A ,
-  WATER_YEAR_D,
-  PRCP,
-  TEMP ,
-  DATE_D,
-  MONTH_D,
-  YEAR_D,
-  MONTH_DAY_D,
-  month_list,
-  water_year_start,
-  water_year_end,
-  knn.annual.sample.num = 20,
-  SIM_LENGTH = NULL,
-  kk = NULL,
-  thresh1 = 0.3,
-  extreme_quantile = 0.8,
-  MONTH_SIM = NULL,
-  WATER_YEAR_SIM = NULL,
+  PRCP = NULL,
+  TEMP = NULL,
+  water_year_start = NULL,
+  water_year_end = NULL,
   START_YEAR_SIM = NULL,
-  DAY_SIM = NULL)
+  WATER_YEAR_A = NULL,
+  k1 = NULL,
+  ymax = NULL,
+  dates.d = NULL,
+  sim.dates.d = NULL,
+  YEAR_D = NULL,
+  month_list = NULL,
+  kk = NULL,
+  knn.annual.sample.num = 20,
+  thresh1 = 0.3,
+  extreme_quantile = 0.8)
 
   {
+
+
+  DATE_D <- dates.d$date
+  MONTH_D <- dates.d$month
+  WATER_YEAR_D <- dates.d$wyear
+  MONTH_DAY_D <- dates.d[,c("month","day")]
+  MONTH_SIM = sim.dates.d$month
+  DAY_SIM = sim.dates.d$day
+  WATER_YEAR_SIM = sim.dates.d$wyear
+  SIM_LENGTH <- length(MONTH_SIM)
 
   if(is.null(kk)) {
     kk <- round(max(round(sqrt(length(ANNUAL_PRCP)),0), round(length(ANNUAL_PRCP),0)*.5))

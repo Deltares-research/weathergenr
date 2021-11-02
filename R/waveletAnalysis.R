@@ -196,7 +196,7 @@ waveletAnalysis <- function(variable = NULL,
       geom_raster(aes(fill = z)) +
       scale_x_continuous(expand=c(0,0)) +
       scale_y_reverse(expand=c(0,0)) +
-      viridis::scale_fill_viridis() +
+      scale_fill_brewer() +
       labs(x= "Time (years)", y = "Period (years)") +
       guides(fill = "none") +
       geom_line(data = df2, linetype = "dashed", color = "red") +

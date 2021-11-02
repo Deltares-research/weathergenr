@@ -5,64 +5,58 @@
 \title{Dissaggregation function}
 \usage{
 resampleDates(
-  k1 = NULL,
-  ymax = NULL,
   PRCP_FINAL_ANNUAL_SIM = NULL,
   ANNUAL_PRCP = NULL,
-  WATER_YEAR_A,
-  WATER_YEAR_D,
-  PRCP,
-  TEMP,
-  DATE_D,
-  MONTH_D,
-  YEAR_D,
-  MONTH_DAY_D,
-  month_list,
-  water_year_start,
-  water_year_end,
-  knn.annual.sample.size = 20,
-  SIM_LENGTH = NULL,
-  kk = NULL,
-  thresh1 = 0.3,
-  extreme_quantile = 0.8,
-  MONTH_SIM = NULL,
-  WATER_YEAR_SIM = NULL,
+  PRCP = NULL,
+  TEMP = NULL,
+  water_year_start = NULL,
+  water_year_end = NULL,
   START_YEAR_SIM = NULL,
-  DAY_SIM = NULL
+  WATER_YEAR_A = NULL,
+  k1 = NULL,
+  ymax = NULL,
+  dates.d = NULL,
+  sim.dates.d = NULL,
+  YEAR_D = NULL,
+  month_list = NULL,
+  kk = NULL,
+  knn.annual.sample.num = 20,
+  thresh1 = 0.3,
+  extreme_quantile = 0.8
 )
 }
 \arguments{
-\item{k1}{placeholder}
-
-\item{ymax}{placeholder}
-
 \item{PRCP_FINAL_ANNUAL_SIM}{placeholder}
 
 \item{ANNUAL_PRCP}{placeholder}
-
-\item{WATER_YEAR_A}{placeholder}
-
-\item{WATER_YEAR_D}{placeholder}
 
 \item{PRCP}{placeholder}
 
 \item{TEMP}{placeholder}
 
-\item{DATE_D}{placeholder}
-
-\item{MONTH_D}{placeholder}
-
-\item{YEAR_D}{placeholder}
-
-\item{MONTH_DAY_D}{placeholder}
-
-\item{month_list}{placeholder}
-
 \item{water_year_start}{placeholder}
 
 \item{water_year_end}{placeholder}
 
-\item{knn.annual.sample.size}{placeholder}
+\item{WATER_YEAR_A}{placeholder}
+
+\item{k1}{placeholder}
+
+\item{ymax}{placeholder}
+
+\item{YEAR_D}{placeholder}
+
+\item{month_list}{placeholder}
+
+\item{knn.annual.sample.num}{placeholder}
+
+\item{WATER_YEAR_D}{placeholder}
+
+\item{DATE_D}{placeholder}
+
+\item{MONTH_D}{placeholder}
+
+\item{MONTH_DAY_D}{placeholder}
 
 \item{SIM_LENGTH}{placeholder}
 }

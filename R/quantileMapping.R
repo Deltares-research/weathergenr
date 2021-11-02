@@ -9,7 +9,6 @@
 #' @return
 #' @export
 #' @importFrom fitdistrplus fitdist
-#' @importFrom utils capture.output
 quantileMapping <- function(
   value = NULL,
   date = NULL,
@@ -58,7 +57,7 @@ quantileMapping <- function(
 
   # Fit base distribution and estimate parameters
   bdist[["fit"]][pmon] <- lapply(pmon,
-    function(x) fitdist(value_pmon[[x]], "gamma", control = list(reltol=1e-3)))
+    function(x) fitdistrplus::fitdist(value_pmon[[x]], "gamma", control = list(reltol=1e-3)))
 
   # Parameters for base distribution
   bdist[["shape"]][pmon] <- lapply(pmon,

@@ -13,15 +13,15 @@ simulateWeather(
   variable.units = NULL,
   warm.variable = NULL,
   warm.signif.level = 0.9,
-  knn.annual.sample.size = 20,
-  ymax = 40,
-  rmax = 5000,
-  nmax = 5,
-  validate = TRUE,
+  warm.sample.num = 20000,
+  knn.annual.sample.num = 20,
+  sim.year.num = 40,
   sim.year.start = 2020,
+  rlz.num = 5,
+  check.stats = TRUE,
   month.list = 1:12,
-  validation.grid.num = 50,
-  return.sampled.date.indices = TRUE,
+  check.grid.num = 50,
+  return.date.indices = TRUE,
   save.to.netcdf = FALSE,
   ...
 )
@@ -43,19 +43,19 @@ simulateWeather(
 
 \item{warm.signif.level}{Placeholder.}
 
-\item{ymax}{Placeholder.}
+\item{warm.sample.num}{Placeholder.}
 
-\item{rmax}{Placeholder.}
-
-\item{nmax}{Placeholder.}
-
-\item{validate}{Placeholder.}
+\item{sim.year.num}{Placeholder.}
 
 \item{sim.year.start}{Placeholder.}
 
+\item{rlz.num}{Placeholder.}
+
+\item{check.stats}{Placeholder.}
+
 \item{month.list}{Placeholder.}
 
-\item{validation.grid.num}{Placeholder.}
+\item{check.grid.num}{Placeholder.}
 
 \item{...}{Placeholder.}
 }

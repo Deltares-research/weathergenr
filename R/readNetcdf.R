@@ -22,8 +22,7 @@ readNetcdf <- function(
   nc.variables = NULL,
   origin.date = NULL,
   leap.year = TRUE,
-  omit.nans = TRUE
-  )
+  omit.nans = TRUE)
 
   {
 

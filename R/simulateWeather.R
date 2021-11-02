@@ -120,18 +120,18 @@ simulateWeather <- function(
   ############
 
 
-  # Normality tests come here.........
+
 
 
   ###########
 
   warm_variable <- warm_variable_org
 
-  ####  Power spectra of observed annual series
+  # power spectra analysis of historical series
   warm_power <- waveletAnalysis(variable = warm_variable, variable.unit = "mm",
     signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
-  ##### WAVELET DECOMPOSITION OF HISTORICAL SERIES
+  # wavelet decomposition of historical series
   wavelet_comps <- waveletDecompose(variable = warm_variable,
         signif.periods = warm_power$signif_periods,
         signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
@@ -139,17 +139,17 @@ simulateWeather <- function(
   message(cat("\u2713", "|", "Wavelet analysis:", length(wavelet_comps)-1,
     "low frequency components defined"))
 
-  ##### Stochastic simuluation of historical annual series
-  sim_annual <- waveletAR(wavelet.comps = wavelet_comps,
+  # stochastic simulation of annual series
+  sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
         num.years = sim.year.num, num.realizations = warm.sample.num)
 
   message(cat("\u2713", "|", warm.sample.num, "stochastic annual series generated"))
 
-  # Wavelet analysis on simulated series
+  # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
 
-  ### Choose which parameters to consider for filtering
+  # subsetting from generated warm series
   sim_annual_sub <- waveletARSubset(
        series.obs = warm_variable,
        series.sim = sim_annual,
@@ -167,35 +167,28 @@ simulateWeather <- function(
   message(cat("\u2713", "|", ncol(sim_annual_final), "annual traces selected"))
 
   # Sample size in KNN_ANNUAL sampling
-  dates_resampled <- lapply(1:rlz.num, function(n)
-    resampleDates(
-      ANNUAL_PRCP = warm_variable,
-      PRCP_FINAL_ANNUAL_SIM = sim_annual_final[, n],
-      WATER_YEAR_A = dates_a$wyear,
-      WATER_YEAR_D = dates_d$wyear,
-      PRCP = climate_d_aavg$precip,
-      TEMP = climate_d_aavg$temp,
-      DATE_D = dates_d$date,
-      MONTH_D = dates_d$month,
-      YEAR_D = year_seq,
-      MONTH_DAY_D = dates_d[,c("month","day")],
-      month_list = month.list,
-      water_year_start = water_year_start,
-      water_year_end = water_year_end,
-      knn.annual.sample.num = knn.annual.sample.num,
-      k1 = n,
-      ymax = sim.year.num,
-      SIM_LENGTH = length(sim_dates_d$date),
-      MONTH_SIM = sim_dates_d$month,
-      WATER_YEAR_SIM = sim_dates_d$wyear,
-      START_YEAR_SIM = sim.year.start,
-      DAY_SIM = sim_dates_d$day)
+  dates_resampled <- lapply(1:rlz.num, function(n) resampleDates(
+        PRCP_FINAL_ANNUAL_SIM = sim_annual_final[, n],
+        ANNUAL_PRCP = warm_variable,
+        PRCP = climate_d_aavg$precip,
+        TEMP = climate_d_aavg$temp,
+        water_year_start = water_year_start,
+        water_year_end = water_year_end,
+        START_YEAR_SIM = sim.year.start,
+        WATER_YEAR_A = dates_a$wyear,
+        k1 = n,
+        ymax = sim.year.num,
+        dates.d = dates_d,
+        sim.dates.d = sim_dates_d,
+        YEAR_D = year_seq,
+        month_list = month.list)
   )
 
   message(cat("\u2713", "|", "Spatial & temporal dissaggregation completed"))
 
   rlz <- list()
-  day_order <- sapply(1:rlz.num, function(n) match(dates_resampled[[n]], date_seq))
+  day_order <- sapply(1:rlz.num,
+    function(n) match(dates_resampled[[n]], date_seq))
 
   for (n in 1:rlz.num) {
       rlz[[n]] <- lapply(climate_d, function(x)

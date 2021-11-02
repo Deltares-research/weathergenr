@@ -5,8 +5,8 @@
 \title{Climate Change perturbations function}
 \usage{
 imposeClimateChanges(
-  input.path = NULL,
   input.data = NULL,
+  coordGrid = NULL,
   file.suffix = "",
   file.prefix = "clim_change_rlz",
   output.path = NULL,
@@ -20,8 +20,6 @@ imposeClimateChanges(
 )
 }
 \arguments{
-\item{input.path}{Placeholder.}
-
 \item{input.data}{Placeholder.}
 
 \item{file.suffix}{Placeholder.}
@@ -39,6 +37,8 @@ imposeClimateChanges(
 \item{change.settings}{To be completed...}
 
 \item{save.scenario.matrix}{Placeholder.}
+
+\item{input.path}{Placeholder.}
 }
 \value{
 

@@ -182,15 +182,15 @@ waveletDecompose <- function(variable = NULL,
   names(COMPS) <- paste0("Component_", 1:NUM_FINAL_PERIODS)
   Noise = current_variable_org - apply(COMPS, 1, sum)
 
+  if(plot == TRUE) {
 
-  df <- tibble(Year = 1:length(variable), Original = variable) %>%
+    df <- tibble(Year = 1:length(variable), Original = variable) %>%
       add_column(COMPS) %>%
       add_column(Noise) %>%
       gather(key = variable, value = value, -Year) %>%
       mutate(variable = factor(variable,
         levels = c("Original", paste0("Component_", 1:NUM_FINAL_PERIODS), "Noise")))
 
-  if(plot == TRUE) {
 
     p <- ggplot(df, aes(x = Year, y = value)) +
         theme_light(base_size = 12) +
