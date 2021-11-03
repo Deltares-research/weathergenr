@@ -2,7 +2,7 @@
 % Please edit documentation in R/readNetcdf.R
 \name{readNetcdf}
 \alias{readNetcdf}
-\title{Function to read climate data from netcdf files}
+\title{Read netcdf files}
 \usage{
 readNetcdf(
   nc.path = NULL,
@@ -10,26 +10,39 @@ readNetcdf(
   nc.dimnames = NULL,
   nc.variables = NULL,
   origin.date = NULL,
-  leap.year = TRUE,
-  omit.nans = TRUE
+  has.leap.days = TRUE,
+  omit.empty.cells = TRUE
 )
 }
 \arguments{
-\item{nc.path}{A character string to define the path of template netcdf file.}
+\item{nc.path}{The path of the netcdf file to be read}
 
-\item{nc.file}{A character string to define the name of the template netcdf file.}
+\item{nc.file}{The name of the netcdf file to be read}
 
-\item{nc.dimnames}{A list object specifying the dimension names.}
+\item{nc.dimnames}{Desired dimension names in the output data}
+
+\item{nc.variables}{Desired variable names to be read from the netcdf file}
 
 \item{origin.date}{A character string to specify the date of origin}
 
-\item{leap.year}{placeholder}
+\item{has.leap.days}{A logical value indicating whether the gridded data includes leap days.}
 
-\item{variables}{A list object specifying variable names}
+\item{omit.empty.cells}{A lotical value indicating whether empty cells with missing values to be removed}
 }
 \value{
 
 }
 \description{
-Function to read climate data from netcdf files
+Wrapper function to read files and create list object that returns a list of weather data for each grid,
+a table of grid coordinates and a date series as well as raw data, dimensions, variables, and attributes
+from the netcdf file.
+}
+\examples{
+\dontrun{
+output <- readNetcdf(nc.path = system.file('extdata', package = 'gridwegen'),
+    nc.file = "ntoum.nc", nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+    nc.variables = c("precip", "temp", "temp_min", "temp_max"),
+    origin.date = as.Date("1981-01-01"),
+    has.leap.days = TRUE)
+}
 }

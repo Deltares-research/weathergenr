@@ -1,64 +1,39 @@
 
-# Todo
-# Add dry/wet spell plots for performance
-# Add step changes......
-
-# Load package
-devtools::install_github("tanerumit/gridwegen@mcmc_dev")
-
 # Packages needed
 library(gridwegen)
 
 # Path to output files
 path0 <- "C:/wegentest/"
 out_path <- paste0(path0, "TEST/")
-nc_path <- paste0(path0, "input/")
-
-# Path to historical gridded data
-nc_file <- "ntoum.nc"
-
-nc_dimnames <- list(x = "lon", y = "lat", time = "time")
-origin_date <- as.Date("1981-01-01")
-sim_origin_date <- as.Date("2020-01-01")
-wg_variables <- c("precip", "temp", "temp_min", "temp_max")
-wg_variable_labels <- c("Precipitation", "Avg. Temperature", "Min. Temperature", "Max. Temperature")
-wg_variable_units  <- c("mm/day", "°C", "°C", "°C")
-warm_variable <- "precip"
-water_year_months <- 1:12
-rlz_num = 5
-sim_years = 40
-knn_annual_sample_size = 20
 
 # Read-in gridded weather data from netcdf
+nc_path <- system.file('extdata', package = 'gridwegen')
+nc_file <- "ntoum.nc"
+nc_dimnames <- list(x = "lon", y = "lat", time = "time")
+nc_variables <- c("precip", "temp", "temp_min", "temp_max")
+origin_date <- as.Date("1981-01-01")
+
 nc_data <- readNetcdf(
     nc.path = nc_path,
     nc.file = nc_file,
     nc.dimnames = nc_dimnames,
-    nc.variables = wg_variables,
+    nc.variables = nc_variables,
     origin.date = origin_date,
-    leap.year = TRUE)
+    has.leap.days = TRUE)
 
+# Simulate daily realizations of historical weather conditions
 out <- simulateWeather(
   output.path = out_path,
-  hist.climate = nc_data$tidy_data,
+  hist.climate = nc_data$data,
   hist.date.start = origin_date,
-  sim.year.start = as.numeric(format(sim_origin_date,"%Y")),
-  month.list = water_year_months,
-  variables = wg_variables,
-  variable.labels = wg_variable_labels,
-  variable.units = wg_variable_units,
-  warm.variable = warm_variable,
-  knn.annual.sample.size = knn_annual_sample_size,
-  warm.signif.level = 0.90,
-  ymax = sim_years,
-  nmax = rlz_num,
-  validate = FALSE,
-  save.to.netcdf = FALSE,
-  return.sampled.date.indices = FALSE
+  variables = names(nc_data$variables)[1:4],
+  sim.year.num = 40,
+  sim.year.start = 2020,
+  rlz.num = 5,
+  return.date.indices = TRUE)
 
-  )
 
-#::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#
+
 for(n in 1:rlz_num) {
 
   imposeClimateChanges(
@@ -77,4 +52,3 @@ for(n in 1:rlz_num) {
 
 }
 
-#::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#

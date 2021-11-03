@@ -34,14 +34,14 @@ simulateWeather <- function(
   variables = NULL,
   variable.labels = NULL,
   variable.units = NULL,
-  warm.variable = NULL,
+  warm.variable = "precip",
   warm.signif.level = 0.90,
   warm.sample.num = 20000,
   knn.annual.sample.num = 20,
   sim.year.num = 40,
   sim.year.start = 2020,
   rlz.num = 5,
-  check.stats = TRUE,
+  check.stats = FALSE,
   month.list = 1:12,
   check.grid.num = 50,
   return.date.indices = TRUE,
@@ -51,7 +51,10 @@ simulateWeather <- function(
  {
 
   # Number of grids
-  ngrids <- length(hist.climate$id)
+  ngrids <- length(hist.climate)
+
+  if(is.null(variable.labels)) {variable.labels <- variables}
+  if(is.null(variable.units)) {variable.units <- rep("", length(variables))}
 
   #browser()
   message(cat("\u2713", "|", "Historical data loaded. Data has", ngrids, "grids"))
@@ -60,13 +63,13 @@ simulateWeather <- function(
   warm_path <- paste0(output.path, "warm/")
   if (!dir.exists(warm_path)) {dir.create(warm_path)}
 
-  date_seq <- hist.date.start-1 + 1:nrow(hist.climate$data[[1]])
+  date_seq <- hist.date.start-1 + 1:nrow(hist.climate[[1]])
   year_seq <- as.numeric(format(date_seq,"%Y"))
 
   water_year_start <- year_seq[1]
   water_year_end <- year_seq[length(year_seq)]
 
-  # Historical data matrix tables
+    # Historical data matrix tables
   dates_d <- tibble(year = as.numeric(format(date_seq,"%Y")),
           wyear = getWaterYear(date=date_seq, month.list=month.list),
           month = as.numeric(format(date_seq,"%m")),
@@ -98,7 +101,7 @@ simulateWeather <- function(
   # Prepare tables for daily, monthly, and annual values
   dates_wy <- tibble(year=dates_d$wyear, month=dates_d$month, day=dates_d$day)
 
-  climate_obs_d <- lapply(hist.climate$data, function(x) x[wyear_index, ])
+  climate_obs_d <- lapply(hist.climate, function(x) x[wyear_index, ])
   climate_d <- lapply(1:ngrids, function(i)
         bind_cols(dates_wy, climate_obs_d[[i]]) %>%
         arrange(year, month, day))
@@ -116,20 +119,11 @@ simulateWeather <- function(
 
   #####  Wavelet analysis on observed annual series
   warm_variable_org <- climate_a_aavg %>% pull({{warm.variable}})
-
-  ############
-
-
-
-
-
-  ###########
-
   warm_variable <- warm_variable_org
 
   # power spectra analysis of historical series
   warm_power <- waveletAnalysis(variable = warm_variable, variable.unit = "mm",
-    signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
+    signif.level = warm.signif.level, plot = FALSE, output.path = warm_path)
 
   # wavelet decomposition of historical series
   wavelet_comps <- waveletDecompose(variable = warm_variable,
@@ -202,16 +196,17 @@ simulateWeather <- function(
     if (!dir.exists(paste0(output.path, "check/"))) {
               dir.create(paste0(output.path, "check/"))}
 
-    sampleGrids <- sf::st_as_sf(hist.climate[,c("x","y")], coords = c("x","y")) %>%
+    sampleGrids <- sf::st_as_sf(grid.coords[,c("x","y")], coords = c("x","y")) %>%
       sf::st_sample(size = min(check.grid.num, ngrids), type = "regular") %>%
       sf::st_cast("POINT") %>% sf::st_coordinates() %>%
       as_tibble() %>%
-      left_join(hist.climate[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
+      left_join(grid.coords[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
       pull(id)
 
     sim_daily_sample <- lapply(1:rlz.num, function(x) rlz[[x]][sampleGrids] %>%
                                  mutate(date = sim_dates_d$date, .before = 1))
-    hist_daily_sample <- lapply(hist.climate$data[sampleGrids], function(x)
+
+    hist_daily_sample <- lapply(hist.climate[sampleGrids], function(x)
       dplyr::mutate(x, date = date_seq, .before = 1))
 
     wgPerformance(daily.sim = sim_daily_sample,
@@ -234,11 +229,11 @@ simulateWeather <- function(
 
       writeNetcdf(
         data = rlz[[n]],
-        coord.grid = nc_data$tidy_data,
+        coord.grid = nc_data$coords,
         output.path = paste0(out_path,"historical/"),
-        nc.dimensions = nc_data$nc_dimensions,
-        nc.dimnames = nc_dimnames,
-        origin.date = sim_origin_date,
+        nc.dimensions = nc_data$dimensions,
+        nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+        origin.date = as.Date(paste0(sim.year.start,"-01-01")),
         calendar.type = "no leap",
         variables = variables,
         variable.units = variable.units,

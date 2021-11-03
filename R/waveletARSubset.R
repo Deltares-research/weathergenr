@@ -47,6 +47,8 @@ waveletARSubset <- function(
 
 {
 
+  sim.year.num = nrow(series.sim)
+
   # Statistics for simulated realizations
   stats_sim <- series.sim %>%
     as_tibble(.name_repair = ~as.character(1:ncol(series.sim))) %>%

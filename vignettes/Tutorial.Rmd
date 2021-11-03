@@ -1,0 +1,44 @@
+---
+title: "Simple tutorial"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Simple tutorial}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
+```
+
+The goal of this document is to get you up and running with gridwegen as quickly as possible. 
+
+## Basic functionality
+
+For illustration, we will be using the gridded data for Ntoum basin in ....
+
+### Reading in netcdf files
+
+```{r setup}
+library(gridwegen)
+```
+
+Read-in gridded weather data from netcdf
+```{r ncdata}
+nc_data <- readNetcdf(
+    nc.path = system.file('extdata', package = 'gridwegen'),
+    nc.file = "/ntoum.nc",
+    nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+    nc.variables = c("precip", "temp", "temp_min", "temp_max"),
+    origin.date = as.Date("1981-01-01"),
+    has.leap.days = TRUE)
+```
+
+
+
+
+
+
+
+
+
