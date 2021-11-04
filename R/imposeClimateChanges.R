@@ -2,7 +2,7 @@
 #' Climate Change perturbations function
 #'
 #' @param output.path To be completed...
-#' @param sim.date.start To be completed...
+#' @param sim.year.start To be completed...
 #' @param variables To be completed...
 #' @param variable.units To be completed...
 #' @param nc.dimnames To be completed...
@@ -18,13 +18,15 @@
 #' @import ncdf4
 #' @importFrom utils write.csv
 #' @importFrom readxl read_excel
+#' @importFrom tidyr expand_grid
 imposeClimateChanges <- function(
   input.data = NULL,
   coordGrid = NULL,
   file.suffix = "",
   file.prefix = "clim_change_rlz",
   output.path = NULL,
-  sim.date.start = NULL,
+  sim.year.start = NULL,
+  month.start = 1,
   variables = NULL,
   variable.units = NULL,
   nc.dimnames = NULL,
@@ -33,6 +35,9 @@ imposeClimateChanges <- function(
   step = TRUE)
 
 {
+
+
+  if(is.null(variable.units)) {variable.units <- rep("", length(variables))}
 
   #:::::::::::::::::::::: CLIMATE CHANGE SETTINGS ::::::::::::::::::::::::::::::
 
@@ -79,7 +84,7 @@ imposeClimateChanges <- function(
   }
 
   # Scenario matrix
-  scn_mat <- expand_grid(par1 = 1:PARCC[[1]]$increments, par2 = 1:PARCC[[2]]$increments) %>%
+  scn_mat <- tidyr::expand_grid(par1 = 1:PARCC[[1]]$increments, par2 = 1:PARCC[[2]]$increments) %>%
     mutate(id = 1:n(), .before = 1) %>%
     mutate(precip_change_mean = PARCC[[1]]$mean$steps[par1,1], temp_change_mean = PARCC[[2]]$mean$steps[par2,1]) %>%
     mutate(precip_change_variance = PARCC[[1]]$var$steps[par1,1], temp_change_variance = PARCC[[2]]$var$steps[par2,1])
@@ -99,9 +104,20 @@ imposeClimateChanges <- function(
   ngrids <- length(grids)
 
   # Date indices
-  sim_dates <- nc_data$nc_dates
-  year_series <- as.numeric(format(sim_dates,"%Y"))
-  month_series <- as.numeric(format(sim_dates,"%m"))
+  sim_year_end <- sim.year.start + nrow(input.data[[1]])/365
+  date_sim <- seq(as.Date(paste(sim.year.start,"-1-01",sep="")),
+    as.Date(paste(sim_year_end,"-12-31",sep="")), by="day")
+
+  sim_dates_d <- tibble(year = as.numeric(format(date_sim,"%Y")),
+          wyear = getWaterYear(date_sim, month.start),
+          month = as.numeric(format(date_sim,"%m")),
+          day = as.numeric(format(date_sim,"%d"))) %>%
+      filter(month!=2 | day!=29) %>%
+      filter(wyear >= sim.year.start+1 & wyear <= sim_year_end) %>%
+      mutate(date = as.Date(paste(year, month, day, sep = "-")), .before=1)
+
+  year_series <- as.numeric(format(sim_dates_d$date,"%Y"))
+  month_series <- as.numeric(format(sim_dates_d$date,"%m"))
   year_index <- year_series - min(year_series) + 1
   year_num <- length(unique(year_series))
 
@@ -113,7 +129,7 @@ imposeClimateChanges <- function(
   for (s in 1:smax) {
 
     # New object to store the results
-    rlz <- nc_data$tidy_data$data
+    rlz <- input.data
 
     # Current perturbation scenario for each variable
     perturb_precip <- list(mean = PARCC[[1]]$mean$steps[scn_mat$par1[s],],
@@ -147,12 +163,12 @@ imposeClimateChanges <- function(
 
     # Write to netcdf
     writeNetcdf(
+        nc.temp = nc_data,
         data = rlz,
         coord.grid = coordGrid,
-        output.path = output.path,
-        nc.dimensions = nc_data$nc_dimensions,
-        nc.dimnames = nc.dimnames,
-        origin.date = sim.date.start,
+        output.path = paste0(output.path,"future/"),
+        nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+        origin.date =  as.Date(paste0(sim.year.start,"-01-01")),
         calendar.type = "no leap",
         variables = c(variables, "pet"),
         variable.units = c(variable.units, "mm/day"),

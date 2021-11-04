@@ -5,19 +5,17 @@
 #' @param ymax placeholder
 #' @param PRCP_FINAL_ANNUAL_SIM placeholder
 #' @param ANNUAL_PRCP placeholder
-#' @param WATER_YEAR_A placeholder
-#' @param WATER_YEAR_D placeholder
 #' @param PRCP placeholder
 #' @param TEMP placeholder
-#' @param DATE_D placeholder
-#' @param MONTH_D placeholder
 #' @param YEAR_D placeholder
-#' @param MONTH_DAY_D placeholder
-#' @param month_list placeholder
-#' @param water_year_start placeholder
-#' @param water_year_end placeholder
+#' @param START_YEAR_SIM
+#' @param dates.d
+#' @param sim.dates.d
+#' @param month.start
+#' @param kk
+#' @param thresh1
+#' @param extreme_quantile
 #' @param knn.annual.sample.num placeholder
-#' @param SIM_LENGTH placeholder
 #'
 #' @return
 #' @export
@@ -26,16 +24,13 @@ resampleDates <- function(
   ANNUAL_PRCP = NULL,
   PRCP = NULL,
   TEMP = NULL,
-  water_year_start = NULL,
-  water_year_end = NULL,
   START_YEAR_SIM = NULL,
-  WATER_YEAR_A = NULL,
   k1 = NULL,
   ymax = NULL,
   dates.d = NULL,
   sim.dates.d = NULL,
   YEAR_D = NULL,
-  month_list = NULL,
+  month.start = NULL,
   kk = NULL,
   knn.annual.sample.num = 20,
   thresh1 = 0.3,
@@ -43,15 +38,30 @@ resampleDates <- function(
 
   {
 
+  if(month.start == 1) {
+    month_list <- 1:12
+  } else {
+    month_list <- c(month.start:12,1:(month.start-1))
+  }
+
+  WATER_YEAR_A <- dates.d %>%
+    dplyr::filter(month == month.start & day == 1) %>% pull(wyear)
 
   DATE_D <- dates.d$date
   MONTH_D <- dates.d$month
   WATER_YEAR_D <- dates.d$wyear
   MONTH_DAY_D <- dates.d[,c("month","day")]
+
   MONTH_SIM = sim.dates.d$month
   DAY_SIM = sim.dates.d$day
   WATER_YEAR_SIM = sim.dates.d$wyear
   SIM_LENGTH <- length(MONTH_SIM)
+
+  #***
+  water_year_start = dates.d$wyear[1]
+  water_year_end = dates.d$wyear[nrow(dates.d)]
+  #****
+
 
   if(is.null(kk)) {
     kk <- round(max(round(sqrt(length(ANNUAL_PRCP)),0), round(length(ANNUAL_PRCP),0)*.5))
@@ -148,9 +158,9 @@ resampleDates <- function(
 			p21_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]>thresh1 & PRCP_LAG0[x]<=thresh2[m])) / length(which(PRCP_LAG1[x]>thresh2[m]))
 			p22_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]>thresh2[m])) / length(which(PRCP_LAG1[x]>thresh2[m]))
 
-			PI_new <- getPI(p00_final[r][1], p01_final[r][1], p02_final[r][1],
-			                p10_final[r][1], p11_final[r][1], p12_final[r][1],
-			                p20_final[r][1], p21_final[r][1], p22_final[r][1])
+			#PI_new <- getPI(p00_final[r][1], p01_final[r][1], p02_final[r][1],
+			#                p10_final[r][1], p11_final[r][1], p12_final[r][1],
+			#                p20_final[r][1], p21_final[r][1], p22_final[r][1])
 
 		} #month-counter close
 
@@ -164,82 +174,82 @@ resampleDates <- function(
 
 			if (count <= SIM_LENGTH) {
 
-			  # Random number generated for the current day
-  			rn <- rn_all[(count-1)]
+  			  # Random number generated for the current day
+    			rn <- rn_all[(count-1)]
 
-  			# If day is in state 2
-  			if (OCCURENCES[(count-1)]==0) {
-  				pp1 <- p00_final[(count-1)]
-  				pp2 <- p00_final[(count-1)] + p01_final[(count-1)]
-  			}
+    			# If day is in state 2
+    			if (OCCURENCES[(count-1)]==0) {
+    				pp1 <- p00_final[(count-1)]
+    				pp2 <- p00_final[(count-1)] + p01_final[(count-1)]
+    			}
 
-  			# If day is in state 1
-  			if (OCCURENCES[(count-1)]==1) {
-  				pp1 <- p10_final[(count-1)]
-  				pp2 <- p10_final[(count-1)] + p11_final[(count-1)]
-  			}
+    			# If day is in state 1
+    			if (OCCURENCES[(count-1)]==1) {
+    				pp1 <- p10_final[(count-1)]
+    				pp2 <- p10_final[(count-1)] + p11_final[(count-1)]
+    			}
 
-  			# If day is in state 2
-  			if (OCCURENCES[(count-1)]==2) {
-  				pp1 <- p20_final[(count-1)]
-  				pp2 <- p20_final[(count-1)] + p21_final[(count-1)]
-  			}
+    			# If day is in state 2
+    			if (OCCURENCES[(count-1)]==2) {
+    				pp1 <- p20_final[(count-1)]
+    				pp2 <- p20_final[(count-1)] + p21_final[(count-1)]
+    			}
 
-  			# Set state for the next day
-  			if(rn < pp1) {
-  				OCCURENCES[count] <- 0
-  			} else if (rn >= pp1 & rn < pp2) {
-  				OCCURENCES[count] <- 1
-  			} else {
-  				OCCURENCES[count] <- 2
-  			}
+    			# Set state for the next day
+    			if(rn < pp1) {
+    				OCCURENCES[count] <- 0
+    			} else if (rn >= pp1 & rn < pp2) {
+    				OCCURENCES[count] <- 1
+    			} else {
+    				OCCURENCES[count] <- 2
+    			}
 
-  			# Current day's month of the year and day of the year indices
-  			m <- MONTH_SIM[(count-1)]
-  			mmm <- which(month_list==m)
-  			d <- DAY_SIM[(count-1)]
+    			# Current day's month of the year and day of the year indices
+    			m <- MONTH_SIM[(count-1)]
+    			mmm <- which(month_list==m)
+    			d <- DAY_SIM[(count-1)]
 
-  			# Current occurrance
-  			cur_OCCERENCE <- OCCURENCES[(count-1)]
+    			# Current occurrance
+    			cur_OCCERENCE <- OCCURENCES[(count-1)]
 
-  			# Next day's occurrance
-  			next_OCCURENCE <- OCCURENCES[(count)]
+    			# Next day's occurrance
+    			next_OCCURENCE <- OCCURENCES[(count)]
 
-  			# Subset non-zero days?
-  			cur_day <- which(MONTH_DAY_D_CURRENT[,1]==m & MONTH_DAY_D_CURRENT[,2]==d)
-  			cur_day <- c((cur_day-3),(cur_day-2),(cur_day-1),cur_day,(cur_day+1),(cur_day+2),(cur_day+3))
-  			cur_day <- subset(cur_day,cur_day > 0)
+    			# Subset non-zero days?
+    			cur_day <- which(MONTH_DAY_D_CURRENT[,1]==m & MONTH_DAY_D_CURRENT[,2]==d)
+    			cur_day <- c((cur_day-3),(cur_day-2),(cur_day-1),cur_day,(cur_day+1),(cur_day+2),(cur_day+3))
+    			cur_day <- subset(cur_day,cur_day > 0)
 
-  			# Set current day's state.............
-  			if (cur_OCCERENCE==0 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-  			if (cur_OCCERENCE==0 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-  			if (cur_OCCERENCE==0 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-  			if (cur_OCCERENCE==1 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-  			if (cur_OCCERENCE==1 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-  			if (cur_OCCERENCE==1 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-  			if (cur_OCCERENCE==2 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-  			if (cur_OCCERENCE==2 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-  			if (cur_OCCERENCE==2 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
+    			# Set current day's state.............
+    			if (cur_OCCERENCE==0 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
+    			if (cur_OCCERENCE==0 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
+    			if (cur_OCCERENCE==0 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
+    			if (cur_OCCERENCE==1 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
+    			if (cur_OCCERENCE==1 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
+    			if (cur_OCCERENCE==1 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
+    			if (cur_OCCERENCE==2 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
+    			if (cur_OCCERENCE==2 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
+    			if (cur_OCCERENCE==2 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
 
-  			# If length of the state index is zero......
-  			if (length(cur_day_cur_state)==0) {
-  				cur_day <- which(MONTH_DAY_D_CURRENT[,1]==m & MONTH_DAY_D_CURRENT[,2]==d)
-  				cur_day_final <- array(NA,length(cur_day)*61)
-  				cur_day_window <- seq(-30,30)
-  				for (cc in 1:61) {
-  					cur_day_final[(1 + length(cur_day)*(cc-1)):(length(cur_day) + length(cur_day)*(cc-1))] <- (cur_day+cur_day_window[cc])
-  				}
-  				cur_day <- subset(cur_day_final,cur_day_final > 0)
-  				if (cur_OCCERENCE==0 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-  				if (cur_OCCERENCE==0 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-  				if (cur_OCCERENCE==0 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-  				if (cur_OCCERENCE==1 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-  				if (cur_OCCERENCE==1 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-  				if (cur_OCCERENCE==1 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-  				if (cur_OCCERENCE==2 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-  				if (cur_OCCERENCE==2 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-  				if (cur_OCCERENCE==2 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-  			}
+    			# If length of the state index is zero......
+    			if (length(cur_day_cur_state)==0) {
+    				cur_day <- which(MONTH_DAY_D_CURRENT[,1]==m & MONTH_DAY_D_CURRENT[,2]==d)
+    				cur_day_final <- array(NA,length(cur_day)*61)
+    				cur_day_window <- seq(-30,30)
+    				for (cc in 1:61) {
+    					cur_day_final[(1 + length(cur_day)*(cc-1)):(length(cur_day) + length(cur_day)*(cc-1))] <- (cur_day+cur_day_window[cc])
+    				}
+    				cur_day <- subset(cur_day_final,cur_day_final > 0)
+    				if (cur_OCCERENCE==0 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
+    				if (cur_OCCERENCE==0 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
+    				if (cur_OCCERENCE==0 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
+    				if (cur_OCCERENCE==1 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
+    				if (cur_OCCERENCE==1 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
+    				if (cur_OCCERENCE==1 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
+    				if (cur_OCCERENCE==2 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
+    				if (cur_OCCERENCE==2 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
+    				if (cur_OCCERENCE==2 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
+    			}
 
   			#	Define Possible days to choose from and set their values
   			possible_days <- cur_day[cur_day_cur_state]

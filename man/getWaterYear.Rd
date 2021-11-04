@@ -2,18 +2,28 @@
 % Please edit documentation in R/getWaterYear.R
 \name{getWaterYear}
 \alias{getWaterYear}
-\title{Water year function}
+\title{Calculate water years from a date series}
 \usage{
-getWaterYear(date = NULL, month.list = 1:12)
+getWaterYear(date = NULL, water.year.first.month = 1)
 }
 \arguments{
-\item{date}{placeholder}
+\item{date}{a vector of values class of date object}
 
-\item{month.list}{placeholder}
+\item{water.year.first.month}{index of the first month in the water year,
+e.g., if water year starts in June, it is 6.}
 }
 \value{
-
+A vector of water years
 }
 \description{
-Water year function
+Calculate water years from a date series
+}
+\examples{
+date <- seq(as.Date("2000/1/1"), by = "month", length.out = 120)
+
+Water year equals to calendar year
+getWaterYear(date, water.year.first.month = 1)
+
+Water year starts in October
+getWaterYear(date, water.year.first.month = 10)
 }

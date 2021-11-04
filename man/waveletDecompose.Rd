@@ -8,7 +8,7 @@ waveletDecompose(
   variable = NULL,
   signif.periods = NULL,
   noise.type = "white",
-  signif.level = 0.8,
+  signif.level = 0.9,
   plot = TRUE,
   output.path = NULL
 )

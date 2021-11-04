@@ -5,10 +5,10 @@
 \title{Title}
 \usage{
 writeNetcdf(
+  nc.temp = NULL,
   data = NULL,
   coord.grid = NULL,
   output.path = NULL,
-  nc.dimensions = NULL,
   nc.dimnames = NULL,
   origin.date = NULL,
   calendar.type = "no leap",
@@ -21,8 +21,6 @@ writeNetcdf(
 }
 \arguments{
 \item{output.path}{Placeholder}
-
-\item{nc.dimensions}{Placeholder}
 
 \item{nc.dimnames}{Placeholder}
 

@@ -10,7 +10,8 @@ imposeClimateChanges(
   file.suffix = "",
   file.prefix = "clim_change_rlz",
   output.path = NULL,
-  sim.date.start = NULL,
+  sim.year.start = NULL,
+  month.start = 1,
   variables = NULL,
   variable.units = NULL,
   nc.dimnames = NULL,
@@ -26,7 +27,7 @@ imposeClimateChanges(
 
 \item{output.path}{To be completed...}
 
-\item{sim.date.start}{To be completed...}
+\item{sim.year.start}{To be completed...}
 
 \item{variables}{To be completed...}
 

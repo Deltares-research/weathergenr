@@ -9,16 +9,13 @@ resampleDates(
   ANNUAL_PRCP = NULL,
   PRCP = NULL,
   TEMP = NULL,
-  water_year_start = NULL,
-  water_year_end = NULL,
   START_YEAR_SIM = NULL,
-  WATER_YEAR_A = NULL,
   k1 = NULL,
   ymax = NULL,
   dates.d = NULL,
   sim.dates.d = NULL,
   YEAR_D = NULL,
-  month_list = NULL,
+  month.start = NULL,
   kk = NULL,
   knn.annual.sample.num = 20,
   thresh1 = 0.3,
@@ -34,31 +31,13 @@ resampleDates(
 
 \item{TEMP}{placeholder}
 
-\item{water_year_start}{placeholder}
-
-\item{water_year_end}{placeholder}
-
-\item{WATER_YEAR_A}{placeholder}
-
 \item{k1}{placeholder}
 
 \item{ymax}{placeholder}
 
 \item{YEAR_D}{placeholder}
 
-\item{month_list}{placeholder}
-
 \item{knn.annual.sample.num}{placeholder}
-
-\item{WATER_YEAR_D}{placeholder}
-
-\item{DATE_D}{placeholder}
-
-\item{MONTH_D}{placeholder}
-
-\item{MONTH_DAY_D}{placeholder}
-
-\item{SIM_LENGTH}{placeholder}
 }
 \value{
 

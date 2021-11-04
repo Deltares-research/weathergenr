@@ -182,44 +182,32 @@ waveletAnalysis <- function(variable = NULL,
       gather(key = y, value = z, -x) %>%
       mutate(across(everything(), as.numeric))
 
-
-    p1 <- ggplot(var_gg) +
-      theme_light() +
-      geom_line(aes(x,y)) +
-      geom_point(aes(x,y), shape = 21, size = 2) +
-      labs(x= "Time (years)", y = variable.unit) +
-      scale_x_continuous() +
-      ggtitle("Annual Time-series")
-
     p2 <- ggplot(df1, aes(x=x,y=y)) +
       theme_light() +
       geom_raster(aes(fill = z)) +
       scale_x_continuous(expand=c(0,0)) +
       scale_y_reverse(expand=c(0,0)) +
-      scale_fill_brewer() +
+      scale_fill_distiller(palette = "YlGnBu") +
       labs(x= "Time (years)", y = "Period (years)") +
       guides(fill = "none") +
-      geom_line(data = df2, linetype = "dashed", color = "red") +
-      stat_contour(aes(z = z), data = df3, breaks=c(-99, 1)) +
-      ggtitle("Wavelet Power Spectrum")
+      geom_line(data = df2, linetype = "dashed", color = "red", size = 0.85) +
+      stat_contour(aes(z = z), data = df3, breaks=c(-99, 1), color = "black") +
+      ggtitle("a)")
 
     p3 <- ggplot(GWS_gg) +
       theme_light() +
       geom_line(aes(period, GWS)) +
-      geom_point(aes(period, GWS), shape = 21, size = 2) +
-      geom_line(aes(period, GWS_signif), color = "red", linetype = "dashed") +
+      geom_point(aes(period, GWS), shape = 19, size = 1) +
+      geom_line(aes(period, GWS_signif), color = "red", linetype = "dashed", size = 0.85) +
       scale_y_continuous() +
       scale_x_reverse(expand = c(0,0)) +
       coord_flip() +
       labs(y = expression(Power~(mm^2)), x="") +
-      ggtitle("Global Wavelet Power Spectrum")
-
-
-    p <- p1 + (p2 + p3 + plot_layout(widths = c(2, 1.2))) +
-         plot_layout(heights = c(1,2.5), nrow = 2)
+      ggtitle("b)")
 
     # Save results to file
-    ggsave(paste0(output.path, "warm_observed_wavelet.png"), height=9, width=10)
+    p <- p2 + p3 + patchwork::plot_layout(widths = c(2, 1.25))
+    ggsave(paste0(output.path, "warm_observed_wavelet.png"), height=8, width=8)
 
   }
 

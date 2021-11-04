@@ -4,18 +4,14 @@
 \alias{waveletARIMA}
 \title{A function for Wavelet Autoregressive Modeling (WARM)}
 \usage{
-waveletARIMA(
-  wavelet.components = NULL,
-  num.years = NULL,
-  num.realizations = 1000
-)
+waveletARIMA(wavelet.components = NULL, sim.year.num = NULL, sim.num = 1000)
 }
 \arguments{
 \item{wavelet.components}{A list object, with different components corresponding to low-frequency signals and the noise}
 
-\item{num.years}{A numeric value defining the desired length of simulated annual time-series}
+\item{sim.year.num}{A numeric value defining the desired length of simulated annual time-series}
 
-\item{num.realizations}{A numeric value defining the number of synthetic series to be produced.}
+\item{sim.num}{A numeric value defining the number of synthetic series to be produced.}
 }
 \description{
 A function for Wavelet Autoregressive Modeling (WARM)

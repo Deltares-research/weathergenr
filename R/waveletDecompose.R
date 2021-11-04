@@ -16,7 +16,7 @@
 waveletDecompose <- function(variable = NULL,
        signif.periods = NULL,
        noise.type = "white",
-       signif.level = 0.80,
+       signif.level = 0.90,
        plot = TRUE,
        output.path = NULL)
 {
@@ -185,15 +185,15 @@ waveletDecompose <- function(variable = NULL,
   if(plot == TRUE) {
 
     df <- tibble(Year = 1:length(variable), Original = variable) %>%
-      add_column(COMPS) %>%
-      add_column(Noise) %>%
+      bind_cols(COMPS) %>%
+      bind_cols(Noise=Noise) %>%
       gather(key = variable, value = value, -Year) %>%
       mutate(variable = factor(variable,
         levels = c("Original", paste0("Component_", 1:NUM_FINAL_PERIODS), "Noise")))
 
 
     p <- ggplot(df, aes(x = Year, y = value)) +
-        theme_light(base_size = 12) +
+        theme_light(base_size = 11) +
         facet_wrap(~ variable, ncol = 1, scales = "free") +
         geom_line() +
         labs(x = "Time (year)", y = "")

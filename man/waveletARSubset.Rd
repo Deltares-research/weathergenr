@@ -2,7 +2,7 @@
 % Please edit documentation in R/waveletARSubset.R
 \name{waveletARSubset}
 \alias{waveletARSubset}
-\title{A function to resample from WARM model results}
+\title{Resample from WARM outputs}
 \usage{
 waveletARSubset(
   series.obs = NULL,
@@ -11,18 +11,15 @@ waveletARSubset(
   power.sim = NULL,
   power.period = NULL,
   power.signif = NULL,
-  rlz.num = NULL,
+  sample.num = 5,
   seed = NULL,
   save.plots = TRUE,
   save.series = TRUE,
   verbose = FALSE,
   output.path = NULL,
-  mean.bounds = c(0.95, 1.05),
-  sdev.bounds = c(0.9, 1.1),
-  max.bounds = c(0.9, 1.1),
-  min.bounds = c(0.9, 1.1),
-  power.bounds = c(0.75, 2.5),
-  nonsig.threshold = 0.8
+  padding = TRUE,
+  bounds = list(mean = c(0.95, 1.05), sd = c(0.9, 1.1), min = c(0.9, 1.1), max = c(0.9,
+    1.1), power = c(0.7, 2), nonsignif.threshold = 0.95)
 )
 }
 \arguments{
@@ -38,7 +35,7 @@ waveletARSubset(
 
 \item{power.signif}{A time-series of power significance.}
 
-\item{rlz.num}{A numeric value to define the final sample size.}
+\item{sample.num}{A numeric value to define the final sample size.}
 
 \item{seed}{A numeric value to define a seed for resampling.}
 
@@ -49,22 +46,10 @@ waveletARSubset(
 \item{verbose}{A logical to decide if further information to be displayed on the screen.}
 
 \item{output.path}{Output folder path}
-
-\item{mean.bounds}{A numeric vector, defining the minimum and maximum limits for the mean value of the time-series when resampling.}
-
-\item{sdev.bounds}{A numeric vector, defining the minimum and maximum limits for the standard deviation of the time-series when resampling.}
-
-\item{max.bounds}{A numeric vector, defining the minimum and maximum limits for the maximum value of the time-series when resampling.}
-
-\item{min.bounds}{A numeric vector, defining the minimum and maximum limits for the minimum value of the time-series when resampling.}
-
-\item{power.bounds}{A numeric vector, defining the minimum and maximum limits for power spectra.}
-
-\item{nonsig.threshold}{A numeric vector to define a resampling threshold for sampling.}
 }
 \value{
 
 }
 \description{
-A function to resample from WARM model results
+Resample from WARM outputs
 }

@@ -7,6 +7,7 @@
 simulateWeather(
   output.path = NULL,
   hist.climate = NULL,
+  grid.coords = NULL,
   hist.date.start = NULL,
   variables = NULL,
   variable.labels = NULL,
@@ -17,9 +18,9 @@ simulateWeather(
   knn.annual.sample.num = 20,
   sim.year.num = 40,
   sim.year.start = 2020,
-  rlz.num = 5,
+  realization.num = 5,
   check.stats = FALSE,
-  month.list = 1:12,
+  month.start = 6,
   check.grid.num = 50,
   return.date.indices = TRUE,
   save.to.netcdf = FALSE,
@@ -49,11 +50,11 @@ simulateWeather(
 
 \item{sim.year.start}{Placeholder.}
 
-\item{rlz.num}{Placeholder.}
+\item{realization.num}{Placeholder.}
 
 \item{check.stats}{Placeholder.}
 
-\item{month.list}{Placeholder.}
+\item{month.start}{Placeholder.}
 
 \item{check.grid.num}{Placeholder.}
 

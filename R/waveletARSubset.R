@@ -1,21 +1,15 @@
 
-#' A function to resample from WARM model results
+#' Resample from WARM outputs
 #'
-#' @param mean.bounds A numeric vector, defining the minimum and maximum limits for the mean value of the time-series when resampling.
-#' @param sdev.bounds A numeric vector, defining the minimum and maximum limits for the standard deviation of the time-series when resampling.
-#' @param max.bounds  A numeric vector, defining the minimum and maximum limits for the maximum value of the time-series when resampling.
-#' @param min.bounds  A numeric vector, defining the minimum and maximum limits for the minimum value of the time-series when resampling.
 #' @param series.sim  A numeric matrix, with simulated time-series.
 #' @param series.obs  A numeric vector of observd time-series values.
-#' @param seed A numeric value to define a seed for resampling.
 #' @param save.plots A logical, to save the plots to file.
 #' @param power.obs A numeric vector of power spectra of observed time-series.
 #' @param power.sim A numeric matrix of power spectrum of simulated time-series.
 #' @param power.period A time-series of power periods calculated.
 #' @param power.signif A time-series of power significance.
-#' @param power.bounds A numeric vector, defining the minimum and maximum limits for power spectra.
-#' @param nonsig.threshold A numeric vector to define a resampling threshold for sampling.
-#' @param rlz.num A numeric value to define the final sample size.
+#' @param sample.num A numeric value to define the final sample size.
+#' @param seed A numeric value to define a seed for resampling.
 #' @param save.series A logical to write the results to csv files.
 #' @param verbose A logical to decide if further information to be displayed on the screen.
 #' @param output.path Output folder path
@@ -32,18 +26,21 @@ waveletARSubset <- function(
   power.sim = NULL,
   power.period =  NULL,
   power.signif =  NULL,
-  rlz.num = NULL,
+  sample.num = 5,
   seed = NULL,
   save.plots = TRUE,
   save.series = TRUE,
   verbose = FALSE,
   output.path = NULL,
-  mean.bounds = c(0.95,1.05),
-  sdev.bounds = c(0.90,1.10),
-  max.bounds  = c(0.90,1.10),
-  min.bounds  = c(0.90,1.10),
-  power.bounds = c(0.75,2.50),
-  nonsig.threshold = 0.8)
+  padding = TRUE,
+  bounds = list(
+    mean = c(0.95,1.05),
+    sd = c(0.90,1.10),
+    min = c(0.90,1.10),
+    max = c(0.90,1.10),
+    power = c(0.70,2.00),
+    nonsignif.threshold = 0.95)
+  )
 
 {
 
@@ -56,29 +53,35 @@ waveletARSubset <- function(
     gather(key = sim, value = value, -yind) %>%
     mutate(sim = as.numeric(sim)) %>%
     group_by(sim) %>%
-    summarize(mean = mean(value), sdev = sd(value),
+    summarize(mean = mean(value), sd = sd(value),
               max = max(value), min = min(value))
 
   # Statistics for observed weather series
   stats_obs <- tibble(value = series.obs) %>%
-    summarize(mean = mean(value), sdev = sd(value),
+    summarize(mean = mean(value), sd = sd(value),
               max = max(value), min = min(value))
 
   # Significant periods
   periods_sig  <- which(power.obs > power.signif)
+  if(isTRUE(padding)) {
+    periods_sig <- sort(intersect(unique(c(periods_sig-1, periods_sig, periods_sig+1)), 1:length(power.signif)))
+  }
+  periods_nonsig <- setdiff(1:length(power.signif),periods_sig)
 
-  if (!is.null(power.bounds)) {
+  if (!is.null(bounds$power)) {
 
     # Filter scenarios have significant signals
     sub_power1 <- which(sapply(1:ncol(power.sim), function(x)
       any(power.sim[periods_sig,x] > power.signif[periods_sig])))
 
+    # Signals within the bounds
     sub_power2 <- which(sapply(1:ncol(power.sim), function(x)
-        all((power.sim[periods_sig,x] > power.obs[periods_sig] * power.bounds[1]) &
-            (power.sim[periods_sig,x] < power.obs[periods_sig] * power.bounds[2]))))
+        all((power.sim[periods_sig,x] > power.obs[periods_sig] * bounds$power[1]) &
+            (power.sim[periods_sig,x] < power.obs[periods_sig] * bounds$power[2]))))
 
+    # Nonsignificant below threshold
     sub_power3 <- which(sapply(1:ncol(power.sim), function(x)
-        all((power.sim[-periods_sig,x] < power.signif[-periods_sig]*nonsig.threshold))))
+        all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*bounds$nonsignif.threshold))))
 
     sub_power <- base::intersect(base::intersect(sub_power1, sub_power2),sub_power3)
   } else {
@@ -86,57 +89,57 @@ waveletARSubset <- function(
   }
 
 
-  if (!is.null(mean.bounds)) {
-    sub_mean  <- which((stats_sim$mean > stats_obs$mean * mean.bounds[1]) &
-                       (stats_sim$mean < stats_obs$mean * mean.bounds[2]))
+  if (!is.null(bounds$mean)) {
+    sub_mean  <- which((stats_sim$mean > stats_obs$mean * bounds$mean[1]) &
+                       (stats_sim$mean < stats_obs$mean * bounds$mean[2]))
   } else {
     sub_mean <- 1:ncol(series.sim)
   }
 
 
-  if (!is.null(sdev.bounds)) {
-    sub_sdev  <- which((stats_sim$sdev > stats_obs$sdev * sdev.bounds[1]) &
-                       (stats_sim$sdev < stats_obs$sdev * sdev.bounds[2]))
+  if (!is.null(bounds$sd)) {
+    sub_sd  <- which((stats_sim$sd > stats_obs$sd * bounds$sd[1]) &
+                       (stats_sim$sd < stats_obs$sd * bounds$sd[2]))
   } else {
-    sub_sdev <- 1:ncol(series.sim)
+    sub_sd <- 1:ncol(series.sim)
   }
 
 
-  if (!is.null(min.bounds)) {
-    sub_min  <- which((stats_sim$min > stats_obs$min * min.bounds[1]) &
-                      (stats_sim$min < stats_obs$min * min.bounds[2]))
+  if (!is.null(bounds$min)) {
+    sub_min  <- which((stats_sim$min > stats_obs$min * bounds$min[1]) &
+                      (stats_sim$min < stats_obs$min * bounds$min[2]))
   } else {
     sub_min  <- 1:ncol(series.sim)
   }
 
-  if (!is.null(max.bounds)) {
-    sub_max  <- which((stats_sim$max > stats_obs$max * max.bounds[1]) &
-                      (stats_sim$max < stats_obs$max * max.bounds[2]))
+  if (!is.null(bounds$max)) {
+    sub_max  <- which((stats_sim$max > stats_obs$max * bounds$max[1]) &
+                      (stats_sim$max < stats_obs$max * bounds$max[2]))
   } else {
     sub_max  <- 1:ncol(series.sim)
   }
 
   #Select intersection
-  sub_clim <- Reduce(base::intersect, list(sub_mean, sub_sdev, sub_power,
+  sub_clim <- Reduce(base::intersect, list(sub_mean, sub_sd, sub_power,
                                      sub_min, sub_max))
 
   # Stochastically select from the initial dataset
   if(!is.null(seed)) set.seed(seed)
 
-  sub_sample <- sample(sub_clim, min(rlz.num, length(sub_clim)))
+  sub_sample <- sample(sub_clim, min(sample.num, length(sub_clim)))
 
   if(isTRUE(verbose)) {
     print(tribble(
         ~"criteria", ~"# traces",
         "mean",  paste0(length(sub_mean), " out of ", ncol(series.sim)),
-        "stdev", paste0(length(sub_sdev), " out of ", ncol(series.sim)),
+        "stdev", paste0(length(sub_sd), " out of ", ncol(series.sim)),
         "power", paste0(length(sub_power), " out of ", ncol(series.sim)),
         "min",   paste0(length(sub_min), " out of ", ncol(series.sim)),
         "max",   paste0(length(sub_max), " out of ", ncol(series.sim)),
         "final", paste0(length(sub_clim), " out of ", ncol(series.sim))))
   }
 
-  if(length(sub_sample) < rlz.num) {
+  if(length(sub_sample) < sample.num) {
     stop('subsetted traces less than the desired amount.
          Please relax the decision criteria and repeat.')
   }
