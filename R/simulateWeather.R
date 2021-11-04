@@ -230,7 +230,6 @@ simulateWeather <- function(
         data = rlz[[n]],
         coord.grid = nc_data$coords,
         output.path = paste0(out_path,"historical/"),
-        nc.dimensions = nc_data$dimensions,
         nc.dimnames = list(x = "lon", y = "lat", time = "time"),
         origin.date = as.Date(paste0(sim.year.start,"-01-01")),
         calendar.type = "no leap",

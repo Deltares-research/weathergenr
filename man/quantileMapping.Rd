@@ -7,7 +7,8 @@
 quantileMapping(
   value = NULL,
   date = NULL,
-  par = NULL,
+  mean.change = NULL,
+  var.change = NULL,
   mon.ts = NULL,
   year.ts = NULL,
   step.change = TRUE

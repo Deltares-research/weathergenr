@@ -15,50 +15,21 @@ origin_date <- as.Date("1981-01-01")
 sim_year_start <- 2020
 realization_num <- 2
 
-# # Climate change perturbations
-# precip_change <- list()
-# precip_change$increments <- 3
-# precip_change$mean <- list()
-# precip_change$var  <- list()
-# precip_change$mean$min <- c(0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
-# precip_change$mean$max <- c(1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3)
-# precip_change$var$min <- c(0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
-# precip_change$var$max <- c(1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3)
-#
-#
-#
-#
-#
-#
-#   PARCC$par1 <- list(
-#     name = perturb1[[1,2]],
-#     change_op <- perturb1[[2,2]],
-#     increments = as.numeric(perturb1[[3,2]]),
-#     mean = list(min = as.numeric(perturb1[7:18,1:3] %>% pull(2)),
-#                 max = as.numeric(perturb1[7:18,1:3] %>% pull(3)),
-#                 obs = as.numeric(perturb1[7:18,1:3] %>% pull(1))),
-#     var  = list(min = as.numeric(perturb1[22:33,1:3] %>% pull(2)),
-#                 max = as.numeric(perturb1[22:33,1:3] %>% pull(3)),
-#                 obs = as.numeric(perturb1[22:33,1:3] %>% pull(1)))
-#   )
-#   PARCC$par2 <- list(
-#     name = perturb2[[1,2]],
-#     change_op <- perturb2[[2,2]],
-#     increments = as.numeric(perturb2[[3,2]]),
-#     mean = list(min = as.numeric(perturb2[7:18,1:3] %>% pull(2)),
-#                 max = as.numeric(perturb2[7:18,1:3] %>% pull(3)),
-#                 obs = as.numeric(perturb2[7:18,1:3] %>% pull(1))),
-#     var  = list(min = as.numeric(perturb2[22:33,1:3] %>% pull(2)),
-#                 max = as.numeric(perturb2[22:33,1:3] %>% pull(3)),
-#                 obs = as.numeric(perturb2[22:33,1:3] %>% pull(1)))
-#   )
-#
-#   PARCC$par1$sind <- 1:PARCC$par1$increments
-#   PARCC$par2$sind <- 1:PARCC$par2$increments
+# Climate change perturbations
+precip_changes <- list()
+precip_changes$increments <- 2
+precip_changes$mean <- list()
+precip_changes$var  <- list()
+precip_changes$mean$min <- c(0.7, 0.7, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
+precip_changes$mean$max <- c(1.3, 1.3, 1.4, 1.4, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3)
+precip_changes$var$min <- c(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+precip_changes$var$max <- c(1.3, 1.3, 1.5, 1.5, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3)
 
-
-
-
+temp_changes <- list()
+temp_changes$increments <- 3
+temp_changes$mean <- list()
+temp_changes$mean$min <- c(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+temp_changes$mean$max <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
 
 
 nc_data <- readNetcdf(
@@ -87,17 +58,16 @@ for(n in 1:realization_num) {
 
   imposeClimateChanges(
       input.data = out[[n]],
-      coordGrid = nc_data$coords,
+      grid.coords = nc_data$coords,
+      precip.changes <- precip_changes,
+      temp.changes = temp_changes,
       file.suffix = n,
-      output.path = paste0(out_path,"future/"),
+      output.path = out_path,
       sim.year.start = 2020,
       month.start = 1,
       variables = nc_variables,
       nc.dimnames = nc_dimnames,
-      change.settings = paste0(nc_path, "/change_factors.xlsx"),
       save.scenario.matrix = FALSE,
-      step = TRUE
-  )
-
+      step.change = TRUE)
 }
 

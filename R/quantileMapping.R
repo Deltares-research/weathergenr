@@ -12,7 +12,8 @@
 quantileMapping <- function(
   value = NULL,
   date = NULL,
-  par = NULL,
+  mean.change = NULL,
+  var.change = NULL,
   mon.ts = NULL,
   year.ts = NULL,
   step.change = TRUE)
@@ -27,18 +28,16 @@ quantileMapping <- function(
   tdist <- list(fit = NA, shape = emp1, scale = emp1, mean = emp1, var = emp1)
 
   # Vector of means and variances (row=years, column=months)
-  par_a <- list()
-
-  if(step.change) {
-    par_a[["mean"]] <- sapply(1:12, function(m) seq(1, par$mean[m], length.out = ymax))
-    par_a[["var"]]  <- sapply(1:12, function(m) seq(1, par$var[m], length.out = ymax))
+  if(isTRUE(step.change)) {
+    mean_a <- sapply(1:12, function(m) seq(1, mean.change[m], length.out = ymax))
+    var_a  <- sapply(1:12, function(m) seq(1, var.change[m], length.out = ymax))
   } else {
-    par_a[["mean"]] <- sapply(1:12, function(m) rep(par$mean[m], ymax))
-    par_a[["var"]]  <- sapply(1:12, function(m) rep(par$var[m], ymax))
+    mean_a <- sapply(1:12, function(m) rep(mean.change[m], ymax))
+    var_a  <- sapply(1:12, function(m) rep(var.change[m], ymax))
   }
 
   #Keep track of calendar months to be changed
-  pmon <- which((par$mean != 1) | (par$var != 1))
+  pmon <- which((mean.change != 1) | (var.change != 1))
 
   # Non-zero days
   index_nz <- which(value>0)
@@ -71,9 +70,9 @@ quantileMapping <- function(
 
   # Parameters for the target distribution
   tdist[["mean"]][pmon, ] <- sapply(1:ymax, function(y)
-    sapply(pmon, function(m) bdist[["mean"]][[m]] * par_a[["mean"]][y, m]))
+    sapply(pmon, function(m) bdist[["mean"]][[m]] * mean_a[y, m]))
   tdist[["var"]][pmon, ] <- sapply(1:ymax, function(y)
-    sapply(pmon, function(m) bdist[["var"]][[m]] * par_a[["var"]][y, m]))
+    sapply(pmon, function(m) bdist[["var"]][[m]] * var_a[y, m]))
 
   # Define the shape and scale parameters of the target distribution
   tdist[["scale"]][pmon,] <- sapply(1:ymax, function(y)

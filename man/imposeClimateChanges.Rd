@@ -6,7 +6,9 @@
 \usage{
 imposeClimateChanges(
   input.data = NULL,
-  coordGrid = NULL,
+  grid.coords = NULL,
+  precip.changes = NULL,
+  temp.changes = NULL,
   file.suffix = "",
   file.prefix = "clim_change_rlz",
   output.path = NULL,
@@ -15,9 +17,8 @@ imposeClimateChanges(
   variables = NULL,
   variable.units = NULL,
   nc.dimnames = NULL,
-  change.settings = NULL,
   save.scenario.matrix = TRUE,
-  step = TRUE
+  step.change = TRUE
 )
 }
 \arguments{
@@ -35,9 +36,9 @@ imposeClimateChanges(
 
 \item{nc.dimnames}{To be completed...}
 
-\item{change.settings}{To be completed...}
-
 \item{save.scenario.matrix}{Placeholder.}
+
+\item{change.settings}{To be completed...}
 
 \item{input.path}{Placeholder.}
 }

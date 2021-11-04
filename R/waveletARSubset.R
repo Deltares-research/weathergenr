@@ -62,11 +62,15 @@ waveletARSubset <- function(
               max = max(value), min = min(value))
 
   # Significant periods
-  periods_sig  <- which(power.obs > power.signif)
+  periods_sig <- which(power.obs > power.signif)
+  periods_sig <- periods_sig[periods_sig %in% 1:sim.year.num]
+
   if(isTRUE(padding)) {
     periods_sig <- sort(intersect(unique(c(periods_sig-1, periods_sig, periods_sig+1)), 1:length(power.signif)))
   }
   periods_nonsig <- setdiff(1:length(power.signif),periods_sig)
+  periods_nonsig <- periods_nonsig[periods_nonsig %in% 1:sim.year.num]
+
 
   if (!is.null(bounds$power)) {
 
