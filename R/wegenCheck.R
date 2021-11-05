@@ -195,8 +195,8 @@ wegenCheck <- function(
     geom_point(alpha = 0.6, size = 1.5) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = g.wdth1/base_len) +
-    scale_x_continuous(breaks = pretty(n=5), limits = c(0, 1)) +
-    scale_y_continuous(breaks = pretty(n=5), limits = c(0, 1))
+    scale_x_continuous(breaks = pretty(c(0,1), n=5), limits = c(0, 1)) +
+    scale_y_continuous(breaks = pretty(c(0,1), n=5), limits = c(0, 1))
 
   ggsave(paste0(output.path,"monthly_stats_all_crosssite.png"),
          height = g.hght1, width = g.wdth1)
@@ -209,8 +209,8 @@ wegenCheck <- function(
     geom_point(alpha = 0.6, size = 1.5) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = g.wdth2/base_len) +
-    scale_x_continuous(breaks = pretty(n=5), limits =c(0,1)) +
-    scale_y_continuous(breaks = pretty(n=5), limits =c(0,1))
+    scale_x_continuous(breaks = pretty(c(0,1), n=5), limits = c(0, 1)) +
+    scale_y_continuous(breaks = pretty(c(0,1), n=5), limits = c(0, 1))
 
   ggsave(paste0(output.path,"monthly_stats_all_intersite.png" ),
          width = g.wdth2, height = g.hght2)
@@ -245,8 +245,8 @@ wegenCheck <- function(
       geom_abline(color = "blue", size = 1) +
       labs(x = "Observed", y = "Simulated") +
       facet_wrap(stat ~ ., scales = "free", ncol = ceiling(num_stats/2)) +
-      scale_x_continuous(breaks = pretty(n=5), limits = c(0, NA)) +
-      scale_y_continuous(breaks = pretty(n=5), limits = c(0, NA)) +
+      scale_x_continuous(breaks = pretty(c(0, NA), n=5), limits = c(0, NA)) +
+      scale_y_continuous(breaks = pretty(c(0, NA), n=5), limits = c(0, NA)) +
       theme(plot.margin = unit(c(0.5,0.2,0.2,0.2), "cm"))
 
     ggsave(paste0(output.path,"daily_stats_", variables[v],".png" ),

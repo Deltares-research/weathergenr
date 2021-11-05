@@ -17,7 +17,6 @@
 #' @import dplyr
 #' @import ncdf4
 #' @importFrom utils write.csv
-#' @importFrom readxl read_excel
 #' @importFrom tidyr expand_grid
 imposeClimateChanges <- function(
   input.data = NULL,

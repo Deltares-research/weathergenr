@@ -43,7 +43,7 @@ simulateWeather <- function(
   sim.year.start = 2020,
   realization.num = 5,
   check.stats = FALSE,
-  month.start = 6,
+  month.start = 1,
   check.grid.num = 50,
   return.date.indices = TRUE,
   save.to.netcdf = FALSE,

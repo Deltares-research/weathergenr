@@ -1,7 +1,7 @@
 Package: gridwegen
 Type: Package
 Title: Gridded semi-parametric weather generator
-Version: 0.0.1
+Version: 0.0.2
 Author: Mehmet Umit Taner
 Maintainer: Mehmet Umit Taner <tanerumit@gmail.com>
 Description: This is the gridded, recoded version of the stochastic weather generator 
@@ -22,7 +22,6 @@ Imports:
     stats,
     tibble,   
     tidyr,
-    readxl,
     sf
 Suggests:
     rmarkdown,
