@@ -46,8 +46,8 @@ wegenCheck <- function(
 
   num_stats <- length(stat_level)
   num_vars <- length(variables)
-  var_combs <- expand_grid(var1=variables, var2=variables)
-  num_var_combs <- choose(num_vars,2)
+  var_combs <- expand_grid(var1=variables, var2 = variables)
+  num_var_combs <- choose(num_vars, 2)
 
   # Calculate for each simulated trace
   for (n in 1:realization.num) {
@@ -56,7 +56,8 @@ wegenCheck <- function(
     sim_stats <- bind_rows(sim_stats,
        daily.sim[[n]] %>%
        bind_rows(.id = "id") %>%
-       mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m")),
+       mutate(year = as.numeric(format(date,"%Y")),
+            mon = as.numeric(format(date,"%m")),
             id = as.numeric(id)) %>%
        group_by(id, year, mon) %>%
        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness), .names = "{.col}:{.fn}")) %>%
@@ -245,8 +246,8 @@ wegenCheck <- function(
       geom_abline(color = "blue", size = 1) +
       labs(x = "Observed", y = "Simulated") +
       facet_wrap(stat ~ ., scales = "free", ncol = ceiling(num_stats/2)) +
-      scale_x_continuous(breaks = pretty(c(0, NA), n=5), limits = c(0, NA)) +
-      scale_y_continuous(breaks = pretty(c(0, NA), n=5), limits = c(0, NA)) +
+      #scale_x_continuous(breaks = pretty(c(0, NA), n=5), limits = c(0, NA)) +
+      #scale_y_continuous(breaks = pretty(c(0, NA), n=5), limits = c(0, NA)) +
       theme(plot.margin = unit(c(0.5,0.2,0.2,0.2), "cm"))
 
     ggsave(paste0(output.path,"daily_stats_", variables[v],".png" ),

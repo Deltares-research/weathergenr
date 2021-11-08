@@ -2,13 +2,14 @@
 % Please edit documentation in R/simulateWeather.R
 \name{simulateWeather}
 \alias{simulateWeather}
-\title{Main wrapper function for daily weather generation}
+\title{Generate daily, multivariate griddded weather series}
 \usage{
 simulateWeather(
   output.path = NULL,
   hist.climate = NULL,
   grid.coords = NULL,
-  hist.date.start = NULL,
+  hist.year.start = NULL,
+  hist.year.num = NULL,
   variables = NULL,
   variable.labels = NULL,
   variable.units = NULL,
@@ -20,7 +21,7 @@ simulateWeather(
   sim.year.start = 2020,
   realization.num = 5,
   check.stats = FALSE,
-  month.start = 1,
+  month.start = 5,
   check.grid.num = 50,
   return.date.indices = TRUE,
   save.to.netcdf = FALSE,
@@ -28,23 +29,25 @@ simulateWeather(
 )
 }
 \arguments{
-\item{output.path}{Placeholder.}
+\item{output.path}{path to save the results}
 
-\item{hist.climate}{Placeholder.}
+\item{hist.climate}{list of data frames for historical daily weather data with variable}
 
-\item{hist.date.start}{Placeholder.}
+\item{grid.coords}{Placeholder}
 
-\item{variables}{Placeholder.}
+\item{variables}{Names of weather variables to be included, e.g., precip, temp, temp_min, temp_max.}
 
-\item{variable.labels}{Placeholder.}
+\item{variable.labels}{Long names of weather variables. If not provided, same as variable names.}
 
-\item{variable.units}{Placeholder.}
+\item{variable.units}{Measurment units of the weather variables}
 
-\item{warm.variable}{Placeholder.}
+\item{warm.variable}{Variable to be used for the wavelet analysis}
 
-\item{warm.signif.level}{Placeholder.}
+\item{warm.signif.level}{Statistical significance level used in the wavelet analysis.}
 
 \item{warm.sample.num}{Placeholder.}
+
+\item{knn.annual.sample.num}{Placeholder}
 
 \item{sim.year.num}{Placeholder.}
 
@@ -58,11 +61,19 @@ simulateWeather(
 
 \item{check.grid.num}{Placeholder.}
 
-\item{...}{Placeholder.}
+\item{return.date.indices}{Placeholder}
+
+\item{save.to.netcdf}{Placeholder}
+
+\item{...}{Placeholder}
+
+\item{hist.date.start}{Starting year for the historical data to be used in the analysis, e.g., 1980}
+
+\item{hist.date.end}{Ending year for the historical data to be used in the analysis, e.g., 2000}
 }
 \value{
 
 }
 \description{
-Main wrapper function for daily weather generation
+Generate daily, multivariate griddded weather series
 }

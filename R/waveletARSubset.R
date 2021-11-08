@@ -63,7 +63,7 @@ waveletARSubset <- function(
 
   # Significant periods
   periods_sig <- which(power.obs > power.signif)
-  periods_sig <- periods_sig[periods_sig %in% 1:sim.year.num]
+  periods_sig <- periods_sig[periods_sig %in% 1:length(series.obs)]
 
   if(isTRUE(padding)) {
     periods_sig <- sort(intersect(unique(c(periods_sig-1, periods_sig, periods_sig+1)), 1:length(power.signif)))
