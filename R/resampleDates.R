@@ -8,13 +8,13 @@
 #' @param PRCP placeholder
 #' @param TEMP placeholder
 #' @param YEAR_D placeholder
-#' @param START_YEAR_SIM
-#' @param dates.d
-#' @param sim.dates.d
-#' @param month.start
-#' @param kk
-#' @param thresh1
-#' @param extreme_quantile
+#' @param START_YEAR_SIM placeholder
+#' @param dates.d placeholder
+#' @param sim.dates.d placeholder
+#' @param month.start placeholder
+#' @param kk placeholder
+#' @param thresh1 placeholder
+#' @param extreme_quantile placeholder
 #' @param knn.annual.sample.num placeholder
 #'
 #' @return

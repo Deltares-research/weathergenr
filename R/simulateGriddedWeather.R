@@ -199,7 +199,7 @@ simulateGriddedWeather <- function(
   write.csv(dates_resampled_tbl, paste0(output.path, "dates_resampled.csv"))
 
   day_order <- sapply(1:realization.num,
-    function(n) match(dates_resampled[[n]], dates.d$date))
+    function(n) match(dates_resampled[[n]], dates_d$date))
 
   rlz <- list()
    for (n in 1:realization.num) {

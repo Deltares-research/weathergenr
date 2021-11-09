@@ -31,13 +31,27 @@ resampleDates(
 
 \item{TEMP}{placeholder}
 
+\item{START_YEAR_SIM}{placeholder}
+
 \item{k1}{placeholder}
 
 \item{ymax}{placeholder}
 
+\item{dates.d}{placeholder}
+
+\item{sim.dates.d}{placeholder}
+
 \item{YEAR_D}{placeholder}
 
+\item{month.start}{placeholder}
+
+\item{kk}{placeholder}
+
 \item{knn.annual.sample.num}{placeholder}
+
+\item{thresh1}{placeholder}
+
+\item{extreme_quantile}{placeholder}
 }
 \value{
 

@@ -113,9 +113,9 @@ simulateGriddedWeather(
   warm.sample.size = 5000,
   knn.annual.sample.size = 20,
   save.warm.results = TRUE,
-  check.model.performace = TRUE,
-  check.model.grid.num = 20,
-  impose.climate.change = TRUE,
+  evaluate.model = TRUE,
+  evaluate.model.grid.num = 20,
+  apply.climate.changes = TRUE,
   output.file.prefix = "clim_change_rlz",
   save.scenario.matrix = TRUE,
   apply.step.changes = TRUE)

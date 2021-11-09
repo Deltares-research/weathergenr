@@ -47,32 +47,42 @@ evaluateWegen <- function(
   num_vars <- length(variables)
   var_combs <- expand_grid(var1=variables, var2 = variables)
   num_var_combs <- choose(num_vars, 2)
+  sim_year_num <- nrow(daily.sim[[1]][[1]])/365
+  sim_wetdry_days <-NULL
 
   # Calculate for each simulated trace
   for (n in 1:realization.num) {
 
-    daily_sim_tbl <- daily.sim[[n]] %>%
-        bind_rows(.id = "id") %>%
-        mutate(year = as.numeric(format(date,"%Y")),
-          mon = as.numeric(format(date,"%m")),
-          day = as.numeric(format(date, "%d")),
-          id = as.numeric(id), .before = 2) %>%
-      select(-date)
+    daily_sim_tbl <- daily.sim[[n]] %>% bind_rows(.id = "id")
+    daily_sim_tbl$year <- as.numeric(format(daily_sim_tbl$date,"%Y"))
+    daily_sim_tbl$mon <- as.numeric(format(daily_sim_tbl$date,"%m"))
+    daily_sim_tbl$day <- as.numeric(format(daily_sim_tbl$date,"%d"))
+    daily_sim_tbl$id <- as.numeric(daily_sim_tbl$id)
+
+    #sim_wetdays <- bind_rows(sim_stats,
+    sim_wetdry_days <- bind_rows(sim_wetdry_days,
+      daily_sim_tbl %>%
+      select(id, year, mon, day, precip) %>%
+      group_by(id, mon) %>%
+      summarize(wet_count = length(precip[precip!=0])/sim_year_num,
+                 dry_count = length(precip[precip==0])/sim_year_num) %>%
+      mutate(rlz = n, .before = 1))
 
     # Grid-based statistics (id:sample grids, rlz = realizations)
     sim_stats <- bind_rows(sim_stats,
        daily_sim_tbl %>%
+       select(id, year, mon, {{variables}}) %>%
        group_by(id, year, mon) %>%
        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),
          .names = "{.col}:{.fn}")) %>%
        gather(key = variable, value = value, -id, -year, -mon) %>%
        separate(variable, c("variable","stat"), sep =":") %>%
-       mutate(rlz = n, .before = 1)
-    )
+       mutate(rlz = n, .before = 1))
 
     # Area-averaged statistics
     sim_stats_aavg <- bind_rows(sim_stats_aavg,
         daily_sim_tbl %>%
+        select(id, year, mon, {{variables}}) %>%
         group_by(year, mon) %>%
         summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),
           .names = "{.col}:{.fn}")) %>%
@@ -101,35 +111,45 @@ evaluateWegen <- function(
   sim_stats_aavg <- sim_stats_aavg %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
-  hist_stats <- lapply(1:length(daily.obs), function(x) mutate(daily.obs[[x]], id = x)) %>%
+  hist_stats_ini <- lapply(1:length(daily.obs),
+    function(x) mutate(daily.obs[[x]], id = x)) %>%
     do.call("rbind", .) %>%
-    mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m")),
-           id = as.numeric(id)) %>%
+    mutate(year = as.numeric(format(date,"%Y")),
+           mon = as.numeric(format(date,"%m")),
+           day = as.numeric(format(date,"%d")),
+           id = as.numeric(id))
+
+  hist_stats <- hist_stats_ini %>%
     group_by(id, year, mon) %>%
-    summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),.names = "{.col}:{.fn}")) %>%
+    summarize(across({{variables}},
+      list(mean=mean, sd=sd, skewness=skewness),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = value,-id, -year, -mon) %>%
     separate(variable, c("variable","stat"), sep = ":") %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
-  hist_stats_aavg <- lapply(1:length(daily.obs), function(x) mutate(daily.obs[[x]], id = x)) %>%
-    do.call("rbind", .) %>%
-    mutate(mon = as.numeric(format(date,"%m"))) %>%
+  hist_stats_aavg <- hist_stats_ini %>%
     group_by(mon) %>%
-    summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),.names = "{.col}:{.fn}")) %>%
+    summarize(across({{variables}},
+      list(mean=mean, sd=sd, skewness=skewness),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = value,-mon) %>%
     separate(variable, c("variable","stat"), sep=":") %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
-  hist_stats_icor <- lapply(1:length(daily.obs), function(x) mutate(daily.obs[[x]], id = x)) %>%
-    do.call("rbind", .) %>%
-      mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m")),
-        day = as.numeric(format(date,"%d"))) %>%
+  hist_stats_icor <- hist_stats_ini %>%
     dplyr::select(id, year, mon, day, {{variables}}) %>%
     gather(key = variable, value = value, -id, -year, -mon, -day) %>%
     unite(id_variable, c("id","variable"),sep = ":") %>%
     spread(id_variable, value) %>%
     dplyr::select(-year, -mon, -day) %>%
     cor(.$value) %>% as_tibble()
+
+  hist_wetdry_days <- hist_stats_ini %>%
+      select(id, year, mon, day, precip) %>%
+      group_by(id, mon) %>%
+      summarize(wet_count = length(precip[precip!=0])/sim_year_num,
+                 dry_count = length(precip[precip==0])/sim_year_num) %>%
+    mutate(type = "Observed") %>%
+    gather(key = stat, value = value, wet_count:dry_count)
 
   # :::::::::: COMPARE MONTHLY STATISTICS ::::::::::::::::::::::::::::::::::::::
 
@@ -138,6 +158,12 @@ evaluateWegen <- function(
 
   hist_stats_mon <- hist_stats %>% group_by(id, mon, variable, stat) %>%
     summarize(value = median(value)) %>% mutate(type = "Observed")
+
+  sim_wetdry_days_meadian <- sim_wetdry_days %>%
+    gather(key = stat, value = value, wet_count:dry_count) %>%
+    group_by(id, mon, stat) %>%
+    summarize(value = median(value)) %>%
+    mutate(type = "Simulated")
 
   ### Intersite/cross-site correlations ::::::::::::::::::::::::::::::::::::::::
 
@@ -177,6 +203,13 @@ evaluateWegen <- function(
     filter(variable %in% var_combs) %>%
     spread(key = type, value = value)
 
+  stats_wetdry_days <- bind_rows(hist_wetdry_days, sim_wetdry_days_meadian) %>%
+    spread(type, value) %>%
+    mutate(stat = factor(stat, levels = c("dry_count", "wet_count"),
+      labels = c("Number of Dry Days", "Number of Wet Days")))
+
+
+
   #:::::::::::::::::::::::::::: PLOTS ::::::::::::::::::::::::::::::::::::::::::
 
   base_len <- 5
@@ -187,6 +220,16 @@ evaluateWegen <- function(
   g.hght2 <- if(num_var_combs > 2) base_len*2 else if (num_var_combs > 4) base_len*3 else base_len
   g.wdth2 <- if(num_var_combs > 1) base_len*2 else if (num_var_combs > 6) base_len*3 else base_len
 
+    ### Cross site correlations
+  p <- ggplot(stats_wetdry_days, aes(x = Observed, y = Simulated)) +
+    theme_light(base_size = 12) +
+    geom_point(alpha = 0.6, size = 1.5) +
+    geom_abline(color = "blue", size = 1) +
+    facet_wrap(stat ~ ., scales = "free", ncol = g.wdth1/base_len) +
+    labs(x = "Observed", y = "Simulated")
+
+  ggsave(paste0(output.path,"monthly_stats_wet_dry_days.png"),
+         height = base_len, width = base_len*2)
 
   ### Cross site correlations
   p <- ggplot(stats_cross, aes(x = Observed, y = Simulated)) +
