@@ -222,7 +222,8 @@ waveletARSubset <- function(
 
     }
 
-  return(list(subsetted = series.sim[,sub_clim], sampled = series.sim[,sub_sample]))
+  return(list(subsetted = series.sim[,sub_clim],
+    sampled = series.sim[,sub_sample, drop=FALSE]))
 
 }
 

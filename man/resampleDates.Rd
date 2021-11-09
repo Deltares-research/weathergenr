@@ -17,7 +17,7 @@ resampleDates(
   YEAR_D = NULL,
   month.start = NULL,
   kk = NULL,
-  knn.annual.sample.num = 20,
+  knn.annual.sample.num = 50,
   thresh1 = 0.3,
   extreme_quantile = 0.8
 )

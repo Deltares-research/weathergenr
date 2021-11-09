@@ -32,7 +32,7 @@ resampleDates <- function(
   YEAR_D = NULL,
   month.start = NULL,
   kk = NULL,
-  knn.annual.sample.num = 20,
+  knn.annual.sample.num = 50,
   thresh1 = 0.3,
   extreme_quantile = 0.8)
 
@@ -83,7 +83,7 @@ resampleDates <- function(
 	SIM_PRCP <- array(0, c(SIM_LENGTH))
 	SIM_TEMP <- array(25, c(SIM_LENGTH))
 
-	SIM_DATE <- rep(as.Date(DATE_D[1]), SIM_LENGTH)
+	SIM_DATE <- rep(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
 
 	# Current Stochastic trace....
 	count <- 1

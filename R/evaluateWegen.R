@@ -22,7 +22,7 @@
 #' @export
 #' @import utils ggplot2 dplyr
 #' @importFrom stats cor median
-wegenCheck <- function(
+evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
   output.path = NULL,
@@ -34,7 +34,6 @@ wegenCheck <- function(
   {
 
   nsgrids <- length(daily.sim[[1]])
-
   variable_labels2 <- paste0(variable.labels, " (", variable.units, ")")
 
   sim_stats <- NULL
@@ -52,15 +51,20 @@ wegenCheck <- function(
   # Calculate for each simulated trace
   for (n in 1:realization.num) {
 
+    daily_sim_tbl <- daily.sim[[n]] %>%
+        bind_rows(.id = "id") %>%
+        mutate(year = as.numeric(format(date,"%Y")),
+          mon = as.numeric(format(date,"%m")),
+          day = as.numeric(format(date, "%d")),
+          id = as.numeric(id), .before = 2) %>%
+      select(-date)
+
     # Grid-based statistics (id:sample grids, rlz = realizations)
     sim_stats <- bind_rows(sim_stats,
-       daily.sim[[n]] %>%
-       bind_rows(.id = "id") %>%
-       mutate(year = as.numeric(format(date,"%Y")),
-            mon = as.numeric(format(date,"%m")),
-            id = as.numeric(id)) %>%
+       daily_sim_tbl %>%
        group_by(id, year, mon) %>%
-       summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness), .names = "{.col}:{.fn}")) %>%
+       summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),
+         .names = "{.col}:{.fn}")) %>%
        gather(key = variable, value = value, -id, -year, -mon) %>%
        separate(variable, c("variable","stat"), sep =":") %>%
        mutate(rlz = n, .before = 1)
@@ -68,11 +72,10 @@ wegenCheck <- function(
 
     # Area-averaged statistics
     sim_stats_aavg <- bind_rows(sim_stats_aavg,
-        daily.sim[[n]] %>%
-        bind_rows(.id = "id") %>%
-        mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m"))) %>%
+        daily_sim_tbl %>%
         group_by(year, mon) %>%
-        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness), .names = "{.col}:{.fn}")) %>%
+        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),
+          .names = "{.col}:{.fn}")) %>%
         gather(key = variable, value = value, -year, -mon) %>%
         separate(variable, c("variable","stat"), sep =":") %>%
         mutate(rlz = n, .before = 1)
@@ -80,10 +83,7 @@ wegenCheck <- function(
 
     # Intersite/cross-site correlations
     sim_stats_icor <- bind_rows(sim_stats_icor,
-        daily.sim[[n]] %>%
-        bind_rows(.id = "id") %>%
-        mutate(year = as.numeric(format(date,"%Y")), mon = as.numeric(format(date,"%m")),
-          day = as.numeric(format(date,"%d")), id = as.numeric(id)) %>%
+        daily_sim_tbl %>%
         dplyr::select(id, year, mon, day, {{variables}}) %>%
         gather(key = variable, value = value, -id, -year, -mon, -day) %>%
         unite(id_variable, c("id","variable"), sep = ":") %>%
@@ -196,8 +196,8 @@ wegenCheck <- function(
     geom_point(alpha = 0.6, size = 1.5) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = g.wdth1/base_len) +
-    scale_x_continuous(breaks = pretty(c(0,1), n=5), limits = c(0, 1)) +
-    scale_y_continuous(breaks = pretty(c(0,1), n=5), limits = c(0, 1))
+    scale_x_continuous(breaks = pretty(c(-0.5,1), n=5), limits = c(-0.5, 1)) +
+    scale_y_continuous(breaks = pretty(c(-0.5,1), n=5), limits = c(-0.5, 1))
 
   ggsave(paste0(output.path,"monthly_stats_all_crosssite.png"),
          height = g.hght1, width = g.wdth1)
@@ -210,8 +210,8 @@ wegenCheck <- function(
     geom_point(alpha = 0.6, size = 1.5) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = g.wdth2/base_len) +
-    scale_x_continuous(breaks = pretty(c(0,1), n=5), limits = c(0, 1)) +
-    scale_y_continuous(breaks = pretty(c(0,1), n=5), limits = c(0, 1))
+    scale_x_continuous(breaks = pretty(c(-0.5,1), n=5), limits = c(-0.5, 1)) +
+    scale_y_continuous(breaks = pretty(c(-0.5,1), n=5), limits = c(-0.5, 1))
 
   ggsave(paste0(output.path,"monthly_stats_all_intersite.png" ),
          width = g.wdth2, height = g.hght2)
@@ -219,21 +219,28 @@ wegenCheck <- function(
   for (v in 1:length(variables)) {
 
     ##### MONTHLY CYCLE STATISTICS
-    p <- ggplot(filter(sim_stats_aavg, variable == variables[v]),
-                aes(x = as.factor(mon), y=value)) +
+    dat <- sim_stats_aavg %>% filter(variable == variables[v] & !is.nan(value))
+    p <- ggplot(dat, aes(x = as.factor(mon), y=value)) +
       theme_light(base_size = 12) +
       ggtitle(variable_labels2[v]) +
       geom_boxplot() +
-      stat_summary(fun="mean", color="blue")+
+      stat_summary(fun="mean", color="blue", aes(color="Simulated nmean",  geom="point")) +
       facet_wrap(~ stat, scales = "free", ncol = ceiling(num_stats/2)) +
       geom_point(data = filter(hist_stats_aavg, variable == variables[v]),
-                 color = "red") +
-      labs(x = "", y = "")
+                 aes(color="Observed mean",  geom="point"), size = 2) +
+      scale_color_manual("", values=c("Observed mean"="red", "Simulated mean"="blue")) +
+      labs(x = "", y = "") +
+       theme(legend.position = c(0.875, 0.45),
+        legend.background = element_rect(fill = "white", color = NA),
+        legend.text=element_text(size=13))
+
+
 
     ggsave(paste0(output.path,"monthly_stats_", variables[v],".png" ),
            height = base_len*2, width = base_len*2)
 
     #### DAILY STATISTICS ######################################################
+
     stats_df1v <- bind_rows(hist_stats_mon, sim_stats_mon_median) %>%
       filter(variable == variables[v]) %>%
       spread(key = type, value = value) %>%
@@ -245,10 +252,7 @@ wegenCheck <- function(
       geom_point(alpha = 0.4, size = 1.5) +
       geom_abline(color = "blue", size = 1) +
       labs(x = "Observed", y = "Simulated") +
-      facet_wrap(stat ~ ., scales = "free", ncol = ceiling(num_stats/2)) +
-      #scale_x_continuous(breaks = pretty(c(0, NA), n=5), limits = c(0, NA)) +
-      #scale_y_continuous(breaks = pretty(c(0, NA), n=5), limits = c(0, NA)) +
-      theme(plot.margin = unit(c(0.5,0.2,0.2,0.2), "cm"))
+      facet_wrap(stat ~ ., scales = "free", ncol = ceiling(num_stats/2))
 
     ggsave(paste0(output.path,"daily_stats_", variables[v],".png" ),
            height = base_len, width = g.wdth2)

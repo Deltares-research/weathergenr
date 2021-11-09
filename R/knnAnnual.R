@@ -11,8 +11,12 @@
 #'
 #' @return
 #' @export
-knnAnnual <- function(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A, kk,
-	  k1, y, y_sample_size = 20) {
+knnAnnual <- function(sim_annual_prcp,
+  ANNUAL_PRCP,
+  WATER_YEAR_A, kk,
+	k1,
+  y,
+  y_sample_size = 20) {
 
 	  var_order <- 1:length(ANNUAL_PRCP)
 		distance <- sqrt((sim_annual_prcp - ANNUAL_PRCP)^2)
