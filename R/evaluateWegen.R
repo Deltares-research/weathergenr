@@ -33,24 +33,25 @@ evaluateWegen <- function(
 
   {
 
-  nsgrids <- length(daily.sim[[1]])
-  variable_labels2 <- paste0(variable.labels, " (", variable.units, ")")
-
-  sim_stats <- NULL
-  sim_stats_aavg <- NULL
-  sim_stats_icor <- NULL
-
   stat_level <- c("mean", "sd", "skewness")
   stat_label <- c("Mean", "Standard Deviation", "Skewness")
 
+  nsgrids <- length(daily.sim[[1]])
+  variable_labels2 <- paste0(variable.labels, " (", variable.units, ")")
   num_stats <- length(stat_level)
   num_vars <- length(variables)
   var_combs <- expand_grid(var1=variables, var2 = variables)
   num_var_combs <- choose(num_vars, 2)
   sim_year_num <- nrow(daily.sim[[1]][[1]])/365
-  sim_wetdry_days <-NULL
 
+  sim_stats <- NULL
+  sim_stats_aavg <- NULL
+  sim_stats_icor <- NULL
+  sim_wetdry_days <-NULL
+  sim_wet_spells <- NULL
+  sim_dry_spells <- NULL
   # Calculate for each simulated trace
+
   for (n in 1:realization.num) {
 
     daily_sim_tbl <- daily.sim[[n]] %>% bind_rows(.id = "id")
@@ -59,7 +60,22 @@ evaluateWegen <- function(
     daily_sim_tbl$day <- as.numeric(format(daily_sim_tbl$date,"%d"))
     daily_sim_tbl$id <- as.numeric(daily_sim_tbl$id)
 
-    #sim_wetdays <- bind_rows(sim_stats,
+    #sim_wetdry_spells
+    sim_wet_spells <- bind_rows(sim_wet_spells,
+      lapply(1:nsgrids, function(x)
+         table(calculateSpellLength(daily.sim[[n]][[x]]$precip, below = FALSE)) %>%
+         tibble(length = as.numeric(names(.)), wet = .)) %>%
+      bind_rows(.id = "id") %>%
+      mutate(rlz = n, .before = 1))
+
+    sim_dry_spells <- bind_rows(sim_dry_spells,
+      lapply(1:nsgrids, function(x)
+      table(calculateSpellLength(daily.sim[[n]][[x]]$precip, below = TRUE)) %>%
+         tibble(length = as.numeric(names(.)), dry = .)) %>%
+      bind_rows(.id = "id") %>%
+      mutate(rlz = n, .before = 1))
+
+
     sim_wetdry_days <- bind_rows(sim_wetdry_days,
       daily_sim_tbl %>%
       select(id, year, mon, day, precip) %>%
@@ -151,19 +167,58 @@ evaluateWegen <- function(
     mutate(type = "Observed") %>%
     gather(key = stat, value = value, wet_count:dry_count)
 
+  #sim_wetdry_spells
+  hist_dry_spells <- lapply(1:nsgrids, function(x)
+      table(calculateSpellLength(daily.obs[[x]]$precip, below = TRUE)) %>%
+         tibble(length = as.numeric(names(.)), dry = as.numeric(.))) %>%
+      bind_rows(.id = "id") %>%
+    select(-.)
+
+  hist_wet_spells <- lapply(1:nsgrids, function(x)
+     table(calculateSpellLength(daily.obs[[x]]$precip, below = FALSE)) %>%
+         tibble(length = as.numeric(names(.)), wet = as.numeric(.))) %>%
+      bind_rows(.id = "id") %>%
+    select(-.)
+
+  hist_wetdry_spells <- hist_dry_spells %>%
+    full_join(hist_wet_spells, by = c("id", "length")) %>%
+    gather(key = stat, value = value, wet:dry) %>%
+    mutate(type = "Observed")
+
   # :::::::::: COMPARE MONTHLY STATISTICS ::::::::::::::::::::::::::::::::::::::
 
-  sim_stats_mon_median <- sim_stats %>%  group_by(id, mon, variable, stat) %>%
-    summarize(value = median(value)) %>% mutate(type = "Simulated")
+  sim_stats_mon_median <- sim_stats %>%
+    group_by(id, mon, variable, stat) %>%
+    summarize(value = median(value)) %>%
+    mutate(type = "Simulated")
 
-  hist_stats_mon <- hist_stats %>% group_by(id, mon, variable, stat) %>%
-    summarize(value = median(value)) %>% mutate(type = "Observed")
+  hist_stats_mon <- hist_stats %>%
+    group_by(id, mon, variable, stat) %>%
+    summarize(value = median(value)) %>%
+    mutate(type = "Observed")
 
   sim_wetdry_days_meadian <- sim_wetdry_days %>%
     gather(key = stat, value = value, wet_count:dry_count) %>%
     group_by(id, mon, stat) %>%
     summarize(value = median(value)) %>%
     mutate(type = "Simulated")
+
+  sim_wet_spells_median <- sim_wet_spells %>%
+    group_by(id, length) %>%
+    summarize(wet = median(wet))
+
+  sim_dry_spells_median <- sim_dry_spells %>%
+    group_by(id, length) %>%
+    summarize(dry = median(dry))
+
+  sim_wetdry_spells_median <- sim_wet_spells_median %>%
+    full_join(sim_dry_spells_median, by = c("id", "length")) %>%
+    gather(key = stat, value = value, wet:dry) %>%
+    mutate(type = "Simulated")
+
+
+  stats_wetdry_spells <- bind_rows(hist_wetdry_spells, sim_wetdry_spells_median) %>%
+    spread(type, value)
 
   ### Intersite/cross-site correlations ::::::::::::::::::::::::::::::::::::::::
 
@@ -220,7 +275,18 @@ evaluateWegen <- function(
   g.hght2 <- if(num_var_combs > 2) base_len*2 else if (num_var_combs > 4) base_len*3 else base_len
   g.wdth2 <- if(num_var_combs > 1) base_len*2 else if (num_var_combs > 6) base_len*3 else base_len
 
-    ### Cross site correlations
+  ### Wet dry spells
+  p <- ggplot(stats_wetdry_spells, aes(x = Observed/40, y = Simulated/40)) +
+    theme_light(base_size = 12) +
+    geom_point(alpha = 0.6, size = 1.5) +
+    geom_abline(color = "blue", size = 1) +
+    facet_wrap(stat ~ ., scales = "free", ncol = 1) +
+    labs(x = "Observed", y = "Simulated")
+
+  ggsave(paste0(output.path,"monthly_stats_wet_dry_spells.png"),
+        height = base_len, width = base_len*2)
+
+  ### Wet dry days
   p <- ggplot(stats_wetdry_days, aes(x = Observed, y = Simulated)) +
     theme_light(base_size = 12) +
     geom_point(alpha = 0.6, size = 1.5) +

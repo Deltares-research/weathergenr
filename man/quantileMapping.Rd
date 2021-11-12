@@ -11,7 +11,8 @@ quantileMapping(
   var.change = NULL,
   mon.ts = NULL,
   year.ts = NULL,
-  step.change = TRUE
+  step.change = TRUE,
+  reltol = 1e-05
 )
 }
 \arguments{

@@ -195,7 +195,9 @@ simulateGriddedWeather <- function(
 
   message(cat("\u2713", "|", "Spatial & temporal dissaggregation completed"))
 
-  dates_resampled_tbl <- bind_cols(dates_resampled)
+  dates_resampled_tbl <- bind_cols(dates_resampled,
+    .name_repair=~paste0("rlz_", 1:length(dates_resampled)))
+
   write.csv(dates_resampled_tbl, paste0(output.path, "dates_resampled.csv"))
 
   day_order <- sapply(1:realization.num,
@@ -215,8 +217,7 @@ simulateGriddedWeather <- function(
 
     sampleGrids <- sf::st_as_sf(climate.grid[,c("x","y")], coords = c("x","y")) %>%
       sf::st_sample(size = min(evaluate.model.grid.num, ngrids), type = "regular") %>%
-      sf::st_cast("POINT") %>% sf::st_coordinates() %>%
-      as_tibble() %>%
+      sf::st_cast("POINT") %>% sf::st_coordinates() %>% as_tibble() %>%
       left_join(climate.grid[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
       pull(id)
 
@@ -275,6 +276,7 @@ simulateGriddedWeather <- function(
     write.csv(x = scn_mat_index, file = paste0(output.path, "scenario_matrix.csv"))
   }
 
+
   message(cat("\u2713", "|", "scenario matrix created: ", smax, "scenarios in total"))
 
 
@@ -309,7 +311,8 @@ simulateGriddedWeather <- function(
                 mon.ts = month_series, year.ts = year_index,
                 mean.change = perturb_precip_mean,
                 var.change = perturb_precip_var,
-                step.change = apply.step.changes)
+                step.change = apply.step.changes,
+                reltol = 1e-5)
 
         # Perturb temp, temp_min, and temp_max by delta factors
         rlz_cur[[x]]$temp <- rlz_cur[[x]]$temp + temp_deltas

@@ -11,14 +11,6 @@
 #'
 #'
 #' @export
-#' @examples
-#' date <- seq(as.Date("2000/1/1"), by = "month", length.out = 120)
-#'
-#' Water year equals to calendar year
-#' getWaterYear(date, water.year.first.month = 1)
-#'
-#' Water year starts in October
-#' getWaterYear(date, water.year.first.month = 10)
 getWaterYear <- function(date = NULL, water.year.first.month = 1)  {
 
   w.year <- as.numeric(format(date, "%Y"))

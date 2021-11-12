@@ -22,7 +22,7 @@ nc_data <- readNetcdf(
 climate_data = nc_data$data
 climate_grid = nc_data$coords
 
-## ----parameters---------------------------------------------------------------
+## ----model-parameters---------------------------------------------------------
 project_name = "ntoum"
 output_path = paste0("C:/wegentest/", project_name, "/")
 variable_names = c("precip",  "temp", "temp_min", "temp_max")
@@ -39,7 +39,8 @@ warm_variable <- "precip"
 realization_num = 1
 month_start = 5
 
-# Climate changes
+## ----climate-change-----------------------------------------------------------
+
 ############################ Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
 precip_changes_mean_min <- c(0.7, 0.7, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
 precip_changes_mean_max <- c(1.3, 1.3, 1.4, 1.4, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3)
@@ -69,7 +70,6 @@ temp_changes$mean$min <- temp_changes_mean_min
 temp_changes$mean$max <- temp_changes_mean_max
 
 ## ----model-run, eval=FALSE, echo=TRUE-----------------------------------------
-
  simulateGriddedWeather(
    climate.data = climate_data,
    climate.grid = climate_grid,
@@ -87,7 +87,7 @@ temp_changes$mean$max <- temp_changes_mean_max
    precip.changes = precip_changes,
    temp.changes = temp_changes,
    warm.signif.level = 0.90,
-   warm.sample.size = 5000,
+   warm.sample.size = 10000,
    knn.annual.sample.size = 20,
    save.warm.results = TRUE,
    evaluate.model = TRUE,
