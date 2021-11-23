@@ -19,7 +19,7 @@
 #' @param realization.num placeholder
 #' @param month.start placeholder
 #' @param evaluate.model placeholder
-#' @param evaluate.model.grid.num placeholder
+#' @param evaluate.grid.num placeholder
 #' @param apply.climate.changes placeholder
 #' @param precip.changes placeholder
 #' @param temp.changes placeholder
@@ -39,7 +39,7 @@
 #' @importFrom sf st_as_sf st_sample st_cast st_coordinates
 #' @importFrom utils write.csv
 #' @importFrom tidyr expand_grid
-simulateGriddedWeather <- function(
+simulateWeather <- function(
   climate.data = NULL,
   climate.grid = NULL,
   year.start = NULL,
@@ -50,7 +50,7 @@ simulateGriddedWeather <- function(
   variable.units = NULL,
   warm.variable = "precip",
   warm.signif.level = 0.90,
-  warm.sample.size = 20000,
+  warm.sample.size = 10000,
   knn.annual.sample.size = 20,
   save.warm.results = TRUE,
   sim.year.start = 2020,
@@ -58,7 +58,7 @@ simulateGriddedWeather <- function(
   realization.num = 5,
   month.start = 1,
   evaluate.model = FALSE,
-  evaluate.model.grid.num = 20,
+  evaluate.grid.num = 20,
   apply.climate.changes = FALSE,
   precip.changes = NULL,
   temp.changes = NULL,
@@ -69,6 +69,8 @@ simulateGriddedWeather <- function(
 
  {
 
+  start_time <- Sys.time()
+
   # Number of grids
   grids  <- climate.grid$id
   ngrids <- length(grids)
@@ -77,10 +79,10 @@ simulateGriddedWeather <- function(
   if(is.null(variable.units)) {variable.units <- rep("", length(variable.names))}
 
   #browser()
-  message(cat("\u2713", "|", "Historical data loaded. Data has", ngrids, "grids"))
+  message(cat("\u2713", "|", "Historical data loaded (in total", ngrids, "grid cells)"))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
-  warm_path <- paste0(output.path, "warm/")
+  warm_path <- paste0(output.path, "historical/")
   if (!dir.exists(warm_path)) {dir.create(warm_path)}
 
   hist.date.start <- as.Date(paste0(year.start,"-01-01"))
@@ -145,14 +147,13 @@ simulateGriddedWeather <- function(
         signif.periods = warm_power$signif_periods,
         signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
-  message(cat("\u2713", "|", "Wavelet analysis:", length(wavelet_comps)-1,
-    "low frequency components defined"))
+  message(cat("\u2713", "|", "Wavelet analysis - low frequency components:", length(wavelet_comps)-1))
 
   # stochastic simulation of annual series
   sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
         sim.year.num = sim.year.num, sim.num = warm.sample.size)
 
-  message(cat("\u2713", "|", warm.sample.size, "stochastic annual series generated"))
+  message(cat("\u2713", "|", format(warm.sample.size, big.mark=","), "stochastic series simulated with WARM"))
 
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.size, function(x)
@@ -170,16 +171,13 @@ simulateGriddedWeather <- function(
        output.path = warm_path,
        ...)
 
-  # Subsetted realizations of annual simulated time-series
-  sim_annual_final <- sim_annual_sub$sampled
-
-  message(cat("\u2713", "|", ncol(sim_annual_final), "annual traces selected"))
+  message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted), "stochastic series match criteria"))
+  message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "stochastic series randomly selected"))
 
   # Sample size in KNN_ANNUAL sampling
-  ##### YEAR_D NEEDS ADJUSTMENT!!!!!!!!!!!!!!!!!!!!!!
   dates_resampled <- lapply(1:realization.num,
     function(n) resampleDates(
-        PRCP_FINAL_ANNUAL_SIM = sim_annual_final[, n],
+        PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],
         ANNUAL_PRCP = warm_variable,
         PRCP = climate_d_aavg$precip,
         TEMP = climate_d_aavg$temp,
@@ -193,12 +191,13 @@ simulateGriddedWeather <- function(
         month.start = month.start)
   )
 
-  message(cat("\u2713", "|", "Spatial & temporal dissaggregation completed"))
+  message(cat("\u2713", "|", "Spatially & temporally dissaggregated with knn & markov-chain modeling"))
 
   dates_resampled_tbl <- bind_cols(dates_resampled,
     .name_repair=~paste0("rlz_", 1:length(dates_resampled)))
 
-  write.csv(dates_resampled_tbl, paste0(output.path, "dates_resampled.csv"))
+  write.csv(dates_resampled_tbl, paste0(warm_path, "dates_resampled.csv"))
+  message(cat("\u2713", "|", "Resampled dates outputted to csv file"))
 
   day_order <- sapply(1:realization.num,
     function(n) match(dates_resampled[[n]], dates_d$date))
@@ -212,11 +211,11 @@ simulateGriddedWeather <- function(
   if(evaluate.model) {
 
     ## Check existing directories and create as needed
-    if (!dir.exists(paste0(output.path, "evaluation/"))) {
-              dir.create(paste0(output.path, "evaluation/"))}
+    eval_path <- paste0(output.path, "evaluation/")
+    if (!dir.exists(eval_path)) dir.create(eval_path)
 
     sampleGrids <- sf::st_as_sf(climate.grid[,c("x","y")], coords = c("x","y")) %>%
-      sf::st_sample(size = min(evaluate.model.grid.num, ngrids), type = "regular") %>%
+      sf::st_sample(size = min(evaluate.grid.num, ngrids), type = "regular") %>%
       sf::st_cast("POINT") %>% sf::st_coordinates() %>% as_tibble() %>%
       left_join(climate.grid[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
       pull(id)
@@ -232,123 +231,123 @@ simulateGriddedWeather <- function(
 
     evaluateWegen(daily.sim = rlz_sample,
        daily.obs = obs_sample,
-       output.path = paste0(output.path, "evaluation/"),
+       output.path = eval_path,
        variables = variable.names,
        variable.labels = variable.labels,
        variable.units = variable.units,
        realization.num = realization.num)
 
-    message(cat("\u2713", "|", "control plots saved"))
+    message(cat("\u2713", "|", "Model evaluation plots saved to:", eval_path))
 
   }
-
 
   #:::::::::::::::::::::: CLIMATE CHANGE SETTINGS ::::::::::::::::::::::::::::::
 
   if(!apply.climate.changes) {
-
-      message(cat("\u2713", "|", "output date orders"))
       return(dates_resampled_tbl)
-
   } else {
 
-  precip.changes$mean$steps <- sapply(1:12, function(m)
-        seq(precip.changes$mean$min[m], precip.changes$mean$max[m],
-            length.out = precip.changes$increments))
+    precip.changes$mean$steps <- sapply(1:12, function(m)
+          seq(precip.changes$mean$min[m], precip.changes$mean$max[m],
+              length.out = precip.changes$increments))
 
-  precip.changes$var$steps <- sapply(1:12, function(m)
-        seq(precip.changes$var$min[m], precip.changes$var$max[m],
-            length.out = precip.changes$increments))
+    precip.changes$var$steps <- sapply(1:12, function(m)
+          seq(precip.changes$var$min[m], precip.changes$var$max[m],
+              length.out = precip.changes$increments))
 
-  temp.changes$mean$steps <- sapply(1:12, function(m)
-        seq(temp.changes$mean$min[m], temp.changes$mean$max[m],
-            length.out = temp.changes$increments))
+    temp.changes$mean$steps <- sapply(1:12, function(m)
+          seq(temp.changes$mean$min[m], temp.changes$mean$max[m],
+              length.out = temp.changes$increments))
 
-  scn_mat_index <- tidyr::expand_grid(precip_ind = 1:precip.changes$increments,
-        temp_ind = 1:temp.changes$increments) %>%
-      mutate(ind = 1:n(), .before = 1)
+    scn_mat_index <- tidyr::expand_grid(precip_ind = 1:precip.changes$increments,
+          temp_ind = 1:temp.changes$increments) %>%
+        mutate(ind = 1:n(), .before = 1)
+    smax <- nrow(scn_mat_index)
 
-  smax <- nrow(scn_mat_index)
+     #Create output directory if doesn't exist
+    future_path <- paste0(output.path,"future/")
+    if (!dir.exists(future_path)) {dir.create(future_path)}
 
-  ##############################################################################
-
-  if(isTRUE(save.scenario.matrix)) {
-    write.csv(x = scn_mat_index, file = paste0(output.path, "scenario_matrix.csv"))
-  }
-
-
-  message(cat("\u2713", "|", "scenario matrix created: ", smax, "scenarios in total"))
-
-
-   #Create output directory if doesn't exist
-  if (!dir.exists(output.path)) {dir.create(output.path)}
-
-  # Loop through each scenario
-  for (n in 1:realization.num) {
-
-    # Set current weather realization
-    rlz_cur <- rlz[[n]]
-
-    # Loop through climate scenarios
-    for (s in 1:smax) {
-
-      # Current perturbation scenario for each variable
-      perturb_precip_mean <- precip.changes$mean$steps[scn_mat_index$precip_ind[s],]
-      perturb_precip_var <- precip.changes$var$steps[scn_mat_index$precip_ind[s],]
-      perturb_temp_mean <- temp.changes$mean$steps[scn_mat_index$temp_ind[s],]
-
-      temp_delta_factors <- sapply(1:12, function(x)
-        seq(0, perturb_temp_mean[x], length.out = year_num))
-
-      temp_deltas <- sapply(1:length(year_series), function(x)
-        temp_delta_factors[year_index[x], month_series[x]])
-
-      # Loop through each grid cell
-      for (x in 1:ngrids) {
-
-        # Perturb daily precipitation using quantile mapping
-        rlz_cur[[x]]$precip <- quantileMapping(value = rlz_cur[[x]]$precip,
-                mon.ts = month_series, year.ts = year_index,
-                mean.change = perturb_precip_mean,
-                var.change = perturb_precip_var,
-                step.change = apply.step.changes,
-                reltol = 1e-5)
-
-        # Perturb temp, temp_min, and temp_max by delta factors
-        rlz_cur[[x]]$temp <- rlz_cur[[x]]$temp + temp_deltas
-        rlz_cur[[x]]$temp_min <- rlz_cur[[x]]$temp_min + temp_deltas
-        rlz_cur[[x]]$temp_max <- rlz_cur[[x]]$temp_max + temp_deltas
-
-        # Calculate PET from temp, temp_min, temp_max
-        rlz_cur[[x]]$pet <- with(rlz_cur[[x]], hargreavesPet(
-          months = month_series, temp = temp, tdiff = temp_max - temp_min,
-          lat = climate.grid$y[x]))
+    if(isTRUE(save.scenario.matrix)) {
+      write.csv(x = scn_mat_index, file = paste0(future_path, "scenario_matrix.csv"))
     }
 
-      # Write to netcdf
-      writeNetcdf(
-          nc.temp = nc_data,
-          data = rlz_cur,
-          coord.grid = climate.grid,
-          output.path = paste0(output.path,"future/"),
-          nc.dimnames = list(x = "lon", y = "lat", time = "time"),
-          origin.date =  sim_dates_d$date[1],
-          calendar.type = "no leap",
-          variables = c(variable.names, "pet"),
-          variable.units = c(variable.units, "mm/day"),
-          file.prefix = output.file.prefix,
-          file.suffix = paste0("_", n,"_", s)
-      )
-    }
+    counter <- 0
 
-  message(cat("\u2713", "|", "Scenarios saved for realization", n))
-  }
+    # Loop through each scenario
+    for (n in 1:realization.num) {
 
-  message(cat("\u2713", "|", "Results outputted to", s, "netcdf files at: ", output.path))
+      # Set current weather realization
+      rlz_cur <- rlz[[n]]
 
-  }
+      # Loop through climate scenarios
+      for (s in 1:smax) {
 
-}
+        counter <- counter + 1
+
+        # Current perturbation scenario for each variable
+        perturb_precip_mean <- precip.changes$mean$steps[scn_mat_index$precip_ind[s],]
+        perturb_precip_var <- precip.changes$var$steps[scn_mat_index$precip_ind[s],]
+        perturb_temp_mean <- temp.changes$mean$steps[scn_mat_index$temp_ind[s],]
+
+        temp_delta_factors <- sapply(1:12, function(x)
+          seq(0, perturb_temp_mean[x], length.out = year_num))
+
+        temp_deltas <- sapply(1:length(year_series), function(x)
+          temp_delta_factors[year_index[x], month_series[x]])
+
+        # Loop through each grid cell
+        for (x in 1:ngrids) {
+
+          # Perturb daily precipitation using quantile mapping
+          rlz_cur[[x]]$precip <- quantileMapping(value = rlz_cur[[x]]$precip,
+                  mon.ts = month_series, year.ts = year_index,
+                  mean.change = perturb_precip_mean,
+                  var.change = perturb_precip_var,
+                  step.change = apply.step.changes,
+                  reltol = 1e-5)
+
+          # Perturb temp, temp_min, and temp_max by delta factors
+          rlz_cur[[x]]$temp <- rlz_cur[[x]]$temp + temp_deltas
+          rlz_cur[[x]]$temp_min <- rlz_cur[[x]]$temp_min + temp_deltas
+          rlz_cur[[x]]$temp_max <- rlz_cur[[x]]$temp_max + temp_deltas
+
+          # Calculate PET from temp, temp_min, temp_max
+          rlz_cur[[x]]$pet <- with(rlz_cur[[x]], hargreavesPet(
+            months = month_series, temp = temp, tdiff = temp_max - temp_min,
+            lat = climate.grid$y[x]))
+      }
+
+        # Write to netcdf
+        writeNetcdf(
+            nc.temp = nc_data,
+            data = rlz_cur,
+            coord.grid = climate.grid,
+            output.path = future_path,
+            nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+            origin.date =  sim_dates_d$date[1],
+            calendar.type = "no leap",
+            variables = c(variable.names, "pet"),
+            variable.units = c(variable.units, "mm/day"),
+            file.prefix = output.file.prefix,
+            file.suffix = paste0(n,"_", s)
+        )
+
+        if (counter < realization.num* smax) {
+          cat("\u2059", "|", "Applying climate changes:", paste0(counter, "/", realization.num * smax), "\r")
+        } else {
+          cat("\u2713", "|", "Applying climate changes:", paste0(counter, "/", realization.num * smax), "\n")
+          message(cat("\u2713", "|", "Elapsed time:", (Sys.time() - start_time)/60))
+        }
+
+      } # smax close
+
+
+    } #realization.num close
+
+  } # apply climate change close
+
+} # function close
 
 
 

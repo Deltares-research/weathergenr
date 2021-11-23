@@ -38,8 +38,8 @@ waveletARSubset <- function(
     sd = c(0.90,1.10),
     min = c(0.90,1.10),
     max = c(0.90,1.10),
-    power = c(0.70,2.00),
-    nonsignif.threshold = 0.95)
+    power = c(0.60,2.25),
+    nonsignif.threshold = 0.90)
   )
 
 {
@@ -87,7 +87,7 @@ waveletARSubset <- function(
     sub_power3 <- which(sapply(1:ncol(power.sim), function(x)
         all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*bounds$nonsignif.threshold))))
 
-    sub_power <- base::intersect(base::intersect(sub_power1, sub_power2),sub_power3)
+    sub_power <- base::intersect(base::intersect(sub_power1, sub_power2), sub_power3)
   } else {
     sub_power  <- 1:ncol(series.sim)
   }
@@ -160,7 +160,16 @@ waveletARSubset <- function(
                    power.sim = power.sim[1:pl,sub_clim])  +
           scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    ggsave(paste0(output.path, "warm_subset_wavelet_spectra.png"), width=8, height=6)
+    ggsave(paste0(output.path, "warm_sim_matching_spectral.png"), width=8, height=6)
+
+    p <- waveletPlot(power.period = power.period[1:pl],
+                   power.signif = power.signif[1:pl],
+                   power.obs = power.obs[1:pl],
+                   power.sim = power.sim[1:pl,sub_sample])  +
+          scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
+
+    ggsave(paste0(output.path, "warm_sim_sample_spectral.png"), width=8, height=6)
+
 
     # Boxplots of all stats
     stats_obs_gg <- stats_obs %>% mutate(sim=1) %>%
@@ -186,7 +195,7 @@ waveletARSubset <- function(
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank())
 
-      ggsave(paste0(output.path, "warm_subset_annual_stats.png"), width=8, height=6)
+      ggsave(paste0(output.path, "warm_sim_sample_stats.png"), width=8, height=6)
 
     # Plot simulated warm-series
     sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
@@ -207,7 +216,7 @@ waveletARSubset <- function(
       guides(color = "none") +
       labs(y = "Precipitation (mm/year)", x = "Year index")
 
-    ggsave(paste0(output.path, "warm_simulated_series.png"), height = 5, width = 10)
+    ggsave(paste0(output.path, "warm_sim_timeseries.png"), height = 5, width = 10)
 
 
   }
@@ -215,10 +224,10 @@ waveletARSubset <- function(
   if(isTRUE(save.series)) {
 
     utils::write.csv(x = series.sim[,sub_clim], row.names = FALSE,
-        file = paste0(output.path, "warm_sim_annual_set.csv"))
+        file = paste0(output.path, "warm_sim_matching.csv"))
 
     utils::write.csv(x = series.sim[,sub_sample], row.names = FALSE,
-        file = paste0(output.path, "warm_sim_annual_sample.csv"))
+        file = paste0(output.path, "warm_sim_sample.csv"))
 
     }
 

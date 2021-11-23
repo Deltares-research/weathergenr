@@ -199,7 +199,7 @@ waveletDecompose <- function(variable = NULL,
         labs(x = "Time (year)", y = "")
 
     # Save plot to file
-    ggsave(paste0(output.path, "warm_decomposition.png"), height=6, width=8)
+    ggsave(paste0(output.path, "warm_hist_decomposition.png"), height=6, width=8)
 
 
 

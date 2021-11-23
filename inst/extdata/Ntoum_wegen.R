@@ -3,47 +3,16 @@
 library(gridwegen)
 
 # Path to output files
-path0 <- "C:/wegentest/"
-out_path <- paste0(path0, "results/")
+out_path <- "C:/wegentest/ntoum/"
 
 # Read-in gridded weather data from netcdf
-nc_path <- system.file('extdata', package = 'gridwegen')
-nc_file <- "ntoum.nc"
-nc_dimnames <- list(x = "lon", y = "lat", time = "time")
-nc_variables <- c("precip", "temp", "temp_min", "temp_max")
-origin_date <- as.Date("1981-01-01")
-
 nc_data <- readNetcdf(
-    nc.path = nc_path,
-    nc.file = nc_file,
-    nc.dimnames = nc_dimnames,
-    nc.variables = nc_variables,
-    origin.date = origin_date,
+    nc.path = system.file('extdata', package = 'gridwegen'),
+    nc.file = "ntoum.nc",
+    nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+    nc.variables = c("precip", "temp", "temp_min", "temp_max"),
+    origin.date = as.Date("1981-01-01"),
     has.leap.days = TRUE)
-
-# Simulate daily realizations of historical weather data
-
-sim_year_start <- 2020
-sim_year_num <- 20
-realization_num <- 2
-month_start <- 5
-
-out <- simulateWeather(
-  output.path = out_path,
-  hist.climate = nc_data$data,
-  grid.coords = nc_data$coords,
-  hist.year.start = 1981,
-  hist.year.num = 20,
-  sim.year.start = sim_year_start,
-  sim.year.num = sim_year_num,
-  variables = names(nc_data$variables)[1:4],
-  warm.sample.num = 5000,
-  realization.num = realization_num,
-  knn.annual.sample.num = 40,
-  return.date.indices = FALSE,
-  month.start = month_start,
-  check.stats = TRUE,
-  check.grid.num = 10)
 
 # Climate change perturbations
 precip_changes <- list()
@@ -63,21 +32,32 @@ precip_changes$var$max  <- c(1.3, 1.3, 1.5, 1.5, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1
 temp_changes$mean$min   <- c(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 temp_changes$mean$max   <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
 
-for(n in 1:realization_num) {
 
-  imposeClimateChanges(
-      output.path = out_path,
-      input.data = out[[n]],
-      grid.coords = nc_data$coords,
-      precip.changes <- precip_changes,
-      temp.changes = temp_changes,
-      file.suffix = n,
-      file.prefix = "ntoum_climate_rlz",
-      sim.year.start = sim_year_start,
-      month.start = month_start,
-      variables = nc_variables,
-      nc.dimnames = nc_dimnames,
-      save.scenario.matrix = FALSE,
-      step.change = TRUE)
-}
+out <- simulateWeather(
+  output.path = out_path,
+  climate.data = nc_data$data,
+  climate.grid = nc_data$coords,
+  year.start = 1981,
+  year.num = 20,
+  variable.names = c("precip",  "temp", "temp_min", "temp_max"),
+  variable.labels = c("Precipitation", "Mean Temperature", "Minimum Temperature", "Maximum Temperature"),
+  variable.units = c("mm/day", "DegC", "DegC", "DegC"),
+  warm.variable = "precip",
+  warm.signif.level = 0.90,
+  warm.sample.size = 10000,
+  knn.annual.sample.size = 70,
+  save.warm.results = TRUE,
+  sim.year.start = 2020,
+  sim.year.num = 40,
+  realization.num = 3,
+  month.start = 1,
+  evaluate.model = TRUE,
+  evaluate.grid.num = 20,
+  apply.climate.changes = TRUE,
+  precip.changes = precip_changes,
+  temp.changes = temp_changes,
+  output.file.prefix = "clim_change_rlz",
+  save.scenario.matrix = TRUE,
+  apply.step.changes = TRUE)
+
 

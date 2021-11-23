@@ -22,6 +22,7 @@
 #' @export
 #' @import utils ggplot2 dplyr
 #' @importFrom stats cor median
+#' @importFrom e1071 skewness
 evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
@@ -38,6 +39,7 @@ evaluateWegen <- function(
 
   nsgrids <- length(daily.sim[[1]])
   variable_labels2 <- paste0(variable.labels, " (", variable.units, ")")
+
   num_stats <- length(stat_level)
   num_vars <- length(variables)
   var_combs <- expand_grid(var1=variables, var2 = variables)
@@ -50,17 +52,17 @@ evaluateWegen <- function(
   sim_wetdry_days <-NULL
   sim_wet_spells <- NULL
   sim_dry_spells <- NULL
-  # Calculate for each simulated trace
 
   for (n in 1:realization.num) {
 
-    daily_sim_tbl <- daily.sim[[n]] %>% bind_rows(.id = "id")
+    # Calculate for each simulated trace
+    daily_sim_tbl <- daily.sim[[1]] %>% bind_rows(.id = "id")
     daily_sim_tbl$year <- as.numeric(format(daily_sim_tbl$date,"%Y"))
     daily_sim_tbl$mon <- as.numeric(format(daily_sim_tbl$date,"%m"))
     daily_sim_tbl$day <- as.numeric(format(daily_sim_tbl$date,"%d"))
     daily_sim_tbl$id <- as.numeric(daily_sim_tbl$id)
 
-    #sim_wetdry_spells
+    # Calculate wet spells
     sim_wet_spells <- bind_rows(sim_wet_spells,
       lapply(1:nsgrids, function(x)
          table(calculateSpellLength(daily.sim[[n]][[x]]$precip, below = FALSE)) %>%
@@ -68,6 +70,7 @@ evaluateWegen <- function(
       bind_rows(.id = "id") %>%
       mutate(rlz = n, .before = 1))
 
+    # Calculate dry spells
     sim_dry_spells <- bind_rows(sim_dry_spells,
       lapply(1:nsgrids, function(x)
       table(calculateSpellLength(daily.sim[[n]][[x]]$precip, below = TRUE)) %>%
@@ -75,13 +78,13 @@ evaluateWegen <- function(
       bind_rows(.id = "id") %>%
       mutate(rlz = n, .before = 1))
 
-
+    # Calculate wet and dry days
     sim_wetdry_days <- bind_rows(sim_wetdry_days,
       daily_sim_tbl %>%
       select(id, year, mon, day, precip) %>%
       group_by(id, mon) %>%
       summarize(wet_count = length(precip[precip!=0])/sim_year_num,
-                 dry_count = length(precip[precip==0])/sim_year_num) %>%
+                dry_count = length(precip[precip==0])/sim_year_num) %>%
       mutate(rlz = n, .before = 1))
 
     # Grid-based statistics (id:sample grids, rlz = realizations)
@@ -89,7 +92,7 @@ evaluateWegen <- function(
        daily_sim_tbl %>%
        select(id, year, mon, {{variables}}) %>%
        group_by(id, year, mon) %>%
-       summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),
+       summarize(across({{variables}}, list(mean=mean, sd=sd, skewness= e1071::skewness),
          .names = "{.col}:{.fn}")) %>%
        gather(key = variable, value = value, -id, -year, -mon) %>%
        separate(variable, c("variable","stat"), sep =":") %>%
@@ -100,7 +103,7 @@ evaluateWegen <- function(
         daily_sim_tbl %>%
         select(id, year, mon, {{variables}}) %>%
         group_by(year, mon) %>%
-        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness=skewness),
+        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness= e1071::skewness),
           .names = "{.col}:{.fn}")) %>%
         gather(key = variable, value = value, -year, -mon) %>%
         separate(variable, c("variable","stat"), sep =":") %>%
@@ -138,7 +141,7 @@ evaluateWegen <- function(
   hist_stats <- hist_stats_ini %>%
     group_by(id, year, mon) %>%
     summarize(across({{variables}},
-      list(mean=mean, sd=sd, skewness=skewness),.names = "{.col}:{.fn}")) %>%
+      list(mean=mean, sd=sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = value,-id, -year, -mon) %>%
     separate(variable, c("variable","stat"), sep = ":") %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
@@ -146,7 +149,7 @@ evaluateWegen <- function(
   hist_stats_aavg <- hist_stats_ini %>%
     group_by(mon) %>%
     summarize(across({{variables}},
-      list(mean=mean, sd=sd, skewness=skewness),.names = "{.col}:{.fn}")) %>%
+      list(mean=mean, sd=sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = value,-mon) %>%
     separate(variable, c("variable","stat"), sep=":") %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
@@ -263,8 +266,6 @@ evaluateWegen <- function(
     mutate(stat = factor(stat, levels = c("dry_count", "wet_count"),
       labels = c("Number of Dry Days", "Number of Wet Days")))
 
-
-
   #:::::::::::::::::::::::::::: PLOTS ::::::::::::::::::::::::::::::::::::::::::
 
   base_len <- 5
@@ -276,11 +277,11 @@ evaluateWegen <- function(
   g.wdth2 <- if(num_var_combs > 1) base_len*2 else if (num_var_combs > 6) base_len*3 else base_len
 
   ### Wet dry spells
-  p <- ggplot(stats_wetdry_spells, aes(x = Observed/40, y = Simulated/40)) +
+  p <- ggplot(stats_wetdry_spells, aes(x = Observed/sim_year_num, y = Simulated/sim_year_num)) +
     theme_light(base_size = 12) +
     geom_point(alpha = 0.6, size = 1.5) +
     geom_abline(color = "blue", size = 1) +
-    facet_wrap(stat ~ ., scales = "free", ncol = 1) +
+    facet_wrap(stat ~ ., scales = "free", ncol = g.wdth1/base_len) +
     labs(x = "Observed", y = "Simulated")
 
   ggsave(paste0(output.path,"monthly_stats_wet_dry_spells.png"),
@@ -369,10 +370,4 @@ evaluateWegen <- function(
   }
 
 }
-
-
-
-
-
-
 

@@ -19,7 +19,7 @@ waveletARSubset(
   output.path = NULL,
   padding = TRUE,
   bounds = list(mean = c(0.95, 1.05), sd = c(0.9, 1.1), min = c(0.9, 1.1), max = c(0.9,
-    1.1), power = c(0.7, 2), nonsignif.threshold = 0.95)
+    1.1), power = c(0.6, 2.25), nonsignif.threshold = 0.9)
 )
 }
 \arguments{
