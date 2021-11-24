@@ -41,3 +41,5 @@ vignettes/*.pdf
 # Misc directories
 /other/
 
+/doc/
+/Meta/
