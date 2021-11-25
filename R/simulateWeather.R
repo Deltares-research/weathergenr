@@ -23,7 +23,7 @@
 #' @param apply.climate.changes placeholder
 #' @param precip.changes placeholder
 #' @param temp.changes placeholder
-#' @param output.file.prefix placeholder
+#' @param output.ncfile.prefix placeholder
 #' @param save.scenario.matrix placeholder
 #' @param apply.step.changes placeholder
 #' @param ... placeholder
@@ -62,9 +62,11 @@ simulateWeather <- function(
   apply.climate.changes = FALSE,
   precip.changes = NULL,
   temp.changes = NULL,
-  output.file.prefix = "clim_change_rlz",
   save.scenario.matrix = TRUE,
   apply.step.changes = TRUE,
+  output.ncfile.prefix = "clim_change_rlz",
+  output.ncfile.template = NULL,
+  output.ncfile.dimnames = NULL,
   ...)
 
  {
@@ -79,7 +81,7 @@ simulateWeather <- function(
   if(is.null(variable.units)) {variable.units <- rep("", length(variable.names))}
 
   #browser()
-  message(cat("\u2713", "|", "Historical data loaded (in total", ngrids, "grid cells)"))
+  message(cat("\u2713", "|", "Historical data loaded (spatial resolution:", ngrids, "grid cells)"))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
   warm_path <- paste0(output.path, "historical/")
@@ -147,7 +149,8 @@ simulateWeather <- function(
         signif.periods = warm_power$signif_periods,
         signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
-  message(cat("\u2713", "|", "Wavelet analysis - low frequency components:", length(wavelet_comps)-1))
+  message(cat("\u2713", "|", "Low frequency components:", length(wavelet_comps)-1,
+    paste0("(", sapply(warm_power$signif_periods, function(x) x[1]), " years)")))
 
   # stochastic simulation of annual series
   sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
@@ -171,8 +174,8 @@ simulateWeather <- function(
        output.path = warm_path,
        ...)
 
-  message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted), "stochastic series match criteria"))
-  message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "stochastic series randomly selected"))
+  message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted), "stochastic series match subsetting criteria"))
+  message(cat("\u2713", "|", ncol(sim_annual_sub$sampled), "series randomly selected"))
 
   # Sample size in KNN_ANNUAL sampling
   dates_resampled <- lapply(1:realization.num,
@@ -191,7 +194,7 @@ simulateWeather <- function(
         month.start = month.start)
   )
 
-  message(cat("\u2713", "|", "Spatially & temporally dissaggregated with knn & markov-chain modeling"))
+  message(cat("\u2713", "|", "Spatially & temporally dissaggregated with knn & mc modeling"))
 
   dates_resampled_tbl <- bind_cols(dates_resampled,
     .name_repair=~paste0("rlz_", 1:length(dates_resampled)))
@@ -320,16 +323,16 @@ simulateWeather <- function(
 
         # Write to netcdf
         writeNetcdf(
-            nc.temp = nc_data,
+            nc.temp = output.ncfile.template,
             data = rlz_cur,
             coord.grid = climate.grid,
             output.path = future_path,
-            nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+            nc.dimnames = output.ncfile.dimnames,
             origin.date =  sim_dates_d$date[1],
             calendar.type = "no leap",
             variables = c(variable.names, "pet"),
             variable.units = c(variable.units, "mm/day"),
-            file.prefix = output.file.prefix,
+            file.prefix = output.ncfile.prefix,
             file.suffix = paste0(n,"_", s)
         )
 

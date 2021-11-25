@@ -22,9 +22,11 @@ knnDaily <- function(cur_sim_PRCP, cur_sim_TEMP, PRCP_TODAY, TEMP_TODAY,
 
 	  w_PRCP <- 100/sd_monthly_PRCP
 		w_TEMP <- 10/sd_monthly_TEMP
+
 		var_order <- 1:length(PRCP_TODAY)
 
-		distance <- sqrt(w_PRCP*((cur_sim_PRCP-mean_monthly_PRCP) - (PRCP_TODAY-mean_monthly_PRCP))^2 + w_TEMP*((cur_sim_TEMP-mean_monthly_TEMP) - (TEMP_TODAY-mean_monthly_TEMP))^2)
+		distance <- sqrt(w_PRCP*((cur_sim_PRCP-mean_monthly_PRCP) - (PRCP_TODAY-mean_monthly_PRCP))^2 +
+		    w_TEMP*((cur_sim_TEMP-mean_monthly_TEMP) - (TEMP_TODAY-mean_monthly_TEMP))^2)
 
 		K_Distances <-	var_order[order(distance)[1:k]]
 		probs <- (1/(1:k)) / sum((1/1:k))

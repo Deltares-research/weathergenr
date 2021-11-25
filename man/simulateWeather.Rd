@@ -27,9 +27,11 @@ simulateWeather(
   apply.climate.changes = FALSE,
   precip.changes = NULL,
   temp.changes = NULL,
-  output.file.prefix = "clim_change_rlz",
   save.scenario.matrix = TRUE,
   apply.step.changes = TRUE,
+  output.ncfile.prefix = "clim_change_rlz",
+  output.ncfile.template = NULL,
+  output.ncfile.dimnames = NULL,
   ...
 )
 }
@@ -78,11 +80,11 @@ simulateWeather(
 
 \item{temp.changes}{placeholder}
 
-\item{output.file.prefix}{placeholder}
-
 \item{save.scenario.matrix}{placeholder}
 
 \item{apply.step.changes}{placeholder}
+
+\item{output.ncfile.prefix}{placeholder}
 
 \item{...}{placeholder}
 }
