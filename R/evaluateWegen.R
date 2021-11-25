@@ -219,10 +219,6 @@ evaluateWegen <- function(
     gather(key = stat, value = value, wet:dry) %>%
     mutate(type = "Simulated")
 
-
-  stats_wetdry_spells <- bind_rows(hist_wetdry_spells, sim_wetdry_spells_median) %>%
-    spread(type, value)
-
   ### Intersite/cross-site correlations ::::::::::::::::::::::::::::::::::::::::
 
   hist_intercor <- hist_stats_icor %>%
@@ -264,7 +260,13 @@ evaluateWegen <- function(
   stats_wetdry_days <- bind_rows(hist_wetdry_days, sim_wetdry_days_meadian) %>%
     spread(type, value) %>%
     mutate(stat = factor(stat, levels = c("dry_count", "wet_count"),
-      labels = c("Number of Dry Days", "Number of Wet Days")))
+           labels = c("Number of Dry Days", "Number of Wet Days")))
+
+  stats_wetdry_spells <- bind_rows(hist_wetdry_spells, sim_wetdry_spells_median) %>%
+    spread(type, value) %>%
+    mutate(stat = factor(stat, levels = c("dry", "wet"),
+           labels = c("Dry spells", "Wet spells")))
+
 
   #:::::::::::::::::::::::::::: PLOTS ::::::::::::::::::::::::::::::::::::::::::
 

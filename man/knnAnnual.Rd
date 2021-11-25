@@ -5,12 +5,12 @@
 \title{This KNN function generates 100 years.....}
 \usage{
 knnAnnual(
-  sim_annual_prcp,
-  ANNUAL_PRCP,
-  WATER_YEAR_A,
-  kk,
-  k1,
-  y,
+  sim_annual_prcp = NULL,
+  ANNUAL_PRCP = NULL,
+  WATER_YEAR_A = NULL,
+  kk = NULL,
+  k1 = NULL,
+  y = NULL,
   y_sample_size = 20
 )
 }

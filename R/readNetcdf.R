@@ -113,6 +113,7 @@ readNetcdf <- function(
                   coords = grid_mat %>% mutate(id = 1:n()) %>% select(-data),
                   dates = datev,
                   dimensions = nc_dims,
+                  dimnames = nc.dimnames,
                   variables = nc_vars,
                   attributes = nc_attribs,
                   rawdata = nc_var_data)

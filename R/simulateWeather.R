@@ -66,7 +66,6 @@ simulateWeather <- function(
   apply.step.changes = TRUE,
   output.ncfile.prefix = "clim_change_rlz",
   output.ncfile.template = NULL,
-  output.ncfile.dimnames = NULL,
   ...)
 
  {
@@ -327,7 +326,7 @@ simulateWeather <- function(
             data = rlz_cur,
             coord.grid = climate.grid,
             output.path = future_path,
-            nc.dimnames = output.ncfile.dimnames,
+            nc.dimnames = output.ncfile.template$dimnames,
             origin.date =  sim_dates_d$date[1],
             calendar.type = "no leap",
             variables = c(variable.names, "pet"),

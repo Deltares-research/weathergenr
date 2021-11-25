@@ -99,8 +99,14 @@ resampleDates <- function(
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
 
 		# Sample 100 similar years from the historical record for the current year
-		CUR_YEARS <- knnAnnual(sim_annual_prcp, ANNUAL_PRCP, WATER_YEAR_A,
-		  kk, k1, y, y_sample_size = knn.annual.sample.num)
+		CUR_YEARS <- knnAnnual(
+		  sim_annual_prcp = sim_annual_prcp,
+		  ANNUAL_PRCP = ANNUAL_PRCP,
+		  WATER_YEAR_A = WATER_YEAR_A,
+		  kk = kk,
+		  k1 = k1,
+		  y = y,
+		  y_sample_size = knn.annual.sample.num)
 
 		# Find indices of days in all sampled years in CUR_YEARS
 		conditional_selection <- NULL
@@ -113,7 +119,6 @@ resampleDates <- function(
 		# Find all variables and date indices in the current selection years
 		PRCP_CURRENT <- PRCP[conditional_selection]
 		TEMP_CURRENT <- TEMP[conditional_selection]
-
 		DATE_D_CURRENT <- DATE_D[conditional_selection]
 		MONTH_D_CURRENT <- MONTH_D[conditional_selection]
 		YEAR_D_CURRENT <- YEAR_D[conditional_selection]
@@ -271,9 +276,19 @@ resampleDates <- function(
 
   			k <- round(sqrt(length(possible_days)))
 
-  			RESULT <- knnDaily(cur_sim_PRCP, cur_sim_TEMP, PRCP_TODAY, TEMP_TODAY,
-  			  DATE_TOMORROW, k, sd_monthly_PRCP, sd_monthly_TEMP, mean_monthly_PRCP,
-  			  mean_monthly_TEMP, k1, count)
+  			RESULT <- knnDaily(
+  			  cur_sim_PRCP = cur_sim_PRCP,
+  			  cur_sim_TEMP = cur_sim_TEMP,
+  			  PRCP_TODAY = PRCP_TODAY,
+  			  TEMP_TODAY = TEMP_TODAY,
+  			  DATE_TOMORROW = DATE_TOMORROW,
+  			  k = k,
+  			  sd_monthly_PRCP = sd_monthly_PRCP,
+  			  sd_monthly_TEMP = sd_monthly_TEMP,
+  			  mean_monthly_PRCP = mean_monthly_PRCP,
+  			  mean_monthly_TEMP = mean_monthly_TEMP,
+  			  k1 = k1,
+  			  count = count)
 
   			SIM_DATE[count] <- DATE_D_CURRENT[which(as.numeric(DATE_D_CURRENT)==RESULT)][1]
 

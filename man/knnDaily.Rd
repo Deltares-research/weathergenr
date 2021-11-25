@@ -5,18 +5,18 @@
 \title{KNN daily sampling}
 \usage{
 knnDaily(
-  cur_sim_PRCP,
-  cur_sim_TEMP,
-  PRCP_TODAY,
-  TEMP_TODAY,
-  DATE_TOMORROW,
-  k,
-  sd_monthly_PRCP,
-  sd_monthly_TEMP,
-  mean_monthly_PRCP,
-  mean_monthly_TEMP,
-  k1,
-  count
+  cur_sim_PRCP = NULL,
+  cur_sim_TEMP = NULL,
+  PRCP_TODAY = NULL,
+  TEMP_TODAY = NULL,
+  DATE_TOMORROW = NULL,
+  k = NULL,
+  sd_monthly_PRCP = NULL,
+  sd_monthly_TEMP = NULL,
+  mean_monthly_PRCP = NULL,
+  mean_monthly_TEMP = NULL,
+  k1 = NULL,
+  count = NULL
 )
 }
 \arguments{

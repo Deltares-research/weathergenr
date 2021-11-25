@@ -31,7 +31,6 @@ simulateWeather(
   apply.step.changes = TRUE,
   output.ncfile.prefix = "clim_change_rlz",
   output.ncfile.template = NULL,
-  output.ncfile.dimnames = NULL,
   ...
 )
 }
