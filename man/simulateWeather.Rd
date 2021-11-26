@@ -85,6 +85,8 @@ simulateWeather(
 
 \item{output.ncfile.prefix}{placeholder}
 
+\item{output.ncfile.template}{placeholder}
+
 \item{...}{placeholder}
 }
 \value{

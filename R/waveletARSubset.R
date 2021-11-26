@@ -13,11 +13,14 @@
 #' @param save.series A logical to write the results to csv files.
 #' @param verbose A logical to decide if further information to be displayed on the screen.
 #' @param output.path Output folder path
+#' @param padding placeholder
+#' @param bounds placeholder
 #'
 #' @return
 #' @export
 #' @import dplyr
 #' @import ggplot2
+#' @importFrom stats sd
 #' @importFrom utils write.csv
 waveletARSubset <- function(
   series.obs = NULL,
@@ -43,6 +46,10 @@ waveletARSubset <- function(
   )
 
 {
+
+  # Workaround for rlang warning
+  sim <- value <- yind <- par <- type <- variable <- y <- x <- 0
+
 
   sim.year.num = nrow(series.sim)
 

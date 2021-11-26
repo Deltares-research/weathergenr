@@ -27,6 +27,7 @@
 #' @param save.scenario.matrix placeholder
 #' @param apply.step.changes placeholder
 #' @param ... placeholder
+#' @param output.ncfile.template placeholder
 #'
 #' @return
 #' @export
@@ -69,6 +70,9 @@ simulateWeather <- function(
   ...)
 
  {
+
+  # Workaround for rlang warning
+  wyear <- month <- day <- year <- 0
 
   start_time <- Sys.time()
 

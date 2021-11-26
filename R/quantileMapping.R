@@ -1,10 +1,14 @@
 
 #' Function for perturbing climate statistics using Quantile-Mapping
 #'
-#' @param par List of parameters to be passed.
-#' @param operator A character string to specify the type of perturb change operator.
 #' @param value To be completed...
 #' @param date  To be completed...
+#' @param mean.change placeholder
+#' @param var.change placeholder
+#' @param mon.ts placeholder
+#' @param year.ts placeholder
+#' @param step.change placeholder
+#' @param reltol placeholder
 #'
 #' @return
 #' @export

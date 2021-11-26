@@ -36,6 +36,10 @@ readNetcdf <- function(
   omit.empty.cells = TRUE)
   {
 
+    #Workaround for rlang warning
+    month <- day <- xind <- yind <- month <- day <- wyear <- 0
+
+
     # Function to get dimension names
     ncGetDimNames <- function(f, v) {
         return(unlist(lapply(f$var[[v]]$dim, function(x) return(x$name))))

@@ -13,6 +13,7 @@
 #' @return
 #' @export
 #' @import ggplot2
+#' @importFrom stats var fft qchisq sd
 waveletDecompose <- function(variable = NULL,
        signif.periods = NULL,
        noise.type = "white",
@@ -20,6 +21,10 @@ waveletDecompose <- function(variable = NULL,
        plot = TRUE,
        output.path = NULL)
 {
+
+  # Workaround for rlang warning
+  value <- year <- 0
+
 
   #Number of orthogonal component series that representing a low-freq signal
   NUM_FINAL_PERIODS <- length(signif.periods) #OK
@@ -184,15 +189,15 @@ waveletDecompose <- function(variable = NULL,
 
   if(plot == TRUE) {
 
-    df <- tibble(Year = 1:length(variable), Original = variable) %>%
+    df <- tibble(year = 1:length(variable), Original = variable) %>%
       bind_cols(COMPS) %>%
       bind_cols(Noise=Noise) %>%
-      gather(key = variable, value = value, -Year) %>%
+      gather(key = variable, value = value, -year) %>%
       mutate(variable = factor(variable,
         levels = c("Original", paste0("Component_", 1:NUM_FINAL_PERIODS), "Noise")))
 
 
-    p <- ggplot(df, aes(x = Year, y = value)) +
+    p <- ggplot(df, aes(x = year, y = value)) +
         theme_light(base_size = 11) +
         facet_wrap(~ variable, ncol = 1, scales = "free") +
         geom_line() +

@@ -46,6 +46,10 @@ waveletARSubset(
 \item{verbose}{A logical to decide if further information to be displayed on the screen.}
 
 \item{output.path}{Output folder path}
+
+\item{padding}{placeholder}
+
+\item{bounds}{placeholder}
 }
 \value{
 

@@ -20,9 +20,17 @@ quantileMapping(
 
 \item{date}{To be completed...}
 
-\item{par}{List of parameters to be passed.}
+\item{mean.change}{placeholder}
 
-\item{operator}{A character string to specify the type of perturb change operator.}
+\item{var.change}{placeholder}
+
+\item{mon.ts}{placeholder}
+
+\item{year.ts}{placeholder}
+
+\item{step.change}{placeholder}
+
+\item{reltol}{placeholder}
 }
 \value{
 

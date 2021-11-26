@@ -38,6 +38,11 @@ resampleDates <- function(
 
   {
 
+  # Workaround for rlang warning
+  month <- day <- wyear <- 0
+
+
+
   if(month.start == 1) {
     month_list <- 1:12
   } else {

@@ -13,16 +13,19 @@ Imports:
     akima,
     patchwork,
     dplyr,
+    e1071,
     fitdistrplus,
     forecast,
     ggplot2,
     MASS,
     ncdf4,
-    scales,  
+    rlang,
+    scales,
+    sf,
     stats,
     tibble,   
     tidyr,
-    sf
+    utils
 Suggests:
     rmarkdown,
     knitr,

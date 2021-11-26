@@ -17,6 +17,7 @@
 #' @import ggplot2
 #' @import patchwork
 #' @import dplyr
+#' @importFrom stats var fft qchisq
 waveletAnalysis <- function(variable = NULL,
                             variable.unit = "mm",
                             signif.level = 0.90,
@@ -24,6 +25,12 @@ waveletAnalysis <- function(variable = NULL,
                             plot = FALSE,
                             output.path = NULL)
 {
+
+
+  # Workaround for rlang warning
+  x <- y <- z <- 0
+
+
 
 
   #### Define Wavelet function used that returns transform

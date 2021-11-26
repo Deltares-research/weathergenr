@@ -1,15 +1,19 @@
 
 
-#' Title
+#' Write to netcdf file
 #'
 #' @param output.path Placeholder
 #' @param nc.dimnames Placeholder
 #' @param origin.date Placeholder
-#' @param sim.length Placeholder
 #' @param calendar.type Placeholder
 #' @param variables Placeholder
 #' @param variable.units Placeholder
 #' @param nc.compression Placeholder
+#' @param nc.temp placeholder
+#' @param data placeholder
+#' @param coord.grid placeholder
+#' @param file.prefix placeholder
+#' @param file.suffix placeholder
 #'
 #' @return
 #' @export
@@ -37,7 +41,7 @@ writeNetcdf <- function(
 
   #time
   ncout_dims[[nc.dimnames$time]] <- ncdf4::ncdim_def(name = nc.dimnames$time,
-      units = paste0("days since ", format(round(as.POSIXct(origin.date), units = "day"),
+      units = paste0("days since ", format(round(as.POSIXct(origin.date)),
         '%Y-%m-%d %M:%H:%S')), vals = 1:sim.length, calendar = "no leap")
 
   #y = latitude

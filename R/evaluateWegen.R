@@ -23,6 +23,7 @@
 #' @import utils ggplot2 dplyr
 #' @importFrom stats cor median
 #' @importFrom e1071 skewness
+#' @importFrom rlang .data
 evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
@@ -33,6 +34,12 @@ evaluateWegen <- function(
   realization.num = NULL)
 
   {
+
+  #Workaround for rlang warning
+  year <- mon <- day <- precip <- sd <- variable <- value <- id_variable <- 0
+  wet_count <- dry_count <- wet <- dry <- id_variable1 <- id_variable2 <- 0
+  rlz <- id1 <- id2 <- variable1 <- variable2 <- type <- Observed <- Simulated <- 0
+
 
   stat_level <- c("mean", "sd", "skewness")
   stat_label <- c("Mean", "Standard Deviation", "Skewness")
@@ -66,7 +73,7 @@ evaluateWegen <- function(
     sim_wet_spells <- bind_rows(sim_wet_spells,
       lapply(1:nsgrids, function(x)
          table(calculateSpellLength(daily.sim[[n]][[x]]$precip, below = FALSE)) %>%
-         tibble(length = as.numeric(names(.)), wet = .)) %>%
+         tibble(length = as.numeric(names(.data)), wet = .data)) %>%
       bind_rows(.id = "id") %>%
       mutate(rlz = n, .before = 1))
 
@@ -74,7 +81,7 @@ evaluateWegen <- function(
     sim_dry_spells <- bind_rows(sim_dry_spells,
       lapply(1:nsgrids, function(x)
       table(calculateSpellLength(daily.sim[[n]][[x]]$precip, below = TRUE)) %>%
-         tibble(length = as.numeric(names(.)), dry = .)) %>%
+         tibble(length = as.numeric(names(.data)), dry = .data)) %>%
       bind_rows(.id = "id") %>%
       mutate(rlz = n, .before = 1))
 
@@ -132,7 +139,7 @@ evaluateWegen <- function(
 
   hist_stats_ini <- lapply(1:length(daily.obs),
     function(x) mutate(daily.obs[[x]], id = x)) %>%
-    do.call("rbind", .) %>%
+    do.call("rbind", .data) %>%
     mutate(year = as.numeric(format(date,"%Y")),
            mon = as.numeric(format(date,"%m")),
            day = as.numeric(format(date,"%d")),
@@ -173,13 +180,13 @@ evaluateWegen <- function(
   #sim_wetdry_spells
   hist_dry_spells <- lapply(1:nsgrids, function(x)
       table(calculateSpellLength(daily.obs[[x]]$precip, below = TRUE)) %>%
-         tibble(length = as.numeric(names(.)), dry = as.numeric(.))) %>%
+         tibble(length = as.numeric(names(.data)), dry = as.numeric(.data))) %>%
       bind_rows(.id = "id") %>%
     select(-.)
 
   hist_wet_spells <- lapply(1:nsgrids, function(x)
      table(calculateSpellLength(daily.obs[[x]]$precip, below = FALSE)) %>%
-         tibble(length = as.numeric(names(.)), wet = as.numeric(.))) %>%
+         tibble(length = as.numeric(names(.data)), wet = as.numeric(.data))) %>%
       bind_rows(.id = "id") %>%
     select(-.)
 

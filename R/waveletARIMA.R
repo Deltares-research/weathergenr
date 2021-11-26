@@ -7,7 +7,8 @@
 #' @param wavelet.components A list object, with different components corresponding to low-frequency signals and the noise
 #'
 #' @export
-#' @import forecast
+#' @importFrom forecast auto.arima
+#' @importFrom stats simulate
 waveletARIMA <- function(
   wavelet.components = NULL,
   sim.year.num = NULL,

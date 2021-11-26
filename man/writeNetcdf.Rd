@@ -2,7 +2,7 @@
 % Please edit documentation in R/writeNetcdf.R
 \name{writeNetcdf}
 \alias{writeNetcdf}
-\title{Title}
+\title{Write to netcdf file}
 \usage{
 writeNetcdf(
   nc.temp = NULL,
@@ -20,6 +20,12 @@ writeNetcdf(
 )
 }
 \arguments{
+\item{nc.temp}{placeholder}
+
+\item{data}{placeholder}
+
+\item{coord.grid}{placeholder}
+
 \item{output.path}{Placeholder}
 
 \item{nc.dimnames}{Placeholder}
@@ -34,11 +40,13 @@ writeNetcdf(
 
 \item{nc.compression}{Placeholder}
 
-\item{sim.length}{Placeholder}
+\item{file.prefix}{placeholder}
+
+\item{file.suffix}{placeholder}
 }
 \value{
 
 }
 \description{
-Title
+Write to netcdf file
 }
