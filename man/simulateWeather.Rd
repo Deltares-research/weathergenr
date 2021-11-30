@@ -16,7 +16,7 @@ simulateWeather(
   warm.variable = "precip",
   warm.signif.level = 0.9,
   warm.sample.size = 10000,
-  knn.annual.sample.size = 20,
+  knn.annual.sample.size = 50,
   save.warm.results = TRUE,
   sim.year.start = 2020,
   sim.year.num = 40,

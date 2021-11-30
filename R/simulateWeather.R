@@ -26,8 +26,8 @@
 #' @param output.ncfile.prefix placeholder
 #' @param save.scenario.matrix placeholder
 #' @param apply.step.changes placeholder
-#' @param ... placeholder
 #' @param output.ncfile.template placeholder
+#' @param ... placeholder
 #'
 #' @return
 #' @export
@@ -52,7 +52,7 @@ simulateWeather <- function(
   warm.variable = "precip",
   warm.signif.level = 0.90,
   warm.sample.size = 10000,
-  knn.annual.sample.size = 20,
+  knn.annual.sample.size = 50,
   save.warm.results = TRUE,
   sim.year.start = 2020,
   sim.year.num = 40,
@@ -71,10 +71,15 @@ simulateWeather <- function(
 
  {
 
+  start_time <- Sys.time()
+
   # Workaround for rlang warning
   wyear <- month <- day <- year <- 0
 
-  start_time <- Sys.time()
+  stopifnot(is.numeric(year.start))
+  stopifnot(is.numeric(year.num))
+  stopifnot(is.numeric(sim.year.start))
+  stopifnot(is.numeric(sim.year.num))
 
   # Number of grids
   grids  <- climate.grid$id
@@ -252,6 +257,21 @@ simulateWeather <- function(
   if(!apply.climate.changes) {
       return(dates_resampled_tbl)
   } else {
+
+    # check and adjust monthly delta factors
+    if(is.null(precip_changes$mean$min)) precip_changes$mean$min <- 1
+    if(is.null(precip_changes$mean$max)) precip_changes$mean$max <- 1
+    if(is.null(precip_changes$var$min)) precip_changes$var$min <- 1
+    if(is.null(precip_changes$var$max)) precip_changes$var$max <- 1
+    if(is.null(temp_changes$mean$min)) temp_changes$mean$min <- 0
+    if(is.null(temp_changes$mean$max)) temp_changes$mean$max <- 0
+
+    if(length(precip_changes$mean$min)==1) rep(precip_changes$mean$min, 12)
+    if(length(precip_changes$mean$max)==1) rep(precip_changes$mean$max, 12)
+    if(length(precip_changes$var$min)==1) rep(precip_changes$var$min, 12)
+    if(length(precip_changes$var$max)==1) rep(precip_changes$var$max, 12)
+    if(length(temp_changes$mean$min)==1) rep(temp_changes$mean$min, 12)
+    if(length(temp_changes$mean$max)==1) rep(temp_changes$mean$max, 12)
 
     precip.changes$mean$steps <- sapply(1:12, function(m)
           seq(precip.changes$mean$min[m], precip.changes$mean$max[m],
