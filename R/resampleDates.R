@@ -42,7 +42,6 @@ resampleDates <- function(
   month <- day <- wyear <- 0
 
 
-
   if(month.start == 1) {
     month_list <- 1:12
   } else {
@@ -68,9 +67,7 @@ resampleDates <- function(
   #****
 
 
-  if(is.null(kk)) {
-    kk <- round(max(round(sqrt(length(ANNUAL_PRCP)),0), round(length(ANNUAL_PRCP),0)*.5))
-  }
+  if(is.null(kk)) {kk <- round(sqrt(length(ANNUAL_PRCP)))}
 
 	# Vectors to store transition probabilities
 	p00_final <- array(NA,SIM_LENGTH)
@@ -99,6 +96,8 @@ resampleDates <- function(
 
 	# For each year start sampling....
 	for (y in 1:ymax) {
+
+	  print(y)
 
 	  # Current simulated annual precip at y
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
@@ -168,9 +167,19 @@ resampleDates <- function(
 			p21_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]>thresh1 & PRCP_LAG0[x]<=thresh2[m])) / length(which(PRCP_LAG1[x]>thresh2[m]))
 			p22_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]>thresh2[m])) / length(which(PRCP_LAG1[x]>thresh2[m]))
 
-			#PI_new <- getPI(p00_final[r][1], p01_final[r][1], p02_final[r][1],
-			#                p10_final[r][1], p11_final[r][1], p12_final[r][1],
-			#                p20_final[r][1], p21_final[r][1], p22_final[r][1])
+
+			# Replace NaN's in the transtition probabilities
+			p00_final[is.nan(p00_final)] <- 1
+			p01_final[is.nan(p01_final)] <- 0
+			p02_final[is.nan(p02_final)] <- 0
+
+			p10_final[is.nan(p10_final)] <- 1
+			p11_final[is.nan(p11_final)] <- 0
+			p12_final[is.nan(p12_final)] <- 0
+
+			p20_final[is.nan(p20_final)] <- 1
+			p21_final[is.nan(p21_final)] <- 0
+			p22_final[is.nan(p22_final)] <- 0
 
 		} #month-counter close
 
@@ -302,6 +311,9 @@ resampleDates <- function(
 		} # daily-counter close
 
 	} # year-counter close
+
+
+
 
 	return(SIM_DATE)
 

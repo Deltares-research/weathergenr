@@ -6,7 +6,6 @@
 \usage{
 quantileMapping(
   value = NULL,
-  date = NULL,
   mean.change = NULL,
   var.change = NULL,
   mon.ts = NULL,
@@ -17,8 +16,6 @@ quantileMapping(
 }
 \arguments{
 \item{value}{To be completed...}
-
-\item{date}{To be completed...}
 
 \item{mean.change}{placeholder}
 

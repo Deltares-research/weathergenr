@@ -2,7 +2,6 @@
 #' Function for perturbing climate statistics using Quantile-Mapping
 #'
 #' @param value To be completed...
-#' @param date  To be completed...
 #' @param mean.change placeholder
 #' @param var.change placeholder
 #' @param mon.ts placeholder
@@ -15,7 +14,6 @@
 #' @importFrom fitdistrplus fitdist
 quantileMapping <- function(
   value = NULL,
-  date = NULL,
   mean.change = NULL,
   var.change = NULL,
   mon.ts = NULL,
@@ -45,13 +43,14 @@ quantileMapping <- function(
   pmon <- which((mean.change != 1) | (var.change != 1))
 
   # Non-zero days
-  index_nz <- which(value>0)
-  value_nz <- value[index_nz]
-  mon.ts_nz <- mon.ts[index_nz]
-  year.ts_nz <- year.ts[index_nz]
+  value_nz <- value[which(value>0)]
+  mon.ts_nz <- mon.ts[which(value>0)]
 
-  # Non-zero days in each month
+  # List of precip values in each month
   value_pmon <- lapply(1:12, function(x) value_nz[which(mon.ts_nz == x)])
+
+  # Indices of events in months with at least 10 precip events
+  pmon <- intersect(which(sapply(value_pmon, function(x) length(x) > 9)), pmon)
 
   # Values to be changed (non-zero and ONLY perturbation months!)
   pind <- which((mon.ts %in% pmon) & (value > 0))
@@ -86,7 +85,8 @@ quantileMapping <- function(
     sapply(pmon, function(m) tdist[["mean"]][m,y]^2 / tdist[["var"]][m,y]))
 
   # Estimate quantiles from base distribution
-  qtile <- stats::pgamma(value[pind], shape = unlist(bdist[["shape"]][mon.ts[pind]]),
+  qtile <- stats::pgamma(value[pind],
+    shape = unlist(bdist[["shape"]][mon.ts[pind]]),
     scale = unlist(bdist[["scale"]][mon.ts[pind]]))
 
   # Find time-series of shape and scale parameters for the fitted distribution

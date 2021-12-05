@@ -9,28 +9,28 @@ simulateWeather(
   climate.grid = NULL,
   year.start = NULL,
   year.num = NULL,
-  output.path = NULL,
+  month.start = 1,
   variable.names = NULL,
   variable.labels = NULL,
   variable.units = NULL,
-  warm.variable = "precip",
-  warm.signif.level = 0.9,
-  warm.sample.size = 10000,
-  knn.annual.sample.size = 50,
-  save.warm.results = TRUE,
   sim.year.start = 2020,
   sim.year.num = 40,
   realization.num = 5,
-  month.start = 1,
+  warm.variable = "precip",
+  warm.signif.level = 0.9,
+  warm.sample.size = 10000,
+  save.warm.results = TRUE,
+  knn.annual.sample.size = 50,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
-  apply.climate.changes = FALSE,
-  precip.changes = NULL,
-  temp.changes = NULL,
-  save.scenario.matrix = TRUE,
+  apply.delta.changes = FALSE,
   apply.step.changes = TRUE,
-  output.ncfile.prefix = "clim_change_rlz",
+  delta.precip = NULL,
+  delta.temp = NULL,
+  save.scenario.matrix = TRUE,
+  output.path = NULL,
   output.ncfile.template = NULL,
+  output.ncfile.prefix = "clim_change_rlz",
   ...
 )
 }
@@ -43,7 +43,7 @@ simulateWeather(
 
 \item{year.num}{placeholder}
 
-\item{output.path}{placeholder}
+\item{month.start}{placeholder}
 
 \item{variable.names}{placeholder}
 
@@ -51,41 +51,41 @@ simulateWeather(
 
 \item{variable.units}{placeholder}
 
-\item{warm.variable}{placeholder}
-
-\item{warm.signif.level}{placeholder}
-
-\item{warm.sample.size}{placeholder}
-
-\item{knn.annual.sample.size}{placeholder}
-
-\item{save.warm.results}{placeholder}
-
 \item{sim.year.start}{placeholder}
 
 \item{sim.year.num}{placeholder}
 
 \item{realization.num}{placeholder}
 
-\item{month.start}{placeholder}
+\item{warm.variable}{placeholder}
+
+\item{warm.signif.level}{placeholder}
+
+\item{warm.sample.size}{placeholder}
+
+\item{save.warm.results}{placeholder}
+
+\item{knn.annual.sample.size}{placeholder}
 
 \item{evaluate.model}{placeholder}
 
 \item{evaluate.grid.num}{placeholder}
 
-\item{apply.climate.changes}{placeholder}
-
-\item{precip.changes}{placeholder}
-
-\item{temp.changes}{placeholder}
-
-\item{save.scenario.matrix}{placeholder}
+\item{apply.delta.changes}{placeholder}
 
 \item{apply.step.changes}{placeholder}
 
-\item{output.ncfile.prefix}{placeholder}
+\item{delta.precip}{placeholder}
+
+\item{delta.temp}{placeholder}
+
+\item{save.scenario.matrix}{placeholder}
+
+\item{output.path}{placeholder}
 
 \item{output.ncfile.template}{placeholder}
+
+\item{output.ncfile.prefix}{placeholder}
 
 \item{...}{placeholder}
 }

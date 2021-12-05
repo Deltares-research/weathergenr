@@ -73,7 +73,7 @@ evaluateWegen <- function(
     sim_wet_spells <- bind_rows(sim_wet_spells,
       lapply(1:nsgrids, function(x)
          table(calculateSpellLength(daily.sim[[n]][[x]]$precip, below = FALSE)) %>%
-         tibble(length = as.numeric(names(.data)), wet = .data)) %>%
+         tibble(length = as.numeric(names(.)), wet = .)) %>%
       bind_rows(.id = "id") %>%
       mutate(rlz = n, .before = 1))
 
@@ -81,7 +81,7 @@ evaluateWegen <- function(
     sim_dry_spells <- bind_rows(sim_dry_spells,
       lapply(1:nsgrids, function(x)
       table(calculateSpellLength(daily.sim[[n]][[x]]$precip, below = TRUE)) %>%
-         tibble(length = as.numeric(names(.data)), dry = .data)) %>%
+         tibble(length = as.numeric(names(.)), dry = .)) %>%
       bind_rows(.id = "id") %>%
       mutate(rlz = n, .before = 1))
 
@@ -99,7 +99,7 @@ evaluateWegen <- function(
        daily_sim_tbl %>%
        select(id, year, mon, {{variables}}) %>%
        group_by(id, year, mon) %>%
-       summarize(across({{variables}}, list(mean=mean, sd=sd, skewness= e1071::skewness),
+       summarize(across({{variables}}, list(mean="mean", sd="sd", skewness=e1071::"skewness"),
          .names = "{.col}:{.fn}")) %>%
        gather(key = variable, value = value, -id, -year, -mon) %>%
        separate(variable, c("variable","stat"), sep =":") %>%
@@ -110,7 +110,7 @@ evaluateWegen <- function(
         daily_sim_tbl %>%
         select(id, year, mon, {{variables}}) %>%
         group_by(year, mon) %>%
-        summarize(across({{variables}}, list(mean=mean, sd=sd, skewness= e1071::skewness),
+        summarize(across({{variables}}, list(mean="mean", sd="sd", skewness=e1071::"skewness"),
           .names = "{.col}:{.fn}")) %>%
         gather(key = variable, value = value, -year, -mon) %>%
         separate(variable, c("variable","stat"), sep =":") %>%
@@ -137,9 +137,8 @@ evaluateWegen <- function(
   sim_stats_aavg <- sim_stats_aavg %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
-  hist_stats_ini <- lapply(1:length(daily.obs),
-    function(x) mutate(daily.obs[[x]], id = x)) %>%
-    do.call("rbind", .data) %>%
+  hist_stats_ini <- do.call("rbind", lapply(1:length(daily.obs),
+    function(x) mutate(daily.obs[[x]], id = x))) %>%
     mutate(year = as.numeric(format(date,"%Y")),
            mon = as.numeric(format(date,"%m")),
            day = as.numeric(format(date,"%d")),
@@ -147,8 +146,8 @@ evaluateWegen <- function(
 
   hist_stats <- hist_stats_ini %>%
     group_by(id, year, mon) %>%
-    summarize(across({{variables}},
-      list(mean=mean, sd=sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
+    dplyr::summarize(across({{variables}},
+      list(mean="mean", sd="sd", skewness=e1071::"skewness"),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = value,-id, -year, -mon) %>%
     separate(variable, c("variable","stat"), sep = ":") %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
@@ -156,7 +155,7 @@ evaluateWegen <- function(
   hist_stats_aavg <- hist_stats_ini %>%
     group_by(mon) %>%
     summarize(across({{variables}},
-      list(mean=mean, sd=sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
+      list(mean="mean", sd="sd", skewness=e1071::"skewness"),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = value,-mon) %>%
     separate(variable, c("variable","stat"), sep=":") %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
@@ -180,13 +179,13 @@ evaluateWegen <- function(
   #sim_wetdry_spells
   hist_dry_spells <- lapply(1:nsgrids, function(x)
       table(calculateSpellLength(daily.obs[[x]]$precip, below = TRUE)) %>%
-         tibble(length = as.numeric(names(.data)), dry = as.numeric(.data))) %>%
+         tibble(length = as.numeric(names(.)), dry = as.numeric(.))) %>%
       bind_rows(.id = "id") %>%
     select(-.)
 
   hist_wet_spells <- lapply(1:nsgrids, function(x)
      table(calculateSpellLength(daily.obs[[x]]$precip, below = FALSE)) %>%
-         tibble(length = as.numeric(names(.data)), wet = as.numeric(.data))) %>%
+         tibble(length = as.numeric(names(.)), wet = as.numeric(.))) %>%
       bind_rows(.id = "id") %>%
     select(-.)
 
