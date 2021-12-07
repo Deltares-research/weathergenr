@@ -23,7 +23,7 @@ simulateWeather(
   knn.annual.sample.size = 50,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
-  apply.delta.changes = FALSE,
+  apply.delta.changes = TRUE,
   apply.step.changes = TRUE,
   delta.precip = NULL,
   delta.temp = NULL,

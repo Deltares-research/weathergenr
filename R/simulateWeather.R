@@ -59,7 +59,7 @@ simulateWeather <- function(
   knn.annual.sample.size = 50,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
-  apply.delta.changes = FALSE,
+  apply.delta.changes = TRUE,
   apply.step.changes = TRUE,
   delta.precip = NULL,
   delta.temp = NULL,
@@ -356,20 +356,20 @@ simulateWeather <- function(
             lat = climate.grid$y[x]))
       }
 
-        # # Write to netcdf
-        # writeNetcdf(
-        #     nc.temp = output.ncfile.template,
-        #     data = rlz_cur,
-        #     coord.grid = climate.grid,
-        #     output.path = future_path,
-        #     nc.dimnames = output.ncfile.template$dimnames,
-        #     origin.date =  sim_dates_d$date[1],
-        #     calendar.type = "no leap",
-        #     variables = c(variable.names, "pet")[c(1,2)],
-        #     variable.units = c(variable.units, "mm/day")[c(1,2)],
-        #     file.prefix = output.ncfile.prefix,
-        #     file.suffix = paste0(n,"_", s)
-        # )
+        # Write to netcdf
+        writeNetcdf(
+            nc.temp = output.ncfile.template,
+            data = rlz_cur,
+            coord.grid = climate.grid,
+            output.path = future_path,
+            nc.dimnames = output.ncfile.template$dimnames,
+            origin.date =  sim_dates_d$date[1],
+            calendar.type = "no leap",
+            variables = c(variable.names, "pet")[c(1,2)],
+            variable.units = c(variable.units, "mm/day")[c(1,2)],
+            file.prefix = output.ncfile.prefix,
+            file.suffix = paste0(n,"_", s)
+        )
 
         if (counter < realization.num* smax) {
           cat("\u2059", "|", "Applying climate changes:",

@@ -97,7 +97,7 @@ resampleDates <- function(
 	# For each year start sampling....
 	for (y in 1:ymax) {
 
-	  print(y)
+	  #print(y)
 
 	  # Current simulated annual precip at y
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
