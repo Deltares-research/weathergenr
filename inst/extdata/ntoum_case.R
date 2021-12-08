@@ -1,18 +1,27 @@
 
+#devtools::install_github("tanerumit/gridwegen")
+
 # Packages needed
 library(gridwegen)
 
 # Path to output files
 out_path <- "C:/wegentest/ntoum/"
+nc_file <-  "ntoum.nc"
+nc_dimnames <- list(x = "lon", y = "lat", time = "time")
+variables <- c("precip", "temp", "temp_min", "temp_max")
+variable_labels = c("Precipitation", "Mean Temperature", "Minimum Temperature", "Maximum Temperature")
+variable_units = c("mm/day", "DegC", "DegC", "DegC")
 
 # Read-in gridded weather data from netcdf
-nc_data <- readNetcdf(
-    nc.path = system.file('extdata', package = 'gridwegen'),
-    nc.file = "ntoum.nc",
-    nc.dimnames = list(x = "lon", y = "lat", time = "time"),
-    nc.variables = c("precip", "temp", "temp_min", "temp_max"),
+nc_data_ini <- readNetcdf(
+    nc.path = paste0(out_path, "data/"),
+    nc.file = nc_file,
+    nc.dimnames = nc_dimnames,
+    nc.variables = variables,
     origin.date = as.Date("1981-01-01"),
     has.leap.days = TRUE)
+
+nc_data <- nc_data_ini
 
 # Climate change perturbations
 precip_changes <- list()
@@ -21,7 +30,7 @@ precip_changes$mean <- list()
 precip_changes$var  <- list()
 
 temp_changes <- list()
-temp_changes$increments <- 3
+temp_changes$increments <- 2
 temp_changes$mean <- list()
 
 ############################ Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
@@ -32,32 +41,32 @@ precip_changes$var$max  <- c(1.3, 1.3, 1.5, 1.5, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1
 temp_changes$mean$min   <- c(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 temp_changes$mean$max   <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
 
-
-out <- simulateWeather(
-  output.path = out_path,
+simulateWeather(
   climate.data = nc_data$data,
   climate.grid = nc_data$coords,
   year.start = 1981,
-  year.num = 20,
-  variable.names = c("precip",  "temp", "temp_min", "temp_max"),
-  variable.labels = c("Precipitation", "Mean Temperature", "Minimum Temperature", "Maximum Temperature"),
-  variable.units = c("mm/day", "DegC", "DegC", "DegC"),
-  warm.variable = "precip",
-  warm.signif.level = 0.90,
-  warm.sample.size = 10000,
-  knn.annual.sample.size = 70,
-  save.warm.results = TRUE,
+  year.num = 39,
+  month.start = 1,
+  variable.names = variables,
+  variable.labels = variable_labels,
+  variable.units = variable_units,
   sim.year.start = 2020,
   sim.year.num = 40,
   realization.num = 3,
-  month.start = 1,
-  evaluate.model = TRUE,
-  evaluate.grid.num = 20,
-  apply.climate.changes = TRUE,
-  precip.changes = precip_changes,
-  temp.changes = temp_changes,
-  output.file.prefix = "clim_change_rlz",
+  warm.variable = "precip",
+  warm.signif.level = 0.90,
+  warm.sample.size = 20000,
+  save.warm.results = TRUE,
+  knn.annual.sample.size = 100,
+  evaluate.model = FALSE,
+  evaluate.grid.num = 30,
+  apply.delta.changes = TRUE,
+  apply.step.changes = TRUE,
+  delta.precip = precip_changes,
+  delta.temp = temp_changes,
   save.scenario.matrix = TRUE,
-  apply.step.changes = TRUE)
-
+  output.path = out_path,
+  output.ncfile.template = nc_data,
+  output.ncfile.prefix = "clim_change_rlz"
+)
 
