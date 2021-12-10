@@ -1,32 +1,34 @@
 
 #' Simulate gridded weather function
 #'
-#' @param climate.data placeholder
-#' @param climate.grid placeholder
-#' @param year.start placeholder
-#' @param year.num placeholder
-#' @param output.path placeholder
-#' @param variable.names placeholder
-#' @param variable.labels placeholder
-#' @param variable.units placeholder
-#' @param warm.variable placeholder
-#' @param warm.signif.level placeholder
-#' @param warm.sample.size placeholder
-#' @param knn.annual.sample.size placeholder
-#' @param save.warm.results placeholder
-#' @param sim.year.start placeholder
-#' @param sim.year.num placeholder
-#' @param realization.num placeholder
-#' @param month.start placeholder
-#' @param evaluate.model placeholder
-#' @param evaluate.grid.num placeholder
-#' @param apply.delta.changes placeholder
-#' @param delta.precip placeholder
-#' @param delta.temp placeholder
-#' @param output.ncfile.prefix placeholder
-#' @param save.scenario.matrix placeholder
-#' @param apply.step.changes placeholder
-#' @param output.ncfile.template placeholder
+#' Description goes here....
+#'
+#' @param climate.data list of data frames of daily weather observations per grid cell. Each data frame, columns are weather variables and rows are daily values.
+#' @param climate.grid Data frame of grid cells. Each grid cell is assigned an id starting from 1, x and y coordinate index value, and x and y coordinates.
+#' @param year.start numeric value indicating the desired starting year of the historical data as input
+#' @param year.num numeric value indicating the total number of years of historical data to be considered as input.
+#' @param output.path output path for the weather generator results (string)
+#' @param variable.names vector of names for the variables to be included in the weather generator
+#' @param variable.labels vector of labels for the weather variables (optional). If no values provided, it is labels will be same as the names
+#' @param variable.units vector of units for each of the weather variables (optional). If no values provided, a blank vector is used.
+#' @param warm.variable the name of the variable for the wavelet autoregressive mode. Default value is precipitation variable.
+#' @param warm.signif.level the significance level for the warm model.
+#' @param warm.sample.size number of annual sequeces to be generated from the the warm model
+#' @param knn.annual.sample.size number of knn years to be sampled
+#' @param save.warm.results save warm results to file
+#' @param sim.year.start numeric value indicating the starting year of the generated time-series
+#' @param sim.year.num  numeric value indicating the desired total number of years of simulated weather realizations
+#' @param realization.num number of natural variability realizations to be generated.
+#' @param month.start the first month of the year (default value is 1). Use a value other than 1 for water-year based analyses
+#' @param evaluate.model logical value indicating wether to save model evaluation plots
+#' @param evaluate.grid.num Number of grid cells to be sampled in the evaluation plots
+#' @param apply.delta.changes Logical value indicating weather delta factors to be applied
+#' @param delta.precip list of precipitation changes
+#' @param delta.temp List of delta changes
+#' @param output.ncfile.prefix the prefix string to be added to resulting netcdf files
+#' @param save.scenario.matrix save scenario matrix files
+#' @param apply.step.changes logical value to apply transient or step changes
+#' @param output.ncfile.template template file for the output netcdf
 #' @param ... placeholder
 #'
 #' @return
