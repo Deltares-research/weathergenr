@@ -35,57 +35,57 @@ simulateWeather(
 )
 }
 \arguments{
-\item{climate.data}{placeholder}
+\item{climate.data}{list of data frames of daily weather observations per grid cell. Each data frame, columns are weather variables and rows are daily values.}
 
-\item{climate.grid}{placeholder}
+\item{climate.grid}{Data frame of grid cells. Each grid cell is assigned an id starting from 1, x and y coordinate index value, and x and y coordinates.}
 
-\item{year.start}{placeholder}
+\item{year.start}{numeric value indicating the desired starting year of the historical data as input}
 
-\item{year.num}{placeholder}
+\item{year.num}{numeric value indicating the total number of years of historical data to be considered as input.}
 
-\item{month.start}{placeholder}
+\item{month.start}{the first month of the year (default value is 1). Use a value other than 1 for water-year based analyses}
 
-\item{variable.names}{placeholder}
+\item{variable.names}{vector of names for the variables to be included in the weather generator}
 
-\item{variable.labels}{placeholder}
+\item{variable.labels}{vector of labels for the weather variables (optional). If no values provided, it is labels will be same as the names}
 
-\item{variable.units}{placeholder}
+\item{variable.units}{vector of units for each of the weather variables (optional). If no values provided, a blank vector is used.}
 
-\item{sim.year.start}{placeholder}
+\item{sim.year.start}{numeric value indicating the starting year of the generated time-series}
 
-\item{sim.year.num}{placeholder}
+\item{sim.year.num}{numeric value indicating the desired total number of years of simulated weather realizations}
 
-\item{realization.num}{placeholder}
+\item{realization.num}{number of natural variability realizations to be generated.}
 
-\item{warm.variable}{placeholder}
+\item{warm.variable}{the name of the variable for the wavelet autoregressive mode. Default value is precipitation variable.}
 
-\item{warm.signif.level}{placeholder}
+\item{warm.signif.level}{the significance level for the warm model.}
 
-\item{warm.sample.size}{placeholder}
+\item{warm.sample.size}{number of annual sequeces to be generated from the the warm model}
 
-\item{save.warm.results}{placeholder}
+\item{save.warm.results}{save warm results to file}
 
-\item{knn.annual.sample.size}{placeholder}
+\item{knn.annual.sample.size}{number of knn years to be sampled}
 
-\item{evaluate.model}{placeholder}
+\item{evaluate.model}{logical value indicating wether to save model evaluation plots}
 
-\item{evaluate.grid.num}{placeholder}
+\item{evaluate.grid.num}{Number of grid cells to be sampled in the evaluation plots}
 
-\item{apply.delta.changes}{placeholder}
+\item{apply.delta.changes}{Logical value indicating weather delta factors to be applied}
 
-\item{apply.step.changes}{placeholder}
+\item{apply.step.changes}{logical value to apply transient or step changes}
 
-\item{delta.precip}{placeholder}
+\item{delta.precip}{list of precipitation changes}
 
-\item{delta.temp}{placeholder}
+\item{delta.temp}{List of delta changes}
 
-\item{save.scenario.matrix}{placeholder}
+\item{save.scenario.matrix}{save scenario matrix files}
 
-\item{output.path}{placeholder}
+\item{output.path}{output path for the weather generator results (string)}
 
-\item{output.ncfile.template}{placeholder}
+\item{output.ncfile.template}{template file for the output netcdf}
 
-\item{output.ncfile.prefix}{placeholder}
+\item{output.ncfile.prefix}{the prefix string to be added to resulting netcdf files}
 
 \item{...}{placeholder}
 }
@@ -93,5 +93,5 @@ simulateWeather(
 
 }
 \description{
-Simulate gridded weather function
+Description goes here....
 }
