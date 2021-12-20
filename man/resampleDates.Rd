@@ -18,8 +18,8 @@ resampleDates(
   month.start = NULL,
   kk = NULL,
   knn.annual.sample.num = 50,
-  thresh1 = 0.3,
-  extreme_quantile = 0.8
+  wet.threshold = 0.3,
+  extreme.quantile = 0.8
 )
 }
 \arguments{
@@ -49,9 +49,9 @@ resampleDates(
 
 \item{knn.annual.sample.num}{placeholder}
 
-\item{thresh1}{placeholder}
+\item{wet.threshold}{Precipitation threshold (mm) to distinguish between wet and dry days}
 
-\item{extreme_quantile}{placeholder}
+\item{extreme.quantile}{quantile threshold to distinguish between extreme wet days}
 }
 \value{
 

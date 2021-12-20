@@ -18,20 +18,18 @@ knnAnnual <- function(
   kk = NULL,
 	k1 = NULL,
   y = NULL,
-  y_sample_size = 20)
+  y_sample_size = 50)
 
   {
 
-	  var_order <- 1:length(ANNUAL_PRCP)
-		distance <- sqrt((sim_annual_prcp - ANNUAL_PRCP)^2)
+		distances <- sqrt((sim_annual_prcp - ANNUAL_PRCP)^2)
 
-		ordered_distances <- matrix(cbind(var_order,distance)[order(distance),],ncol=2)
-		K_Distances <- matrix(ordered_distances[1:kk,],ncol=2)
-		probs <- (1/row(K_Distances)[,1]) / sum(1/row(K_Distances)[,1])
+		k_distances <- order(distances)[1:kk]
+		probs <- (1/1:kk) /sum(1/1:kk)
 
 		set.seed(k1*y)
-		selection <- sample(row(K_Distances)[,1], y_sample_size, replace=TRUE, prob=probs)
+		selection <- sample(1:kk, y_sample_size, replace=TRUE, prob=probs)
 
-		return(WATER_YEAR_A[K_Distances[selection,1]])
+		return(WATER_YEAR_A[k_distances[selection]])
 	}
 

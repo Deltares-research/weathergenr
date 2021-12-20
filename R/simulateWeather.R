@@ -57,15 +57,15 @@ simulateWeather <- function(
   warm.variable = "precip",
   warm.signif.level = 0.90,
   warm.sample.size = 10000,
-  save.warm.results = TRUE,
   knn.annual.sample.size = 50,
+  wet.state.threshold = 0.3,
+  extreme.state.quantile = 0.8,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   apply.delta.changes = TRUE,
   apply.step.changes = TRUE,
   delta.precip = NULL,
   delta.temp = NULL,
-  save.scenario.matrix = TRUE,
   output.path = NULL,
   output.ncfile.template = NULL,
   output.ncfile.prefix = "clim_change_rlz",
@@ -73,8 +73,6 @@ simulateWeather <- function(
 
  {
 
-
-  #browser()
 
   start_time <- Sys.time()
 
@@ -110,7 +108,8 @@ simulateWeather <- function(
           wyear = getWaterYear(date_seq, month.start),
           month = as.numeric(format(date_seq,"%m")),
           day = as.numeric(format(date_seq,"%d"))) %>%
-      filter(wyear >= year.start & wyear <= year_seq[length(date_seq)]) %>%
+      filter(wyear >= year.start & wyear < year.start + year.num) %>%
+      #filter(wyear >= year.start & wyear <= year_seq[length(date_seq)]) %>%
       mutate(date = as.Date(paste(wyear, month, day, sep = "-")), .before=1)
 
   # Date indices of simulated series
@@ -129,7 +128,6 @@ simulateWeather <- function(
   year_series <- sim_dates_d$year
   month_series <- sim_dates_d$month
   year_index <- year_series - min(year_series) + 1
-  year_num <- length(unique(year_series))
 
   # Prepare tables for daily, monthly, and annual values
   wyear_index <- which(dates_d$date %in% date_seq)
@@ -151,8 +149,7 @@ simulateWeather <- function(
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   #####  Wavelet analysis on observed annual series
-  warm_variable_org <- climate_a_aavg %>% pull({{warm.variable}})
-  warm_variable <- warm_variable_org
+  warm_variable <- climate_a_aavg %>% pull({{warm.variable}})
 
   # power spectra analysis of historical series
   warm_power <- waveletAnalysis(variable = warm_variable,
@@ -186,8 +183,8 @@ simulateWeather <- function(
        power.period = warm_power$GWS_period,
        power.signif = warm_power$GWS_signif,
        sample.num = realization.num,
-       output.path = warm_path)#,
-       #...)
+       output.path = warm_path,
+       ...)
 
   message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted),
     "stochastic series match subsetting criteria"))
@@ -209,7 +206,10 @@ simulateWeather <- function(
         sim.dates.d = sim_dates_d,
         knn.annual.sample.num = knn.annual.sample.size,
         YEAR_D = year_seq,
-        month.start = month.start)
+        month.start = month.start,
+        wet.threshold = wet.state.threshold,
+        extreme.quantile = extreme.state.quantile
+    )
   )
 
   message(cat("\u2713", "|",
@@ -270,7 +270,7 @@ simulateWeather <- function(
       return(dates_resampled_tbl)
   } else {
 
-    # check and adjust monthly delta factors
+    # set defaults for the delta factors
     if(is.null(delta.precip$mean$min)) delta.precip$mean$min <- 1
     if(is.null(delta.precip$mean$max)) delta.precip$mean$max <- 1
     if(is.null(delta.precip$var$min)) delta.precip$var$min <- 1
@@ -278,6 +278,7 @@ simulateWeather <- function(
     if(is.null(delta.temp$mean$min)) delta.temp$mean$min <- 0
     if(is.null(delta.temp$mean$max)) delta.temp$mean$max <- 0
 
+    # If single value entered, convert to monthly
     if(length(delta.precip$mean$min)==1) rep(delta.precip$mean$min, 12)
     if(length(delta.precip$mean$max)==1) rep(delta.precip$mean$max, 12)
     if(length(delta.precip$var$min)==1) rep(delta.precip$var$min, 12)
@@ -285,6 +286,7 @@ simulateWeather <- function(
     if(length(delta.temp$mean$min)==1) rep(delta.temp$mean$min, 12)
     if(length(delta.temp$mean$max)==1) rep(delta.temp$mean$max, 12)
 
+    # Precip and temp change incremental runs
     delta.precip$mean$steps <- sapply(1:12, function(m)
           seq(delta.precip$mean$min[m], delta.precip$mean$max[m],
               length.out = delta.precip$increments))
@@ -297,18 +299,16 @@ simulateWeather <- function(
           seq(delta.temp$mean$min[m], delta.temp$mean$max[m],
               length.out = delta.temp$increments))
 
-    scn_mat_index <- tidyr::expand_grid(precip_ind = 1:delta.precip$increments,
-          temp_ind = 1:delta.temp$increments) %>%
+    stresstest_matrix <- tidyr::expand_grid(pind = 1:delta.precip$increments,
+          tind = 1:delta.temp$increments) %>%
         mutate(ind = 1:n(), .before = 1)
-    smax <- nrow(scn_mat_index)
+    smax <- nrow(stresstest_matrix)
 
      #Create output directory if doesn't exist
     future_path <- paste0(output.path,"future/")
     if (!dir.exists(future_path)) {dir.create(future_path)}
 
-    if(isTRUE(save.scenario.matrix)) {
-      write.csv(scn_mat_index, paste0(future_path, "scenario_matrix.csv"))
-    }
+    write.csv(stresstest_matrix, paste0(future_path, "stresstest_matrix.csv"))
 
     counter <- 0
 
@@ -324,12 +324,12 @@ simulateWeather <- function(
         counter <- counter + 1
 
         # Current perturbation scenario for each variable
-        shift_precip_mean <- delta.precip$mean$steps[scn_mat_index$precip_ind[s],]
-        shift_precip_var <- delta.precip$var$steps[scn_mat_index$precip_ind[s],]
-        shift_temp_mean <- delta.temp$mean$steps[scn_mat_index$temp_ind[s],]
+        shift_prcp_mean <- delta.precip$mean$steps[stresstest_matrix$pind[s],]
+        shift_prcp_var <- delta.precip$var$steps[stresstest_matrix$pind[s],]
+        shift_temp_mean <- delta.temp$mean$steps[stresstest_matrix$tind[s],]
 
         temp_delta_factors <- sapply(1:12, function(x)
-          seq(0, shift_temp_mean[x], length.out = year_num))
+          seq(0, shift_temp_mean[x], length.out = year.num))
 
         temp_deltas <- sapply(1:length(year_series), function(x)
           temp_delta_factors[year_index[x], month_series[x]])
@@ -342,8 +342,8 @@ simulateWeather <- function(
                   value = rlz_cur[[x]]$precip,
                   mon.ts = month_series,
                   year.ts = year_index,
-                  mean.change = shift_precip_mean,
-                  var.change = shift_precip_var,
+                  mean.change = shift_prcp_mean,
+                  var.change = shift_prcp_var,
                   step.change = apply.step.changes,
                   reltol = 1e-7)
 
@@ -367,8 +367,8 @@ simulateWeather <- function(
             nc.dimnames = output.ncfile.template$dimnames,
             origin.date =  sim_dates_d$date[1],
             calendar.type = "no leap",
-            variables = c(variable.names, "pet")[c(1,2)],
-            variable.units = c(variable.units, "mm/day")[c(1,2)],
+            variables = c(variable.names, "pet"),
+            variable.units = c(variable.units, "mm/day"),
             file.prefix = output.ncfile.prefix,
             file.suffix = paste0(n,"_", s)
         )
@@ -384,7 +384,6 @@ simulateWeather <- function(
         }
 
       } # smax close
-
 
     } #realization.num close
 

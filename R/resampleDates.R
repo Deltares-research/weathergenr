@@ -13,8 +13,8 @@
 #' @param sim.dates.d placeholder
 #' @param month.start placeholder
 #' @param kk placeholder
-#' @param thresh1 placeholder
-#' @param extreme_quantile placeholder
+#' @param wet.threshold Precipitation threshold (mm) to distinguish between wet and dry days
+#' @param extreme.quantile quantile threshold to distinguish between extreme wet days
 #' @param knn.annual.sample.num placeholder
 #'
 #' @return
@@ -33,14 +33,13 @@ resampleDates <- function(
   month.start = NULL,
   kk = NULL,
   knn.annual.sample.num = 50,
-  thresh1 = 0.3,
-  extreme_quantile = 0.8)
+  wet.threshold = 0.3,
+  extreme.quantile = 0.8)
 
   {
 
   # Workaround for rlang warning
   month <- day <- wyear <- 0
-
 
   if(month.start == 1) {
     month_list <- 1:12
@@ -65,7 +64,6 @@ resampleDates <- function(
   water_year_start = dates.d$wyear[1]
   water_year_end = dates.d$wyear[nrow(dates.d)]
   #****
-
 
   if(is.null(kk)) {kk <- round(sqrt(length(ANNUAL_PRCP)))}
 
@@ -129,12 +127,12 @@ resampleDates <- function(
 		MONTH_DAY_D_CURRENT <- MONTH_DAY_D[conditional_selection,]
 
 		# Set extreme value thresholds for each month
-		thresh2 <- array(NA,12)
+		extreme_threshold <- array(NA,12)
 
 		# Calculate thresholds for each month
 		for (m in 1:12) {
-			x <- which(MONTH_D_CURRENT==month_list[m] & PRCP_CURRENT>thresh1)
-			thresh2[m] <- stats::quantile(PRCP_CURRENT[x],(extreme_quantile))[[1]]
+			x <- which(MONTH_D_CURRENT==month_list[m] & PRCP_CURRENT > wet.threshold)
+			extreme_threshold[m] <- stats::quantile(PRCP_CURRENT[x], extreme.quantile, names = F)
 		}
 
 		#Define lagged variables on daily time-series (for current year set)
@@ -157,27 +155,27 @@ resampleDates <- function(
 			CUR_PRCP1 <- PRCP_LAG1[x]
 
 			# Transition probabilities
-			p00_final[r] <- length(which(PRCP_LAG1[x]<=thresh1 & PRCP_LAG0[x]<=thresh1)) / length(which(PRCP_LAG1[x]<=thresh1))
-			p01_final[r] <- length(which(PRCP_LAG1[x]<=thresh1 & PRCP_LAG0[x]>thresh1 & PRCP_LAG0[x]<=thresh2[m])) / length(which(PRCP_LAG1[x]<=thresh1))
-			p02_final[r] <- length(which(PRCP_LAG1[x]<=thresh1 & PRCP_LAG0[x]>thresh2[m])) / length(which(PRCP_LAG1[x]<=thresh1))
-			p10_final[r] <- length(which(PRCP_LAG1[x]>thresh1 & PRCP_LAG1[x]<=thresh2[m] & PRCP_LAG0[x]<=thresh1)) / length(which(PRCP_LAG1[x]>thresh1 & PRCP_LAG1[x]<=thresh2[m]))
-			p11_final[r] <- length(which(PRCP_LAG1[x]>thresh1 & PRCP_LAG1[x]<=thresh2[m] & PRCP_LAG0[x]>thresh1 & PRCP_LAG0[x]<=thresh2[m])) / length(which(PRCP_LAG1[x]>thresh1 & PRCP_LAG1[x]<=thresh2[m]))
-			p12_final[r] <- length(which(PRCP_LAG1[x]>thresh1 & PRCP_LAG1[x]<=thresh2[m] & PRCP_LAG0[x]>thresh2[m])) / length(which(PRCP_LAG1[x]>thresh1 & PRCP_LAG1[x]<=thresh2[m]))
-			p20_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]<=thresh1)) / length(which(PRCP_LAG1[x]>thresh2[m]))
-			p21_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]>thresh1 & PRCP_LAG0[x]<=thresh2[m])) / length(which(PRCP_LAG1[x]>thresh2[m]))
-			p22_final[r] <- length(which(PRCP_LAG1[x]>thresh2[m] & PRCP_LAG0[x]>thresh2[m])) / length(which(PRCP_LAG1[x]>thresh2[m]))
+			p00_final[r] <- length(which(PRCP_LAG1[x]<=wet.threshold & PRCP_LAG0[x]<=wet.threshold)) / length(which(PRCP_LAG1[x]<=wet.threshold))
+			p01_final[r] <- length(which(PRCP_LAG1[x]<=wet.threshold & PRCP_LAG0[x]>wet.threshold & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]<=wet.threshold))
+			p02_final[r] <- length(which(PRCP_LAG1[x]<=wet.threshold & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]<=wet.threshold))
+			p10_final[r] <- length(which(PRCP_LAG1[x]>wet.threshold & PRCP_LAG1[x]<=extreme_threshold[m] & PRCP_LAG0[x]<=wet.threshold)) / length(which(PRCP_LAG1[x]>wet.threshold & PRCP_LAG1[x]<=extreme_threshold[m]))
+			p11_final[r] <- length(which(PRCP_LAG1[x]>wet.threshold & PRCP_LAG1[x]<=extreme_threshold[m] & PRCP_LAG0[x]>wet.threshold & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]>wet.threshold & PRCP_LAG1[x]<=extreme_threshold[m]))
+			p12_final[r] <- length(which(PRCP_LAG1[x]>wet.threshold & PRCP_LAG1[x]<=extreme_threshold[m] & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]>wet.threshold & PRCP_LAG1[x]<=extreme_threshold[m]))
+			p20_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]<=wet.threshold)) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
+			p21_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]>wet.threshold & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
+			p22_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
 
 
 			# Replace NaN's in the transtition probabilities
-			p00_final[is.nan(p00_final)] <- 1
+			p00_final[is.nan(p00_final)] <- 0
 			p01_final[is.nan(p01_final)] <- 0
 			p02_final[is.nan(p02_final)] <- 0
 
-			p10_final[is.nan(p10_final)] <- 1
+			p10_final[is.nan(p10_final)] <- 0
 			p11_final[is.nan(p11_final)] <- 0
 			p12_final[is.nan(p12_final)] <- 0
 
-			p20_final[is.nan(p20_final)] <- 1
+			p20_final[is.nan(p20_final)] <- 0
 			p21_final[is.nan(p21_final)] <- 0
 			p22_final[is.nan(p22_final)] <- 0
 
@@ -188,6 +186,8 @@ resampleDates <- function(
 
 		# MARKOV-CHAIN AND DAILY KNN SAMPLING.......................................
 		for (j in 1:365) {
+
+		  #print(j)
 
 		  count <- count + 1
 
@@ -240,15 +240,15 @@ resampleDates <- function(
     			cur_day <- subset(cur_day,cur_day > 0)
 
     			# Set current day's state.............
-    			if (cur_OCCERENCE==0 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-    			if (cur_OCCERENCE==0 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-    			if (cur_OCCERENCE==0 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-    			if (cur_OCCERENCE==1 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-    			if (cur_OCCERENCE==1 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-    			if (cur_OCCERENCE==1 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-    			if (cur_OCCERENCE==2 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-    			if (cur_OCCERENCE==2 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-    			if (cur_OCCERENCE==2 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
+    			if (cur_OCCERENCE==0 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=wet.threshold & PRCP_CURRENT[(cur_day+1)]<=wet.threshold)}
+    			if (cur_OCCERENCE==0 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=wet.threshold & PRCP_CURRENT[(cur_day+1)]>wet.threshold & PRCP_CURRENT[(cur_day+1)]<=extreme_threshold[mmm])}
+    			if (cur_OCCERENCE==0 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=wet.threshold & PRCP_CURRENT[(cur_day+1)]>extreme_threshold[mmm])}
+    			if (cur_OCCERENCE==1 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>wet.threshold & PRCP_CURRENT[cur_day]<=extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]<=wet.threshold)}
+    			if (cur_OCCERENCE==1 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>wet.threshold & PRCP_CURRENT[cur_day]<=extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]>wet.threshold & PRCP_CURRENT[(cur_day+1)]<=extreme_threshold[mmm])}
+    			if (cur_OCCERENCE==1 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>wet.threshold & PRCP_CURRENT[cur_day]<=extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]>extreme_threshold[mmm])}
+    			if (cur_OCCERENCE==2 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]<=wet.threshold)}
+    			if (cur_OCCERENCE==2 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]>wet.threshold & PRCP_CURRENT[(cur_day+1)]<=extreme_threshold[mmm])}
+    			if (cur_OCCERENCE==2 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]>extreme_threshold[mmm])}
 
     			# If length of the state index is zero......
     			if (length(cur_day_cur_state)==0) {
@@ -258,16 +258,16 @@ resampleDates <- function(
     				for (cc in 1:61) {
     					cur_day_final[(1 + length(cur_day)*(cc-1)):(length(cur_day) + length(cur_day)*(cc-1))] <- (cur_day+cur_day_window[cc])
     				}
-    				cur_day <- subset(cur_day_final,cur_day_final > 0)
-    				if (cur_OCCERENCE==0 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-    				if (cur_OCCERENCE==0 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-    				if (cur_OCCERENCE==0 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=thresh1 & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-    				if (cur_OCCERENCE==1 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-    				if (cur_OCCERENCE==1 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-    				if (cur_OCCERENCE==1 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh1 & PRCP_CURRENT[cur_day]<=thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
-    				if (cur_OCCERENCE==2 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]<=thresh1)}
-    				if (cur_OCCERENCE==2 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh1 & PRCP_CURRENT[(cur_day+1)]<=thresh2[mmm])}
-    				if (cur_OCCERENCE==2 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>thresh2[mmm] & PRCP_CURRENT[(cur_day+1)]>thresh2[mmm])}
+    				cur_day <- subset(cur_day_final, cur_day_final > 0)
+    				if (cur_OCCERENCE==0 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=wet.threshold & PRCP_CURRENT[(cur_day+1)]<=wet.threshold)}
+    				if (cur_OCCERENCE==0 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=wet.threshold & PRCP_CURRENT[(cur_day+1)]>wet.threshold & PRCP_CURRENT[(cur_day+1)]<=extreme_threshold[mmm])}
+    				if (cur_OCCERENCE==0 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]<=wet.threshold & PRCP_CURRENT[(cur_day+1)]>extreme_threshold[mmm])}
+    				if (cur_OCCERENCE==1 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>wet.threshold & PRCP_CURRENT[cur_day]<=extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]<=wet.threshold)}
+    				if (cur_OCCERENCE==1 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>wet.threshold & PRCP_CURRENT[cur_day]<=extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]>wet.threshold & PRCP_CURRENT[(cur_day+1)]<=extreme_threshold[mmm])}
+    				if (cur_OCCERENCE==1 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>wet.threshold & PRCP_CURRENT[cur_day]<=extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]>extreme_threshold[mmm])}
+    				if (cur_OCCERENCE==2 & next_OCCURENCE==0) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]<=wet.threshold)}
+    				if (cur_OCCERENCE==2 & next_OCCURENCE==1) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]>wet.threshold & PRCP_CURRENT[(cur_day+1)]<=extreme_threshold[mmm])}
+    				if (cur_OCCERENCE==2 & next_OCCURENCE==2) {cur_day_cur_state <- which(PRCP_CURRENT[cur_day]>extreme_threshold[mmm] & PRCP_CURRENT[(cur_day+1)]>extreme_threshold[mmm])}
     			}
 
   			#	Define Possible days to choose from and set their values
@@ -311,8 +311,6 @@ resampleDates <- function(
 		} # daily-counter close
 
 	} # year-counter close
-
-
 
 
 	return(SIM_DATE)

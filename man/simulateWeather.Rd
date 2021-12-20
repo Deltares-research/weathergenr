@@ -19,15 +19,15 @@ simulateWeather(
   warm.variable = "precip",
   warm.signif.level = 0.9,
   warm.sample.size = 10000,
-  save.warm.results = TRUE,
   knn.annual.sample.size = 50,
+  wet.state.threshold = 0.3,
+  extreme.state.quantile = 0.8,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   apply.delta.changes = TRUE,
   apply.step.changes = TRUE,
   delta.precip = NULL,
   delta.temp = NULL,
-  save.scenario.matrix = TRUE,
   output.path = NULL,
   output.ncfile.template = NULL,
   output.ncfile.prefix = "clim_change_rlz",
@@ -63,8 +63,6 @@ simulateWeather(
 
 \item{warm.sample.size}{number of annual sequeces to be generated from the the warm model}
 
-\item{save.warm.results}{save warm results to file}
-
 \item{knn.annual.sample.size}{number of knn years to be sampled}
 
 \item{evaluate.model}{logical value indicating wether to save model evaluation plots}
@@ -79,8 +77,6 @@ simulateWeather(
 
 \item{delta.temp}{List of delta changes}
 
-\item{save.scenario.matrix}{save scenario matrix files}
-
 \item{output.path}{output path for the weather generator results (string)}
 
 \item{output.ncfile.template}{template file for the output netcdf}
@@ -88,6 +84,10 @@ simulateWeather(
 \item{output.ncfile.prefix}{the prefix string to be added to resulting netcdf files}
 
 \item{...}{placeholder}
+
+\item{save.warm.results}{save warm results to file}
+
+\item{save.scenario.matrix}{save scenario matrix files}
 }
 \value{
 

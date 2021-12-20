@@ -1,3 +1,8 @@
+---
+title: An R Markdown document converted from "./inst/python/02_python_example.ipynb"
+output: html_document
+---
+
 # Steps to Run Gridded Weather Generator from Phython Environment
 
 **Warning: This is still in progress and may not work**
@@ -6,9 +11,11 @@ Prerequisites:
 1. Install latest version of R via https://mirror.lyrahosting.com/CRAN/
 2. Create a new python environment with packages rpy2, r-base, r-essentials, pandas, numpy2
 
+Notes (r to python syntax changes)
+- replace .(dots) in the parameters with underscores (e.g., nc.path becomes nc_path)
+- replace TRUE with True
 
-
-```python
+```{python}
 # Step 1:
 #  set all PATH variables
 
@@ -25,9 +32,8 @@ for row in rpy2.situation.iter_info():
     print(row)
 ```
 
-
-```python
-#Import necessary packages
+```{python}
+### Import necessary packages
 import rpy2.robjects as robjects
 from rpy2.robjects.packages import importr
 
@@ -38,21 +44,21 @@ d = {'package.dependencies': 'package_dot_dependencies',
 # Load core packages
 base = importr('base')
 utils = importr('utils')
-utils.chooseCRANmirror(ind=1) # select the first mirror in the list
-devtools = utils.install_packages('devtools')
-devtools = importr('devtools', robject_translations = d)
+#utils.chooseCRANmirror(ind=1) # select the first mirror in the list
+#devtools = utils.install_packages('devtools')
+#devtools = importr('devtools', robject_translations = d)
 
 # Install gridwegen from Github master branch
-gridwegen = devtools.install_github("tanerumit/gridwegen")
+#gridwegen = devtools.install_github("tanerumit/gridwegen")
 gridwegen = importr('gridwegen', robject_translations = d)
 ```
 
-
-```python
+```{python}
 # Path to output files
 out_path = "C:/wegentest/ntoum/"
 nc_file =  "ntoum.nc"
 nc_dimnames = base.list(x = "lon", y = "lat", time = "time")
+
 variables = base.c("precip", "temp", "temp_min", "temp_max")
 variable_labels = base.c("Precipitation", "Mean Temperature", "Minimum Temperature", "Maximum Temperature")
 variable_units = base.c("mm/day", "DegC", "DegC", "DegC")
@@ -66,15 +72,32 @@ nc_data_ini = gridwegen.readNetcdf(
     origin_date = base.as_Date("1981-01-01"),
     has_leap_days = True)
 
-nc_data_ini
+# Run simulateWeather function function
+gridwegen.simulateWeather(
+  climate_data = nc_data_ini[0],
+  climate_grid = nc_data_ini[1],
+  year_start = 1981,
+  year_num = 39,
+  month_start = 1,
+  variable_names = variables,
+  variable_labels = variable_labels,
+  variable_units = variable_units,
+  sim_year_start = 2020,
+  sim_year_num = 40,
+  realization_num = 3,
+  warm_variable = "precip",
+  warm_signif_level = 0.90,
+  warm_sample_size = 20000,
+  save_warm_results = True,
+  knn_annual_sample_size = 100,
+  evaluate_model = False,
+  evaluate_grid_num = 30,
+  apply_delta_changes = False,
+  apply_step_changes = True,
+  save_scenario_matrix = False,
+  output_path = out_path,
+  output_ncfile_template = nc_data_ini,
+  output_ncfile_prefix = "clim_change_rlz"
+)
 ```
 
-
-```python
-#### NOTES ####
-
-# R to Python syntax changes
-# replace .(dots) in the parameters with underscores (e.g., nc.path becomes nc_path)
-# replace TRUE with True
-
-```
