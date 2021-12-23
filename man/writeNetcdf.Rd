@@ -11,7 +11,7 @@ writeNetcdf(
   output.path = NULL,
   nc.dimnames = NULL,
   origin.date = NULL,
-  calendar.type = "no leap",
+  calendar.type = "noleap",
   variables = NULL,
   variable.units = NULL,
   nc.compression = 4,

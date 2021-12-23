@@ -28,30 +28,31 @@ For illustration, we will be using the gridded data for Ntoum basin in ....
 
 ## Reading in netcdf files
 
-```{r climdata}
+```{r climdata, eval=FALSE}
 library(gridwegen)
 
-# Path to output files
-out_path <- "C:/wegentest/ntoum/"
-nc_file <-  "ntoum.nc"
+# netcdf file with gridded daily weather data
+nc_file <- system.file("extdata", "ntoum_era5_data.nc", package = "gridwegen")
+
+# names of the dimension variables in the netcdf file
 nc_dimnames <- list(x = "lon", y = "lat", time = "time")
+
+# choose the variables to be used in the weather generator
 variables <- c("precip", "temp", "temp_min", "temp_max")
+
+# define long names and units of the variables specified
 variable_labels = c("Precipitation", "Mean Temperature", "Minimum Temperature", "Maximum Temperature")
 variable_units = c("mm/day", "DegC", "DegC", "DegC")
 
 # Read-in gridded weather data from netcdf
-nc_data_ini <- readNetcdf(
-    nc.path = paste0(out_path, "data/"),
+nc_data <- readNetcdf(
     nc.file = nc_file,
     nc.dimnames = nc_dimnames,
     nc.variables = variables,
     origin.date = as.Date("1981-01-01"),
-    has.leap.days = TRUE)
-
-nc_data <- nc_data_ini
+    has.leap.days = TRUE) 
 ```
 
-## Run weather wegenerator
 
 Define climate parameters
 
@@ -77,36 +78,60 @@ temp_changes$mean$min <- c(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 temp_changes$mean$max <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
 ```
 
-Run the weather generator function
+
+## Run weather wegenerator
 
 ```{r run, eval=FALSE, echo=TRUE}
 simulateWeather(
-  climate.data = nc_data$data,
-  climate.grid = nc_data$coords,
-  year.start = 1981,
-  year.num = 39,
-  month.start = 1,
-  variable.names = variables,
-  variable.labels = variable_labels,
-  variable.units = variable_units,
-  sim.year.start = 2020,
-  sim.year.num = 40,
-  realization.num = 3,
-  warm.variable = "precip",
-  warm.signif.level = 0.90,
-  warm.sample.size = 20000,
-  save.warm.results = TRUE,
-  knn.annual.sample.size = 100,
-  evaluate.model = FALSE,
-  evaluate.grid.num = 30,
-  apply.delta.changes = TRUE,
-  apply.step.changes = TRUE,
-  delta.precip = precip_changes,
-  delta.temp = temp_changes,
-  save.scenario.matrix = TRUE,
-  output.path = out_path,
-  output.ncfile.template = nc_data,
-  output.ncfile.prefix = "clim_change_rlz"
+     climate.data = nc_data$data,
+     climate.grid = nc_data$coords,
+     year.start = 1981,
+     year.num = 40,
+     month.start = 1,
+     variable.names = variables,
+     variable.labels = variable_labels,
+     variable.units = variable_units,
+     sim.year.start = 2020,
+     sim.year.num = 40,
+     realization.num = 3,
+     warm.variable = "precip",
+     warm.signif.level = 0.90,
+     warm.sample.size = 20000,
+     knn.annual.sample.size = 100,
+     wet.state.threshold = 0.1,
+     extreme.state.quantile = 0.8,
+     apply.delta.changes = TRUE,
+     evaluate.model = TRUE,
+     evaluate.grid.num = 20,
+     apply.step.changes = TRUE,
+     delta.precip = precip_changes,
+     delta.temp = temp_changes,
+     output.path = out_path,
+     output.ncfile.template = nc_data,
+     output.ncfile.prefix = "clim_change_rlz",
+     bounds = list(
+        mean = c(0.95,1.05),
+        sd = c(0.90,1.10),
+        min = c(0.90,1.15),
+        max = c(0.85,1.10),
+        power = c(0.50,2.50),
+        nonsignif.threshold = 0.75)
 )
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

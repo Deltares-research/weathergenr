@@ -25,7 +25,7 @@ writeNetcdf <- function(
   output.path = NULL,
   nc.dimnames = NULL,
   origin.date = NULL,
-  calendar.type = "no leap",
+  calendar.type = "noleap",
   variables = NULL,
   variable.units = NULL,
   nc.compression = 4,
@@ -42,7 +42,7 @@ writeNetcdf <- function(
   #time
   ncout_dims[[nc.dimnames$time]] <- ncdf4::ncdim_def(name = nc.dimnames$time,
       units = paste0("days since ", format(round(as.POSIXct(origin.date)),
-        '%Y-%m-%d %M:%H:%S')), vals = 1:sim.length, calendar = "no leap")
+        '%Y-%m-%d %M:%H:%S')), vals = 1:sim.length, calendar = calendar.type)
 
   #y = latitude
   ncout_dims[[nc.dimnames$y]] <- ncdf4::ncdim_def(nc.dimnames$y,

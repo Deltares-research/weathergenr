@@ -6,7 +6,6 @@
 #' from the netcdf file.
 #'
 #' @param origin.date A character string to specify the date of origin
-#' @param nc.path The path of the netcdf file to be read
 #' @param nc.file The name of the netcdf file to be read
 #' @param nc.dimnames Desired dimension names in the output data
 #' @param nc.variables Desired variable names to be read from the netcdf file
@@ -27,7 +26,6 @@
 #'     has.leap.days = TRUE)
 #'}
 readNetcdf <- function(
-  nc.path = NULL,
   nc.file = NULL,
   nc.dimnames = NULL,
   nc.variables = NULL,
@@ -46,7 +44,9 @@ readNetcdf <- function(
       }
 
     # Open netcdf file
-    nc_in <- ncdf4::nc_open(paste(nc.path, nc.file, sep = "/"))
+      nc_in <- ncdf4::nc_open(nc.file)
+
+
 
     # Dimensions
     nc_dim_names <- attributes(nc_in$dim)$names

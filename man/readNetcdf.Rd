@@ -5,7 +5,6 @@
 \title{Read netcdf files}
 \usage{
 readNetcdf(
-  nc.path = NULL,
   nc.file = NULL,
   nc.dimnames = NULL,
   nc.variables = NULL,
@@ -15,8 +14,6 @@ readNetcdf(
 )
 }
 \arguments{
-\item{nc.path}{The path of the netcdf file to be read}
-
 \item{nc.file}{The name of the netcdf file to be read}
 
 \item{nc.dimnames}{Desired dimension names in the output data}
