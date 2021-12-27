@@ -15,7 +15,6 @@
 #' @param warm.signif.level the significance level for the warm model.
 #' @param warm.sample.size number of annual sequeces to be generated from the the warm model
 #' @param knn.annual.sample.size number of knn years to be sampled
-#' @param save.warm.results save warm results to file
 #' @param sim.year.start numeric value indicating the starting year of the generated time-series
 #' @param sim.year.num  numeric value indicating the desired total number of years of simulated weather realizations
 #' @param realization.num number of natural variability realizations to be generated.
@@ -25,11 +24,12 @@
 #' @param apply.delta.changes Logical value indicating weather delta factors to be applied
 #' @param delta.precip list of precipitation changes
 #' @param delta.temp List of delta changes
-#' @param output.ncfile.prefix the prefix string to be added to resulting netcdf files
-#' @param save.scenario.matrix save scenario matrix files
+#' @param nc.prefix the prefix string to be added to resulting netcdf files
 #' @param apply.step.changes logical value to apply transient or step changes
-#' @param output.ncfile.template template file for the output netcdf
-#' @param ... placeholder
+#' @param nc.template template file for the output netcdf
+#' @param warm.subset.criteria placeholder
+#' @param mc.wet.threshold placeholder
+#' @param mc.extreme.quantile placeholder
 #'
 #' @return
 #' @export
@@ -56,10 +56,11 @@ simulateWeather <- function(
   realization.num = 5,
   warm.variable = "precip",
   warm.signif.level = 0.90,
-  warm.sample.size = 10000,
-  knn.annual.sample.size = 50,
-  wet.state.threshold = 0.3,
-  extreme.state.quantile = 0.8,
+  warm.sample.size = 20000,
+  warm.subset.criteria = NULL,
+  knn.annual.sample.size = 100,
+  mc.wet.threshold = 0.3,
+  mc.extreme.quantile = 0.8,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   apply.delta.changes = TRUE,
@@ -67,12 +68,11 @@ simulateWeather <- function(
   delta.precip = NULL,
   delta.temp = NULL,
   output.path = NULL,
-  output.ncfile.template = NULL,
-  output.ncfile.prefix = "clim_change_rlz",
-  ...)
+  nc.template = NULL,
+  nc.prefix = "clim_change_rlz"
+  )
 
  {
-
 
   start_time <- Sys.time()
 
@@ -135,6 +135,7 @@ simulateWeather <- function(
 
   climate_d <- lapply(1:ngrids, function(i)
     climate.data[[i]][wyear_index,] %>%
+    select({{variable.names}}) %>%
     mutate(dates_wy, .))
 
   climate_a <- lapply(1:ngrids, function(i)
@@ -174,6 +175,19 @@ simulateWeather <- function(
   sim_power <- sapply(1:warm.sample.size, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
 
+  # Define subsetting range for annual realizations
+  if(is.null(warm.subset.criteria)) {
+
+   warm.subset.criteria = list(
+      mean = c(0.95,1.05),
+      sd = c(0.90,1.10),
+      min = c(0.90,1.15),
+      max = c(0.85,1.10),
+      power = c(0.50,2.50),
+      nonsignif.threshold = 0.75)
+
+    }
+
   # subsetting from generated warm series
   sim_annual_sub <- waveletARSubset(
        series.obs = warm_variable,
@@ -184,7 +198,7 @@ simulateWeather <- function(
        power.signif = warm_power$GWS_signif,
        sample.num = realization.num,
        output.path = warm_path,
-       ...)
+       bounds = warm.subset.criteria)
 
   message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted),
     "stochastic series match subsetting criteria"))
@@ -207,8 +221,8 @@ simulateWeather <- function(
         knn.annual.sample.num = knn.annual.sample.size,
         YEAR_D = year_seq,
         month.start = month.start,
-        wet.threshold = wet.state.threshold,
-        extreme.quantile = extreme.state.quantile
+        wet.threshold = mc.wet.threshold,
+        extreme.quantile = mc.extreme.quantile
     )
   )
 
@@ -360,18 +374,20 @@ simulateWeather <- function(
 
         # Write to netcdf
         writeNetcdf(
-            nc.temp = output.ncfile.template,
             data = rlz_cur,
             coord.grid = climate.grid,
             output.path = future_path,
-            nc.dimnames = output.ncfile.template$dimnames,
             origin.date =  sim_dates_d$date[1],
-            calendar.type = "no leap",
-            variables = c(variable.names, "pet"),
-            variable.units = c(variable.units, "mm/day"),
-            file.prefix = output.ncfile.prefix,
-            file.suffix = paste0(n,"_", s)
+            calendar.type = "noleap",
+            nc.template.file = nc.template,
+            nc.compression = 4,
+            nc.spatial.ref = "spatial_ref",
+            nc.file.prefix = nc.prefix,
+            nc.file.suffix = paste0(n,"_", s)
         )
+
+
+
 
         if (counter < realization.num* smax) {
           cat("\u2059", "|", "Applying climate changes:",

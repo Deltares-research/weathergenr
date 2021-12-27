@@ -5,44 +5,40 @@
 \title{Write to netcdf file}
 \usage{
 writeNetcdf(
-  nc.temp = NULL,
   data = NULL,
   coord.grid = NULL,
   output.path = NULL,
-  nc.dimnames = NULL,
   origin.date = NULL,
   calendar.type = "noleap",
-  variables = NULL,
-  variable.units = NULL,
+  nc.template.file = NULL,
   nc.compression = 4,
-  file.prefix = "clim_change_rlz",
-  file.suffix = ""
+  nc.spatial.ref = "spatial_ref",
+  nc.file.prefix = "clim_change_rlz",
+  nc.file.suffix = ""
 )
 }
 \arguments{
-\item{nc.temp}{placeholder}
-
 \item{data}{placeholder}
 
 \item{coord.grid}{placeholder}
 
 \item{output.path}{Placeholder}
 
-\item{nc.dimnames}{Placeholder}
-
 \item{origin.date}{Placeholder}
 
 \item{calendar.type}{Placeholder}
 
-\item{variables}{Placeholder}
-
-\item{variable.units}{Placeholder}
+\item{nc.template.file}{placeholder}
 
 \item{nc.compression}{Placeholder}
 
-\item{file.prefix}{placeholder}
+\item{nc.file.prefix}{placeholder}
 
-\item{file.suffix}{placeholder}
+\item{nc.file.suffix}{placeholder}
+
+\item{variables}{Placeholder}
+
+\item{variable.units}{Placeholder}
 }
 \value{
 

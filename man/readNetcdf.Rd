@@ -6,21 +6,13 @@
 \usage{
 readNetcdf(
   nc.file = NULL,
-  nc.dimnames = NULL,
-  nc.variables = NULL,
-  origin.date = NULL,
   has.leap.days = TRUE,
-  omit.empty.cells = TRUE
+  omit.empty.cells = TRUE,
+  spatial.ref.variable = "spatial_ref"
 )
 }
 \arguments{
 \item{nc.file}{The name of the netcdf file to be read}
-
-\item{nc.dimnames}{Desired dimension names in the output data}
-
-\item{nc.variables}{Desired variable names to be read from the netcdf file}
-
-\item{origin.date}{A character string to specify the date of origin}
 
 \item{has.leap.days}{A logical value indicating whether the gridded data includes leap days.}
 
@@ -37,9 +29,9 @@ from the netcdf file.
 \examples{
 \dontrun{
 output <- readNetcdf(nc.path = system.file('extdata', package = 'gridwegen'),
-    nc.file = "ntoum.nc", nc.dimnames = list(x = "lon", y = "lat", time = "time"),
+    nc.file = "ntoum.nc", nc_dimnames = list(x = "lon", y = "lat", time = "time"),
     nc.variables = c("precip", "temp", "temp_min", "temp_max"),
-    origin.date = as.Date("1981-01-01"),
+    origin_date = as.Date("1981-01-01"),
     has.leap.days = TRUE)
 }
 }

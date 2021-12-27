@@ -18,10 +18,11 @@ simulateWeather(
   realization.num = 5,
   warm.variable = "precip",
   warm.signif.level = 0.9,
-  warm.sample.size = 10000,
-  knn.annual.sample.size = 50,
-  wet.state.threshold = 0.3,
-  extreme.state.quantile = 0.8,
+  warm.sample.size = 20000,
+  warm.subset.criteria = NULL,
+  knn.annual.sample.size = 100,
+  mc.wet.threshold = 0.3,
+  mc.extreme.quantile = 0.8,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   apply.delta.changes = TRUE,
@@ -29,9 +30,8 @@ simulateWeather(
   delta.precip = NULL,
   delta.temp = NULL,
   output.path = NULL,
-  output.ncfile.template = NULL,
-  output.ncfile.prefix = "clim_change_rlz",
-  ...
+  nc.template = NULL,
+  nc.prefix = "clim_change_rlz"
 )
 }
 \arguments{
@@ -63,7 +63,13 @@ simulateWeather(
 
 \item{warm.sample.size}{number of annual sequeces to be generated from the the warm model}
 
+\item{warm.subset.criteria}{placeholder}
+
 \item{knn.annual.sample.size}{number of knn years to be sampled}
+
+\item{mc.wet.threshold}{placeholder}
+
+\item{mc.extreme.quantile}{placeholder}
 
 \item{evaluate.model}{logical value indicating wether to save model evaluation plots}
 
@@ -79,15 +85,9 @@ simulateWeather(
 
 \item{output.path}{output path for the weather generator results (string)}
 
-\item{output.ncfile.template}{template file for the output netcdf}
+\item{nc.template}{template file for the output netcdf}
 
-\item{output.ncfile.prefix}{the prefix string to be added to resulting netcdf files}
-
-\item{...}{placeholder}
-
-\item{save.warm.results}{save warm results to file}
-
-\item{save.scenario.matrix}{save scenario matrix files}
+\item{nc.prefix}{the prefix string to be added to resulting netcdf files}
 }
 \value{
 

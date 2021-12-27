@@ -1,31 +1,22 @@
 ## ---- include = FALSE---------------------------------------------------------
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE, eval = FALSE)
 
-## ----climdata, eval=FALSE-----------------------------------------------------
-#  library(gridwegen)
+## ----package------------------------------------------------------------------
+#  # Install the latest version from github
+#  devtools::install_github("tanerumit/gridwegen")
 #  
-#  # netcdf file with gridded daily weather data
+#  # Load package and dependencies
+#  library(gridwegen)
+
+## ----climdata-----------------------------------------------------------------
+#  
+#  # specify sample netcdf file from the gridwegen package
 #  nc_file <- system.file("extdata", "ntoum_era5_data.nc", package = "gridwegen")
 #  
-#  # names of the dimension variables in the netcdf file
-#  nc_dimnames <- list(x = "lon", y = "lat", time = "time")
-#  
-#  # choose the variables to be used in the weather generator
-#  variables <- c("precip", "temp", "temp_min", "temp_max")
-#  
-#  # define long names and units of the variables specified
-#  variable_labels = c("Precipitation", "Mean Temperature", "Minimum Temperature", "Maximum Temperature")
-#  variable_units = c("mm/day", "DegC", "DegC", "DegC")
-#  
 #  # Read-in gridded weather data from netcdf
-#  nc_data <- readNetcdf(
-#      nc.file = nc_file,
-#      nc.dimnames = nc_dimnames,
-#      nc.variables = variables,
-#      origin.date = as.Date("1981-01-01"),
-#      has.leap.days = TRUE)
+#  nc_data <- readNetcdf(nc_file)
 
-## ----parameters, eval=FALSE---------------------------------------------------
+## ----parameters---------------------------------------------------------------
 #  # Climate change perturbations
 #  precip_changes <- list()
 #  precip_changes$increments <- 2
@@ -46,7 +37,19 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 #  temp_changes$mean$min <- c(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 #  temp_changes$mean$max <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
 
-## ----run, eval=FALSE, echo=TRUE-----------------------------------------------
+## ----run, echo=TRUE-----------------------------------------------------------
+#  
+#  # choose which variables to include in the weather generator outputs
+#  variables <- c("precip", "temp", "temp_min", "temp_max")
+#  
+#  # Set labels and units for the selected variables
+#  variable_labels = c("Precipitation", "Mean Temperature", "Minimum Temperature", "Maximum Temperature")
+#  variable_units = c("mm/day", "DegC", "DegC", "DegC")
+#  
+#  # Set path to store weather generator results
+#  output_path <- "C:/tesrun"
+#  
+#  
 #  simulateWeather(
 #       climate.data = nc_data$data,
 #       climate.grid = nc_data$coords,
@@ -65,13 +68,13 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 #       knn.annual.sample.size = 100,
 #       wet.state.threshold = 0.1,
 #       extreme.state.quantile = 0.8,
-#       apply.delta.changes = TRUE,
+#       apply.delta.changes = FALSE,
 #       evaluate.model = TRUE,
 #       evaluate.grid.num = 20,
 #       apply.step.changes = TRUE,
 #       delta.precip = precip_changes,
 #       delta.temp = temp_changes,
-#       output.path = out_path,
+#       output.path = output_path,
 #       output.ncfile.template = nc_data,
 #       output.ncfile.prefix = "clim_change_rlz",
 #       bounds = list(
