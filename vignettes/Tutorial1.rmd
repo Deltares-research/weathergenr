@@ -79,49 +79,33 @@ temp_changes$mean$max <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8
 # choose which variables to include in the weather generator outputs
 variables <- c("precip", "temp", "temp_min", "temp_max")
 
-# Set labels and units for the selected variables
-variable_labels = c("Precipitation", "Mean Temperature", "Minimum Temperature", "Maximum Temperature")
-variable_units = c("mm/day", "DegC", "DegC", "DegC")
-
 # Set path to store weather generator results 
-output_path <- "C:/tesrun"
-
+output_path <- "C:/tesrun/"
 
 simulateWeather(
      climate.data = nc_data$data,
      climate.grid = nc_data$coords,
      year.start = 1981,
-     year.num = 40,
+     year.num = 39,
      month.start = 1,
      variable.names = variables,
-     variable.labels = variable_labels,
-     variable.units = variable_units,
-     sim.year.start = 2020,
      sim.year.num = 40,
      realization.num = 3,
      warm.variable = "precip",
      warm.signif.level = 0.90,
      warm.sample.size = 20000,
      knn.annual.sample.size = 100,
-     wet.state.threshold = 0.1,
-     extreme.state.quantile = 0.8,
-     apply.delta.changes = FALSE,
+     mc.wet.threshold = 0.3,
+     mc.extreme.quantile = 0.8,
+     apply.delta.changes = TRUE,
      evaluate.model = TRUE,
-     evaluate.grid.num = 20,
-     apply.step.changes = TRUE,
      delta.precip = precip_changes,
      delta.temp = temp_changes,
      output.path = output_path,
-     output.ncfile.template = nc_data,
-     output.ncfile.prefix = "clim_change_rlz",
-     bounds = list(
-        mean = c(0.95,1.05),
-        sd = c(0.90,1.10),
-        min = c(0.90,1.15),
-        max = c(0.85,1.10),
-        power = c(0.50,2.50),
-        nonsignif.threshold = 0.75)
+     nc.template = nc_file,
+     nc.prefix = "clim_change_rlz",
 )
+
 ```
 
 

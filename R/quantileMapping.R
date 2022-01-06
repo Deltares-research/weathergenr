@@ -19,7 +19,7 @@ quantileMapping <- function(
   mon.ts = NULL,
   year.ts = NULL,
   step.change = TRUE,
-  reltol = 1e-5)
+  reltol = 1e-7)
 
   {
 
