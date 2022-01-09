@@ -1,11 +1,11 @@
 ---
-title: "Getting started with gridwegen"
+title: "Getting started"
 output: 
   rmarkdown::html_vignette:
     number_sections: true
     toc: true
 vignette: >
-  %\VignetteIndexEntry{Getting started with gridwegen}
+  %\VignetteIndexEntry{Getting started}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
