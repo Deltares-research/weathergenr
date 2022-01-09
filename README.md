@@ -1,8 +1,21 @@
 
-# gridwegen
+<!-- README.md is generated from README.Rmd. Please edit that file -->
 
->  Simplified, scalable implementation of the semi-parametric stochastic weather generator by Steinscheneider et al. (2013). 
+## Overview
 
----
-** Warning: currently at an early development phase. Do not use it **
----
+Gridwegen is a simplified, scalable implementation of the
+semi-parametric stochastic weather generator developed by
+Steinscheneider and Brown (2013).
+
+## Installation
+
+The development version of the package can be installed from github:
+
+``` r
+devtools::install_github("tanerumit/gridwegen")
+```
+
+## Quick start
+
+Tutorial (in progress): /
+<https://github.com/tanerumit/gridwegen/tree/master/vignettes/Tutorial.html>
