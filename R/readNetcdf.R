@@ -6,8 +6,9 @@
 #' from the netcdf file.
 #'
 #' @param nc.file The name of the netcdf file to be read
-#' @param has.leap.days A logical value indicating whether the gridded data includes leap days.
-#' @param omit.empty.cells A lotical value indicating whether empty cells with missing values to be removed
+#' @param leap.days A logical value indicating whether the gridded data includes leap days.
+#' @param omit.empty A lotical value indicating whether empty cells with missing values to be removed
+#' @param spatial.ref PLACEHOLDER
 #'
 #' @return
 #' @export
@@ -21,13 +22,13 @@
 #'     nc.file = "ntoum.nc", nc_dimnames = list(x = "lon", y = "lat", time = "time"),
 #'     nc.variables = c("precip", "temp", "temp_min", "temp_max"),
 #'     origin_date = as.Date("1981-01-01"),
-#'     has.leap.days = TRUE)
+#'     leap.days = TRUE)
 #'}
 readNetcdf <- function(
   nc.file = NULL,
-  has.leap.days = TRUE,
-  omit.empty.cells = TRUE,
-  spatial.ref.variable = "spatial_ref")
+  leap.days = TRUE,
+  omit.empty = TRUE,
+  spatial.ref = "spatial_ref")
 
   {
 
@@ -48,8 +49,8 @@ readNetcdf <- function(
     names(nc_dim) <- nc_dim_names
 
     # Get spatial reference variable
-    nc_var_data_spref <- ncvar_get(nc_in, spatial.ref.variable)
-    nc_attribs_spref <- ncatt_get(nc_in, spatial.ref.variable)
+    nc_var_data_spref <- ncvar_get(nc_in, spatial.ref)
+    nc_attribs_spref <- ncatt_get(nc_in, spatial.ref)
 
     time_unit <- ncatt_get(nc_in, "time")$units
     origin_date <- as.Date(sub("^\\D+", "", time_unit))
@@ -60,7 +61,7 @@ readNetcdf <- function(
        y = nc_attribs_spref$y_dim,time = "time")
 
     # Get variables
-    nc_var_names <- setdiff(attributes(nc_in$var)$names, spatial.ref.variable)
+    nc_var_names <- setdiff(attributes(nc_in$var)$names, spatial.ref)
     nc_var_data <- lapply(nc_var_names, function(x) ncvar_get(nc_in, x))
     nc_dimord <- sapply(nc_var_names, function(y)
       sapply(nc_dimnames, function(x) which(x == ncGetDimNames(nc_in, y))))
@@ -73,7 +74,7 @@ readNetcdf <- function(
     nc_attribs_glob <- ncatt_get(nc_in, 0)
 
     # Define date vector based on calendar type
-    if(isTRUE(has.leap.days)) {
+    if(isTRUE(leap.days)) {
       datev <- origin_date-1 + 1:length(nc_dim[[nc_dimnames$time]])
     } else {
       ymax <- round(length(nc_dim[[nc_dimnames$time]])/365)
@@ -104,7 +105,7 @@ readNetcdf <- function(
           function(x) x[grid_mat$xind[n], grid_mat$yind[n], ]))
       }
 
-      if(omit.empty.cells) {
+      if(omit.empty) {
 
         # Remove unnecessary/empty grids from tidy data table
         grd <- which(sapply(1:nrow(grid_mat), function(x) !is.na(sum(grid_mat$data[[x]]))))
@@ -112,14 +113,10 @@ readNetcdf <- function(
 
       }
 
-      out <- list(data = grid_mat$data,
-                  coords = grid_mat %>% mutate(id = 1:n()) %>% select(-data),
-                  dates = datev,
+      return(list(data = grid_mat$data,
+                  grid = grid_mat %>% mutate(id = 1:n()) %>% select(-data),
+                  date = datev,
                   dimensions = nc_dim,
                   attributes = c(nc_attribs, setNames(list(nc_attribs_spref),
-                    spatial.ref.variable), global = list(nc_attribs_glob)),
-                  rawdata = nc_var_data)
-
-  return(out)
-
+                                 spatial.ref), global = list(nc_attribs_glob))))
 }

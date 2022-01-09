@@ -30,9 +30,6 @@ waveletAnalysis <- function(variable = NULL,
   # Workaround for rlang warning
   x <- y <- z <- 0
 
-
-
-
   #### Define Wavelet function used that returns transform
   waveletf <- function(k,s) {
     nn <- length(k)

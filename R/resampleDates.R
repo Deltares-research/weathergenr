@@ -34,9 +34,13 @@ resampleDates <- function(
   kk = NULL,
   knn.annual.sample.num = 50,
   wet.threshold = 0.3,
-  extreme.quantile = 0.8)
+  extreme.quantile = 0.8,
+  seed = NULL)
 
   {
+
+  # If ne seed provided, generate a random number
+  if(is.null(seed)) seed = sample.int(1e10,1)
 
   # Workaround for rlang warning
   month <- day <- wyear <- 0
@@ -87,15 +91,13 @@ resampleDates <- function(
 
 	# Current Stochastic trace....
 	count <- 1
-	set.seed(k1)
 
 	# Generate random numbers btw 0 and 1 for each day of the simulation period
+	set.seed(seed+k1)
 	rn_all <- stats::runif(SIM_LENGTH,0,1)
 
 	# For each year start sampling....
 	for (y in 1:ymax) {
-
-	  #print(y)
 
 	  # Current simulated annual precip at y
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
@@ -108,6 +110,7 @@ resampleDates <- function(
 		  kk = kk,
 		  k1 = k1,
 		  y = y,
+		  seed = seed,
 		  y_sample_size = knn.annual.sample.num)
 
 		# Find indices of days in all sampled years in CUR_YEARS
@@ -196,7 +199,7 @@ resampleDates <- function(
   			  # Random number generated for the current day
     			rn <- rn_all[(count-1)]
 
-    			# If day is in state 2
+    			# If day is in state 0
     			if (OCCURENCES[(count-1)]==0) {
     				pp1 <- p00_final[(count-1)]
     				pp2 <- p00_final[(count-1)] + p01_final[(count-1)]
@@ -302,7 +305,8 @@ resampleDates <- function(
   			  mean_monthly_PRCP = mean_monthly_PRCP,
   			  mean_monthly_TEMP = mean_monthly_TEMP,
   			  k1 = k1,
-  			  count = count)
+  			  count = count,
+  			  seed = seed)
 
   			SIM_DATE[count] <- DATE_D_CURRENT[which(as.numeric(DATE_D_CURRENT)==RESULT)][1]
 

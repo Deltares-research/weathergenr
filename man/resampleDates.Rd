@@ -19,7 +19,8 @@ resampleDates(
   kk = NULL,
   knn.annual.sample.num = 50,
   wet.threshold = 0.3,
-  extreme.quantile = 0.8
+  extreme.quantile = 0.8,
+  seed = NULL
 )
 }
 \arguments{

@@ -28,22 +28,27 @@ knnDaily <- function(
   mean_monthly_PRCP = NULL,
   mean_monthly_TEMP = NULL,
   k1 = NULL,
-  count  = NULL)
+  count  = NULL,
+  seed = NULL)
 
 {
-	  w_PRCP <- 100/sd_monthly_PRCP
-		w_TEMP <- 10/sd_monthly_TEMP
-		var_order <- 1:length(PRCP_TODAY)
 
-		distance <- sqrt(w_PRCP*((cur_sim_PRCP-mean_monthly_PRCP) - (PRCP_TODAY-mean_monthly_PRCP))^2 +
-		                 w_TEMP*((cur_sim_TEMP-mean_monthly_TEMP) - (TEMP_TODAY-mean_monthly_TEMP))^2)
+  # If ne seed provided, generate a random number
+  if(is.null(seed)) seed = sample.int(1e10,1)
 
-		K_Distances <-	var_order[order(distance)[1:k]]
+  w_PRCP <- 100/sd_monthly_PRCP
+	w_TEMP <- 10/sd_monthly_TEMP
+	var_order <- 1:length(PRCP_TODAY)
 
-		set.seed(k1*count)
-		selection <- sample(1:k, 1, prob=(1/1:k)/sum(1/1:k))
+	distance <- sqrt(w_PRCP*((cur_sim_PRCP-mean_monthly_PRCP) - (PRCP_TODAY-mean_monthly_PRCP))^2 +
+	                 w_TEMP*((cur_sim_TEMP-mean_monthly_TEMP) - (TEMP_TODAY-mean_monthly_TEMP))^2)
 
-		return(DATE_TOMORROW[K_Distances[selection]])
+	K_Distances <-	var_order[order(distance)[1:k]]
+
+	set.seed(seed + k1*count)
+	selection <- sample(1:k, 1, prob=(1/1:k)/sum(1/1:k))
+
+	return(DATE_TOMORROW[K_Distances[selection]])
 
 	}
 

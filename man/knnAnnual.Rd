@@ -11,7 +11,8 @@ knnAnnual(
   kk = NULL,
   k1 = NULL,
   y = NULL,
-  y_sample_size = 50
+  y_sample_size = 50,
+  seed = NULL
 )
 }
 \arguments{

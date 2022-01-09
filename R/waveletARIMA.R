@@ -12,9 +12,12 @@
 waveletARIMA <- function(
   wavelet.components = NULL,
   sim.year.num = NULL,
-  sim.num = 1000)
-
+  sim.num = 1000,
+  seed = NULL)
   {
+
+  # If ne seed provided, generate a random number
+  if(is.null(seed)) seed = sample.int(1e10,1)
 
   # Define ARIMA model for each component
   MODEL <- vector(mode = "list", length = ncol(wavelet.components))
@@ -32,8 +35,10 @@ waveletARIMA <- function(
     INTERCEPT <- ifelse(length(which(names(MODEL[[k]]$coef)=="intercept")) > 0,
                         as.vector(MODEL[[k]]$coef)[which(names(MODEL[[k]]$coef)=="intercept")],0)
 
-    SIM[[k]] <- replicate(sim.num,
-         simulate(MODEL[[k]], sim.year.num, sd = sqrt(MODEL[[k]]$sigma2)) + INTERCEPT + MEAN)
+    SD <- sqrt(MODEL[[k]]$sigma2)
+
+    SIM[[k]] <- sapply(1:sim.num, function(x) {
+        set.seed(seed+x); simulate(MODEL[[k]], sim.year.num, sd = SD)}) + INTERCEPT + MEAN
   }
 
   return(Reduce(`+`, SIM))

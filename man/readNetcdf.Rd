@@ -6,17 +6,19 @@
 \usage{
 readNetcdf(
   nc.file = NULL,
-  has.leap.days = TRUE,
-  omit.empty.cells = TRUE,
-  spatial.ref.variable = "spatial_ref"
+  leap.days = TRUE,
+  omit.empty = TRUE,
+  spatial.ref = "spatial_ref"
 )
 }
 \arguments{
 \item{nc.file}{The name of the netcdf file to be read}
 
-\item{has.leap.days}{A logical value indicating whether the gridded data includes leap days.}
+\item{leap.days}{A logical value indicating whether the gridded data includes leap days.}
 
-\item{omit.empty.cells}{A lotical value indicating whether empty cells with missing values to be removed}
+\item{omit.empty}{A lotical value indicating whether empty cells with missing values to be removed}
+
+\item{spatial.ref}{PLACEHOLDER}
 }
 \value{
 
@@ -32,6 +34,6 @@ output <- readNetcdf(nc.path = system.file('extdata', package = 'gridwegen'),
     nc.file = "ntoum.nc", nc_dimnames = list(x = "lon", y = "lat", time = "time"),
     nc.variables = c("precip", "temp", "temp_min", "temp_max"),
     origin_date = as.Date("1981-01-01"),
-    has.leap.days = TRUE)
+    leap.days = TRUE)
 }
 }

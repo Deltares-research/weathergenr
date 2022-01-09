@@ -6,8 +6,6 @@
 #' @param var.change placeholder
 #' @param mon.ts placeholder
 #' @param year.ts placeholder
-#' @param step.change placeholder
-#' @param reltol placeholder
 #'
 #' @return
 #' @export
@@ -17,9 +15,7 @@ quantileMapping <- function(
   mean.change = NULL,
   var.change = NULL,
   mon.ts = NULL,
-  year.ts = NULL,
-  step.change = TRUE,
-  reltol = 1e-7)
+  year.ts = NULL)
 
   {
 
@@ -30,17 +26,8 @@ quantileMapping <- function(
   bdist <- list(fit = emp2, shape = emp2, scale = emp2, mean = emp2, var = emp2)
   tdist <- list(fit = NA, shape = emp1, scale = emp1, mean = emp1, var = emp1)
 
-  # Vector of means and variances (row=years, column=months)
-  if(isTRUE(step.change)) {
-    mean_a <- sapply(1:12, function(m) seq(1, mean.change[m], length.out = ymax))
-    var_a  <- sapply(1:12, function(m) seq(1, var.change[m], length.out = ymax))
-  } else {
-    mean_a <- sapply(1:12, function(m) rep(mean.change[m], ymax))
-    var_a  <- sapply(1:12, function(m) rep(var.change[m], ymax))
-  }
-
   #Keep track of calendar months to be changed
-  pmon <- which((mean.change != 1) | (var.change != 1))
+  pmon <- 1:12
 
   # Non-zero days
   value_nz <- value[which(value>0)]
@@ -60,7 +47,7 @@ quantileMapping <- function(
 
   # Fit base distribution and estimate parameters
   bdist[["fit"]][pmon] <- lapply(pmon,
-    function(x) fitdistrplus::fitdist(value_pmon[[x]], "gamma", control = list(reltol=reltol)))
+    function(x) fitdistrplus::fitdist(value_pmon[[x]], "gamma"))
 
   # Parameters for base distribution
   bdist[["shape"]][pmon] <- lapply(pmon,
@@ -74,9 +61,9 @@ quantileMapping <- function(
 
   # Parameters for the target distribution
   tdist[["mean"]][pmon, ] <- sapply(1:ymax, function(y)
-    sapply(pmon, function(m) bdist[["mean"]][[m]] * mean_a[y, m]))
+    sapply(pmon, function(m) bdist[["mean"]][[m]] * mean.change[y, m]))
   tdist[["var"]][pmon, ] <- sapply(1:ymax, function(y)
-    sapply(pmon, function(m) bdist[["var"]][[m]] * var_a[y, m]))
+    sapply(pmon, function(m) bdist[["var"]][[m]] * var.change[y, m]))
 
   # Define the shape and scale parameters of the target distribution
   tdist[["scale"]][pmon,] <- sapply(1:ymax, function(y)

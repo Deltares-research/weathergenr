@@ -16,7 +16,8 @@ knnDaily(
   mean_monthly_PRCP = NULL,
   mean_monthly_TEMP = NULL,
   k1 = NULL,
-  count = NULL
+  count = NULL,
+  seed = NULL
 )
 }
 \arguments{

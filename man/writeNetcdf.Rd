@@ -32,13 +32,11 @@ writeNetcdf(
 
 \item{nc.compression}{Placeholder}
 
+\item{nc.spatial.ref}{placeholder}
+
 \item{nc.file.prefix}{placeholder}
 
 \item{nc.file.suffix}{placeholder}
-
-\item{variables}{Placeholder}
-
-\item{variable.units}{Placeholder}
 }
 \value{
 

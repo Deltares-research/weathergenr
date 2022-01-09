@@ -136,7 +136,6 @@ waveletARSubset <- function(
 
   # Stochastically select from the initial dataset
   if(!is.null(seed)) set.seed(seed)
-
   sub_sample <- sample(sub_clim, min(sample.num, length(sub_clim)))
 
   if(isTRUE(verbose)) {

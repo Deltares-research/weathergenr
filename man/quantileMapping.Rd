@@ -9,9 +9,7 @@ quantileMapping(
   mean.change = NULL,
   var.change = NULL,
   mon.ts = NULL,
-  year.ts = NULL,
-  step.change = TRUE,
-  reltol = 1e-05
+  year.ts = NULL
 )
 }
 \arguments{
@@ -24,10 +22,6 @@ quantileMapping(
 \item{mon.ts}{placeholder}
 
 \item{year.ts}{placeholder}
-
-\item{step.change}{placeholder}
-
-\item{reltol}{placeholder}
 }
 \value{
 
