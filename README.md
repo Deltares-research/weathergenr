@@ -18,4 +18,4 @@ devtools::install_github("tanerumit/gridwegen")
 ## Quick start
 
 Tutorial (in progress): /
-<https://github.com/tanerumit/gridwegen/tree/master/vignettes/Tutorial.html>
+[https://github.com/tanerumit/gridwegen/tree/master/vignettes/Tutorial.html](https://htmlpreview.github.io/?https://github.com/tanerumit/gridwegen/blob/master/vignettes/Tutorial.html)
