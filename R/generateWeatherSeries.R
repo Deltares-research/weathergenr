@@ -68,14 +68,12 @@ generateWeatherSeries <- function(
   if(is.null(variable.labels)) variable.labels <- variable.names
   if(is.null(variable.units)) variable.units <- rep("", length(variable.names))
 
-
   # Number of grids
   grids  <- weather.grid$id
   ngrids <- length(grids)
 
   #browser()
-  message(cat("\u2713", "|", "Historical data loaded (spatial resolution:",
-    ngrids, "grid cells)"))
+  message(cat("\u2713", "|", "Historical data loaded (spatial resolution:", ngrids, "grid cells)"))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
   warm_path <- paste0(output.path, "historical/")
@@ -218,9 +216,10 @@ generateWeatherSeries <- function(
   message(cat("\u2713", "|",
     "Spatially & temporally dissaggregated with knn & mc modeling"))
 
-  write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"))
-  message(cat("\u2713", "|", "Resampled dates saved as resampled_dates.csv"))
+  write.csv(sim_dates_d$date, paste0(warm_path, "sim_dates.csv"), row.names = FALSE)
+  write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"), row.names = FALSE)
 
+  message(cat("\u2713", "|", "Resampled dates saved as resampled_dates.csv"))
   day_order <- sapply(1:realization.num,
     function(n) match(resampled_dates[[n]], dates_d$date))
 

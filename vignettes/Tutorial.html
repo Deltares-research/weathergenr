@@ -269,7 +269,7 @@ pre { /* Code block - determines code spacing between lines */
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set path to store weather generator results </span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>output_path <span class="ot">&lt;-</span> <span class="st">&quot;C:/testrun/&quot;</span></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>variables <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;precip&quot;</span>, <span class="st">&quot;temp&quot;</span>, <span class="st">&quot;temp_min&quot;</span>, <span class="st">&quot;temp_max&quot;</span>)</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>realization.num <span class="ot">&lt;-</span> <span class="dv">3</span></span></code></pre></div>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>realization_num <span class="ot">&lt;-</span> <span class="dv">3</span></span></code></pre></div>
 <p>GenerateWeatherSeries() function includes a large set of essential and non-essential parameters to control the weather generation process. Essential parameters include: <em>weather.data</em>, <em>weather.grid</em>, and <em>weather.date</em> and <em>variable.names</em> to specify the attributes of the input metereological data, <em>realization.num</em> to set the desired number of new weather realizations, and the <em>output.path</em>:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="ot">&lt;-</span> <span class="fu">generateWeatherSeries</span>(</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">weather.data =</span> ncdata<span class="sc">$</span>data,</span>
@@ -291,37 +291,55 @@ pre { /* Code block - determines code spacing between lines */
 <p>The output is a list, where the first element is a data frame of resampled dates for each new stochastic realization and a date vector for the new (generated) weather data.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Resampled dates</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>stochastic_weather<span class="sc">$</span>resampled</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Date vector</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(stochastic_weather<span class="sc">$</span>dates)</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(stochastic_weather<span class="sc">$</span>dates)</span></code></pre></div>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 13,870 x 3</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    rlz_1      rlz_2      rlz_3     </span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;date&gt;     &lt;date&gt;     &lt;date&gt;    </span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 1982-01-01 1982-01-01 1982-01-01</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 1989-01-01 1990-01-01 2012-01-04</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 2000-01-01 2007-01-03 2011-01-03</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 1989-01-01 1999-01-07 1998-01-02</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 1989-01-04 2018-01-02 2012-01-04</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 1989-01-09 2018-01-03 1994-01-09</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 1989-01-08 2007-01-04 1994-01-09</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 1989-01-05 2007-01-05 1997-01-06</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 1996-01-11 2007-01-06 1997-01-09</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 2000-01-13 1984-01-10 1994-01-09</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ... with 13,860 more rows</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Date vector</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(stochastic_weather<span class="sc">$</span>dates)</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;2021-01-01&quot; &quot;2021-01-02&quot; &quot;2021-01-03&quot; &quot;2021-01-04&quot; &quot;2021-01-05&quot;</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [6] &quot;2021-01-06&quot;</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(stochastic_weather<span class="sc">$</span>dates)</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;2058-12-26&quot; &quot;2058-12-27&quot; &quot;2058-12-28&quot; &quot;2058-12-29&quot; &quot;2058-12-30&quot;</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [6] &quot;2058-12-31&quot;</span></span></code></pre></div>
 </div>
 <div id="apply-climate-change-realizations" class="section level2" number="3.3">
 <h2><span class="header-section-number">3.3</span> Apply climate change realizations</h2>
 <p>Delta factors can be imposed on the historical or stochastically generated weather data to reflect plausible changes on climate statistics. Currently, it is possible to shift mean and variance of precipitation and mean of temperature. Preciptation changes are specified as ratios, where a value of 1.0 indicates no change for the given calendar month. Temperature changes are specified as increases (or decreases) in degree celsius in a given month.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Temperature changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a> delta_temp_mean <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">3.0</span>, <span class="fl">3.2</span>, <span class="fl">3.4</span>, <span class="fl">4.0</span>, <span class="fl">4.1</span>, <span class="fl">4.4</span>, <span class="fl">5.0</span>, <span class="fl">3.5</span>, <span class="fl">3.3</span>, <span class="fl">2.9</span>, <span class="fl">2.8</span>, <span class="fl">2.7</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>delta_temp_mean <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">3.0</span>, <span class="fl">3.2</span>, <span class="fl">3.4</span>, <span class="fl">4.0</span>, <span class="fl">4.1</span>, <span class="fl">4.4</span>, <span class="fl">5.0</span>, <span class="fl">3.5</span>, <span class="fl">3.3</span>, <span class="fl">2.9</span>, <span class="fl">2.8</span>, <span class="fl">2.7</span>)</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a> <span class="co"># Precipitation changes   Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a> delta_precip_mean     <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.8</span>, <span class="fl">0.8</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>)</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a> delta_precip_variance <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Precipitation changes   Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>delta_precip_mean     <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.8</span>, <span class="fl">0.8</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>, <span class="fl">0.7</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>delta_precip_variance <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>, <span class="fl">1.0</span>)</span>
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a> <span class="co"># Select first realization</span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a> day_order <span class="ot">&lt;-</span> <span class="fu">match</span>(stochastic_weather<span class="sc">$</span>resampled[[<span class="dv">1</span>]], ncdata<span class="sc">$</span>date)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Select first realization</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>day_order <span class="ot">&lt;-</span> <span class="fu">match</span>(stochastic_weather<span class="sc">$</span>resampled[[<span class="dv">1</span>]], ncdata<span class="sc">$</span>date)</span>
 <span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a> <span class="co"># Obtain stochastic series by re-ordering historical data</span></span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a> stochastic_rlz <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data, <span class="cf">function</span>(x) x[day_order,])</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Obtain stochastic series by re-ordering historical data</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>stochastic_rlz <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data, <span class="cf">function</span>(x) x[day_order,])</span>
 <span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a> <span class="co"># Apply climate changes to climate data</span></span>
-<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a> stochastic2 <span class="ot">&lt;-</span> <span class="fu">imposeClimateChanges</span>(</span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>     <span class="at">climate.data =</span> stochastic_rlz,</span>
-<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">climate.grid =</span> ncdata<span class="sc">$</span>grid,</span>
-<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">sim.dates =</span> stochastic_weather<span class="sc">$</span>dates,</span>
-<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.precip.mean =</span> delta_precip_mean,</span>
-<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.precip.variance =</span> delta_precip_variance,</span>
-<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.temp.mean =</span> delta_temp_mean,</span>
-<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.type.temp =</span> <span class="st">&quot;transient&quot;</span>,</span>
-<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.type.precip =</span> <span class="st">&quot;transient&quot;</span>)</span></code></pre></div>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply climate changes to climate data</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>stochastic2 <span class="ot">&lt;-</span> <span class="fu">imposeClimateChanges</span>(</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>   <span class="at">climate.data =</span> stochastic_rlz,</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>   <span class="at">climate.grid =</span> ncdata<span class="sc">$</span>grid,</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>   <span class="at">sim.dates =</span> stochastic_weather<span class="sc">$</span>dates,</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>   <span class="at">change.factor.precip.mean =</span> delta_precip_mean,</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>   <span class="at">change.factor.precip.variance =</span> delta_precip_variance,</span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>   <span class="at">change.factor.temp.mean =</span> delta_temp_mean,</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>   <span class="at">change.type.temp =</span> <span class="st">&quot;transient&quot;</span>,</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>   <span class="at">change.type.precip =</span> <span class="st">&quot;transient&quot;</span>)</span></code></pre></div>
 <p>Finally we can save the generated weather series back to a netcdf file:</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Save to netcdf file</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">writeNetcdf</span>(</span>
@@ -361,33 +379,39 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Number of incremental step changes for precip and temp variables</span></span>
 <span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>precip_step_num <span class="ot">&lt;-</span> <span class="dv">3</span></span>
 <span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>temp_step_num <span class="ot">&lt;-</span> <span class="dv">2</span></span></code></pre></div>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a> precip_mean_steps <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="cf">function</span>(m)</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>           <span class="fu">seq</span>(delta_precip_mean_min[m], delta_precip_mean_max[m],</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">length.out =</span> precip_step_num))</span>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>precip_mean_steps <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="cf">function</span>(m)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>         <span class="fu">seq</span>(delta_precip_mean_min[m], delta_precip_mean_max[m],</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>             <span class="at">length.out =</span> precip_step_num))</span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a> precip_variance_steps <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="cf">function</span>(m)</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>           <span class="fu">seq</span>(delta_precip_variance_min[m], delta_precip_variance_max[m],</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>               <span class="at">length.out =</span> precip_step_num))</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>precip_variance_steps <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="cf">function</span>(m)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>         <span class="fu">seq</span>(delta_precip_variance_min[m], delta_precip_variance_max[m],</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>             <span class="at">length.out =</span> precip_step_num))</span>
 <span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a> temp_mean_steps <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="cf">function</span>(m)</span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>           <span class="fu">seq</span>(delta_temp_mean_min[m], delta_temp_mean_max[m],</span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>               <span class="at">length.out =</span> temp_step_num))</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>temp_mean_steps <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="cf">function</span>(m)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>         <span class="fu">seq</span>(delta_temp_mean_min[m], delta_temp_mean_max[m],</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>             <span class="at">length.out =</span> temp_step_num))</span>
 <span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a> df1 <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(precip_mean_steps) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">n</span>(), <span class="at">variable =</span> <span class="st">&quot;precip_mean&quot;</span>, <span class="at">.before =</span> <span class="dv">1</span>)</span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a> df2 <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(precip_variance_steps) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">n</span>(), <span class="at">variable =</span> <span class="st">&quot;precip_variance&quot;</span>, <span class="at">.before =</span> <span class="dv">1</span>)</span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a> df3 <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(temp_mean_steps) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">n</span>(), <span class="at">variable =</span> <span class="st">&quot;temp_mean&quot;</span>, <span class="at">.before =</span> <span class="dv">1</span>)</span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a> df <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(df1, df2, df3) <span class="sc">%&gt;%</span> <span class="fu">gather</span>(month, value, V1<span class="sc">:</span>V12) <span class="sc">%&gt;%</span></span>
-<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>   <span class="fu">mutate</span>(<span class="at">month =</span> <span class="fu">factor</span>(month, <span class="at">levels =</span> <span class="fu">paste0</span>(<span class="st">&quot;V&quot;</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>), <span class="at">labels =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>))</span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>(df, <span class="fu">aes</span>(<span class="at">x =</span> month, <span class="at">y =</span> value, <span class="at">group =</span> level, <span class="at">color =</span> level)) <span class="sc">+</span></span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>   <span class="fu">facet_wrap</span>(. <span class="sc">~</span> variable, <span class="at">scales =</span> <span class="st">&quot;free_y&quot;</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>   <span class="fu">geom_line</span>() <span class="sc">+</span></span>
-<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>   <span class="fu">labs</span>(<span class="at">x=</span><span class="st">&quot;month&quot;</span>, <span class="at">y =</span> <span class="st">&quot;delta factor&quot;</span>) <span class="sc">+</span></span>
-<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>   <span class="fu">scale_color_distiller</span>(<span class="at">palette =</span> <span class="st">&quot;Set1&quot;</span>) <span class="sc">+</span></span>
-<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>   <span class="fu">guides</span>(<span class="at">color =</span> <span class="st">&quot;none&quot;</span>)</span></code></pre></div>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a> df1 <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(precip_mean_steps) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">n</span>(), </span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>   <span class="at">variable =</span> <span class="st">&quot;precip_mean&quot;</span>, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a> df2 <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(precip_variance_steps) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">n</span>(), </span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>   <span class="at">variable =</span> <span class="st">&quot;precip_variance&quot;</span>, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a> df3 <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(temp_mean_steps) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">level =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">n</span>(), </span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>   <span class="at">variable =</span> <span class="st">&quot;temp_mean&quot;</span>, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a> df <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(df1, df2, df3) <span class="sc">%&gt;%</span> <span class="fu">gather</span>(month, value, V1<span class="sc">:</span>V12) <span class="sc">%&gt;%</span></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>   <span class="fu">mutate</span>(<span class="at">month =</span> <span class="fu">factor</span>(month, <span class="at">levels =</span> <span class="fu">paste0</span>(<span class="st">&quot;V&quot;</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>), <span class="at">labels =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>))</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a> p <span class="ot">&lt;-</span> ggplot2<span class="sc">::</span><span class="fu">ggplot</span>(df, <span class="fu">aes</span>(<span class="at">x =</span> month, <span class="at">y =</span> value, <span class="at">group =</span> level, <span class="at">color =</span> level)) <span class="sc">+</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>   <span class="fu">facet_wrap</span>(. <span class="sc">~</span> variable, <span class="at">scales =</span> <span class="st">&quot;free_y&quot;</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>   <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>   <span class="fu">labs</span>(<span class="at">x=</span><span class="st">&quot;month&quot;</span>, <span class="at">y =</span> <span class="st">&quot;delta factor&quot;</span>) <span class="sc">+</span></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>   <span class="fu">scale_color_distiller</span>(<span class="at">palette =</span> <span class="st">&quot;Set1&quot;</span>) <span class="sc">+</span></span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>   <span class="fu">guides</span>(<span class="at">color =</span> <span class="st">&quot;none&quot;</span>)</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a> p</span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a> </span></code></pre></div>
 <p>Now lets create the scenario matrix using the bandwiths and incremental step sizes specified for each variable</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Stress test matrix</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a> strtest_matrix <span class="ot">&lt;-</span> tidyr<span class="sc">::</span><span class="fu">expand_grid</span>(<span class="at">stoc_ind =</span> <span class="dv">1</span><span class="sc">:</span>realization.num,</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a> strtest_matrix <span class="ot">&lt;-</span> tidyr<span class="sc">::</span><span class="fu">expand_grid</span>(<span class="at">stoc_ind =</span> <span class="dv">1</span><span class="sc">:</span>realization_num,</span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">precip_ind =</span> <span class="dv">1</span><span class="sc">:</span>precip_step_num, <span class="at">temp_ind =</span> <span class="dv">1</span><span class="sc">:</span>temp_step_num)</span>
 <span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a> <span class="co"># Total number of scenarios</span></span>
@@ -397,46 +421,64 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a> strtest_matrix_precip_mean <span class="ot">&lt;-</span> precip_mean_steps[strtest_matrix<span class="sc">$</span>precip_ind, ]</span>
 <span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a> strtest_matrix_precip_variance <span class="ot">&lt;-</span> precip_variance_steps[strtest_matrix<span class="sc">$</span>precip_ind, ]</span>
 <span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a> strtest_matrix_temp_mean <span class="ot">&lt;-</span> temp_mean_steps[strtest_matrix<span class="sc">$</span>temp_ind, ]</span></code></pre></div>
+<p># Write stress test matrices to file (optional)</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a> <span class="fu">write.csv</span>(strtest_matrix, </span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">paste0</span>(output_path, <span class="st">&quot;strtest_matrix.csv&quot;</span>), <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a> <span class="fu">write.csv</span>(strtest_matrix_precip_mean, </span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>   <span class="fu">paste0</span>(output_path, <span class="st">&quot;strtest_matrix_precip_mean.csv&quot;</span>), <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a> <span class="fu">write.csv</span>(strtest_matrix_precip_variance, </span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>   <span class="fu">paste0</span>(output_path, <span class="st">&quot;strtest_matrix_precip_variance.csv&quot;</span>), <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a> <span class="fu">write.csv</span>(strtest_matrix_temp_mean, </span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>   <span class="fu">paste0</span>(output_path, <span class="st">&quot;strtest_matrix_temp_mean.csv&quot;</span>), <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
 <p>Finally, lets generate the stress test input data</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="co"># progress bar (optional)</span></span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>pb <span class="ot">=</span> <span class="fu">txtProgressBar</span>(<span class="at">min =</span> <span class="dv">1</span>, <span class="at">max =</span> smax, <span class="at">initial =</span> <span class="dv">0</span>, <span class="at">style =</span> <span class="dv">3</span>)</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a> <span class="cf">for</span> (s <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>smax) {</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>   <span class="fu">setTxtProgressBar</span>(pb,s)</span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>   <span class="co"># Find the current scenario indices for the stochastic realization and delta factors</span></span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>   stoc_ind <span class="ot">&lt;-</span> strtest_matrix<span class="sc">$</span>stoc_ind[s]</span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>   <span class="co"># Obtain stochastic series by re-ordering historical data</span></span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>   day_order <span class="ot">&lt;-</span> <span class="fu">match</span>(stochastic_weather<span class="sc">$</span>resampled[[stoc_ind]], ncdata<span class="sc">$</span>date)</span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>   rlz_historical <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data, <span class="cf">function</span>(x) x[day_order,])</span>
-<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>   <span class="co"># Apply climate changes to climate data</span></span>
-<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>   rlz_future <span class="ot">&lt;-</span> <span class="fu">imposeClimateChanges</span>(</span>
-<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">climate.data =</span> rlz_historical,</span>
-<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">climate.grid =</span> ncdata<span class="sc">$</span>grid,</span>
-<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">sim.dates =</span> stochastic_weather<span class="sc">$</span>dates,</span>
-<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.precip.mean =</span> strtest_matrix_precip_mean[s,],</span>
-<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.precip.variance =</span> strtest_matrix_precip_variance[s,],</span>
-<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.temp.mean =</span> strtest_matrix_temp_mean[s,],</span>
-<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.type.temp =</span> <span class="st">&quot;transient&quot;</span>,</span>
-<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.type.precip =</span> <span class="st">&quot;transient&quot;</span>)</span>
-<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>     <span class="co"># Save to netcdf file</span></span>
-<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>     <span class="fu">writeNetcdf</span>(</span>
-<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>       <span class="at">data =</span> rlz_future,</span>
-<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>       <span class="at">coord.grid =</span> ncdata<span class="sc">$</span>grid,</span>
-<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>       <span class="at">output.path =</span> output_path,</span>
-<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>       <span class="at">origin.date =</span>  stochastic_weather<span class="sc">$</span>dates[<span class="dv">1</span>],</span>
-<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>       <span class="at">calendar.type =</span> <span class="st">&quot;noleap&quot;</span>,</span>
-<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.template.file =</span> ncfile,</span>
-<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.compression =</span> <span class="dv">4</span>,</span>
-<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.spatial.ref =</span> <span class="st">&quot;spatial_ref&quot;</span>,</span>
-<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.file.prefix =</span> <span class="st">&quot;climx&quot;</span>,</span>
-<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.file.suffix =</span> s)</span>
-<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a> }</span>
-<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a> <span class="fu">close</span>(pb)</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a> <span class="co"># Read-in resampled dates &amp; date series (from csv files included with the package)</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a> resampled_dates <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;resampled_dates.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gridwegen&quot;</span>), </span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">colClasses =</span> <span class="st">&quot;Date&quot;</span>)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a> sim_dates <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;sim_dates.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gridwegen&quot;</span>), </span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>   <span class="at">colClasses =</span> <span class="st">&quot;Date&quot;</span>)[[<span class="dv">1</span>]]</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a> <span class="co"># Use results from generateWeatherSeries function output</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a> <span class="co"># resampled_dates &lt;- stochastic_weather$resampled</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a> <span class="co"># sim_dates &lt;- stochastic_weather$dates</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="co"># progress bar (optional)</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>pb <span class="ot">=</span> <span class="fu">txtProgressBar</span>(<span class="at">min =</span> <span class="dv">1</span>, <span class="at">max =</span> smax, <span class="at">initial =</span> <span class="dv">0</span>, <span class="at">style =</span> <span class="dv">3</span>)</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a> <span class="cf">for</span> (s <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>smax) {</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>   <span class="fu">setTxtProgressBar</span>(pb,s)</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>   <span class="co"># Find the current scenario indices for the stochastic realization and delta factors</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>   stoc_ind <span class="ot">&lt;-</span> strtest_matrix<span class="sc">$</span>stoc_ind[s]</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>   <span class="co"># Obtain stochastic series by re-ordering historical data</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>   day_order <span class="ot">&lt;-</span> <span class="fu">match</span>(resampled_dates[[stoc_ind]], ncdata<span class="sc">$</span>date)</span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>   rlz_historical <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data, <span class="cf">function</span>(x) x[day_order,])</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>   <span class="co"># Apply climate changes to climate data</span></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>   rlz_future <span class="ot">&lt;-</span> <span class="fu">imposeClimateChanges</span>(</span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>     <span class="at">climate.data =</span> rlz_historical,</span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>     <span class="at">climate.grid =</span> ncdata<span class="sc">$</span>grid,</span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>     <span class="at">sim.dates =</span> sim_dates,</span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.precip.mean =</span> strtest_matrix_precip_mean[s,],</span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.precip.variance =</span> strtest_matrix_precip_variance[s,],</span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.factor.temp.mean =</span> strtest_matrix_temp_mean[s,],</span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.type.temp =</span> <span class="st">&quot;transient&quot;</span>,</span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>     <span class="at">change.type.precip =</span> <span class="st">&quot;transient&quot;</span>)</span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a>     <span class="co"># Save to netcdf file</span></span>
+<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a>     <span class="fu">writeNetcdf</span>(</span>
+<span id="cb15-37"><a href="#cb15-37" aria-hidden="true" tabindex="-1"></a>       <span class="at">data =</span> rlz_future,</span>
+<span id="cb15-38"><a href="#cb15-38" aria-hidden="true" tabindex="-1"></a>       <span class="at">coord.grid =</span> ncdata<span class="sc">$</span>grid,</span>
+<span id="cb15-39"><a href="#cb15-39" aria-hidden="true" tabindex="-1"></a>       <span class="at">output.path =</span> output_path,</span>
+<span id="cb15-40"><a href="#cb15-40" aria-hidden="true" tabindex="-1"></a>       <span class="at">origin.date =</span>  stochastic_weather<span class="sc">$</span>dates[<span class="dv">1</span>],</span>
+<span id="cb15-41"><a href="#cb15-41" aria-hidden="true" tabindex="-1"></a>       <span class="at">calendar.type =</span> <span class="st">&quot;noleap&quot;</span>,</span>
+<span id="cb15-42"><a href="#cb15-42" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.template.file =</span> ncfile,</span>
+<span id="cb15-43"><a href="#cb15-43" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.compression =</span> <span class="dv">4</span>,</span>
+<span id="cb15-44"><a href="#cb15-44" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.spatial.ref =</span> <span class="st">&quot;spatial_ref&quot;</span>,</span>
+<span id="cb15-45"><a href="#cb15-45" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.file.prefix =</span> <span class="st">&quot;climx&quot;</span>,</span>
+<span id="cb15-46"><a href="#cb15-46" aria-hidden="true" tabindex="-1"></a>       <span class="at">nc.file.suffix =</span> s)</span>
+<span id="cb15-47"><a href="#cb15-47" aria-hidden="true" tabindex="-1"></a> }</span>
+<span id="cb15-48"><a href="#cb15-48" aria-hidden="true" tabindex="-1"></a> <span class="fu">close</span>(pb)</span></code></pre></div>
 </div>
 </div>
 <div id="running-weather-generator-from-python" class="section level1" number="5">
@@ -447,65 +489,65 @@ pre { /* Code block - determines code spacing between lines */
 2. Create a new python environment with packages rpy2, r-base, r-essentials, pandas, numpy2<br />
 </p>
 <p>First set the PATH variables correctly</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;PATH&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Program Files/R/R-4.1.2/bin/x64&#39;</span> <span class="op">+</span> os.pathsep <span class="op">+</span> os.environ.get(<span class="st">&#39;PATH&#39;</span>, <span class="st">&#39;&#39;</span>)</span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;PYTHONHOME&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Users/taner/Anaconda3/envs/wegentest&#39;</span></span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;PYTHONPATH&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Users/taner/Anaconda3/envs/wegentest/Lib/site-packages&#39;</span></span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Location of R executable </span></span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;R_HOME&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Program Files/R/R-4.1.2&#39;</span></span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Location of R packages installed</span></span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;R_USER&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Users/taner/Anaconda3/envs/wegentest/Lib/site-packages/rpy2&#39;</span></span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Check if variables are correctly defined for rpy2 </span></span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> rpy2.situation</span>
-<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> row <span class="kw">in</span> rpy2.situation.iter_info():</span>
-<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(row)</span>
-<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="co">#Import necessary packages</span></span>
-<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> rpy2.robjects <span class="im">as</span> robjects</span>
-<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> rpy2.robjects.packages <span class="im">import</span> importr</span>
-<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="co"># This is needed for conversion between R and Python syntax</span></span>
-<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> {<span class="st">&#39;package.dependencies&#39;</span>: <span class="st">&#39;package_dot_dependencies&#39;</span>,</span>
-<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>     <span class="st">&#39;package_dependencies&#39;</span>: <span class="st">&#39;package_uscore_dependencies&#39;</span>}</span>
-<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Load core packages</span></span>
-<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>base <span class="op">=</span> importr(<span class="st">&#39;base&#39;</span>)</span>
-<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>utils <span class="op">=</span> importr(<span class="st">&#39;utils&#39;</span>)</span>
-<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>utils.chooseCRANmirror(ind<span class="op">=</span><span class="dv">1</span>) <span class="co"># select the first mirror in the list</span></span>
-<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>devtools <span class="op">=</span> utils.install_packages(<span class="st">&#39;devtools&#39;</span>)</span>
-<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>devtools <span class="op">=</span> importr(<span class="st">&#39;devtools&#39;</span>, robject_translations <span class="op">=</span> d)</span>
-<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a><span class="co"># Install gridwegen from Github master branch</span></span>
-<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a>gridwegen <span class="op">=</span> devtools.install_github(<span class="st">&quot;tanerumit/gridwegen&quot;</span>)</span>
-<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>gridwegen <span class="op">=</span> importr(<span class="st">&#39;gridwegen&#39;</span>, robject_translations <span class="op">=</span> d)</span></code></pre></div>
-<div class="sourceCode" id="cb16"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load netcdf file</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>ncfile <span class="op">=</span> base.system_file(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;ntoum_era5_data.nc&quot;</span>, package <span class="op">=</span> <span class="st">&quot;gridwegen&quot;</span>)</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>ncdata <span class="op">=</span> gridwegen.readNetcdf(ncfile)</span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Set path to store weather generator results</span></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>output_path <span class="op">=</span> <span class="st">&quot;C:/testrun/&quot;</span></span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>variables <span class="op">=</span> base.c(<span class="st">&quot;precip&quot;</span>, <span class="st">&quot;temp&quot;</span>, <span class="st">&quot;temp_min&quot;</span>, <span class="st">&quot;temp_max&quot;</span>)</span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>realization_num <span class="op">=</span> <span class="dv">3</span></span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="op">=</span> gridwegen.generateWeatherSeries(</span>
-<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>     weather_data <span class="op">=</span> ncdata[<span class="dv">0</span>],</span>
-<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>     weather_grid <span class="op">=</span> ncdata[<span class="dv">1</span>],</span>
-<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>     weather_date <span class="op">=</span> ncdata[<span class="dv">2</span>],</span>
-<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>     variable_names <span class="op">=</span> variables,</span>
-<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>     output_path <span class="op">=</span> output_path,</span>
-<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>     month_start <span class="op">=</span> <span class="dv">1</span>,</span>
-<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>     realization_num <span class="op">=</span> realization_num,</span>
-<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>     warm_variable <span class="op">=</span> <span class="st">&quot;precip&quot;</span>,</span>
-<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>     warm_signif_level <span class="op">=</span> <span class="fl">0.90</span>,</span>
-<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>     warm_sample_num <span class="op">=</span> <span class="dv">5000</span>,</span>
-<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>     knn_sample_num <span class="op">=</span> <span class="dv">100</span>,</span>
-<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>     evaluate_model <span class="op">=</span> <span class="va">False</span>,</span>
-<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>     evaluate_grid_num <span class="op">=</span> <span class="dv">20</span>,</span>
-<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a>     mc_wet_threshold <span class="op">=</span> <span class="fl">0.2</span>,</span>
-<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a>     mc_extreme_quantile <span class="op">=</span> <span class="fl">0.8</span>,</span>
-<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a>     seed <span class="op">=</span> <span class="dv">100</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;PATH&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Program Files/R/R-4.1.2/bin/x64&#39;</span> <span class="op">+</span> os.pathsep <span class="op">+</span> os.environ.get(<span class="st">&#39;PATH&#39;</span>, <span class="st">&#39;&#39;</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;PYTHONHOME&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Users/taner/Anaconda3/envs/wegentest&#39;</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;PYTHONPATH&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Users/taner/Anaconda3/envs/wegentest/Lib/site-packages&#39;</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Location of R executable </span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;R_HOME&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Program Files/R/R-4.1.2&#39;</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Location of R packages installed</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>os.environ[<span class="st">&#39;R_USER&#39;</span>] <span class="op">=</span> <span class="st">&#39;C:/Users/taner/Anaconda3/envs/wegentest/Lib/site-packages/rpy2&#39;</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Check if variables are correctly defined for rpy2 </span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> rpy2.situation</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> row <span class="kw">in</span> rpy2.situation.iter_info():</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(row)</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a><span class="co">#Import necessary packages</span></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> rpy2.robjects <span class="im">as</span> robjects</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> rpy2.robjects.packages <span class="im">import</span> importr</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a><span class="co"># This is needed for conversion between R and Python syntax</span></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> {<span class="st">&#39;package.dependencies&#39;</span>: <span class="st">&#39;package_dot_dependencies&#39;</span>,</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>     <span class="st">&#39;package_dependencies&#39;</span>: <span class="st">&#39;package_uscore_dependencies&#39;</span>}</span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Load core packages</span></span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a>base <span class="op">=</span> importr(<span class="st">&#39;base&#39;</span>)</span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a>utils <span class="op">=</span> importr(<span class="st">&#39;utils&#39;</span>)</span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a>utils.chooseCRANmirror(ind<span class="op">=</span><span class="dv">1</span>) <span class="co"># select the first mirror in the list</span></span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a>devtools <span class="op">=</span> utils.install_packages(<span class="st">&#39;devtools&#39;</span>)</span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a>devtools <span class="op">=</span> importr(<span class="st">&#39;devtools&#39;</span>, robject_translations <span class="op">=</span> d)</span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a><span class="co"># Install gridwegen from Github master branch</span></span>
+<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a>gridwegen <span class="op">=</span> devtools.install_github(<span class="st">&quot;tanerumit/gridwegen&quot;</span>)</span>
+<span id="cb16-33"><a href="#cb16-33" aria-hidden="true" tabindex="-1"></a>gridwegen <span class="op">=</span> importr(<span class="st">&#39;gridwegen&#39;</span>, robject_translations <span class="op">=</span> d)</span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load netcdf file</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>ncfile <span class="op">=</span> base.system_file(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;ntoum_era5_data.nc&quot;</span>, package <span class="op">=</span> <span class="st">&quot;gridwegen&quot;</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ncdata <span class="op">=</span> gridwegen.readNetcdf(ncfile)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Set path to store weather generator results</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>output_path <span class="op">=</span> <span class="st">&quot;C:/testrun/&quot;</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>variables <span class="op">=</span> base.c(<span class="st">&quot;precip&quot;</span>, <span class="st">&quot;temp&quot;</span>, <span class="st">&quot;temp_min&quot;</span>, <span class="st">&quot;temp_max&quot;</span>)</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>realization_num <span class="op">=</span> <span class="dv">3</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="op">=</span> gridwegen.generateWeatherSeries(</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>     weather_data <span class="op">=</span> ncdata[<span class="dv">0</span>],</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>     weather_grid <span class="op">=</span> ncdata[<span class="dv">1</span>],</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>     weather_date <span class="op">=</span> ncdata[<span class="dv">2</span>],</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>     variable_names <span class="op">=</span> variables,</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>     output_path <span class="op">=</span> output_path,</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>     month_start <span class="op">=</span> <span class="dv">1</span>,</span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>     realization_num <span class="op">=</span> realization_num,</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>     warm_variable <span class="op">=</span> <span class="st">&quot;precip&quot;</span>,</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>     warm_signif_level <span class="op">=</span> <span class="fl">0.90</span>,</span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>     warm_sample_num <span class="op">=</span> <span class="dv">5000</span>,</span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>     knn_sample_num <span class="op">=</span> <span class="dv">100</span>,</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>     evaluate_model <span class="op">=</span> <span class="va">False</span>,</span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>     evaluate_grid_num <span class="op">=</span> <span class="dv">20</span>,</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>     mc_wet_threshold <span class="op">=</span> <span class="fl">0.2</span>,</span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>     mc_extreme_quantile <span class="op">=</span> <span class="fl">0.8</span>,</span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a>     seed <span class="op">=</span> <span class="dv">100</span>)</span></code></pre></div>
 </div>
 
 
