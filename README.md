@@ -12,7 +12,7 @@ Steinscheneider and Brown (2013).
 The development version of the package can be installed from github:
 
 ``` r
-devtools::install_github("tanerumit/gridwegen")
+devtools::install_github("Deltares/weathergenr")
 ```
 
 ## Quick start

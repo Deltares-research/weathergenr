@@ -1,4 +1,5 @@
 
+
 library(weathergenr)
 
 yaml <- yaml::read_yaml("weathergen_config.yml")
@@ -8,7 +9,6 @@ weathergen_output_path <- yaml$general$weathergen_output_path
 historical_realizations_num <- yaml$general$historical_realizations_num
 variables <- yaml$general$variables
 weathergen_input_ncfile <-yaml$general$weathergen_input_ncfil
-
 
 # STEP 1) READ BASELINE HISTORICAL DATA FROM NETCDF
 ncdata <- readNetcdf(weathergen_input_ncfile)
@@ -59,9 +59,5 @@ for (n in 1:historical_realizations_num) {
   )
 
 }
-
-
-
-
 
 
