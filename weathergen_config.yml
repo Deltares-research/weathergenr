@@ -1,0 +1,50 @@
+
+
+################################################################################
+
+general:
+  weathergen_output_path: C:/testrun2/
+  weathergen_input_ncfile: C:/Users/taner/OneDrive - Stichting Deltares/Documents/R/win-library/4.1/gridwegen/extdata/ntoum_era5_data.nc
+  variables:
+      - precip
+      - temp
+      - temp_min
+      - temp_max
+  historical_realizations_num: 3
+
+################################################################################
+
+generateWeatherSeries:
+  weather.data: NULL
+  weather.grid: NULL
+  weather.date: NULL
+  variable.names: NULL
+  variable.labels: NULL
+  variable.units: NULL
+  sim.year.num: NULL
+  sim.year.start: 2020
+  month.start: 1
+  realization.num: 5
+  warm.variable: precip
+  warm.signif.level: 0.90
+  warm.sample.num: 5000
+  warm.subset.criteria: NULL
+  knn.sample.num: 100
+  mc.wet.threshold: 0.3
+  mc.extreme.quantile: 0.8
+  evaluate.model: FALSE
+  evaluate.grid.num: 20
+  output.path: weathergen_path
+  seed: 12345
+
+################################################################################
+
+imposeClimateChanges:
+  climate.data: stochastic_rlz
+  climate.grid: ncdata$grid
+  sim.dates: stochastic_weather$dates
+  change.factor.precip.mean: delta_precip_mean
+  change.factor.precip.variance: delta_precip_variance
+  change.factor.temp.mean: delta_temp_mean
+  change.type.temp: transient
+  change.type.precip: transient

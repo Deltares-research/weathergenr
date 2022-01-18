@@ -23,7 +23,7 @@ Gridwegen is a simplified, scalable implementation of the semi-parametric stocha
 The development version of the package can be installed from github:
 
 ```{r, eval = FALSE}
-devtools::install_github("tanerumit/gridwegen")
+devtools::install_github("Deltares/weathergenr")
 ```
 
 ## Quick start

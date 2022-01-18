@@ -1,4 +1,4 @@
-Package: gridwegen
+Package: weathergenr
 Type: Package
 Title: Gridded semi-parametric weather generator
 Version: 0.0.2
