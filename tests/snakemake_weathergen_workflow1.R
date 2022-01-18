@@ -1,5 +1,5 @@
 
-library(gridwegen)
+library(weathergenr)
 
 yaml <- yaml::read_yaml("weathergen_config.yml")
 

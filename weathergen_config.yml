@@ -38,13 +38,3 @@ generateWeatherSeries:
   seed: 12345
 
 ################################################################################
-
-imposeClimateChanges:
-  climate.data: stochastic_rlz
-  climate.grid: ncdata$grid
-  sim.dates: stochastic_weather$dates
-  change.factor.precip.mean: delta_precip_mean
-  change.factor.precip.variance: delta_precip_variance
-  change.factor.temp.mean: delta_temp_mean
-  change.type.temp: transient
-  change.type.precip: transient
