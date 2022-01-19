@@ -1,11 +1,13 @@
 
+Description: >
+  This yml file includes parameter settings for designing a climate stress test
 
 general:
   nc.file.prefix: clim_change
   output.path: C:/testrun2/future/
   historical_realizations_num: 3
 
-# Temperature change factors
+########## Temperature change factors ##########
 temp:
   step_num: 2
   change_type: transient
@@ -37,7 +39,7 @@ temp:
       - 3.0  # November
       - 3.0  # December
 
-# Precipitation change factors
+########## #Precipitation change factors ##########
 precip:
   step_num: 3
   change_type: transient

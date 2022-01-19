@@ -1,4 +1,8 @@
 
+Description: >
+  This yml file includes general parameters to configure the weather generator
+  and parameters for the generateWeatherSeries function.
+
 general:
   weathergen_output_path: C:/testrun2/
   weathergen_input_ncfile: C:/Users/taner/OneDrive - Stichting Deltares/Documents/R/win-library/4.1/gridwegen/extdata/ntoum_era5_data.nc
