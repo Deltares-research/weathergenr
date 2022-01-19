@@ -5,7 +5,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 #  devtools::install_github("Deltares/weathergenr")
 
 ## ----ncfile-------------------------------------------------------------------
-library(gridwegen)
+library(weathergenr)
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
 ncdata <- readNetcdf(ncfile)
 
@@ -30,33 +30,6 @@ tail(ncdata$date)
 output_path <- "C:/testrun/"
 variables <- c("precip", "temp", "temp_min", "temp_max")
 realization_num <- 3
-
-## ----stochastic2, results='hide', eval = TRUE, cache=TRUE---------------------
-stochastic_weather <- generateWeatherSeries(
-     weather.data = ncdata$data,
-     weather.grid = ncdata$grid,
-     weather.date = ncdata$date,
-     variable.names = variables,
-     output.path = output_path,
-     month.start = 1,
-     realization.num = realization_num,
-     warm.variable = "precip",
-     warm.signif.level = 0.90,
-     warm.sample.num = 5000,
-     knn.sample.num = 100,
-     evaluate.model = FALSE,
-     evaluate.grid.num = 20,
-     mc.wet.threshold = 0.2,
-     mc.extreme.quantile = 0.8,
-     seed = 100)
-
-## ----stochastic3, eval = TRUE, cache=TRUE-------------------------------------
-# Resampled dates
-stochastic_weather$resampled
-
-# Date vector
-head(stochastic_weather$dates)
-tail(stochastic_weather$dates)
 
 ## ----climchange, eval = FALSE-------------------------------------------------
 #  # Temperature changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
@@ -172,9 +145,9 @@ tail(stochastic_weather$dates)
 
 ## ----deltafactors5, eval = FALSE----------------------------------------------
 #   # Read-in resampled dates & date series (from csv files included with the package)
-#   resampled_dates <- read.csv(system.file("extdata", "resampled_dates.csv", package = "gridwegen"),
+#   resampled_dates <- read.csv(system.file("extdata", "resampled_dates.csv", package = "weathergenr"),
 #     colClasses = "Date")
-#   sim_dates <- read.csv(system.file("extdata", "sim_dates.csv", package = "gridwegen"),
+#   sim_dates <- read.csv(system.file("extdata", "sim_dates.csv", package = "weathergenr"),
 #     colClasses = "Date")[[1]]
 #  
 #   # Use results from generateWeatherSeries function output

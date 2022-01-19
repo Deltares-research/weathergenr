@@ -59,12 +59,12 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 
 # Overview
 
-This vignette introduces you to the basics of multivariable, multigrid stochastic daily weather series generation with *gridwegen*. Weathergen package consists of a set of scripts anc conveninence wrappers coded in R based on the existing work by Steinscheineder et al, (2013) with significant speed improvements.
+This vignette introduces you to the basics of multivariable, multigrid stochastic daily weather series generation with *weathergenr*. Weathergen package consists of a set of scripts anc conveninence wrappers coded in R based on the existing work by Steinscheineder et al, (2013) with significant speed improvements.
 
 You'll first learn how to easily generate daily, multivariable stochastic weather realizations for a selected geographic area. Next, you'll learn how to impose climate changes on the generated stochastic weather realizations, for example, as changes in monthly means and variance of temperature and precipitation. Finally, you will see an illustration of how the input data for a "climate stress test" can generated using this package.
 
 # Installation and setup
-The latest version of the gridwegen package can be installed from the github repository:
+The latest version of the weathergenr package can be installed from the github repository:
 ```{r setup, eval=FALSE}
 devtools::install_github("Deltares/weathergenr")
 ```
@@ -75,7 +75,7 @@ devtools::install_github("Deltares/weathergenr")
 
 For this exercise, we will use the sample data provided with the package. The file provide long-term gridded metereological data for the Ntoum basin in Gabon. The readNetcdf() is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.
 ```{r ncfile}
-library(gridwegen)
+library(weathergenr)
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
 ncdata <- readNetcdf(ncfile)
 
@@ -283,9 +283,9 @@ Now lets create the scenario matrix using the bandwiths and incremental step siz
 Finally, lets generate the stress test input data
 ```{r deltafactors5, eval = FALSE}
  # Read-in resampled dates & date series (from csv files included with the package)
- resampled_dates <- read.csv(system.file("extdata", "resampled_dates.csv", package = "gridwegen"),
+ resampled_dates <- read.csv(system.file("extdata", "resampled_dates.csv", package = "weathergenr"),
    colClasses = "Date")
- sim_dates <- read.csv(system.file("extdata", "sim_dates.csv", package = "gridwegen"),
+ sim_dates <- read.csv(system.file("extdata", "sim_dates.csv", package = "weathergenr"),
    colClasses = "Date")[[1]]
 
  # Use results from generateWeatherSeries function output
@@ -371,23 +371,23 @@ utils.chooseCRANmirror(ind=1) # select the first mirror in the list
 devtools = utils.install_packages('devtools')
 devtools = importr('devtools', robject_translations = d)
 
-# Install gridwegen from Github master branch
-gridwegen = devtools.install_github("tanerumit/gridwegen")
-gridwegen = importr('gridwegen', robject_translations = d)
+# Install weathergenr from Github master branch
+weathergenr = devtools.install_github("tanerumit/weathergenr")
+weathergenr = importr('weathergenr', robject_translations = d)
 ```
 
 
 ```{python, py2,  eval = FALSE}
 # Load netcdf file
-ncfile = base.system_file("extdata", "ntoum_era5_data.nc", package = "gridwegen")
-ncdata = gridwegen.readNetcdf(ncfile)
+ncfile = base.system_file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+ncdata = weathergenr.readNetcdf(ncfile)
 
 # Set path to store weather generator results
 output_path = "C:/testrun/"
 variables = base.c("precip", "temp", "temp_min", "temp_max")
 realization_num = 3
 
-stochastic_weather = gridwegen.generateWeatherSeries(
+stochastic_weather = weathergenr.generateWeatherSeries(
      weather_data = ncdata[0],
      weather_grid = ncdata[1],
      weather_date = ncdata[2],

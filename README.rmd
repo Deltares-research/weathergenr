@@ -28,8 +28,9 @@ devtools::install_github("Deltares/weathergenr")
 
 ## Quick start
 
-Tutorial (in progress): /
-[https://github.com/tanerumit/gridwegen/tree/master/vignettes/Tutorial.html](https://htmlpreview.github.io/?https://github.com/tanerumit/gridwegen/blob/master/vignettes/Tutorial.html)
+Tutorial (in progress):
+<br />
+[https://github.com/Deltares/weathergenr/blob/master/vignettes/Tutorial.html](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deltares/weathergenr/master/vignettes/Tutorial.html?token=GHSAT0AAAAAABQQCY7LIJXZBDLKKOSRSNZUYPH2XOQ)
 
 
 ## Licence

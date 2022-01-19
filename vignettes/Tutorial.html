@@ -199,12 +199,12 @@ pre { /* Code block - determines code spacing between lines */
 </style>
 <div id="overview" class="section level1" number="1">
 <h1><span class="header-section-number">1</span> Overview</h1>
-<p>This vignette introduces you to the basics of multivariable, multigrid stochastic daily weather series generation with <em>gridwegen</em>. Weathergen package consists of a set of scripts anc conveninence wrappers coded in R based on the existing work by Steinscheineder et al, (2013) with significant speed improvements.</p>
+<p>This vignette introduces you to the basics of multivariable, multigrid stochastic daily weather series generation with <em>weathergenr</em>. Weathergen package consists of a set of scripts anc conveninence wrappers coded in R based on the existing work by Steinscheineder et al, (2013) with significant speed improvements.</p>
 <p>You’ll first learn how to easily generate daily, multivariable stochastic weather realizations for a selected geographic area. Next, you’ll learn how to impose climate changes on the generated stochastic weather realizations, for example, as changes in monthly means and variance of temperature and precipitation. Finally, you will see an illustration of how the input data for a “climate stress test” can generated using this package.</p>
 </div>
 <div id="installation-and-setup" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Installation and setup</h1>
-<p>The latest version of the gridwegen package can be installed from the github repository:</p>
+<p>The latest version of the weathergenr package can be installed from the github repository:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;Deltares/weathergenr&quot;</span>)</span></code></pre></div>
 </div>
 <div id="simple-examples" class="section level1" number="3">
@@ -212,7 +212,7 @@ pre { /* Code block - determines code spacing between lines */
 <div id="reading-in-multivariable-weather-series" class="section level2" number="3.1">
 <h2><span class="header-section-number">3.1</span> Reading in multivariable weather series</h2>
 <p>For this exercise, we will use the sample data provided with the package. The file provide long-term gridded metereological data for the Ntoum basin in Gabon. The readNetcdf() is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gridwegen)</span>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(weathergenr)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>ncfile <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;ntoum_era5_data.nc&quot;</span>, <span class="at">package =</span> <span class="st">&quot;weathergenr&quot;</span>)</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">readNetcdf</span>(ncfile)</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
@@ -432,9 +432,9 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>   <span class="fu">paste0</span>(output_path, <span class="st">&quot;strtest_matrix_temp_mean.csv&quot;</span>), <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
 <p>Finally, lets generate the stress test input data</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a> <span class="co"># Read-in resampled dates &amp; date series (from csv files included with the package)</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a> resampled_dates <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;resampled_dates.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gridwegen&quot;</span>),</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a> resampled_dates <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;resampled_dates.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;weathergenr&quot;</span>),</span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">colClasses =</span> <span class="st">&quot;Date&quot;</span>)</span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a> sim_dates <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;sim_dates.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;gridwegen&quot;</span>),</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a> sim_dates <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;sim_dates.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;weathergenr&quot;</span>),</span>
 <span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>   <span class="at">colClasses =</span> <span class="st">&quot;Date&quot;</span>)[[<span class="dv">1</span>]]</span>
 <span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a> <span class="co"># Use results from generateWeatherSeries function output</span></span>
@@ -519,19 +519,19 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a>devtools <span class="op">=</span> utils.install_packages(<span class="st">&#39;devtools&#39;</span>)</span>
 <span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a>devtools <span class="op">=</span> importr(<span class="st">&#39;devtools&#39;</span>, robject_translations <span class="op">=</span> d)</span>
 <span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a><span class="co"># Install gridwegen from Github master branch</span></span>
-<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a>gridwegen <span class="op">=</span> devtools.install_github(<span class="st">&quot;tanerumit/gridwegen&quot;</span>)</span>
-<span id="cb16-33"><a href="#cb16-33" aria-hidden="true" tabindex="-1"></a>gridwegen <span class="op">=</span> importr(<span class="st">&#39;gridwegen&#39;</span>, robject_translations <span class="op">=</span> d)</span></code></pre></div>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a><span class="co"># Install weathergenr from Github master branch</span></span>
+<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a>weathergenr <span class="op">=</span> devtools.install_github(<span class="st">&quot;tanerumit/weathergenr&quot;</span>)</span>
+<span id="cb16-33"><a href="#cb16-33" aria-hidden="true" tabindex="-1"></a>weathergenr <span class="op">=</span> importr(<span class="st">&#39;weathergenr&#39;</span>, robject_translations <span class="op">=</span> d)</span></code></pre></div>
 <div class="sourceCode" id="cb17"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load netcdf file</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>ncfile <span class="op">=</span> base.system_file(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;ntoum_era5_data.nc&quot;</span>, package <span class="op">=</span> <span class="st">&quot;gridwegen&quot;</span>)</span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ncdata <span class="op">=</span> gridwegen.readNetcdf(ncfile)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>ncfile <span class="op">=</span> base.system_file(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;ntoum_era5_data.nc&quot;</span>, package <span class="op">=</span> <span class="st">&quot;weathergenr&quot;</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ncdata <span class="op">=</span> weathergenr.readNetcdf(ncfile)</span>
 <span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Set path to store weather generator results</span></span>
 <span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>output_path <span class="op">=</span> <span class="st">&quot;C:/testrun/&quot;</span></span>
 <span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>variables <span class="op">=</span> base.c(<span class="st">&quot;precip&quot;</span>, <span class="st">&quot;temp&quot;</span>, <span class="st">&quot;temp_min&quot;</span>, <span class="st">&quot;temp_max&quot;</span>)</span>
 <span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>realization_num <span class="op">=</span> <span class="dv">3</span></span>
 <span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="op">=</span> gridwegen.generateWeatherSeries(</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="op">=</span> weathergenr.generateWeatherSeries(</span>
 <span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>     weather_data <span class="op">=</span> ncdata[<span class="dv">0</span>],</span>
 <span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>     weather_grid <span class="op">=</span> ncdata[<span class="dv">1</span>],</span>
 <span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>     weather_date <span class="op">=</span> ncdata[<span class="dv">2</span>],</span>
