@@ -149,7 +149,7 @@ tail(stochastic_weather$dates)
 
 Delta factors can be imposed on the historical or stochastically generated weather data to reflect plausible changes on climate statistics. Currently, it is possible to shift mean and variance of precipitation and mean of temperature. Preciptation changes are specified as ratios, where a value of 1.0 indicates no change for the given calendar month. Temperature changes are specified as increases (or decreases) in degree celsius in a given month.
 
-```{r climchange, eval = TRUE, cache = TRUE}
+```{r climchange, eval = FALSE}
 # Temperature changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
 delta_temp_mean <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
 
