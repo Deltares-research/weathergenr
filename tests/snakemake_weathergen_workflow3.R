@@ -1,19 +1,33 @@
 
-### Stress test workflow
-### (LOOPING IN SNAKE, NO LONGER IN R)
-
-
-library(weathergenr)
+### Stress test workflow (LOOPING IN SNAKE, NO LONGER IN R)
 
 ################################################################################
+################################################################################
+################################################################################
+
 ### INPUTS - EVERYTHING IN THIS SECTION CAN BE PASSED FROM SNAKE
 # (DO NOT USE IT IN THE ACTUAL WORKFLOW)
 
-# stochastic_nc = Name of the gridded natural variability realization nc file [string]
-stochastic_nc <- "hist_rlz_1.nc"
+### GENERAL INPUTS (Does not change per run in the loop)
+
+library(weathergenr)
 
 # path to the base nc file [string]
 output_path <- "C:/testrun2/future/"
+
+# What prefix we want to attach to the final scenario name when writing back to nc? [string]
+nc_file_prefix <- "gabon_climate_runs"
+
+# temp_change_type [string]
+temp_change_type = "transient"
+
+# precip_change_type [string]
+precip_change_type = "transient"
+
+### RUN SPECIFIC INPUTS (changes in the loop)
+
+# stochastic_nc = Name of the gridded historical realization nc file [string]
+stochastic_nc <- "hist_rlz_1.nc"
 
 # vector of monthly precip mean change factors [numeric vector with 12 values]
 current_precip_mean_change <- c(0.7,  0.7,  0.7,  0.7,  0.7,  0.7,  0.7,  0.7,  0.7,   0.7,   0.7,   0.7)
@@ -24,19 +38,11 @@ current_precip_variance_change <- c(1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.
 # strtest_matrix_temp_mean = vector of monthly temperature mean changes, ad DegC [numeric vector with 12 values]
 current_temp_mean_change <- c(2.0,  2.0,  2.0,  2.0,  2.0,  2.0,  2.0,  2.0,  2.0,   2.0,  2.0,  2.0)
 
-# temp_change_type [string]
-temp_change_type = "transient"
-
-# precip_change_type [string]
-precip_change_type = "transient"
-
-# What prefix we want to attach to the final scenario name when writing back to nc? [string]
-nc_file_prefix <- "gabon_climate_runs"
-
 # What suffix we want to attach to the final scenario name when writing back to nc? [string]
-# (This can include both natural variability index and a climate change index)
+# (index to keep track of both natural variability realization and current climate change run)
 nc_file_suffix <- "1_1"
 
+################################################################################
 ################################################################################
 ################################################################################
 
@@ -70,7 +76,7 @@ rlz_future <- imposeClimateChanges(
    nc.file.prefix = nc_file_prefix,
    nc.file.suffix = nc_file_suffix)
 
-################################################################################
 
+################################################################################
 
 
