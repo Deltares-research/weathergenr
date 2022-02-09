@@ -91,7 +91,7 @@ generateWeatherSeries <- function(
           wyear = getWaterYear(weather.date, month.start),
           month = as.numeric(format(weather.date,"%m")),
           day = as.numeric(format(weather.date,"%d"))) %>%
-      filter(wyear >= year_start & wyear < year_end) %>%
+      filter(wyear >= year_start & wyear <= year_end) %>%
       mutate(date = as.Date(paste(wyear, month, day, sep = "-")), .before=1)
 
   year.num <- length(unique(dates_d$wyear))
