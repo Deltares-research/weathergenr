@@ -111,7 +111,7 @@ First, lets specify an output path for the results and variables to include from
 # Set path to store weather generator results
 output_path <- "C:/testrun/"
 variables <- c("precip", "temp", "temp_min", "temp_max")
-realization_num <- 3
+realization_num <- 2
 ```
 
 GenerateWeatherSeries() function includes a large set of essential and non-essential parameters to control the weather generation process. Essential parameters include: *weather.data*, *weather.grid*, and *weather.date* and *variable.names* to specify the attributes of the input metereological data, *realization.num* to set the desired number of new weather realizations, and the *output.path*:
@@ -127,11 +127,12 @@ stochastic_weather <- generateWeatherSeries(
      warm.variable = "precip",
      warm.signif.level = 0.90,
      warm.sample.num = 5000,
-     knn.sample.num = 100,
+     knn.sample.num = 120,
      evaluate.model = FALSE,
      evaluate.grid.num = 20,
-     mc.wet.threshold = 0.2,
+     mc.wet.threshold = 0.3,
      mc.extreme.quantile = 0.8,
+     sim.year.num = 20,
      seed = 100)
 ```
 

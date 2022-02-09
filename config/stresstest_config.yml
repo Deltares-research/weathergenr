@@ -9,7 +9,7 @@ general:
 
 ########## Temperature change factors ##########
 temp:
-  step_num: 2
+  step_num: 5
   change_type: transient
   mean:
     min:
