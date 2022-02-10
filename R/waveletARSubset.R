@@ -76,7 +76,7 @@ waveletARSubset <- function(
     periods_sig <- sort(intersect(unique(c(periods_sig-1, periods_sig, periods_sig+1)), 1:length(power.signif)))
   }
   periods_nonsig <- setdiff(1:length(power.signif),periods_sig)
-  periods_nonsig <- periods_nonsig[periods_nonsig %in% 1:sim.year.num]
+  periods_nonsig <- periods_nonsig[periods_nonsig %in% 1:dim(power.sim)[1]]
 
 
   if (!is.null(bounds$power)) {
@@ -157,7 +157,7 @@ waveletARSubset <- function(
   if(isTRUE(save.plots)) {
 
     ### Global Wavelet Spectral Plot
-    pl <- length(power.period)
+    pl <- min(length(power.period),dim(power.sim)[1])
     plr <- 5 * ceiling(power.period[pl] / 5)
 
     p <- waveletPlot(power.period = power.period[1:pl],

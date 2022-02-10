@@ -69,8 +69,6 @@ resampleDates <- function(
   water_year_end = dates.d$wyear[nrow(dates.d)]
   #****
 
-  if(is.null(kk)) {kk <- round(sqrt(length(ANNUAL_PRCP)))}
-
 	# Vectors to store transition probabilities
 	p00_final <- array(NA,SIM_LENGTH)
 	p01_final <- array(NA,SIM_LENGTH)
@@ -87,7 +85,7 @@ resampleDates <- function(
 	SIM_PRCP <- array(0, c(SIM_LENGTH))
 	SIM_TEMP <- array(25, c(SIM_LENGTH))
 
-	SIM_DATE <- rep(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
+	SIM_DATE <- array(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
 
 	# Current Stochastic trace....
 	count <- 1
@@ -96,8 +94,15 @@ resampleDates <- function(
 	set.seed(seed+k1)
 	rn_all <- stats::runif(SIM_LENGTH,0,1)
 
+  # knn sample size
+  if(is.null(kk)) {
+    kk <- max(round(sqrt(length(ANNUAL_PRCP)),0),round(length(ANNUAL_PRCP),0)*.5)
+  }
+
 	# For each year start sampling....
 	for (y in 1:ymax) {
+
+	  #print(y)
 
 	  # Current simulated annual precip at y
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
@@ -168,21 +173,21 @@ resampleDates <- function(
 			p21_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]>wet.threshold & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
 			p22_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
 
-
-			# Replace NaN's in the transtition probabilities
-			p00_final[is.nan(p00_final)] <- 0
-			p01_final[is.nan(p01_final)] <- 0
-			p02_final[is.nan(p02_final)] <- 0
-
-			p10_final[is.nan(p10_final)] <- 0
-			p11_final[is.nan(p11_final)] <- 0
-			p12_final[is.nan(p12_final)] <- 0
-
-			p20_final[is.nan(p20_final)] <- 0
-			p21_final[is.nan(p21_final)] <- 0
-			p22_final[is.nan(p22_final)] <- 0
-
 		} #month-counter close
+
+		# Replace NaN's in the transtition probabilities
+		# p00_final[is.nan(p00_final)] <- 0
+		# p01_final[is.nan(p01_final)] <- 0
+		# p02_final[is.nan(p02_final)] <- 0
+		#
+		# p10_final[is.nan(p10_final)] <- 0
+		# p11_final[is.nan(p11_final)] <- 0
+		# p12_final[is.nan(p12_final)] <- 0
+		#
+		# p20_final[is.nan(p20_final)] <- 0
+		# p21_final[is.nan(p21_final)] <- 0
+		# p22_final[is.nan(p22_final)] <- 0
+
 
 		############################################################################
 		############################################################################
