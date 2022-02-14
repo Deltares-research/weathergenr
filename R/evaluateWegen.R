@@ -378,4 +378,3 @@ evaluateWegen <- function(
   }
 
 }
-

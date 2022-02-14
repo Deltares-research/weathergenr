@@ -4,6 +4,7 @@
 #' Description goes here....
 #'
 #' @param weather.data list of data frames of daily weather observations per grid cell. Each data frame, columns are weather variables and rows are daily values.
+#' @param weather.date a vector of dates matching the weather.data
 #' @param weather.grid Data frame of grid cells. Each grid cell is assigned an id starting from 1, x and y coordinate index value, and x and y coordinates.
 #' @param output.path output path for the weather generator results (string)
 #' @param variable.names vector of names for the variables to be included in the weather generator
@@ -19,11 +20,13 @@
 #' @param month.start the first month of the year (default value is 1). Use a value other than 1 for water-year based analyses
 #' @param evaluate.model logical value indicating wether to save model evaluation plots
 #' @param evaluate.grid.num Number of grid cells to be sampled in the evaluation plots
-#' @param warm.subset.criteria placeholder
-#' @param mc.wet.threshold placeholder
-#' @param mc.extreme.quantile placeholder
-#' @param weather.date placeholder
-#' @param seed placeholder
+#' @param warm.subset.criteria A list of statistical parameters used for subsetting from the initial annual simulated series
+#' @param mc.wet.quantile wet state threshold (quantile value) for markov-chain modeling
+#' @param mc.extreme.quantile extremely wet state threshold (quantile value) for markov-chain modeling
+#' @param seed a random seed value (nunmeric)
+#' @param compute.parallel logical value indicating whether to run (some) functions in parallel
+#' @param num.cores Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned
+#'
 #'
 #' @return
 #' @export
@@ -50,12 +53,14 @@ generateWeatherSeries <- function(
   warm.sample.num = 5000,
   warm.subset.criteria = NULL,
   knn.sample.num = 100,
-  mc.wet.threshold = 0.3,
+  mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   output.path = getwd(),
-  seed = NULL)
+  seed = NULL,
+  compute.parallel = TRUE,
+  num.cores = NULL)
 
  {
 
@@ -142,7 +147,7 @@ generateWeatherSeries <- function(
         signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
   message(cat("\u2713", "|", "Number of low-frequency components:", length(wavelet_comps)-1,
-    paste0("(periodicity:", sapply(warm_power$signif_periods, function(x) x[1]), " years)")))
+    paste0("(periodicity: ", sapply(warm_power$signif_periods, function(x) x[1]), " years)")))
 
   # Simulate annual series of wavelet variable
   sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
@@ -187,34 +192,58 @@ generateWeatherSeries <- function(
   message(cat("\u2713", "|", ncol(sim_annual_sub$sampled),
     "series sampled"))
 
+
+  `%dopar%` <- foreach::`%dopar%`
+  `%do%` <- foreach::`%do%`
+
+
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
   resampled_dates <- as_tibble(matrix(0, nrow=nrow(sim_dates_d), ncol=realization.num),
     .name_repair=~paste0("rlz_", 1:realization.num))
 
-  for (n in 1:realization.num) {
+  if (compute.parallel) {
 
-    resampled_dates[,n] <- resampleDates(
-        PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],
-        ANNUAL_PRCP = warm_variable,
-        PRCP = climate_d_aavg$precip,
-        TEMP = climate_d_aavg$temp,
-        START_YEAR_SIM = sim.year.start,
-        k1 = n,
-        ymax = sim.year.num,
-        dates.d = dates_d,
-        sim.dates.d = sim_dates_d,
-        knn.annual.sample.num = knn.sample.num,
-        YEAR_D = year_seq,
-        month.start = month.start,
-        wet.threshold = mc.wet.threshold,
-        extreme.quantile = mc.extreme.quantile,
-        seed = seed + n)
+    if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
+
+    cl <- parallel::makeCluster(num.cores)
+    doParallel::registerDoParallel(cl)
+
+
+    `%d%` <- foreach::`%dopar%`
+
+  } else {
+
+    `%d%` <- foreach::`%do%`
 
   }
 
+  resampled_ini <- foreach::foreach(n=seq_len(realization.num)) %d% {
+
+    weathergenr::resampleDates(
+      PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],
+      ANNUAL_PRCP = warm_variable,
+      PRCP = climate_d_aavg$precip,
+      TEMP = climate_d_aavg$temp,
+      START_YEAR_SIM = sim.year.start,
+      k1 = n,
+      ymax = sim.year.num,
+      dates.d = dates_d,
+      sim.dates.d = sim_dates_d,
+      knn.annual.sample.num = knn.sample.num,
+      YEAR_D = year_seq,
+      month.start = month.start,
+      wet.quantile = mc.wet.quantile,
+      extreme.quantile = mc.extreme.quantile,
+      seed = seed + n)
+  }
+
+  if (compute.parallel) parallel::stopCluster(cl)
+
+  for(x in 1:ncol(resampled_dates)) {resampled_dates[,x] <- resampled_ini[[x]]}
+
   message(cat("\u2713", "|",
-    "Spatially & temporally dissaggregated with knn & mc modeling"))
+    "Spatial/temporal dissaggregation with knn & markov chain modeling"))
 
   write.csv(sim_dates_d$date, paste0(warm_path, "sim_dates.csv"), row.names = FALSE)
   write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"), row.names = FALSE)

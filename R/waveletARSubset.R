@@ -160,6 +160,7 @@ waveletARSubset <- function(
     pl <- min(length(power.period),dim(power.sim)[1])
     plr <- 5 * ceiling(power.period[pl] / 5)
 
+    # For all matching realizations
     p <- waveletPlot(power.period = power.period[1:pl],
                    power.signif = power.signif[1:pl],
                    power.obs = power.obs[1:pl],
@@ -168,6 +169,7 @@ waveletARSubset <- function(
 
     ggsave(paste0(output.path, "warm_sim_matching_spectral.png"), width=8, height=6)
 
+    # For subsetted realizations only
     p <- waveletPlot(power.period = power.period[1:pl],
                    power.signif = power.signif[1:pl],
                    power.obs = power.obs[1:pl],
@@ -192,7 +194,8 @@ waveletARSubset <- function(
       theme_light() +
       facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1) +
       geom_boxplot(data = stats_sim_gg, color = "gray60", outlier.shape = NA) +
-      geom_jitter(data = stats_sim_gg, alpha = 0.1, color = "gray60") +
+      geom_violin(data = stats_sim_gg, color = "gray60") +
+      #geom_jitter(data = stats_sim_gg, alpha = 0.1, color = "gray60") +
       geom_point(aes(fill = type), data = stats_all, size = 5, color = "white",
                  shape = 21) +
       scale_fill_manual(values = c("Simulated"="black","Observed"="blue")) +

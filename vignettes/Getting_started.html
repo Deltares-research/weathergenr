@@ -14,7 +14,19 @@
 
 <title>Getting started</title>
 
-<script src="data:application/javascript;base64,Ly8gUGFuZG9jIDIuOSBhZGRzIGF0dHJpYnV0ZXMgb24gYm90aCBoZWFkZXIgYW5kIGRpdi4gV2UgcmVtb3ZlIHRoZSBmb3JtZXIgKHRvCi8vIGJlIGNvbXBhdGlibGUgd2l0aCB0aGUgYmVoYXZpb3Igb2YgUGFuZG9jIDwgMi44KS4KZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsIGZ1bmN0aW9uKGUpIHsKICB2YXIgaHMgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCJkaXYuc2VjdGlvbltjbGFzcyo9J2xldmVsJ10gPiA6Zmlyc3QtY2hpbGQiKTsKICB2YXIgaSwgaCwgYTsKICBmb3IgKGkgPSAwOyBpIDwgaHMubGVuZ3RoOyBpKyspIHsKICAgIGggPSBoc1tpXTsKICAgIGlmICghL15oWzEtNl0kL2kudGVzdChoLnRhZ05hbWUpKSBjb250aW51ZTsgIC8vIGl0IHNob3VsZCBiZSBhIGhlYWRlciBoMS1oNgogICAgYSA9IGguYXR0cmlidXRlczsKICAgIHdoaWxlIChhLmxlbmd0aCA+IDApIGgucmVtb3ZlQXR0cmlidXRlKGFbMF0ubmFtZSk7CiAgfQp9KTsK"></script>
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
 
 <style type="text/css">
   code{white-space: pre-wrap;}
@@ -125,7 +137,187 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 
 
-<link rel="stylesheet" href="data:text/css,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" type="text/css" />
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
 
 
 
@@ -142,19 +334,26 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 <div id="TOC">
 <ul>
-<li><a href="#overview"><span class="toc-section-number">1</span> Overview</a></li>
+<li><a href="#overview"><span class="toc-section-number">1</span>
+Overview</a></li>
 <li><a href="#installation-and-setup"><span class="toc-section-number">2</span> Installation and setup</a></li>
-<li><a href="#simple-examples"><span class="toc-section-number">3</span> Simple examples</a>
+<li><a href="#simple-examples"><span class="toc-section-number">3</span>
+Simple examples</a>
 <ul>
-<li><a href="#reading-in-multivariable-weather-series"><span class="toc-section-number">3.1</span> Reading in multivariable weather series</a></li>
-<li><a href="#generate-stochastic-weather-realizations"><span class="toc-section-number">3.2</span> Generate stochastic weather realizations</a></li>
-<li><a href="#apply-climate-change-realizations"><span class="toc-section-number">3.3</span> Apply climate change realizations</a></li>
+<li><a href="#reading-in-multivariable-weather-series"><span class="toc-section-number">3.1</span> Reading in multivariable weather
+series</a></li>
+<li><a href="#generate-stochastic-weather-realizations"><span class="toc-section-number">3.2</span> Generate stochastic weather
+realizations</a></li>
+<li><a href="#apply-climate-change-realizations"><span class="toc-section-number">3.3</span> Apply climate change
+realizations</a></li>
 </ul></li>
 <li><a href="#climate-stress-testing"><span class="toc-section-number">4</span> Climate Stress Testing</a>
 <ul>
-<li><a href="#defining-the-stress-testing-matrix"><span class="toc-section-number">4.1</span> Defining the stress testing matrix</a></li>
+<li><a href="#defining-the-stress-testing-matrix"><span class="toc-section-number">4.1</span> Defining the stress testing
+matrix</a></li>
 </ul></li>
-<li><a href="#running-weather-generator-from-python"><span class="toc-section-number">5</span> Running weather generator from python</a></li>
+<li><a href="#running-weather-generator-from-python"><span class="toc-section-number">5</span> Running weather generator from
+python</a></li>
 </ul>
 </div>
 
@@ -199,19 +398,37 @@ pre { /* Code block - determines code spacing between lines */
 </style>
 <div id="overview" class="section level1" number="1">
 <h1><span class="header-section-number">1</span> Overview</h1>
-<p>This vignette introduces you to the basics of multivariable, multigrid stochastic daily weather series generation with <em>weathergenr</em>. Weathergen package consists of a set of scripts anc conveninence wrappers coded in R based on the existing work by Steinscheineder et al, (2013) with significant speed improvements.</p>
-<p>You’ll first learn how to easily generate daily, multivariable stochastic weather realizations for a selected geographic area. Next, you’ll learn how to impose climate changes on the generated stochastic weather realizations, for example, as changes in monthly means and variance of temperature and precipitation. Finally, you will see an illustration of how the input data for a “climate stress test” can generated using this package.</p>
+<p>This vignette introduces you to the basics of multivariable,
+multigrid stochastic daily weather series generation with
+<em>weathergenr</em>. Weathergen package consists of a set of scripts
+anc conveninence wrappers coded in R based on the existing work by
+Steinscheineder et al, (2013) with significant speed improvements.</p>
+<p>You’ll first learn how to easily generate daily, multivariable
+stochastic weather realizations for a selected geographic area. Next,
+you’ll learn how to impose climate changes on the generated stochastic
+weather realizations, for example, as changes in monthly means and
+variance of temperature and precipitation. Finally, you will see an
+illustration of how the input data for a “climate stress test” can
+generated using this package.</p>
 </div>
 <div id="installation-and-setup" class="section level1" number="2">
-<h1><span class="header-section-number">2</span> Installation and setup</h1>
-<p>The latest version of the weathergenr package can be installed from the github repository:</p>
+<h1><span class="header-section-number">2</span> Installation and
+setup</h1>
+<p>The latest version of the weathergenr package can be installed from
+the github repository:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;Deltares/weathergenr&quot;</span>)</span></code></pre></div>
 </div>
 <div id="simple-examples" class="section level1" number="3">
 <h1><span class="header-section-number">3</span> Simple examples</h1>
 <div id="reading-in-multivariable-weather-series" class="section level2" number="3.1">
-<h2><span class="header-section-number">3.1</span> Reading in multivariable weather series</h2>
-<p>For this exercise, we will use the sample data provided with the package. The file provide long-term gridded metereological data for the Ntoum basin in Gabon. The readNetcdf() is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.</p>
+<h2><span class="header-section-number">3.1</span> Reading in
+multivariable weather series</h2>
+<p>For this exercise, we will use the sample data provided with the
+package. The file provide long-term gridded metereological data for the
+Ntoum basin in Gabon. The readNetcdf() is a wrapper for several ncdf4
+functions to extract metereological data from netcdf files with
+associated spatial coordinates, dates, dimensions (time, x, y) and
+variable attributes.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(weathergenr)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>ncfile <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;ntoum_era5_data.nc&quot;</span>, <span class="at">package =</span> <span class="st">&quot;weathergenr&quot;</span>)</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">readNetcdf</span>(ncfile)</span>
@@ -219,7 +436,9 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Objects stored in the output data</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(ncdata)</span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;data&quot;       &quot;grid&quot;       &quot;date&quot;       &quot;dimensions&quot; &quot;attributes&quot;</span></span></code></pre></div>
-<p>Metereological data is stored as a list object and each list element is a “tidy data frame” with observations on rows and metereological variables on columns. Lets check this:</p>
+<p>Metereological data is stored as a list object and each list element
+is a “tidy data frame” with observations on rows and metereological
+variables on columns. Lets check this:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Display climate data for the first gridcell</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>ncdata<span class="sc">$</span>data[[<span class="dv">1</span>]]</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 14,244 x 7</span></span>
@@ -236,7 +455,9 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9  24.5     23.2     27.6     1011.  130.  412.  14.7 </span></span>
 <span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10  24.5     22.9     26.5     1012.  141.  412.  13.7 </span></span>
 <span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ... with 14,234 more rows</span></span></code></pre></div>
-<p>Information on the grids can be accessed via the ‘grid’ element and is also provided as a data frame with columns grid index followed by x and y dimension indices and x and y coordinate values:</p>
+<p>Information on the grids can be accessed via the ‘grid’ element and
+is also provided as a data frame with columns grid index followed by x
+and y dimension indices and x and y coordinate values:</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Display grid information</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>ncdata<span class="sc">$</span>grid</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 138 x 5</span></span>
@@ -253,7 +474,8 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9     9    16     1 10.1  0.725</span></span>
 <span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10    10     8     2  9.68 0.675</span></span>
 <span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ... with 128 more rows</span></span></code></pre></div>
-<p>Finally, the date series associated with the data can be accesssed from:</p>
+<p>Finally, the date series associated with the data can be accesssed
+from:</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Display start and ending values date vector</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ncdata<span class="sc">$</span>date)</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;1981-01-01&quot; &quot;1981-01-02&quot; &quot;1981-01-03&quot; &quot;1981-01-04&quot; &quot;1981-01-05&quot;</span></span>
@@ -263,14 +485,27 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [6] &quot;2019-12-31&quot;</span></span></code></pre></div>
 </div>
 <div id="generate-stochastic-weather-realizations" class="section level2" number="3.2">
-<h2><span class="header-section-number">3.2</span> Generate stochastic weather realizations</h2>
-<p>In this section, we introduce the procedure to obtain new weather sequences from the historical weather record via the generateWeatherSeries() function. This function serves as a wrapper arround a number of statistical procedures including a wavelet autoregressive model (WARM) coupled with a Markov chain knn resampling scheme based on Steinschneider and Brown (2013).</p>
-<p>First, lets specify an output path for the results and variables to include from the dataset:</p>
+<h2><span class="header-section-number">3.2</span> Generate stochastic
+weather realizations</h2>
+<p>In this section, we introduce the procedure to obtain new weather
+sequences from the historical weather record via the
+generateWeatherSeries() function. This function serves as a wrapper
+arround a number of statistical procedures including a wavelet
+autoregressive model (WARM) coupled with a Markov chain knn resampling
+scheme based on Steinschneider and Brown (2013).</p>
+<p>First, lets specify an output path for the results and variables to
+include from the dataset:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set path to store weather generator results</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>output_path <span class="ot">&lt;-</span> <span class="st">&quot;C:/testrun/&quot;</span></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>variables <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;precip&quot;</span>, <span class="st">&quot;temp&quot;</span>, <span class="st">&quot;temp_min&quot;</span>, <span class="st">&quot;temp_max&quot;</span>)</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>realization_num <span class="ot">&lt;-</span> <span class="dv">3</span></span></code></pre></div>
-<p>GenerateWeatherSeries() function includes a large set of essential and non-essential parameters to control the weather generation process. Essential parameters include: <em>weather.data</em>, <em>weather.grid</em>, and <em>weather.date</em> and <em>variable.names</em> to specify the attributes of the input metereological data, <em>realization.num</em> to set the desired number of new weather realizations, and the <em>output.path</em>:</p>
+<p>GenerateWeatherSeries() function includes a large set of essential
+and non-essential parameters to control the weather generation process.
+Essential parameters include: <em>weather.data</em>,
+<em>weather.grid</em>, and <em>weather.date</em> and
+<em>variable.names</em> to specify the attributes of the input
+metereological data, <em>realization.num</em> to set the desired number
+of new weather realizations, and the <em>output.path</em>:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="ot">&lt;-</span> <span class="fu">generateWeatherSeries</span>(</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">weather.data =</span> ncdata<span class="sc">$</span>data,</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">weather.grid =</span> ncdata<span class="sc">$</span>grid,</span>
@@ -285,38 +520,49 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>     <span class="at">knn.sample.num =</span> <span class="dv">100</span>,</span>
 <span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">evaluate.model =</span> <span class="cn">FALSE</span>,</span>
 <span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>     <span class="at">evaluate.grid.num =</span> <span class="dv">20</span>,</span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>     <span class="at">mc.wet.threshold =</span> <span class="fl">0.2</span>,</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>     <span class="at">mc.wet.threshold =</span> <span class="fl">0.3</span>,</span>
 <span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>     <span class="at">mc.extreme.quantile =</span> <span class="fl">0.8</span>,</span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">seed =</span> <span class="dv">100</span>)</span></code></pre></div>
-<p>The output is a list, where the first element is a data frame of resampled dates for each new stochastic realization and a date vector for the new (generated) weather data.</p>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>     <span class="at">sim.year.num =</span> <span class="dv">20</span>,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>     <span class="at">seed =</span> <span class="dv">123</span>)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 19 row(s) containing missing values (geom_path).</span></span></code></pre></div>
+<p>The output is a list, where the first element is a data frame of
+resampled dates for each new stochastic realization and a date vector
+for the new (generated) weather data.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Resampled dates</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>stochastic_weather<span class="sc">$</span>resampled</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 13,870 x 3</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    rlz_1      rlz_2      rlz_3     </span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;date&gt;     &lt;date&gt;     &lt;date&gt;    </span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 1982-01-01 1982-01-01 1982-01-01</span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 1989-01-01 1990-01-01 2012-01-04</span></span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 2000-01-01 2007-01-03 2011-01-03</span></span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 1989-01-01 1999-01-07 1998-01-02</span></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 1989-01-04 2018-01-02 2012-01-04</span></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 1989-01-09 2018-01-03 1994-01-09</span></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 1989-01-08 2007-01-04 1994-01-09</span></span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 1989-01-05 2007-01-05 1997-01-06</span></span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 1996-01-11 2007-01-06 1997-01-09</span></span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 2000-01-13 1984-01-10 1994-01-09</span></span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ... with 13,860 more rows</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 7,300 x 3</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    rlz_1 rlz_2 rlz_3</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1  4383  4383  4383</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2  7674 15343  8033</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 11693 15343  8034</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 15343 15343  9136</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 15343 15343  9136</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 17169  8773  8774</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 14616  7674  6216</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8  9872  9140 11693</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 11693 13886 13887</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10  8408 11334  9871</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ... with 7,290 more rows</span></span>
 <span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Date vector</span></span>
 <span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(stochastic_weather<span class="sc">$</span>dates)</span>
 <span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;2021-01-01&quot; &quot;2021-01-02&quot; &quot;2021-01-03&quot; &quot;2021-01-04&quot; &quot;2021-01-05&quot;</span></span>
 <span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [6] &quot;2021-01-06&quot;</span></span>
 <span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(stochastic_weather<span class="sc">$</span>dates)</span>
-<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;2058-12-26&quot; &quot;2058-12-27&quot; &quot;2058-12-28&quot; &quot;2058-12-29&quot; &quot;2058-12-30&quot;</span></span>
-<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [6] &quot;2058-12-31&quot;</span></span></code></pre></div>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;2040-12-26&quot; &quot;2040-12-27&quot; &quot;2040-12-28&quot; &quot;2040-12-29&quot; &quot;2040-12-30&quot;</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [6] &quot;2040-12-31&quot;</span></span></code></pre></div>
 </div>
 <div id="apply-climate-change-realizations" class="section level2" number="3.3">
-<h2><span class="header-section-number">3.3</span> Apply climate change realizations</h2>
-<p>Delta factors can be imposed on the historical or stochastically generated weather data to reflect plausible changes on climate statistics. Currently, it is possible to shift mean and variance of precipitation and mean of temperature. Preciptation changes are specified as ratios, where a value of 1.0 indicates no change for the given calendar month. Temperature changes are specified as increases (or decreases) in degree celsius in a given month.</p>
+<h2><span class="header-section-number">3.3</span> Apply climate change
+realizations</h2>
+<p>Delta factors can be imposed on the historical or stochastically
+generated weather data to reflect plausible changes on climate
+statistics. Currently, it is possible to shift mean and variance of
+precipitation and mean of temperature. Preciptation changes are
+specified as ratios, where a value of 1.0 indicates no change for the
+given calendar month. Temperature changes are specified as increases (or
+decreases) in degree celsius in a given month.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Temperature changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>delta_temp_mean <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">3.0</span>, <span class="fl">3.2</span>, <span class="fl">3.4</span>, <span class="fl">4.0</span>, <span class="fl">4.1</span>, <span class="fl">4.4</span>, <span class="fl">5.0</span>, <span class="fl">3.5</span>, <span class="fl">3.3</span>, <span class="fl">2.9</span>, <span class="fl">2.8</span>, <span class="fl">2.7</span>)</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -340,7 +586,8 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>   <span class="at">change.factor.temp.mean =</span> delta_temp_mean,</span>
 <span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>   <span class="at">change.type.temp =</span> <span class="st">&quot;transient&quot;</span>,</span>
 <span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>   <span class="at">change.type.precip =</span> <span class="st">&quot;transient&quot;</span>)</span></code></pre></div>
-<p>Finally we can save the generated weather series back to a netcdf file:</p>
+<p>Finally we can save the generated weather series back to a netcdf
+file:</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Save to netcdf file</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">writeNetcdf</span>(</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> stochastic2,</span>
@@ -356,14 +603,25 @@ pre { /* Code block - determines code spacing between lines */
 </div>
 </div>
 <div id="climate-stress-testing" class="section level1" number="4">
-<h1><span class="header-section-number">4</span> Climate Stress Testing</h1>
-<p>Metereological input to a climate stress test can be generated by obtaining a wide range of plausible weather conditions.<br />
+<h1><span class="header-section-number">4</span> Climate Stress
+Testing</h1>
+<p>Metereological input to a climate stress test can be generated by
+obtaining a wide range of plausible weather conditions.<br />
 </p>
-<p>In this tutorial, we will generate 6 climate change scenarios by combining 3 monthly precipitation changes and 2 monthly temperature changes. We will then apply these scenarios to 3 natural variability realizations, resulting in a total of 6 x 3 = 18 scenarios.<br />
+<p>In this tutorial, we will generate 6 climate change scenarios by
+combining 3 monthly precipitation changes and 2 monthly temperature
+changes. We will then apply these scenarios to 3 natural variability
+realizations, resulting in a total of 6 x 3 = 18 scenarios.<br />
 </p>
 <div id="defining-the-stress-testing-matrix" class="section level2" number="4.1">
-<h2><span class="header-section-number">4.1</span> Defining the stress testing matrix</h2>
-<p>The first step is define a data table to store all information regarding the scenarios, e.g., how weather statistics are being changed. To do this, we first define a bandwith range (e.g., minimum and maximum values) to define the delta factors for each climate statistic being perturbed. In the example below, we vary three statistics: mean of precipitation, variance of precipitation, and mean of temperature.</p>
+<h2><span class="header-section-number">4.1</span> Defining the stress
+testing matrix</h2>
+<p>The first step is define a data table to store all information
+regarding the scenarios, e.g., how weather statistics are being changed.
+To do this, we first define a bandwith range (e.g., minimum and maximum
+values) to define the delta factors for each climate statistic being
+perturbed. In the example below, we vary three statistics: mean of
+precipitation, variance of precipitation, and mean of temperature.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Temp mean changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec</span></span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>delta_temp_mean_min <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>)</span>
@@ -409,7 +667,8 @@ pre { /* Code block - determines code spacing between lines */
 <span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>   <span class="fu">guides</span>(<span class="at">color =</span> <span class="st">&quot;none&quot;</span>)</span>
 <span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a> p</span></code></pre></div>
-<p>Now lets create the scenario matrix using the bandwiths and incremental step sizes specified for each variable</p>
+<p>Now lets create the scenario matrix using the bandwiths and
+incremental step sizes specified for each variable</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Stress test matrix</span></span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a> strtest_matrix <span class="ot">&lt;-</span> tidyr<span class="sc">::</span><span class="fu">expand_grid</span>(<span class="at">stoc_ind =</span> <span class="dv">1</span><span class="sc">:</span>realization_num,</span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">precip_ind =</span> <span class="dv">1</span><span class="sc">:</span>precip_step_num, <span class="at">temp_ind =</span> <span class="dv">1</span><span class="sc">:</span>temp_step_num)</span>
@@ -482,11 +741,13 @@ pre { /* Code block - determines code spacing between lines */
 </div>
 </div>
 <div id="running-weather-generator-from-python" class="section level1" number="5">
-<h1><span class="header-section-number">5</span> Running weather generator from python</h1>
+<h1><span class="header-section-number">5</span> Running weather
+generator from python</h1>
 <p><em>in progress</em></p>
 <p>Prerequisites:<br />
 1. Install latest version of R via <a href="https://mirror.lyrahosting.com/CRAN/" class="uri">https://mirror.lyrahosting.com/CRAN/</a><br />
-2. Create a new python environment with packages rpy2, r-base, r-essentials, pandas, numpy2<br />
+2. Create a new python environment with packages rpy2, r-base,
+r-essentials, pandas, numpy2<br />
 </p>
 <p>First set the PATH variables correctly</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>

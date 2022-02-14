@@ -4,12 +4,11 @@ output:
   rmarkdown::html_vignette:
     number_sections: true
     toc: true
+    toc_depth: 3
 vignette: >
   %\VignetteIndexEntry{Getting started}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
-editor_options:
-  chunk_output_type: console
 ---
 
 <style type="text/css">
@@ -121,18 +120,22 @@ stochastic_weather <- generateWeatherSeries(
      weather.grid = ncdata$grid,
      weather.date = ncdata$date,
      variable.names = variables,
-     output.path = output_path,
+     variable.labels = variables,
+     variable.units = NULL,
+     sim.year.num = 20,
+     sim.year.start = 2020,
      month.start = 1,
      realization.num = realization_num,
      warm.variable = "precip",
      warm.signif.level = 0.90,
-     warm.sample.num = 5000,
-     knn.sample.num = 100,
-     evaluate.model = FALSE,
-     evaluate.grid.num = 20,
+     warm.sample.num = 10000,
+     warm.subset.criteria = NULL,
+     knn.sample.num = 120,
      mc.wet.threshold = 0.3,
      mc.extreme.quantile = 0.8,
-     sim.year.num = 20,
+     evaluate.model = FALSE,
+     evaluate.grid.num = 20,
+     output.path = output_path,
      seed = 123)
 ```
 

@@ -1,0 +1,16 @@
+url: ~
+template:
+  bootstrap: 5
+  bootswatch: cyborg
+  theme: arrow-dark
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, tutorials, news]
+    right: [search, github]
+  components:
+    articles:
+        text: Articles
+        menu:
+        - text: Getting started
+          href: vignettes/Getting_started.html  
