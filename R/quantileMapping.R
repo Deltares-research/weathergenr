@@ -9,7 +9,6 @@
 #'
 #' @return
 #' @export
-#' @importFrom fitdistrplus fitdist
 quantileMapping <- function(
   value = NULL,
   mean.change = NULL,

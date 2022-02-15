@@ -35,8 +35,6 @@
 #' @import tidyr
 #' @import patchwork
 #' @import dplyr
-#' @importFrom sf st_as_sf st_sample st_cast st_coordinates
-#' @importFrom utils write.csv
 generateWeatherSeries <- function(
   weather.data = NULL,
   weather.grid = NULL,
@@ -77,13 +75,24 @@ generateWeatherSeries <- function(
   grids  <- weather.grid$id
   ngrids <- length(grids)
 
+  if(compute.parallel == TRUE) {
+
+    if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
+    message(cat("\u2713", "|", paste0("Stochastic time-series generation in parallel mode (", num.cores, " cores)")))
+
+  } else {
+    message(cat("\u2713", "|", "Stochastic time-series generation in sequential mode"))
+  }
+
   #browser()
-  message(cat("\u2713", "|", "Historical data loaded (spatial resolution:", ngrids, "grid cells)"))
+  message(cat("\u2713", "|",
+      paste0("Input weather data: ", ngrids, " grid cells, ",
+    length(variable.names), " variables with a length of ", length(weather.date), " days")
+  ))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
   warm_path <- paste0(output.path, "historical/")
   if (!dir.exists(warm_path)) {dir.create(warm_path)}
-
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -193,10 +202,6 @@ generateWeatherSeries <- function(
     "series sampled"))
 
 
-  `%dopar%` <- foreach::`%dopar%`
-  `%do%` <- foreach::`%do%`
-
-
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
   resampled_dates <- as_tibble(matrix(0, nrow=nrow(sim_dates_d), ncol=realization.num),
@@ -204,11 +209,8 @@ generateWeatherSeries <- function(
 
   if (compute.parallel) {
 
-    if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-
     cl <- parallel::makeCluster(num.cores)
     doParallel::registerDoParallel(cl)
-
 
     `%d%` <- foreach::`%dopar%`
 
@@ -245,8 +247,8 @@ generateWeatherSeries <- function(
   message(cat("\u2713", "|",
     "Spatial/temporal dissaggregation with knn & markov chain modeling"))
 
-  write.csv(sim_dates_d$date, paste0(warm_path, "sim_dates.csv"), row.names = FALSE)
-  write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"), row.names = FALSE)
+  utils::write.csv(sim_dates_d$date, paste0(warm_path, "sim_dates.csv"), row.names = FALSE)
+  utils::write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"), row.names = FALSE)
 
   message(cat("\u2713", "|", "Resampled dates saved as resampled_dates.csv"))
   day_order <- sapply(1:realization.num,
@@ -282,13 +284,15 @@ generateWeatherSeries <- function(
     obs_sample <- lapply(weather.data[sampleGrids], function(x)
       dplyr::mutate(x, date = weather.date, .before = 1))
 
-    evaluateWegen(daily.sim = rlz_sample,
+    suppressWarnings(evaluateWegen(daily.sim = rlz_sample,
        daily.obs = obs_sample,
        output.path = eval_path,
        variables = variable.names,
        variable.labels = variable.labels,
        variable.units = variable.units,
        realization.num = realization.num)
+    )
+
 
     message(cat("\u2713", "|", "Model evaluation plots saved to:", eval_path))
 

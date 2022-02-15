@@ -21,9 +21,6 @@
 #' @return
 #' @export
 #' @import utils ggplot2 dplyr
-#' @importFrom stats cor median
-#' @importFrom e1071 skewness
-#' @importFrom rlang .data
 evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
@@ -125,7 +122,7 @@ evaluateWegen <- function(
         unite(id_variable, c("id","variable"), sep = ":") %>%
         spread(id_variable, value) %>%
         dplyr::select(-year, -mon, -day) %>%
-        cor(.$value) %>% as_tibble() %>%
+        stats::cor(.$value) %>% as_tibble() %>%
         mutate(rlz = n, .before = 1)
     )
 
@@ -166,7 +163,7 @@ evaluateWegen <- function(
     unite(id_variable, c("id","variable"),sep = ":") %>%
     spread(id_variable, value) %>%
     dplyr::select(-year, -mon, -day) %>%
-    cor(.$value) %>% as_tibble()
+    stats::cor(.$value) %>% as_tibble()
 
   hist_wetdry_days <- hist_stats_ini %>%
       select(id, year, mon, day, precip) %>%
@@ -198,27 +195,27 @@ evaluateWegen <- function(
 
   sim_stats_mon_median <- sim_stats %>%
     group_by(id, mon, variable, stat) %>%
-    summarize(value = median(value)) %>%
+    summarize(value = stats::median(value)) %>%
     mutate(type = "Simulated")
 
   hist_stats_mon <- hist_stats %>%
     group_by(id, mon, variable, stat) %>%
-    summarize(value = median(value)) %>%
+    summarize(value = stats::median(value)) %>%
     mutate(type = "Observed")
 
   sim_wetdry_days_meadian <- sim_wetdry_days %>%
     gather(key = stat, value = value, wet_count:dry_count) %>%
     group_by(id, mon, stat) %>%
-    summarize(value = median(value)) %>%
+    summarize(value = stats::median(value)) %>%
     mutate(type = "Simulated")
 
   sim_wet_spells_median <- sim_wet_spells %>%
     group_by(id, length) %>%
-    summarize(wet = median(wet))
+    summarize(wet = stats::median(wet))
 
   sim_dry_spells_median <- sim_dry_spells %>%
     group_by(id, length) %>%
-    summarize(dry = median(dry))
+    summarize(dry = stats::median(dry))
 
   sim_wetdry_spells_median <- sim_wet_spells_median %>%
     full_join(sim_dry_spells_median, by = c("id", "length")) %>%
@@ -240,7 +237,7 @@ evaluateWegen <- function(
     separate(id_variable1, c("id1","variable1"),sep=":") %>%
     separate(id_variable2, c("id2","variable2"),sep=":") %>%
     group_by(id1, variable1, id2, variable2) %>%
-    summarize(value = median(value)) %>%
+    summarize(value = stats::median(value)) %>%
     mutate(type = "Simulated")
 
   var_combs <- apply(combn(variables, 2),2, paste, collapse=":")

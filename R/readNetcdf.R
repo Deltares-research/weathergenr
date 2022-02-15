@@ -15,7 +15,6 @@
 #' @import ncdf4
 #' @import tidyr
 #' @import dplyr
-#' @importFrom stats setNames
 #' @examples
 #' \dontrun{
 #' output <- readNetcdf(nc.path = system.file('extdata', package = 'gridwegen'),
@@ -117,6 +116,6 @@ readNetcdf <- function(
                   grid = grid_mat %>% mutate(id = 1:n()) %>% select(-data),
                   date = datev,
                   dimensions = nc_dim,
-                  attributes = c(nc_attribs, setNames(list(nc_attribs_spref),
+                  attributes = c(nc_attribs, stats::setNames(list(nc_attribs_spref),
                                  spatial.ref), global = list(nc_attribs_glob))))
 }

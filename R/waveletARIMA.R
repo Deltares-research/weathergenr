@@ -7,8 +7,6 @@
 #' @param wavelet.components A list object, with different components corresponding to low-frequency signals and the noise
 #'
 #' @export
-#' @importFrom forecast auto.arima
-#' @importFrom stats simulate
 waveletARIMA <- function(
   wavelet.components = NULL,
   sim.year.num = NULL,
@@ -38,7 +36,7 @@ waveletARIMA <- function(
     SD <- sqrt(MODEL[[k]]$sigma2)
 
     SIM[[k]] <- sapply(1:sim.num, function(x) {
-        set.seed(seed+x); simulate(MODEL[[k]], sim.year.num, sd = SD)}) + INTERCEPT + MEAN
+        set.seed(seed+x); stats::simulate(MODEL[[k]], sim.year.num, sd = SD)}) + INTERCEPT + MEAN
   }
 
   return(Reduce(`+`, SIM))

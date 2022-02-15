@@ -13,7 +13,6 @@
 #' @return
 #' @export
 #' @import ggplot2
-#' @importFrom stats var fft qchisq sd
 waveletDecompose <- function(variable = NULL,
        signif.periods = NULL,
        noise.type = "white",
@@ -71,11 +70,11 @@ waveletDecompose <- function(variable = NULL,
 
   #....construct time series to analyze, pad if necessary
   current_variable_org <- variable
-  variance1 <- var(current_variable_org)
+  variance1 <- stats::var(current_variable_org)
   n1 <- length(current_variable_org)
 
   current_variable <- scale(current_variable_org)
-  variance2 <- var(current_variable)
+  variance2 <- stats::var(current_variable)
   base2 <- floor(log(n1)/log(2) + 0.4999)   # power of 2 nearest to N
 
   current_variable <- c(current_variable,rep(0,(2^(base2+1)-n1)))
@@ -98,7 +97,7 @@ waveletDecompose <- function(variable = NULL,
   k <- c(0,k,-rev(k[1:floor((n-1)/2)]))
 
   #fourier transform of standardized precipitation
-  f <- fft(current_variable,inverse=FALSE)
+  f <- stats::fft(current_variable,inverse=FALSE)
 
   # loop through all scales and compute transform
   for (a1 in 1:(J+1)) {
@@ -108,7 +107,7 @@ waveletDecompose <- function(variable = NULL,
     fourier_factor <- results[1]
     coi <- results[2]
     dofmin <- results[3]
-    wave[a1,] <- fft(f*daughter,inverse=TRUE)/n  # wavelet transform[Eqn(4)]
+    wave[a1,] <- stats::fft(f*daughter,inverse=TRUE)/n  # wavelet transform[Eqn(4)]
 
   }
 
@@ -139,7 +138,7 @@ waveletDecompose <- function(variable = NULL,
   dof <- dofmin
 
   #ENTIRE POWER SPECTRUM
-  chisquare <- qchisq(signif.level,dof)/dof
+  chisquare <- stats::qchisq(signif.level,dof)/dof
   signif <- fft_theor*chisquare   # [Eqn(18)]
   sig95 <- ((signif))%o%(array(1,n1))  # expand signif --> (J+1)x(N) array
   sig95 <- POWER / sig95         # where ratio > 1, power is significant
@@ -154,7 +153,7 @@ waveletDecompose <- function(variable = NULL,
   chisquare_GWS <- array(NA,(J+1))
   signif_GWS <- array(NA,(J+1))
   for (a1 in 1:(J+1)) {
-    chisquare_GWS[a1] <- qchisq(signif.level,dof[a1])/dof[a1]
+    chisquare_GWS[a1] <- stats::qchisq(signif.level,dof[a1])/dof[a1]
     signif_GWS[a1] <- fft_theor[a1]*variance1*chisquare_GWS[a1]
   }
 
@@ -177,10 +176,10 @@ waveletDecompose <- function(variable = NULL,
     Cdelta <- .776
     w0_0 <- pi^(-1/4)
     if (length(CUR_PERIODS)>1)  {
-      COMPS[,i] <- apply(sd(current_variable_org)*(dj*sqrt(dt)/(Cdelta*w0_0))*Re(wave)[CUR_PERIODS,]/sqrt(sj),FUN=sum,c(2))
+      COMPS[,i] <- apply(stats::sd(current_variable_org)*(dj*sqrt(dt)/(Cdelta*w0_0))*Re(wave)[CUR_PERIODS,]/sqrt(sj),FUN=sum,c(2))
     }
     if (length(CUR_PERIODS)==1) {
-      COMPS[,i] <- sd(current_variable_org)*(dj*sqrt(dt)/(Cdelta*w0_0))*Re(wave)[CUR_PERIODS,]/sqrt(sj)
+      COMPS[,i] <- stats::sd(current_variable_org)*(dj*sqrt(dt)/(Cdelta*w0_0))*Re(wave)[CUR_PERIODS,]/sqrt(sj)
     }
   }
 

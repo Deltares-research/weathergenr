@@ -20,8 +20,6 @@
 #' @export
 #' @import dplyr
 #' @import ggplot2
-#' @importFrom stats sd
-#' @importFrom utils write.csv
 waveletARSubset <- function(
   series.obs = NULL,
   series.sim = NULL,
@@ -60,12 +58,12 @@ waveletARSubset <- function(
     gather(key = sim, value = value, -yind) %>%
     mutate(sim = as.numeric(sim)) %>%
     group_by(sim) %>%
-    summarize(mean = mean(value), sd = sd(value),
+    summarize(mean = mean(value), sd = stats::sd(value),
               max = max(value), min = min(value))
 
   # Statistics for observed weather series
   stats_obs <- tibble(value = series.obs) %>%
-    summarize(mean = mean(value), sd = sd(value),
+    summarize(mean = mean(value), sd = stats::sd(value),
               max = max(value), min = min(value))
 
   # Significant periods
