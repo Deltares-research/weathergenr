@@ -58,44 +58,49 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 
 # Overview
 
-This vignette introduces you to the basics of multivariable, multigrid stochastic daily weather series generation with *weathergenr*. Weathergen package consists of a set of scripts anc conveninence wrappers coded in R based on the existing work by Steinscheineder et al, (2013) with significant speed improvements.
+This vignette introduces you to the basics of the multivariable, multigrid stochastic daily weather series generation process with *weathergenr*. The package consists of a series of R scripts and function wrappers built upon the work by Steinscheineder et al (2013). This implementation works directly with gridded hydrometeorological datasets (e.g., ERA5) through netcdf files and provide further automatization of the underlying statistical processes. Recoded functions also provide significant speed improvements in most cases. 
 
-You'll first learn how to easily generate daily, multivariable stochastic weather realizations for a selected geographic area. Next, you'll learn how to impose climate changes on the generated stochastic weather realizations, for example, as changes in monthly means and variance of temperature and precipitation. Finally, you will see an illustration of how the input data for a "climate stress test" can generated using this package.
+In this tutorial, you'll first learn how to easily generate new stochastic weather realizations for a specific geographic area. Next, you'll learn how to impose climate changes on the generated stochastic weather realizations, for example, as changes in monthly means and variance of temperature and precipitation. Finally, you will see a simple illustration of how the input data for a "climate stress test" can generated.
 
 # Installation and setup
-The latest version of the weathergenr package can be installed from the github repository:
-```{r setup, eval=FALSE}
-devtools::install_github("Deltares/weathergenr")
+The latest version of the weathergenr package can be installed from github and then loaded to the environment:
+```{r setup, eval=TRUE, echo = FALSE}
+devtools::install_github("Deltares/weathergenr", upgrade = "never")
+library(weathergenr)
 ```
 
 # Simple examples
 
-## Reading in multivariable weather series
+## Reading in weather data from netcdf
 
-For this exercise, we will use the sample data provided with the package. The file provide long-term gridded metereological data for the Ntoum basin in Gabon. The readNetcdf() is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.
+The weather generator takes gridded weather data for a previously cropped geographic area, provided as a netcdf file. Thus, the first step is to read-in weather data and associated spatial information from an external file. 
+
+For this exercise, we will use the sample netcdf file that comes with the package. The file provides long-term gridded metereological data for the Ntoum basin, Gabon. The *readNetcdf()* is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.
+
 ```{r ncfile}
-library(weathergenr)
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
 ncdata <- readNetcdf(ncfile)
+```
 
-# Objects stored in the output data
+The output object stores various information from the netcdf file:
+```{r ncdata1}
 names(ncdata)
 ```
 
-Metereological data is stored as a list object and each list element is a "tidy data frame" with observations on rows and metereological variables on columns. Lets check this:
-```{r ncdata}
+Metereological data is stored as a list object via *data* element. Each list represents a different grid cell in "tidy" format, i.e., with observations on rows and metereological variables on columns:
+```{r ncdata2}
 # Display climate data for the first gridcell
 ncdata$data[[1]]
 ```
 
-Information on the grids can be accessed via the 'grid' element and is also provided as a data frame with columns grid index followed by x and y dimension indices and x and y coordinate values:
-```{r ncgrids}
+Information on the grids can be accessed via the *grid* element. It is also provided as a data frame with columns grid index followed by x and y dimension indices and x and y coordinate values:
+```{r ncdata3}
 # Display grid information
 ncdata$grid
 ```
 
-Finally, the date series associated with the data can be accesssed from:
-```{r ncdates}
+Finally, the date series associated with the data can be accessed with the *date* element:
+```{r ncdata4}
 # Display start and ending values date vector
 head(ncdata$date)
 tail(ncdata$date)
@@ -103,7 +108,7 @@ tail(ncdata$date)
 
 ## Generate stochastic weather realizations
 
-In this section, we introduce the procedure to obtain new weather sequences from the historical weather record via the generateWeatherSeries() function. This function serves as a wrapper arround a number of statistical procedures including a wavelet autoregressive model (WARM) coupled with a Markov chain knn resampling scheme based on Steinschneider and Brown (2013).
+In this section, we introduce the procedure to obtain new weather sequences from the historical weather record via the *generateWeatherSeries()* function. This function serves as a wrapper arround a number of statistical procedures including a wavelet autoregressive model (WARM) coupled with a Markov chain knn resampling scheme based on Steinschneider and Brown (2013).
 
 First, lets specify an output path for the results and variables to include from the dataset:
 ```{r stochastic1}
@@ -131,7 +136,7 @@ stochastic_weather <- generateWeatherSeries(
      warm.sample.num = 10000,
      warm.subset.criteria = NULL,
      knn.sample.num = 120,
-     mc.wet.threshold = 0.3,
+     mc.wet.quantile= 0.2,
      mc.extreme.quantile = 0.8,
      evaluate.model = FALSE,
      evaluate.grid.num = 20,
