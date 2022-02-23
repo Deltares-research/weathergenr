@@ -36,7 +36,8 @@ waveletARIMA <- function(
     SD <- sqrt(MODEL[[k]]$sigma2)
 
     SIM[[k]] <- sapply(1:sim.num, function(x) {
-        set.seed(seed+x); stats::simulate(MODEL[[k]], sim.year.num, sd = SD)}) + INTERCEPT + MEAN
+      set.seed(seed+x)
+      stats::simulate(MODEL[[k]], sim.year.num, sd = SD)}) + INTERCEPT + MEAN
   }
 
   return(Reduce(`+`, SIM))

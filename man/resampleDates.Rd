@@ -16,9 +16,8 @@ resampleDates(
   sim.dates.d = NULL,
   YEAR_D = NULL,
   month.start = NULL,
-  kk = NULL,
   knn.annual.sample.num = 50,
-  wet.threshold = 0.3,
+  wet.quantile = 0.2,
   extreme.quantile = 0.8,
   seed = NULL
 )
@@ -46,13 +45,13 @@ resampleDates(
 
 \item{month.start}{placeholder}
 
-\item{kk}{placeholder}
-
 \item{knn.annual.sample.num}{placeholder}
 
-\item{wet.threshold}{Precipitation threshold (mm) to distinguish between wet and dry days}
+\item{wet.quantile}{Precipitation threshold (mm) to distinguish between wet and dry days}
 
 \item{extreme.quantile}{quantile threshold to distinguish between extreme wet days}
+
+\item{kk}{placeholder}
 }
 \value{
 

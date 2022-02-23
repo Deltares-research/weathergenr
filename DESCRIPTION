@@ -11,7 +11,6 @@ Depends:
   R (>= 4.1)
 Imports: 
     akima,
-    patchwork,
     doParallel,
     dplyr,
     e1071,
@@ -22,6 +21,7 @@ Imports:
     MASS,
     ncdf4,
     parallel,
+    patchwork,
     quantmod,
     scales,
     sf,

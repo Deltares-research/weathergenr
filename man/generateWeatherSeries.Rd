@@ -20,12 +20,14 @@ generateWeatherSeries(
   warm.sample.num = 5000,
   warm.subset.criteria = NULL,
   knn.sample.num = 100,
-  mc.wet.threshold = 0.3,
+  mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   output.path = getwd(),
-  seed = NULL
+  seed = NULL,
+  compute.parallel = TRUE,
+  num.cores = NULL
 )
 }
 \arguments{
@@ -33,7 +35,7 @@ generateWeatherSeries(
 
 \item{weather.grid}{Data frame of grid cells. Each grid cell is assigned an id starting from 1, x and y coordinate index value, and x and y coordinates.}
 
-\item{weather.date}{placeholder}
+\item{weather.date}{a vector of dates matching the weather.data}
 
 \item{variable.names}{vector of names for the variables to be included in the weather generator}
 
@@ -55,13 +57,13 @@ generateWeatherSeries(
 
 \item{warm.sample.num}{number of annual sequeces to be generated from the the warm model}
 
-\item{warm.subset.criteria}{placeholder}
+\item{warm.subset.criteria}{A list of statistical parameters used for subsetting from the initial annual simulated series}
 
 \item{knn.sample.num}{number of knn years to be sampled}
 
-\item{mc.wet.threshold}{placeholder}
+\item{mc.wet.quantile}{wet state threshold (quantile value) for markov-chain modeling}
 
-\item{mc.extreme.quantile}{placeholder}
+\item{mc.extreme.quantile}{extremely wet state threshold (quantile value) for markov-chain modeling}
 
 \item{evaluate.model}{logical value indicating wether to save model evaluation plots}
 
@@ -69,7 +71,11 @@ generateWeatherSeries(
 
 \item{output.path}{output path for the weather generator results (string)}
 
-\item{seed}{placeholder}
+\item{seed}{a random seed value (nunmeric)}
+
+\item{compute.parallel}{logical value indicating whether to run (some) functions in parallel}
+
+\item{num.cores}{Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned}
 }
 \value{
 
