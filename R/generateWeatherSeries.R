@@ -290,7 +290,10 @@ generateWeatherSeries <- function(
        variables = variable.names,
        variable.labels = variable.labels,
        variable.units = variable.units,
-       realization.num = realization.num)
+       realization.num = realization.num,
+       wet.quantile = mc.wet.quantile,
+       extreme.quantile = mc.extreme.quantile
+      )
     )
 
 

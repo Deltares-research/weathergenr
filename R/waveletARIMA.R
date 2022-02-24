@@ -5,6 +5,7 @@
 #' @param sim.year.num A numeric value defining the desired length of simulated annual time-series
 #' @param sim.num A numeric value defining the number of synthetic series to be produced.
 #' @param wavelet.components A list object, with different components corresponding to low-frequency signals and the noise
+#' @param seed random seed value
 #'
 #' @export
 waveletARIMA <- function(

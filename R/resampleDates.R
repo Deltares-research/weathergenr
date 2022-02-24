@@ -12,10 +12,10 @@
 #' @param dates.d placeholder
 #' @param sim.dates.d placeholder
 #' @param month.start placeholder
-#' @param kk placeholder
 #' @param wet.quantile Precipitation threshold (mm) to distinguish between wet and dry days
 #' @param extreme.quantile quantile threshold to distinguish between extreme wet days
 #' @param knn.annual.sample.num placeholder
+#' @param seed random seed value
 #'
 #' @return
 #' @export

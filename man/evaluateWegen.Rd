@@ -11,7 +11,9 @@ evaluateWegen(
   variables = NULL,
   variable.labels = NULL,
   variable.units = NULL,
-  realization.num = NULL
+  realization.num = NULL,
+  wet.quantile = 0.2,
+  extreme.quantile = 0.8
 )
 }
 \arguments{
@@ -19,15 +21,15 @@ evaluateWegen(
 
 \item{daily.obs}{A vector of daily time-series of observed weather series}
 
-\item{output.path}{A character string to define the path of resulting netcdf file.}
+\item{output.path}{A character string to define the path of resulting netcdf file}
 
-\item{variables}{A vector object specifying the names of weather variables.}
+\item{variables}{A vector object specifying the names of weather variables}
 
-\item{variable.labels}{A vector object specifying the names of weather variable labels.}
+\item{variable.labels}{A vector object specifying the names of weather variable labels}
 
-\item{variable.units}{A vector object specifying the names of weather variable units.}
+\item{variable.units}{A vector object specifying the names of weather variable units}
 
-\item{realization.num}{Placeholder}
+\item{realization.num}{number of weather realizations}
 }
 \value{
 

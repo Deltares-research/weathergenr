@@ -7,7 +7,7 @@
 #'
 #' @return
 #' @export
-calculateSpellLength <- function (x, threshold = 0, below = TRUE)
+averageSpellLength <- function (x, threshold = 0, below = TRUE)
 {
 
     if (!is.vector(x) && !is.list(x))
@@ -25,9 +25,15 @@ calculateSpellLength <- function (x, threshold = 0, below = TRUE)
     i <- c(which(y | is.na(y)), n)
 
     if(isTRUE(below)) {
-      diff(c(0L, i))[which(x[i] == 0)]
+      res <- diff(c(0L, i))[which(x[i] == 0)]
     } else {
-      diff(c(0L, i))[which(x[i] == 1)]
+      res <- diff(c(0L, i))[which(x[i] == 1)]
     }
+
+    spell_length = as.numeric(names(table(res)))
+    spell_count = as.numeric(table(res))
+
+    sum(spell_length * spell_count)/sum(spell_count)
+
 }
 

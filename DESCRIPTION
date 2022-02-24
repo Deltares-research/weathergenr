@@ -30,9 +30,10 @@ Imports:
     tidyr,
     utils
 Suggests:
-    rmarkdown,
+    devtools,
     knitr,
     magrittr,
+    rmarkdown,
     stringr,
     usethis
 Encoding: UTF-8

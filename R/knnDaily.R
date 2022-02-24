@@ -13,6 +13,7 @@
 #' @param mean_monthly_TEMP placeholder
 #' @param k1 placeholder
 #' @param count placeholder
+#' @param seed random seed value
 #'
 #' @return
 #' @export

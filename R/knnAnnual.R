@@ -8,6 +8,7 @@
 #' @param k1 placeholder
 #' @param y placeholder
 #' @param y_sample_size placeholder
+#' @param seed random seed value
 #'
 #' @return
 #' @export
