@@ -17,7 +17,7 @@
 #' @param sim.year.start numeric value indicating the starting year of the generated time-series
 #' @param sim.year.num  numeric value indicating the desired total number of years of simulated weather realizations
 #' @param realization.num number of natural variability realizations to be generated.
-#' @param month.start the first month of the year (default value is 1). Use a value other than 1 for water-year based analyses
+#' @param month.start the first month of the water year (default value is 1).
 #' @param evaluate.model logical value indicating wether to save model evaluation plots
 #' @param evaluate.grid.num Number of grid cells to be sampled in the evaluation plots
 #' @param warm.subset.criteria A list of statistical parameters used for subsetting from the initial annual simulated series
@@ -78,16 +78,18 @@ generateWeatherSeries <- function(
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat("\u2713", "|", paste0("Stochastic time-series generation in parallel mode (", num.cores, " cores)")))
+    message(cat("\u2713", "|",
+      paste0("Stochastic weather generation: parallel mode (", num.cores, " cores)")))
 
   } else {
-    message(cat("\u2713", "|", "Stochastic time-series generation in sequential mode"))
+    message(cat("\u2713", "|",
+      "Stochastic weather generation: sequential mode"))
   }
 
   #browser()
   message(cat("\u2713", "|",
-      paste0("Input weather data: ", ngrids, " grid cells, ",
-    length(variable.names), " variables with a length of ", length(weather.date), " days")
+      paste0("Input data: ", ngrids, " grid cells, ",
+    length(variable.names), " variables and ", length(weather.date), " days")
   ))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
@@ -193,7 +195,8 @@ generateWeatherSeries <- function(
        sample.num = realization.num,
        output.path = warm_path,
        bounds = warm.subset.criteria,
-       seed = seed)
+       seed = seed,
+       save.series = FALSE)
 
   message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted),
     "stochastic series match subsetting criteria"))
@@ -265,10 +268,6 @@ generateWeatherSeries <- function(
 
   if(evaluate.model) {
 
-    ## Check existing directories and create as needed
-    eval_path <- paste0(output.path, "evaluation/")
-    if (!dir.exists(eval_path)) dir.create(eval_path)
-
     sampleGrids <- sf::st_as_sf(weather.grid[,c("x","y")], coords=c("x","y")) %>%
       sf::st_sample(size = min(evaluate.grid.num, ngrids), type="regular") %>%
       sf::st_cast("POINT") %>% sf::st_coordinates() %>% as_tibble() %>%
@@ -286,7 +285,7 @@ generateWeatherSeries <- function(
 
     suppressWarnings(evaluateWegen(daily.sim = rlz_sample,
        daily.obs = obs_sample,
-       output.path = eval_path,
+       output.path = warm_path,
        variables = variable.names,
        variable.labels = variable.labels,
        variable.units = variable.units,
@@ -296,8 +295,7 @@ generateWeatherSeries <- function(
       )
     )
 
-
-    message(cat("\u2713", "|", "Model evaluation plots saved to:", eval_path))
+    message(cat("\u2713", "|", "Evaluation plots saved to:", warm_path))
 
   }
 

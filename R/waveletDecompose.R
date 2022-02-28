@@ -197,13 +197,14 @@ waveletDecompose <- function(variable = NULL,
 
 
     p <- ggplot(df, aes(x = year, y = value)) +
-        theme_light(base_size = 11) +
+        theme_bw(base_size = 11) +
         facet_wrap(~ variable, ncol = 1, scales = "free") +
+        scale_x_continuous(expand=c(0,0)) +
         geom_line() +
         labs(x = "Time (year)", y = "")
 
     # Save plot to file
-    ggsave(paste0(output.path, "warm_hist_decomposition.png"), height=6, width=8)
+    ggsave(paste0(output.path, "warm_hist_decomposition.png"), height=5, width=7)
 
 
 

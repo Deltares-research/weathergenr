@@ -48,7 +48,6 @@ waveletARSubset <- function(
   # Workaround for rlang warning
   sim <- value <- yind <- par <- type <- variable <- y <- x <- 0
 
-
   sim.year.num = nrow(series.sim)
 
   # Statistics for simulated realizations
@@ -176,33 +175,34 @@ waveletARSubset <- function(
 
     ggsave(paste0(output.path, "warm_sim_sample_spectral.png"), width=8, height=6)
 
-
     # Boxplots of all stats
     stats_obs_gg <- stats_obs %>% mutate(sim=1) %>%
-      gather(key = par, value = value, -sim) %>% mutate(type = "Observed")
-    stats_sim_gg <- stats_sim %>%
-      gather(key = par, value = value, -sim) %>% mutate(type = "Simulated")
+      gather(key = par, value = value, -sim) %>% mutate(type = "Observed") %>%
+      mutate(type = factor(type, levels = c("Sampled", "Observed"))) %>%
+      mutate(par = factor(par, levels = c("mean","sd", "min","max"),
+        labels = c("Mean", "St. Deviation", "Minimum", "Maximum"))) %>%
+      arrange(type)
 
-    stats_all <- bind_rows(stats_obs_gg, stats_sim_gg %>%
-      filter(sim %in% sub_clim)) %>%
-      mutate(type = factor(type, levels = c("Simulated", "Observed"))) %>%
+    stats_sim_gg <- stats_sim %>%
+      gather(key = par, value = value, -sim) %>% mutate(type = "Sampled") %>%
+      mutate(type = factor(type, levels = c("Sampled", "Observed"))) %>%
+      mutate(par = factor(par, levels = c("mean","sd", "min","max"),
+        labels = c("Mean", "St. Deviation", "Minimum", "Maximum"))) %>%
       arrange(type)
 
     p <- ggplot(mapping = aes(x = par, y = value)) +
-      theme_light() +
+      theme_bw() +
       facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1) +
-      geom_boxplot(data = stats_sim_gg, color = "gray60", outlier.shape = NA) +
       geom_violin(data = stats_sim_gg, color = "gray60") +
-      #geom_jitter(data = stats_sim_gg, alpha = 0.1, color = "gray60") +
-      geom_point(aes(fill = type), data = stats_all, size = 5, color = "white",
-                 shape = 21) +
-      scale_fill_manual(values = c("Simulated"="black","Observed"="blue")) +
+      geom_point(data = filter(stats_sim_gg, sim %in% sub_clim), size = 3, color = "white", fill = "black", shape = 21) +
+      geom_point(data = stats_obs_gg, size = 4, color = "white", fill = "blue", shape = 21) +
+      scale_fill_manual(values = c("Sampled" = "black", "Observed" = "blue")) +
       labs(x="", y = "", color = "", fill="") +
       theme(axis.title.x=element_blank(),
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank())
 
-      ggsave(paste0(output.path, "warm_sim_sample_stats.png"), width=8, height=6)
+      ggsave(paste0(output.path, "warm_sim_sample_stats.png"), width = 8, height = 5)
 
     # Plot simulated warm-series
     sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
@@ -216,14 +216,14 @@ waveletARSubset <- function(
     df2 <- tibble(x=1:length(series.obs), y = series.obs*365)
 
     p <- ggplot(df1, aes(x = x, y = y)) +
-      theme_light(base_size = 12) +
+      theme_bw(base_size = 12) +
       geom_line(aes(y = y, group = variable), color = "gray60", alpha = 0.6) +
-      geom_line(aes(y=y), data = df2, color = "black", size = 1) +
-      scale_x_continuous(limits = c(0,sim.year.num), breaks = seq(0,sim.year.num, 5)) +
+      geom_line(aes(y=y), data                                                                                                                                                                                     = df2, color = "black", size = 1) +
+      scale_x_continuous(limits = c(1,sim.year.num), breaks = seq(1,sim.year.num, 5)) +
       guides(color = "none") +
       labs(y = "Precipitation (mm/year)", x = "Year index")
 
-    ggsave(paste0(output.path, "warm_sim_timeseries.png"), height = 5, width = 10)
+    ggsave(paste0(output.path, "warm_sim_timeseries.png"), height = 5, width = 8)
 
 
   }
