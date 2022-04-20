@@ -27,9 +27,9 @@ tail(ncdata$date)
 
 ## ----stochastic1--------------------------------------------------------------
 # Set path to store weather generator results
-output_path <- "C:/testX/"
+output_path <- "C:/testnew/"
 variables <- c("precip", "temp", "temp_min", "temp_max")
-realization_num <- 3
+realization_num <- 1
 
 ## ----stochastic2, results='hide', eval = TRUE, cache=TRUE---------------------
 start_time <- Sys.time()
