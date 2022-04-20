@@ -170,7 +170,7 @@ waveletARSubset <- function(
     p <- waveletPlot(power.period = power.period[1:pl],
                    power.signif = power.signif[1:pl],
                    power.obs = power.obs[1:pl],
-                   power.sim = power.sim[1:pl,sub_sample])  +
+                   power.sim = power.sim[1:pl,sub_sample, drop = FALSE])  +
           scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
     ggsave(paste0(output.path, "warm_sim_sample_spectral.png"), width=8, height=6)
@@ -194,7 +194,7 @@ waveletARSubset <- function(
       theme_bw() +
       facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1) +
       geom_violin(data = stats_sim_gg, color = "gray60") +
-      geom_point(data = filter(stats_sim_gg, sim %in% sub_clim), size = 3, color = "white", fill = "black", shape = 21) +
+      geom_point(data = filter(stats_sim_gg, sim %in% sub_sample), size = 3, color = "white", fill = "black", shape = 21) +
       geom_point(data = stats_obs_gg, size = 4, color = "white", fill = "blue", shape = 21) +
       scale_fill_manual(values = c("Sampled" = "black", "Observed" = "blue")) +
       labs(x="", y = "", color = "", fill="") +
@@ -207,8 +207,8 @@ waveletARSubset <- function(
     # Plot simulated warm-series
     sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
 
-    df1 <- series.sim[,sub_clim_plot] %>%
-      as_tibble(.name_repair = ~paste0("rlz",1:length(sub_clim_plot))) %>%
+    df1 <- series.sim[,sub_sample] %>%
+      as_tibble(.name_repair = ~paste0("rlz",1:length(sub_sample))) %>%
       mutate(x = 1:sim.year.num) %>%
       gather(key = variable, value=y, -x) %>%
       mutate(y = y * 365)
@@ -219,7 +219,6 @@ waveletARSubset <- function(
       theme_bw(base_size = 12) +
       geom_line(aes(y = y, group = variable), color = "gray60", alpha = 0.6) +
       geom_line(aes(y=y), data                                                                                                                                                                                     = df2, color = "black", size = 1) +
-      scale_x_continuous(limits = c(1,sim.year.num), breaks = seq(1,sim.year.num, 5)) +
       guides(color = "none") +
       labs(y = "Precipitation (mm/year)", x = "Year index")
 
