@@ -36,7 +36,7 @@
 
 # Misc directories
 /other/
-
+/tests/
 /doc/
 /Meta/
 /dev/

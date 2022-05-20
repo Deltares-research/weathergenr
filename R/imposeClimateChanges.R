@@ -7,8 +7,8 @@
 #' @param change.factor.precip.mean placeholder
 #' @param change.factor.precip.variance placeholder
 #' @param change.factor.temp.mean placeholder
-#' @param change.type.temp placeholder
-#' @param change.type.precip placeholder
+#' @param transient.temp.change placeholder
+#' @param transient.precip.change placeholder
 #' @param calculate.pet placeholder
 #'
 #' @return
@@ -22,8 +22,8 @@ imposeClimateChanges <- function(
   change.factor.precip.mean = NULL,
   change.factor.precip.variance = NULL,
   change.factor.temp.mean = NULL,
-  change.type.temp = "transient",
-  change.type.precip = "transient",
+  transient.temp.change = TRUE,
+  transient.precip.change = TRUE,
   calculate.pet = TRUE
 )
 
@@ -37,7 +37,7 @@ imposeClimateChanges <- function(
 
   # Temperature change factors #################################################
 
-  if (change.type.temp == "transient") {
+  if(isTRUE(transient.temp.change)) {
 
       tempf1 <- sapply(1:12, function(x)
           seq(0, change.factor.temp.mean[x], length.out = max(year_ind)))
@@ -52,7 +52,7 @@ imposeClimateChanges <- function(
 
   # Precipitation change factors ###############################################
 
-  if(isTRUE(change.type.precip)) {
+  if(isTRUE(transient.precip.change)) {
 
     precip_meanf <- sapply(1:12,
       function(m) seq(1, change.factor.precip.mean[m], length.out = max(year_ind)))
