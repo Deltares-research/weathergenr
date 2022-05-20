@@ -18,7 +18,7 @@ devtools::install_github("Deltares/weathergenr")
 ## Quick start
 
 Tutorial (in progress): <br />
-[https://github.com/Deltares/weathergenr/blob/master/vignettes/Tutorial.html](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deltares/weathergenr/master/vignettes/Tutorial.html?token=GHSAT0AAAAAABQQCY7LIJXZBDLKKOSRSNZUYPH2XOQ)
+[https://github.com/Deltares/weathergenr/blob/master/vignettes/Getting_started.html](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deltares/weathergenr/master/vignettes/Getting_started.html?token=GHSAT0AAAAAABQQCY7LIJXZBDLKKOSRSNZUYPH2XOQ)
 
 ## Licence
 
