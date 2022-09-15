@@ -65,29 +65,34 @@ head(stochastic_weather$dates)
 tail(stochastic_weather$dates)
 
 ## ----climchange, eval = FALSE-------------------------------------------------
-#  # Temperature changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
-#  delta_temp_mean <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
-#
-#  # Precipitation changes   Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
-#  delta_precip_mean     <- c(0.7, 0.7, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
-#  delta_precip_variance <- c(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-#
-#  # Select first realization
-#  day_order <- match(stochastic_weather$resampled[[1]], ncdata$date)
-#
-#  # Obtain stochastic series by re-ordering historical data
-#  stochastic_rlz <- lapply(ncdata$data, function(x) x[day_order,])
-#
-#  # Apply climate changes to climate data
-#  stochastic2 <- imposeClimateChanges(
-#     climate.data = stochastic_rlz,
-#     climate.grid = ncdata$grid,
-#     sim.dates = stochastic_weather$dates,
-#     change.factor.precip.mean = delta_precip_mean,
-#     change.factor.precip.variance = delta_precip_variance,
-#     change.factor.temp.mean = delta_temp_mean,
-#     change.type.temp = "transient",
-#     change.type.precip = "transient")
+
+ # Temperature changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
+ delta_temp_mean <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
+
+ # Precipitation changes   Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
+ delta_precip_mean     <- c(0.7, 0.7, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
+ delta_precip_variance <- c(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+ # Select first realization
+ day_order <- match(stochastic_weather$resampled[[1]], ncdata$date)
+
+ # Obtain stochastic series by re-ordering historical data
+ stochastic_rlz <- lapply(ncdata$data, function(x) x[day_order,])
+
+ # Apply climate changes to climate data
+ stochastic2 <- imposeClimateChanges(
+    climate.data = stochastic_rlz,
+    climate.grid = ncdata$grid,
+    sim.dates = stochastic_weather$dates,
+    change.factor.precip.mean = delta_precip_mean,
+    change.factor.precip.variance = delta_precip_variance,
+    change.factor.temp.mean = delta_temp_mean,
+    transient.temp.change = TRUE,
+    transient.precip.change = TRUE,
+    calculate.pet = TRUE,
+    compute.parallel = TRUE,
+    num.cores = NULL
+   )
 
 ## ----climchange2, eval = FALSE------------------------------------------------
 #  # Save to netcdf file

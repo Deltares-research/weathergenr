@@ -130,13 +130,14 @@ generateWeatherSeries <- function(
   filter(wyear >= sim.year.start+1 & wyear <= sim_year_end) %>%
   mutate(date = as.Date(paste(year, month, day, sep = "-")), .before=1)
 
-  # Daily and annual climate data
+  # Multivariate list of daily climate data
   climate_d <- lapply(1:ngrids, function(i)
     weather.data[[i]][wyear_index,] %>%
     select(all_of(variable.names)) %>%
     mutate(dates_wy, .))
   climate_d_aavg <- Reduce(`+`, climate_d) / ngrids
 
+  # Multivariate list of annual climate data
   climate_a <- lapply(1:ngrids, function(i)
         climate_d[[i]] %>% group_by(year) %>%
         summarize(across({{variable.names}}, mean)) %>%
@@ -207,20 +208,18 @@ generateWeatherSeries <- function(
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
-  resampled_dates <- as_tibble(matrix(0, nrow=nrow(sim_dates_d), ncol=realization.num),
-    .name_repair=~paste0("rlz_", 1:realization.num))
+  resampled_dates <- as_tibble(matrix(0, nrow=nrow(sim_dates_d),
+    ncol=realization.num), .name_repair=~paste0("rlz_", 1:realization.num))
 
   if (compute.parallel) {
 
     cl <- parallel::makeCluster(num.cores)
     doParallel::registerDoParallel(cl)
-
     `%d%` <- foreach::`%dopar%`
 
   } else {
 
     `%d%` <- foreach::`%do%`
-
   }
 
   resampled_ini <- foreach::foreach(n=seq_len(realization.num)) %d% {
@@ -253,7 +252,7 @@ generateWeatherSeries <- function(
   utils::write.csv(sim_dates_d$date, paste0(warm_path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"), row.names = FALSE)
 
-  message(cat("\u2713", "|", "Resampled dates saved as resampled_dates.csv"))
+  message(cat("\u2713", "|", "Resampled dates stored in `resampled_dates.csv`"))
   day_order <- sapply(1:realization.num,
     function(n) match(resampled_dates[[n]], dates_d$date))
 
@@ -283,15 +282,16 @@ generateWeatherSeries <- function(
     obs_sample <- lapply(weather.data[sampleGrids], function(x)
       dplyr::mutate(x, date = weather.date, .before = 1))
 
-    suppressWarnings(evaluateWegen(daily.sim = rlz_sample,
-       daily.obs = obs_sample,
-       output.path = warm_path,
-       variables = variable.names,
-       variable.labels = variable.labels,
-       variable.units = variable.units,
-       realization.num = realization.num,
-       wet.quantile = mc.wet.quantile,
-       extreme.quantile = mc.extreme.quantile
+    suppressWarnings(
+      evaluateWegen(daily.sim = rlz_sample,
+          daily.obs = obs_sample,
+          output.path = warm_path,
+          variables = variable.names,
+          variable.labels = variable.labels,
+          variable.units = variable.units,
+          realization.num = realization.num,
+          wet.quantile = mc.wet.quantile,
+          extreme.quantile = mc.extreme.quantile
       )
     )
 
