@@ -114,7 +114,6 @@ waveletAnalysis <- function(variable = NULL,
 
   ######## Signficance Testing  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
   # get the appropriate parameters [see Table(2)]
   k0 <- 6
   empir <- c(2,0.776,2.32,0.60)
@@ -154,7 +153,7 @@ waveletAnalysis <- function(variable = NULL,
 
   period_lower_limit <- 0
   sig_periods <- which(GWS>GWS_signif & period > period_lower_limit)
-  signif_periods <- split(sig_periods, cumsum(c(1, diff(sig_periods) != 1)))
+  signif_periods <- unlist(split(sig_periods, cumsum(c(1, diff(sig_periods) != 1))), use.names = F)
 
   if(plot == TRUE) {
 
@@ -168,9 +167,9 @@ waveletAnalysis <- function(variable = NULL,
       gather(key = y, value = z, -x) %>%
       mutate(across(everything(), as.numeric))
 
-    df <- with(df, akima::interp(x, y, z, extrap = FALSE, linear = TRUE,
+    df <- suppressWarnings(with(df, akima::interp(x, y, z, extrap = FALSE, linear = TRUE,
                       xo = seq(min(x), max(x), length = 20),
-                      yo = seq(min(y), max(y), length = 20)))
+                      yo = seq(min(y), max(y), length = 20))))
 
     df1 <- as_tibble(df$z, .name_repair = ~as.character(df$y))  %>%
       mutate(x = df$x) %>%

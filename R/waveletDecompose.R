@@ -24,7 +24,6 @@ waveletDecompose <- function(variable = NULL,
   # Workaround for rlang warning
   value <- year <- 0
 
-
   #Number of orthogonal component series that representing a low-freq signal
   NUM_FINAL_PERIODS <- length(signif.periods) #OK
 
@@ -118,7 +117,6 @@ waveletDecompose <- function(variable = NULL,
   GWS <- variance1*apply(POWER, FUN = mean,c(1)) #Global Wavelet Spectrum
 
   #:::::::::::::::: Signficance Testing  :::::::::::::::::::::::::::::::::::::::
-
 
   # get the appropriate parameters [see Table(2)]
   k0 <- 6

@@ -1,6 +1,6 @@
 
 
-#' A function for Wavelet Autoregressive Modeling (WARM)
+#' Wavelet Autoregressive Modeling (WARM)
 #'
 #' @param sim.year.num A numeric value defining the desired length of simulated annual time-series
 #' @param sim.num A numeric value defining the number of synthetic series to be produced.
@@ -43,4 +43,4 @@ waveletARIMA <- function(
 
   return(Reduce(`+`, SIM))
 
-}
+  }

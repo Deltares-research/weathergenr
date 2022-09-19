@@ -26,7 +26,8 @@ imposeClimateChanges <- function(
   transient.precip.change = TRUE,
   calculate.pet = TRUE,
   compute.parallel = TRUE,
-  num.cores = NULL)
+  num.cores = NULL,
+  fit.method = "mme")
 
  {
 
@@ -36,21 +37,16 @@ imposeClimateChanges <- function(
   year_ind <- year_vec - min(year_vec) + 1
   month_ind <- as.numeric(format(sim.dates,"%m"))
 
-
   # Define daily temperature change factors
   if(isTRUE(transient.temp.change)) {
-
       tempf1 <- sapply(1:12, function(x)
           seq(0, change.factor.temp.mean[x], length.out = max(year_ind)))
-
   } else {
-
       tempf1 <- sapply(1:12, function(x)
           rep(change.factor.temp.mean[x], length.out = max(year_ind)))
   }
 
   tempf2 <- sapply(1:length(sim.dates), function(x) tempf1[year_ind[x], month_ind[x]])
-
 
   # Define daily precipitation change factors
   if(isTRUE(transient.precip.change)) {
@@ -83,43 +79,40 @@ imposeClimateChanges <- function(
   ##############################################################################
   ##############################################################################
 
-  climate.new <- climate.data
+  precip <- foreach::foreach(x=seq_len(ngrids)) %d% {
 
-  precip <- foreach::foreach(x=seq_len(ngrids), .packages = c("tibble")) %d% {
-
-      weathergenr::quantileMapping(
+      quantileMapping(
             value = climate.data[[x]]$precip,
             mon.ts = month_ind,
             year.ts = year_ind,
             mean.change = precip_meanf,
-            var.change = precip_varf)
+            var.change = precip_varf,
+            fit.method = fit.method)
   }
 
-  junk <- lapply(seq_len(ngrids),
-    function(x) climate.new[[x]]$precip = precip[[x]])
+  if(compute.parallel == TRUE) parallel::stopCluster(cl)
 
   for (x in 1:ngrids) {
 
     # Perturb temp, temp_min, and temp_max by delta factors
-    climate.new[[x]]$temp <- climate.data[[x]]$temp + tempf2
-    climate.new[[x]]$temp_min <- climate.data[[x]]$temp_min + tempf2
-    climate.new[[x]]$temp_max <- climate.data[[x]]$temp_max + tempf2
+    climate.data[[x]]$precip <- precip[[x]]
+    climate.data[[x]]$temp   <- climate.data[[x]]$temp + tempf2
+    climate.data[[x]]$temp_min <- climate.data[[x]]$temp_min + tempf2
+    climate.data[[x]]$temp_max <- climate.data[[x]]$temp_max + tempf2
 
     if(isTRUE(calculate.pet)) {
-      climate.new[[x]]$pet <- with(climate.new[[x]], hargreavesPet(
+      climate.data[[x]]$pet <- with(climate.data[[x]], hargreavesPet(
           months = month_ind, temp = temp, tdiff = temp_max - temp_min,
           lat = climate.grid$y[x]))
     }
 
   }
 
-  if(compute.parallel == TRUE) parallel::stopCluster(cl)
-
   # Replace possible infinite/NA values with zero
-  climate.new <- lapply(1:length(climate.new), function(y)
-        do.call(tibble::tibble, lapply(climate.new[[y]],
+  climate.data <- lapply(1:length(climate.data), function(y)
+        do.call(tibble::tibble, lapply(climate.data[[y]],
           function(x) replace(x, is.infinite(x) | is.na(x), 0))))
 
-  return(climate.new)
+  return(climate.data)
 
 }

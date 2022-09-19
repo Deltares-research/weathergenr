@@ -78,22 +78,19 @@ generateWeatherSeries <- function(
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat("\u2713", "|",
-      paste0("Stochastic weather generation: parallel mode (", num.cores, " cores)")))
+    message(cat("\u2713", "|", paste0("Stochastic weather generation in parallel mode (", num.cores, " cores).")))
 
   } else {
-    message(cat("\u2713", "|",
-      "Stochastic weather generation: sequential mode"))
+    message(cat("\u2713", "|", "Stochastic weather generation in sequential mode."))
   }
 
   #browser()
-  message(cat("\u2713", "|",
-      paste0("Input data: ", ngrids, " grid cells, ",
-    length(variable.names), " variables and ", length(weather.date), " days")
+  message(cat("\u2713", "|", paste0("Input data: ", ngrids, " grid cells, ",
+    length(variable.names), " variables and ", length(weather.date), " days or weather record.")
   ))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
-  warm_path <- paste0(output.path, "historical/")
+  warm_path <- paste0(output.path, "weathergen_validation/")
   if (!dir.exists(warm_path)) {dir.create(warm_path)}
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -142,6 +139,8 @@ generateWeatherSeries <- function(
         climate_d[[i]] %>% group_by(year) %>%
         summarize(across({{variable.names}}, mean)) %>%
         ungroup() %>% suppressMessages())
+
+  # Area-averaged annual weather series
   climate_a_aavg <- Reduce(`+`, climate_a) / ngrids
 
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
@@ -153,20 +152,42 @@ generateWeatherSeries <- function(
   warm_power <- waveletAnalysis(variable = warm_variable,
     signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
-  # wavelet decomposition of historical series
-  wavelet_comps <- waveletDecompose(variable = warm_variable,
+  # if there is low-frequency signal
+  if(length(warm_power$signif_periods) > 0) {
+
+    # wavelet decomposition of historical series
+    wavelet_comps <- waveletDecompose(variable = warm_variable,
         signif.periods = warm_power$signif_periods,
         signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
-  message(cat("\u2713", "|", "Number of low-frequency components:", length(wavelet_comps)-1,
-    paste0("(periodicity: ", sapply(warm_power$signif_periods, function(x) x[1]), " years)")))
+    message(cat("\u2713", "|", "Number of low-frequency components:", length(wavelet_comps)-1,
+        paste("(periodicity:", paste(warm_power$signif_periods, collapse=",")), "years)"))
 
-  # Simulate annual series of wavelet variable
-  sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
+    # Simulate annual series of wavelet variable
+    sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
         sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
 
+  #if there is no low frequency signal
+  } else {
+
+    message(cat("\u2713", "|", "No low-frequency signals detected"))
+
+    # Remove the mean from the component
+    MEAN <- mean(warm_variable)
+
+    MODEL <-  forecast::auto.arima((warm_variable - MEAN), max.p = 2,max.q = 2,max.P = 0,max.Q = 0,
+      stationary = TRUE, seasonal = FALSE)
+
+    INTERCEPT <- ifelse(length(which(names(MODEL$coef)=="intercept")) > 0,
+            as.vector(MODEL$coef)[which(names(MODEL$coef)=="intercept")],0)
+
+    SIM <- sapply(1:sim.year.num, function(x) {set.seed(seed+x)
+      stats::simulate(MODEL, sim.year.num, sd = sqrt(MODEL$sigma2))}) + INTERCEPT + MEAN
+
+  }
+
   message(cat("\u2713", "|", format(warm.sample.num, big.mark=","),
-    "stochastic series simulated with WARM"))
+            "stochastic annual series simulated."))
 
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x)
@@ -175,7 +196,7 @@ generateWeatherSeries <- function(
   # Define subsetting range for annual realizations
   if(is.null(warm.subset.criteria)) {
 
-     warm.subset.criteria = list(
+    warm.subset.criteria = list(
         mean = c(0.95,1.05),
         sd = c(0.85,1.15),
         min = c(0.80,1.20),
@@ -183,7 +204,12 @@ generateWeatherSeries <- function(
         power = c(0.40,2.60),
         nonsignif.threshold = 0.75)
 
+    if(!length(warm_power$signif_periods > 0)) {
+       warm.subset.criteria$power <- NULL
+       warm.subset.criteria$nonsignif.threshold <- NULL
     }
+
+  }
 
   # subsetting from generated warm series
   sim_annual_sub <- waveletARSubset(
@@ -200,11 +226,10 @@ generateWeatherSeries <- function(
        save.series = FALSE)
 
   message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted),
-    "stochastic series match subsetting criteria"))
+    "stochastic series match the subsetting criteria"))
 
   message(cat("\u2713", "|", ncol(sim_annual_sub$sampled),
     "series sampled"))
-
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
@@ -247,12 +272,12 @@ generateWeatherSeries <- function(
   for(x in 1:ncol(resampled_dates)) {resampled_dates[,x] <- resampled_ini[[x]]}
 
   message(cat("\u2713", "|",
-    "Spatial/temporal dissaggregation with knn & markov chain modeling"))
+    "Spatial/temporal dissaggregation with KNN & MC modeling completed."))
 
   utils::write.csv(sim_dates_d$date, paste0(warm_path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"), row.names = FALSE)
 
-  message(cat("\u2713", "|", "Resampled dates stored in `resampled_dates.csv`"))
+  message(cat("\u2713", "|", "Resampled dates stored in `resampled_dates.csv`."))
   day_order <- sapply(1:realization.num,
     function(n) match(resampled_dates[[n]], dates_d$date))
 

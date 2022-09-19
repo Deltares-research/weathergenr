@@ -14,7 +14,8 @@ quantileMapping <- function(
   mean.change = NULL,
   var.change = NULL,
   mon.ts = NULL,
-  year.ts = NULL)
+  year.ts = NULL,
+  fit.method = "mme")
 
   {
 
@@ -46,7 +47,7 @@ quantileMapping <- function(
 
   # Fit base distribution and estimate parameters
   bdist[["fit"]][pmon] <- lapply(pmon,
-    function(x) fitdistrplus::fitdist(value_pmon[[x]], "gamma"))
+    function(x) fitdistrplus::fitdist(value_pmon[[x]], "gamma", method = fit.method))
 
   # Parameters for base distribution
   bdist[["shape"]][pmon] <- lapply(pmon,

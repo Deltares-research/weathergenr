@@ -11,83 +11,50 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
 ---
 
-<style type="text/css">
-
-body{ /* Normal  */
-      font-size: 14px;
-  }
-td {  /* Table  */
-  font-size: 8px;
-}
-h1.title {
-  margin-top:1em;
-  margin-bottom:.50em;
-  font-size: 30px;
-  color: DarkBlue;
-}
-h1 { /* Header 1 */
-  font-size: 24px;
-  color: DarkBlue;
-}
-h2 { /* Header 2 */
-    font-size: 20px;
-  color: DarkBlue;
-}
-h3 { /* Header 3 */
-  font-size: 20px;
-  font-family: "Times New Roman", Times, serif;
-  color: DarkBlue;
-}
-code.r{ /* Code block */
-    font-size: 14px;
-}
-
-code.python{ /* Code block */
-    font-size: 14px;
-}
-
-pre { /* Code block - determines code spacing between lines */
-    font-size: 14px;
-}
-</style>
-
-
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 ```
 
-# Overview
+# Package summary
 
-This vignette introduces you to the basics of the multivariable, multigrid stochastic daily weather series generation process with *weathergenr*. The package consists of a series of R scripts and function wrappers built upon the work by Steinscheineder et al (2013). This implementation works directly with gridded hydrometeorological datasets (e.g., ERA5) through netcdf files and provide further automatization of the underlying statistical processes. Recoded functions also provide significant speed improvements in most cases. 
+The package *weathergenr* consists of a series of R scripts and function wrappers for synthetic weather generation based on the work of [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528). This implementation provides:
 
-In this tutorial, you'll first learn how to easily generate new stochastic weather realizations for a specific geographic area. Next, you'll learn how to impose climate changes on the generated stochastic weather realizations, for example, as changes in monthly means and variance of temperature and precipitation. Finally, you will see a simple illustration of how the input data for a "climate stress test" can generated.
+* Ability to work with gridded datasets via netcdf files
+* Script automatization and usability improvements   
+* Significant speed improvements through code vectorization and parallization 
+
+This vignette introduces you to the basic use of the multivariable, multigrid stochastic daily weather series generation process using *weathergenr*. You will learn\
+
+* Reading in gridded, multivariate weather data for a specific geographic area from netcdf files
+* Generating stochastic weather data based on the inputted gridded weather data
+* Perturbing statistics of selected variables such as daily precipitaton or temperature to develop climate change scenarios.  
 
 # Installation and setup
+
 The latest version of the weathergenr package can be installed from github and then loaded to the environment:
+
 ```{r setup, eval=TRUE, echo = FALSE}
-devtools::install_github("Deltares/weathergenr", upgrade = "never")
+#devtools::install_github("Deltares/weathergenr", upgrade = "never")
 library(weathergenr)
 ```
 
-# Simple examples
+## Reading in gridded multivariate weather data 
 
-## Reading in weather data from netcdf
+The weather generator takes gridded weather data for a previously cropped geographic area, provided as a netcdf file. Thus, the first step is to read-in weather data and associated spatial information from an external file. The *readNetcdf()* is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.
 
-The weather generator takes gridded weather data for a previously cropped geographic area, provided as a netcdf file. Thus, the first step is to read-in weather data and associated spatial information from an external file. 
-
-For this exercise, we will use the sample netcdf file that comes with the package. The file provides long-term gridded metereological data for the Ntoum basin, Gabon. The *readNetcdf()* is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.
+For this exercise, we will use the sample netcdf file that comes with the package. The file provides long-term gridded metereological data for the Ntoum basin, Gabon. 
 
 ```{r ncfile}
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
 ncdata <- readNetcdf(ncfile)
 ```
 
-The output object stores various information from the netcdf file:
+We can check the structure of this object:
 ```{r ncdata1}
 names(ncdata)
 ```
 
-Metereological data is stored as a list object via *data* element. Each list represents a different grid cell in "tidy" format, i.e., with observations on rows and metereological variables on columns:
+Metereological data is stored as a list object via the *data* element. Each list represents a different grid cell in "tidy" format, i.e., with observations on rows and metereological variables on columns:
 ```{r ncdata2}
 # Display climate data for the first gridcell
 ncdata$data[[1]]
@@ -103,7 +70,6 @@ Finally, the date series associated with the data can be accessed with the *date
 ```{r ncdata4}
 # Display start and ending values date vector
 head(ncdata$date)
-tail(ncdata$date)
 ```
 
 ## Generate stochastic weather realizations
@@ -113,9 +79,9 @@ In this section, we introduce the procedure to obtain new weather sequences from
 First, lets specify an output path for the results and variables to include from the dataset:
 ```{r stochastic1}
 # Set path to store weather generator results
-output_path <- "C:/testrun/"
+output_path <- "C:/testrun/intro/"
 variables <- c("precip", "temp", "temp_min", "temp_max")
-realization_num <- 3
+realization_num <- 1
 ```
 
 GenerateWeatherSeries() function includes a large set of essential and non-essential parameters to control the weather generation process. Essential parameters include: *weather.data*, *weather.grid*, and *weather.date* and *variable.names* to specify the attributes of the input metereological data, *realization.num* to set the desired number of new weather realizations, and the *output.path*:
@@ -154,7 +120,7 @@ head(stochastic_weather$dates)
 tail(stochastic_weather$dates)
 ```
 
-## Apply climate change realizations
+## Apply climate change on the realization
 
 Delta factors can be imposed on the historical or stochastically generated weather data to reflect plausible changes on climate statistics. Currently, it is possible to shift mean and variance of precipitation and mean of temperature. Preciptation changes are specified as ratios, where a value of 1.0 indicates no change for the given calendar month. Temperature changes are specified as increases (or decreases) in degree celsius in a given month.
 
@@ -166,10 +132,8 @@ delta_temp_mean <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
 delta_precip_mean     <- c(0.7, 0.7, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
 delta_precip_variance <- c(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
-# Select first realization
-day_order <- match(stochastic_weather$resampled[[1]], ncdata$date)
-
 # Obtain stochastic series by re-ordering historical data
+day_order <- match(stochastic_weather$resampled[[1]], ncdata$date)
 stochastic_rlz <- lapply(ncdata$data, function(x) x[day_order,])
 
 # Apply climate changes to climate data
@@ -180,8 +144,12 @@ stochastic2 <- imposeClimateChanges(
    change.factor.precip.mean = delta_precip_mean,
    change.factor.precip.variance = delta_precip_variance,
    change.factor.temp.mean = delta_temp_mean,
-   change.type.temp = "transient",
-   change.type.precip = "transient")
+   transient.temp.change = TRUE,
+   transient.precip.change = TRUE,
+   calculate.pet = TRUE, 
+   compute.parallel = TRUE, 
+   num.cores = NULL, 
+   fit.method = "mme")
 ```
 
 Finally we can save the generated weather series back to a netcdf file:
@@ -198,220 +166,5 @@ writeNetcdf(
     nc.spatial.ref = "spatial_ref",
     nc.file.prefix = "clim",
     nc.file.suffix = NULL)
-```
-
-
-# Climate Stress Testing
-
-Metereological input to a climate stress test can be generated by obtaining a wide range of plausible weather conditions. \
-
-In this tutorial, we will generate 6 climate change scenarios by combining 3 monthly precipitation changes and 2 monthly temperature changes. We will then apply these scenarios to 3 natural variability realizations, resulting in a total of 6 x 3 = 18 scenarios.\
-
-## Defining the stress testing matrix
-
-The first step is define a data table to store all information regarding the scenarios, e.g., how weather statistics are being changed. To do this, we first define a bandwith range (e.g., minimum and maximum values) to define the delta factors for each climate statistic being perturbed. In the example below, we vary three statistics: mean of precipitation, variance of precipitation, and mean of temperature.
-
-```{r deltafactors1, eval = FALSE}
-
-# Temp mean changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
-delta_temp_mean_min <- c(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-delta_temp_mean_max <- c(3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0)
-
-# Precip mean changes   Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
-delta_precip_mean_min <- c(0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
-delta_precip_mean_max <- c(1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3)
-
-# Precip variance changes   Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
-delta_precip_variance_min <- c(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-delta_precip_variance_max <- c(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
-
-# Number of incremental step changes for precip and temp variables
-precip_step_num <- 3
-temp_step_num <- 2
-```
-
-```{r deltafactors2, eval = FALSE}
-precip_mean_steps <- sapply(1:12, function(m)
-         seq(delta_precip_mean_min[m], delta_precip_mean_max[m],
-             length.out = precip_step_num))
-
-precip_variance_steps <- sapply(1:12, function(m)
-         seq(delta_precip_variance_min[m], delta_precip_variance_max[m],
-             length.out = precip_step_num))
-
-temp_mean_steps <- sapply(1:12, function(m)
-         seq(delta_temp_mean_min[m], delta_temp_mean_max[m],
-             length.out = temp_step_num))
-
- df1 <- as.data.frame(precip_mean_steps) %>% mutate(level = 1:n(),
-   variable = "precip_mean", .before = 1)
- df2 <- as.data.frame(precip_variance_steps) %>% mutate(level = 1:n(),
-   variable = "precip_variance", .before = 1)
- df3 <- as.data.frame(temp_mean_steps) %>% mutate(level = 1:n(),
-   variable = "temp_mean", .before = 1)
- df <- bind_rows(df1, df2, df3) %>% gather(month, value, V1:V12) %>%
-   mutate(month = factor(month, levels = paste0("V",1:12), labels = 1:12))
-
- p <- ggplot2::ggplot(df, aes(x = month, y = value, group = level, color = level)) +
-   facet_wrap(. ~ variable, scales = "free_y", ncol = 2) +
-   geom_line() +
-   labs(x="month", y = "delta factor") +
-   scale_color_distiller(palette = "Set1") +
-   guides(color = "none")
-
- p
-
-```
-Now lets create the scenario matrix using the bandwiths and incremental step sizes specified for each variable
-```{r deltafactors3, eval = FALSE}
-# Stress test matrix
- strtest_matrix <- tidyr::expand_grid(stoc_ind = 1:realization_num,
-   precip_ind = 1:precip_step_num, temp_ind = 1:temp_step_num)
-
- # Total number of scenarios
- smax <- nrow(strtest_matrix)
-
- # Stress test delta factors for each variable/climate statistic
- strtest_matrix_precip_mean <- precip_mean_steps[strtest_matrix$precip_ind, ]
- strtest_matrix_precip_variance <- precip_variance_steps[strtest_matrix$precip_ind, ]
- strtest_matrix_temp_mean <- temp_mean_steps[strtest_matrix$temp_ind, ]
-```
-
- # Write stress test matrices to file (optional)
-```{r deltafactors4, eval = FALSE}
- write.csv(strtest_matrix,
-   paste0(output_path, "strtest_matrix.csv"), row.names = FALSE)
- write.csv(strtest_matrix_precip_mean,
-   paste0(output_path, "strtest_matrix_precip_mean.csv"), row.names = FALSE)
- write.csv(strtest_matrix_precip_variance,
-   paste0(output_path, "strtest_matrix_precip_variance.csv"), row.names = FALSE)
- write.csv(strtest_matrix_temp_mean,
-   paste0(output_path, "strtest_matrix_temp_mean.csv"), row.names = FALSE)
-```
-
-Finally, lets generate the stress test input data
-```{r deltafactors5, eval = FALSE}
- # Read-in resampled dates & date series (from csv files included with the package)
- resampled_dates <- read.csv(system.file("extdata", "resampled_dates.csv", package = "weathergenr"),
-   colClasses = "Date")
- sim_dates <- read.csv(system.file("extdata", "sim_dates.csv", package = "weathergenr"),
-   colClasses = "Date")[[1]]
-
- # Use results from generateWeatherSeries function output
- # resampled_dates <- stochastic_weather$resampled
- # sim_dates <- stochastic_weather$dates
-
-# progress bar (optional)
-pb = txtProgressBar(min = 1, max = smax, initial = 0, style = 3)
- for (s in 1:smax) {
-
-   setTxtProgressBar(pb,s)
-
-   # Find the current scenario indices for the stochastic realization and delta factors
-   stoc_ind <- strtest_matrix$stoc_ind[s]
-
-   # Obtain stochastic series by re-ordering historical data
-   day_order <- match(resampled_dates[[stoc_ind]], ncdata$date)
-   rlz_historical <- lapply(ncdata$data, function(x) x[day_order,])
-
-   # Apply climate changes to climate data
-   rlz_future <- imposeClimateChanges(
-     climate.data = rlz_historical,
-     climate.grid = ncdata$grid,
-     sim.dates = sim_dates,
-     change.factor.precip.mean = strtest_matrix_precip_mean[s,],
-     change.factor.precip.variance = strtest_matrix_precip_variance[s,],
-     change.factor.temp.mean = strtest_matrix_temp_mean[s,],
-     change.type.temp = "transient",
-     change.type.precip = "transient")
-
-     # Save to netcdf file
-     writeNetcdf(
-       data = rlz_future,
-       coord.grid = ncdata$grid,
-       output.path = output_path,
-       origin.date =  stochastic_weather$dates[1],
-       calendar.type = "noleap",
-       nc.template.file = ncfile,
-       nc.compression = 4,
-       nc.spatial.ref = "spatial_ref",
-       nc.file.prefix = "climx",
-       nc.file.suffix = s)
- }
- close(pb)
-```
-
-# Running weather generator from python
-*in progress*
-
-Prerequisites: \
-1. Install latest version of R via https://mirror.lyrahosting.com/CRAN/ \
-2. Create a new python environment with packages rpy2, r-base, r-essentials, pandas, numpy2 \
-
-First set the PATH variables correctly
-```{python, py1, eval = FALSE}
-import os
-os.environ['PATH'] = 'C:/Program Files/R/R-4.1.2/bin/x64' + os.pathsep + os.environ.get('PATH', '')
-os.environ['PYTHONHOME'] = 'C:/Users/taner/Anaconda3/envs/wegentest'
-os.environ['PYTHONPATH'] = 'C:/Users/taner/Anaconda3/envs/wegentest/Lib/site-packages'
-
-# Location of R executable
-os.environ['R_HOME'] = 'C:/Program Files/R/R-4.1.2'
-
-# Location of R packages installed
-os.environ['R_USER'] = 'C:/Users/taner/Anaconda3/envs/wegentest/Lib/site-packages/rpy2'
-
-# Check if variables are correctly defined for rpy2
-import rpy2.situation
-for row in rpy2.situation.iter_info():
-    print(row)
-#Import necessary packages
-import rpy2.robjects as robjects
-from rpy2.robjects.packages import importr
-
-# This is needed for conversion between R and Python syntax
-d = {'package.dependencies': 'package_dot_dependencies',
-     'package_dependencies': 'package_uscore_dependencies'}
-
-# Load core packages
-base = importr('base')
-utils = importr('utils')
-utils.chooseCRANmirror(ind=1) # select the first mirror in the list
-devtools = utils.install_packages('devtools')
-devtools = importr('devtools', robject_translations = d)
-
-# Install weathergenr from Github master branch
-weathergenr = devtools.install_github("tanerumit/weathergenr")
-weathergenr = importr('weathergenr', robject_translations = d)
-```
-
-
-```{python, py2,  eval = FALSE}
-# Load netcdf file
-ncfile = base.system_file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-ncdata = weathergenr.readNetcdf(ncfile)
-
-# Set path to store weather generator results
-output_path = "C:/testrun/"
-variables = base.c("precip", "temp", "temp_min", "temp_max")
-realization_num = 3
-
-stochastic_weather = weathergenr.generateWeatherSeries(
-     weather_data = ncdata[0],
-     weather_grid = ncdata[1],
-     weather_date = ncdata[2],
-     variable_names = variables,
-     output_path = output_path,
-     month_start = 1,
-     realization_num = realization_num,
-     warm_variable = "precip",
-     warm_signif_level = 0.90,
-     warm_sample_num = 5000,
-     knn_sample_num = 100,
-     evaluate_model = False,
-     evaluate_grid_num = 20,
-     mc_wet_threshold = 0.2,
-     mc_extreme_quantile = 0.8,
-     seed = 100)
 ```
 
