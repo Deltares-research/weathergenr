@@ -1,5 +1,3 @@
-
-
 #' Wavelet Autoregressive Modeling (WARM)
 #'
 #' @param sim.year.num A numeric value defining the desired length of simulated annual time-series

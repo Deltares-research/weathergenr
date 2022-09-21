@@ -2,7 +2,7 @@
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 
 ## ----setup, eval=TRUE, echo = FALSE-------------------------------------------
-devtools::install_github("Deltares/weathergenr")
+#devtools::install_github("Deltares/weathergenr")
 library(weathergenr)
 
 ## ----ncfile-------------------------------------------------------------------

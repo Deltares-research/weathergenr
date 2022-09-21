@@ -30,6 +30,8 @@
 #'
 #' @return
 #' @export
+#' @import MASS
+#' @import quantmod
 #' @import ggplot2
 #' @import tibble
 #' @import tidyr
@@ -56,7 +58,7 @@ generateWeatherSeries <- function(
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   output.path = getwd(),
-  seed = NULL,
+  seed = sample.int(1e5,1),
   compute.parallel = TRUE,
   num.cores = NULL)
 
@@ -67,7 +69,6 @@ generateWeatherSeries <- function(
   # Workaround for rlang warning
   wyear <- month <- day <- year <- 0
 
-  if(is.null(seed)) seed <- sample.int(1e5,1)
   if(is.null(variable.labels)) variable.labels <- variable.names
   if(is.null(variable.units)) variable.units <- rep("", length(variable.names))
 
@@ -78,15 +79,14 @@ generateWeatherSeries <- function(
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat("\u2713", "|", paste0("Stochastic weather generation in parallel mode (", num.cores, " cores).")))
+    message(cat("\u2713", "|", paste0("Stochastic weather generation in parallel mode (", num.cores, " cores)")))
 
   } else {
-    message(cat("\u2713", "|", "Stochastic weather generation in sequential mode."))
+    message(cat("\u2713", "|", "Stochastic weather generation in sequential mode"))
   }
 
-  #browser()
-  message(cat("\u2713", "|", paste0("Input data: ", ngrids, " grid cells, ",
-    length(variable.names), " variables and ", length(weather.date), " days or weather record.")
+  message(cat("\u2713", "|", paste0("Input weather data: ", ngrids, " grid cells, ",
+    length(variable.names), " variables and ", length(weather.date), " days")
   ))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
@@ -101,37 +101,22 @@ generateWeatherSeries <- function(
   year_end   <-year_seq[length(year_seq)]
 
   dates_d <- tibble(year = as.numeric(format(weather.date,"%Y")),
-          wyear = getWaterYear(weather.date, month.start),
-          month = as.numeric(format(weather.date,"%m")),
-          day = as.numeric(format(weather.date,"%d"))) %>%
+                    wyear = getWaterYear(weather.date, month.start),
+                    month = as.numeric(format(weather.date,"%m")),
+                    day = as.numeric(format(weather.date,"%d"))) %>%
       filter(wyear >= year_start & wyear <= year_end) %>%
-      mutate(date = as.Date(paste(wyear, month, day, sep = "-")), .before=1)
+      mutate(date = as.Date(paste(wyear, month, day, sep = "-")), .before=1) %>%
+      mutate(dateo = as.Date(paste(year, month, day, sep = "-")), .before=1)
 
   year.num <- length(unique(dates_d$wyear))
-  if(is.null(sim.year.num)) sim.year.num <- year.num
-
-  wyear_index <- which(dates_d$date %in% weather.date)
-  dates_wy <- tibble(year=dates_d$wyear, month=dates_d$month,
-    day=dates_d$day)
-
-  # Simulated dates
-  sim_year_end <- sim.year.start + sim.year.num
-  date_sim <- seq(as.Date(paste(sim.year.start,"-1-01",sep="")),
-    as.Date(paste(sim_year_end,"-12-31",sep="")), by="day")
-
-  sim_dates_d <- tibble(year = as.numeric(format(date_sim,"%Y")),
-      wyear = getWaterYear(date_sim, month.start),
-      month = as.numeric(format(date_sim,"%m")),
-      day = as.numeric(format(date_sim,"%d"))) %>%
-  filter(month!=2 | day!=29) %>%
-  filter(wyear >= sim.year.start+1 & wyear <= sim_year_end) %>%
-  mutate(date = as.Date(paste(year, month, day, sep = "-")), .before=1)
+  wyear_index <- which(weather.date %in% dates_d$dateo)
 
   # Multivariate list of daily climate data
   climate_d <- lapply(1:ngrids, function(i)
     weather.data[[i]][wyear_index,] %>%
     select(all_of(variable.names)) %>%
-    mutate(dates_wy, .))
+    mutate(year=dates_d$wyear, .))
+
   climate_d_aavg <- Reduce(`+`, climate_d) / ngrids
 
   # Multivariate list of annual climate data
@@ -143,6 +128,28 @@ generateWeatherSeries <- function(
   # Area-averaged annual weather series
   climate_a_aavg <- Reduce(`+`, climate_a) / ngrids
 
+
+
+
+
+
+  # Simulated dates
+  if(is.null(sim.year.num)) sim.year.num <- year.num
+  sim_year_end <- sim.year.start + sim.year.num
+
+  date_sim <- seq(as.Date(paste(sim.year.start,"-1-01",sep="")),
+    as.Date(paste(sim_year_end,"-12-31",sep="")), by="day")
+
+  sim_dates_d <- tibble(year = as.numeric(format(date_sim,"%Y")),
+      wyear = getWaterYear(date_sim, month.start),
+      month = as.numeric(format(date_sim,"%m")),
+      day = as.numeric(format(date_sim,"%d"))) %>%
+  filter(month!=2 | day!=29) %>%
+  filter(wyear >= sim.year.start+1 & wyear <= sim_year_end) %>%
+  mutate(date = as.Date(paste(year, month, day, sep = "-")), .before=1)
+
+
+
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   #####  Wavelet analysis on observed annual series
@@ -150,44 +157,44 @@ generateWeatherSeries <- function(
 
   # power spectra analysis of historical series
   warm_power <- waveletAnalysis(variable = warm_variable,
-    signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
+      signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
   # if there is low-frequency signal
   if(length(warm_power$signif_periods) > 0) {
 
-    # wavelet decomposition of historical series
-    wavelet_comps <- waveletDecompose(variable = warm_variable,
-        signif.periods = warm_power$signif_periods,
-        signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
+      # wavelet decomposition of historical series
+      wavelet_comps <- waveletDecompose(variable = warm_variable,
+          signif.periods = warm_power$signif_periods,
+          signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
 
-    message(cat("\u2713", "|", "Number of low-frequency components:", length(wavelet_comps)-1,
-        paste("(periodicity:", paste(warm_power$signif_periods, collapse=",")), "years)"))
+      message(cat("\u2713", "|", "Number of low-frequency components:", length(wavelet_comps)-1,
+          paste("(periodicity:", paste(warm_power$signif_periods, collapse=",")), "years)"))
 
-    # Simulate annual series of wavelet variable
-    sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
-        sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
+      # Simulate annual series of wavelet variable
+      sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
+          sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
 
-  #if there is no low frequency signal
-  } else {
+    #if there is no low frequency signal
+    } else {
 
-    message(cat("\u2713", "|", "No low-frequency signals detected"))
+      message(cat("\u2713", "|", "No low-frequency signals detected"))
 
-    # Remove the mean from the component
-    MEAN <- mean(warm_variable)
+      # Remove the mean from the component
+      MEAN <- mean(warm_variable)
 
-    MODEL <-  forecast::auto.arima((warm_variable - MEAN), max.p = 2,max.q = 2,max.P = 0,max.Q = 0,
-      stationary = TRUE, seasonal = FALSE)
+      MODEL <-  forecast::auto.arima((warm_variable - MEAN), max.p = 2,max.q = 2,max.P = 0,max.Q = 0,
+        stationary = TRUE, seasonal = FALSE)
 
-    INTERCEPT <- ifelse(length(which(names(MODEL$coef)=="intercept")) > 0,
-            as.vector(MODEL$coef)[which(names(MODEL$coef)=="intercept")],0)
+      INTERCEPT <- ifelse(length(which(names(MODEL$coef)=="intercept")) > 0,
+              as.vector(MODEL$coef)[which(names(MODEL$coef)=="intercept")],0)
 
-    SIM <- sapply(1:sim.year.num, function(x) {set.seed(seed+x)
-      stats::simulate(MODEL, sim.year.num, sd = sqrt(MODEL$sigma2))}) + INTERCEPT + MEAN
+      SIM <- sapply(1:sim.year.num, function(x) {set.seed(seed+x)
+        stats::simulate(MODEL, sim.year.num, sd = sqrt(MODEL$sigma2))}) + INTERCEPT + MEAN
 
   }
 
   message(cat("\u2713", "|", format(warm.sample.num, big.mark=","),
-            "stochastic annual series simulated."))
+              "stochastic annual series simulated"))
 
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x)
@@ -226,7 +233,7 @@ generateWeatherSeries <- function(
        save.series = FALSE)
 
   message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted),
-    "stochastic series match the subsetting criteria"))
+    "stochastic series match subsetting criteria"))
 
   message(cat("\u2713", "|", ncol(sim_annual_sub$sampled),
     "series sampled"))
@@ -269,22 +276,24 @@ generateWeatherSeries <- function(
 
   if (compute.parallel) parallel::stopCluster(cl)
 
-  for(x in 1:ncol(resampled_dates)) {resampled_dates[,x] <- resampled_ini[[x]]}
+  for(x in 1:ncol(resampled_dates)) {
+    resampled_dates[,x] <-dates_d$dateo[match(resampled_ini[[x]], dates_d$date)]
+  }
 
   message(cat("\u2713", "|",
-    "Spatial/temporal dissaggregation with KNN & MC modeling completed."))
+    "Spatial/temporal dissaggregation with KNN & MC modeling completed"))
 
   utils::write.csv(sim_dates_d$date, paste0(warm_path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"), row.names = FALSE)
 
-  message(cat("\u2713", "|", "Resampled dates stored in `resampled_dates.csv`."))
+  message(cat("\u2713", "|", "Resampled dates saved to `resampled_dates.csv`"))
   day_order <- sapply(1:realization.num,
-    function(n) match(resampled_dates[[n]], dates_d$date))
+    function(n) match(resampled_dates[[n]], dates_d$dateo))
 
   rlz <- list()
    for (n in 1:realization.num) {
       rlz[[n]] <- lapply(climate_d, function(x)
-        x[day_order[,n],] %>% select(-year,-month,-day))
+        x[day_order[,n],] %>% select(-year))
   }
 
 

@@ -60,6 +60,7 @@ resampleDates <- function(
 
   MONTH_SIM = sim.dates.d$month
   DAY_SIM = sim.dates.d$day
+
   WATER_YEAR_SIM = sim.dates.d$wyear
   SIM_LENGTH <- length(MONTH_SIM)
 

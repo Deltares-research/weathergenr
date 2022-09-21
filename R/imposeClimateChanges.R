@@ -1,5 +1,4 @@
-
-#' Perturb weather realizations
+#' Perturb weather realizations to reflect climate change
 #'
 #' @param climate.data placeholder
 #' @param climate.grid placeholder
@@ -7,9 +6,12 @@
 #' @param change.factor.precip.mean placeholder
 #' @param change.factor.precip.variance placeholder
 #' @param change.factor.temp.mean placeholder
-#' @param transient.temp.change placeholder
-#' @param transient.precip.change placeholder
-#' @param calculate.pet placeholder
+#' @param transient.temp.change logical value indicating whether temperature changes are applied gradually (transient) or stepwise
+#' @param transient.precip.change logical value indicating whether precipitation changes are applied gradually (transient) or stepwise
+#' @param calculate.pet shoud pet be calculated? (logical)
+#' @param compute.parallel should the function run in parallel mode (logical)
+#' @param num.cores number of cores reserved for parallel computing. Default value is maximum cores minus one (omit if compute.parallel is FALSE)
+#' @param fit.method placeholder
 #'
 #' @return
 #' @export

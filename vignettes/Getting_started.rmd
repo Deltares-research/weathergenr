@@ -17,7 +17,9 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 
 # Package summary
 
-The package *weathergenr* consists of a series of R scripts and function wrappers for synthetic weather generation based on the work of [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528). This implementation provides:
+The package *weathergenr* consists of a series of R scripts and function wrappers for synthetic weather generation based on the work of [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528).  
+
+This implementation provides:
 
 * Ability to work with gridded datasets via netcdf files
 * Script automatization and usability improvements   
@@ -38,11 +40,16 @@ The latest version of the weathergenr package can be installed from github and t
 library(weathergenr)
 ```
 
+## Sample data
+For this exercise, we will use the extracted ERA5 metereological dataset from the Ntoum basin, Gabon. 
+
+```{r basin-image, echo=FALSE, fig.cap="Ntoum basin near Libreville (Gabon)", out.width = '100%'}
+knitr::include_graphics('C:/Users/taner/OneDrive - Stichting Deltares/_WS/weathergenr/vignettes/images/ntoum_basin.png')
+```
+
 ## Reading in gridded multivariate weather data 
 
-The weather generator takes gridded weather data for a previously cropped geographic area, provided as a netcdf file. Thus, the first step is to read-in weather data and associated spatial information from an external file. The *readNetcdf()* is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.
-
-For this exercise, we will use the sample netcdf file that comes with the package. The file provides long-term gridded metereological data for the Ntoum basin, Gabon. 
+First, we will upload the gridded multivariate data for the basin from a netcdf file. The *readNetcdf()* is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes. 
 
 ```{r ncfile}
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
@@ -50,6 +57,7 @@ ncdata <- readNetcdf(ncfile)
 ```
 
 We can check the structure of this object:
+
 ```{r ncdata1}
 names(ncdata)
 ```
@@ -167,4 +175,9 @@ writeNetcdf(
     nc.file.prefix = "clim",
     nc.file.suffix = NULL)
 ```
+
+
+
+
+
 

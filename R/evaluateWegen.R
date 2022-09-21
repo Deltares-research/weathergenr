@@ -23,6 +23,7 @@
 #' @return
 #' @export
 #' @import utils ggplot2 dplyr
+#' @importFrom("stats", "setNames")
 evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
