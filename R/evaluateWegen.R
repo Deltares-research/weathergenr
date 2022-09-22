@@ -48,7 +48,7 @@ evaluateWegen <- function(
   options(tidyverse.quiet = TRUE)
 
   stat_level <- c("mean", "sd", "skewness")
-  stat_label <- c("Mean", "Standard Deviation", "Skewness")
+  stat_label <- c("mean", "standard dev.", "skewness")
 
 
   name_obs <- "Observed"
@@ -135,23 +135,26 @@ evaluateWegen <- function(
     gather(key = stat, value = value, wet:dry) %>%
     mutate(type = name_obs)
 
+  hist_wetdry_spells_aavg <- hist_wetdry_spells %>%
+    group_by(mon, stat, type) %>%
+    summarize(value = mean(value))
+
   # Per variable plots
   hist_stats_aavg_mon <- hist_stats_aavg %>%
     group_by(mon, variable, stat, type) %>%
     summarize(value = mean(value))
 
 
-
   # Simulated statistics ######################################################
 
-  sim_stats <- list()
-  sim_stats_aavg <- list()
-  sim_intercor <- list()
-  sim_wetdry_days <-list()
-  sim_wetdry_spells <- list()
+  sim_stats <- vector("list", realization.num)
+  sim_stats_aavg <- vector("list", realization.num)
+  sim_intercor <- vector("list", realization.num)
+  sim_wetdry_days <-vector("list", realization.num)
+  sim_wetdry_spells <- vector("list", realization.num)
+  sim_wetdry_spells_aavg <- vector("list", realization.num)
 
   sim_year_num <- nrow(daily.sim[[1]][[1]])/365
-
 
   #### Calculate statistics per realization
 
@@ -217,15 +220,21 @@ evaluateWegen <- function(
       gather(key = stat, value = value, wet:dry) %>%
       mutate(type = name_st)
 
+    sim_wetdry_spells_aavg[[n]] <- sim_wetdry_spells[[n]] %>%
+      group_by(mon, stat, type) %>%
+      summarize(value = mean(value)) %>%
+        mutate(type = name_st)
+
+
+
   }
 
   sim_stats <- bind_rows(sim_stats, .id = "rlz")
   sim_stats_aavg <- bind_rows(sim_stats_aavg, .id = "rlz")
   sim_wetdry_days <- bind_rows(sim_wetdry_days, .id = "rlz")
   sim_wetdry_spells <- bind_rows(sim_wetdry_spells, .id = "rlz")
+  sim_wetdry_spells_aavg <- bind_rows(sim_wetdry_spells_aavg, .id = "rlz")
   sim_intercor <- bind_rows(sim_intercor, .id = "rlz")
-
-
 
   #### Calculate median statistics
 
@@ -292,7 +301,7 @@ evaluateWegen <- function(
   #:::::::::::::::::::::::::::: PLOTS ::::::::::::::::::::::::::::::::::::::::::
 
   base_plot_length <- 5
-  base_plot_size <- 12
+  base_font_size <- 12
 
   plot.subtitle <- TRUE
 
@@ -304,7 +313,7 @@ evaluateWegen <- function(
   xy_breaks <- pretty(unlist(stats_wetdry_spells[,c(4,5)]), 5)
 
   p <- ggplot(stats_wetdry_spells, aes_string(x = name_obs, y = name_st)) +
-    theme_bw(base_size = base_plot_size) +
+    theme_bw(base_size = base_font_size) +
     geom_point(alpha = 0.6, size = 1.5) +
     geom_abline(color = "blue") +
     facet_wrap(stat ~ ., ncol = 2) +
@@ -314,16 +323,14 @@ evaluateWegen <- function(
     theme(plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=
         plot.title.position = "plot")
 
-  #if(isTRUE(plot.subtitle)) {p <- p + ggtitle(label ="", subtitle = sub)}
-
-  ggsave(paste0(output.path,"daily_performance_spell_length.png"),
+  ggsave(paste0(output.path,"daily_average_spell_length.png"),
         height = base_plot_length, width = base_plot_length*2)
 
   ### Wet dry days
   xy_breaks <- pretty(unlist(stats_wetdry_days[,c(4,5)]), 5)
 
   p <- ggplot(stats_wetdry_days, aes_string(x = name_obs, y = name_st)) +
-    theme_bw(base_size = base_plot_size) +
+    theme_bw(base_size = base_font_size) +
     geom_point(alpha = 0.6, size = 1.5) +
     geom_abline(color = "blue") +
     facet_wrap(stat ~ ., ncol = 2) +
@@ -331,14 +338,30 @@ evaluateWegen <- function(
     scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     labs(x = name_obs, y = name_st)
 
-  ggsave(paste0(output.path,"daily_performance_wetdry_days.png"),
+  ggsave(paste0(output.path,"daily_average_wetdry_days.png"),
          height = base_plot_length, width = base_plot_length*2)
+
+  plabeller <- as_labeller(c(`dry` = "Average dry spell length", `wet` = "Average wet spell length"))
+
+  p <- ggplot(mapping= aes(x = as.factor(mon), y = value)) +
+    theme_bw(base_size = base_font_size) +
+    facet_wrap(stat ~ ., ncol = 1, scale = "free_y", labeller = plabeller) +
+    stat_summary(data = sim_wetdry_spells_aavg,
+      fun.data = "mean_cl_normal", geom = "linerange", alpha = 0.3, size = 1.5) +
+    stat_summary(data = sim_wetdry_spells_aavg,
+      fun = "median", geom = "point", alpha = 0.7, size = 1.5) +
+    geom_point(data = hist_wetdry_spells_aavg, color = "blue") +
+    geom_line(aes(group = 1), data = hist_wetdry_spells_aavg, color = "blue", linetype = "dashed") +
+    labs(x="Calendar month", y = "Days")
+
+  ggsave(paste0(output.path,"monthly_average_spell_length.png"),
+         height = base_plot_length*1.5, width = base_plot_length*1.5)
 
   ### Cross site correlations
   xy_breaks <- pretty(unlist(stats_cross[,c(3,4)]), 5)
 
   p <- ggplot(stats_cross, aes_string(x = name_obs, y = name_st)) +
-    theme_bw(base_size = base_plot_size+2) +
+    theme_bw(base_size = base_font_size+2) +
     ggtitle("Crosssite correlations") +
     geom_abline(color = "blue") +
     geom_point(alpha = 0.6, size = 2) +
@@ -347,14 +370,14 @@ evaluateWegen <- function(
     scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks)
 
-  ggsave(paste0(output.path,"daily_performance_crosscorrelation.png"),
+  ggsave(paste0(output.path,"daily_cross_correlation.png"),
          height = base_plot_length*2, width = base_plot_length*2)
 
   ### Intersite correlations
   xy_breaks <- pretty(unlist(stats_inter[,c(3,4)]), 5)
 
   p <- ggplot(stats_inter, aes_string(x = name_obs, y = name_st)) +
-    theme_bw(base_size = base_plot_size+2) +
+    theme_bw(base_size = base_font_size+2) +
     ggtitle("Intersite correlations") +
     geom_abline(color = "blue") +
     geom_point(alpha = 0.6, size = 2) +
@@ -363,7 +386,7 @@ evaluateWegen <- function(
     scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks)
 
-  ggsave(paste0(output.path,"daily_performance_intercorrelation.png" ),
+  ggsave(paste0(output.path,"daily_inter_correlation.png" ),
          width = base_plot_length*3, height = base_plot_length*2)
 
   for (v in 1:length(variables)) {
@@ -373,7 +396,7 @@ evaluateWegen <- function(
     dat <- sim_stats_aavg %>% filter(variable == variables[v] & !is.nan(value))
 
     p <- ggplot(dat, aes(x = as.factor(mon), y=value)) +
-      theme_bw(base_size = base_plot_size+2) +
+      theme_bw(base_size = base_font_size+2) +
       ggtitle(variable.labels[v]) +
       geom_boxplot(color = "gray40") +
       facet_wrap(~ stat, scales = "free", ncol = 2) +
@@ -384,31 +407,37 @@ evaluateWegen <- function(
       labs(x = "", y = "") +
       theme(legend.position = c(0.875, 0.45),
             legend.background = element_rect(fill = "white", color = NA),
-            legend.text=element_text(size=base_plot_size))
+            legend.text=element_text(size=base_font_size))
 
-    ggsave(paste0(output.path,"daily_performance_monthly_pattern_", variables[v],".png" ),
+    ggsave(paste0(output.path,"monthly_pattern_", variables[v],".png" ),
            height = base_plot_length*2, width = base_plot_length*2)
+  }
 
-    #### DAILY STATISTICS ######################################################
+  ###### DAILY STATISTICS ######################################################
 
-    stats_df1v <- bind_rows(hist_stats, sim_stats_median) %>%
-      filter(variable == variables[v]) %>%
-      spread(key = type, value = value) %>%
-      filter(stat != "Skewness")
 
-    p <- ggplot(stats_df1v, aes_string(x = name_obs, y = name_st)) +
-      theme_bw(base_size = base_plot_size) +
-      ggtitle(variable.labels[v]) +
-      geom_point(alpha = 0.4, size = 1.5) +
+  sim_sts <- sim_stats %>% rename(!!name_st:=  value)
+  obs_sts <- hist_stats %>% rename(!!name_obs:= value) %>% select(-type)
+  sts <- sim_sts %>% left_join(obs_sts, by = c("id","mon","variable","stat")) %>%
+    filter(stat != "skewness") %>%
+    mutate(variable = factor(variable, levels = unique(hist_stats$variable))) %>%
+    mutate(stat = factor(stat, levels = unique(hist_stats$stat))) %>%
+    arrange(variable, stat)%>%
+    unite("variable_stat", stat:variable, sep = ": ")
+
+   p <- ggplot(sts, aes_string(x = name_obs, y = name_st)) +
+      theme_bw(base_size = base_font_size) +
+      stat_summary(fun.data = "mean_cl_normal", geom = "linerange", alpha = 0.3, size = 0.8) +
+      stat_summary(fun = "median", geom = "point", alpha = 0.7, size = 1) +
       geom_abline(color = "blue") +
       labs(x = name_obs, y = name_st) +
-      facet_wrap(stat ~ ., scales = "free", ncol = 2)
+      facet_wrap(variable_stat ~ ., scales = "free", nrow = 2, labeller = label_value)
 
-    ggsave(paste0(output.path,"daily_preformance_scatterplot_",
-      variables[v],".png" ),
-      height = base_plot_length, width = base_plot_length*1.5)
+  ggsave(paste0(output.path,"daily_statistics_scatterplot.png" ),
+      height = base_plot_length*1.25, width = base_plot_length*2)
 
-  }
+
+
 
 }
 

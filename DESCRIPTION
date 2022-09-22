@@ -9,13 +9,13 @@ Description: This is the gridded, recoded version of the stochastic weather gene
 License: MIT + file LICENSE
 Depends:
   R (>= 4.1)
-Imports: 
+Imports:
+    forecast,
     akima,
     doParallel,
     dplyr,
     e1071,
     fitdistrplus,
-    forecast,
     foreach,
     ggplot2,
     MASS,
@@ -28,7 +28,8 @@ Imports:
     stats,
     tibble,   
     tidyr,
-    utils
+    utils,
+    zoo
 Suggests:
     devtools,
     knitr,

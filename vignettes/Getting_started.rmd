@@ -12,7 +12,11 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
+
+library(formatR)
+
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE,
+  tidy.opts = list(width.cutoff = 60), tidy = TRUE)
 ```
 
 # Package summary
@@ -38,6 +42,11 @@ The latest version of the weathergenr package can be installed from github and t
 ```{r setup, eval=TRUE, echo = FALSE}
 #devtools::install_github("Deltares/weathergenr", upgrade = "never")
 library(weathergenr)
+
+#Other packages required for the vignette
+library(tidyr)
+library(dplyr)
+library(ggplot2)
 ```
 
 ## Sample data
@@ -80,6 +89,28 @@ Finally, the date series associated with the data can be accessed with the *date
 head(ncdata$date)
 ```
 
+Lets look at annual series and monthly variation of daily variables:
+```{r ncdata5, fig.height = 5, fig.width = 7}
+weather_series_basinavg <- (Reduce(`+`, ncdata$data) / nrow(ncdata$grid)) %>%
+  as_tibble() %>%
+  mutate(date = ncdata$date) %>%
+  select(date, precip, temp, temp_min, temp_max) %>%
+  gather(key = variable, value = value, -date)
+
+p1 <- ggplot(weather_series_basinavg, aes(date, value, color = variable)) +
+  geom_line() +
+  facet_wrap(~variable, scales = "free_y",ncol = 1) +
+  labs(x="Month",y="value") + guides(color = "none")  
+print(p1)
+p2 <- ggplot(weather_series_basinavg, 
+      aes(x = as.factor(as.numeric(format(date,"%m"))), value, color = variable )) +
+  geom_boxplot(aes(group=as.numeric(format(date,"%m")))) +
+  facet_wrap(~variable, scales = "free_y",ncol = 2) +
+  labs(x="Month",y="value") + guides(color = "none")  
+print(p2)
+```
+
+
 ## Generate stochastic weather realizations
 
 In this section, we introduce the procedure to obtain new weather sequences from the historical weather record via the *generateWeatherSeries()* function. This function serves as a wrapper arround a number of statistical procedures including a wavelet autoregressive model (WARM) coupled with a Markov chain knn resampling scheme based on Steinschneider and Brown (2013).
@@ -93,7 +124,7 @@ realization_num <- 1
 ```
 
 GenerateWeatherSeries() function includes a large set of essential and non-essential parameters to control the weather generation process. Essential parameters include: *weather.data*, *weather.grid*, and *weather.date* and *variable.names* to specify the attributes of the input metereological data, *realization.num* to set the desired number of new weather realizations, and the *output.path*:
-```{r stochastic2, results='hide', eval = TRUE, cache=TRUE}
+```{r stochastic2, results='hide', eval = FALSE, cache=TRUE}
 stochastic_weather <- generateWeatherSeries(
      weather.data = ncdata$data,
      weather.grid = ncdata$grid,
@@ -119,7 +150,7 @@ stochastic_weather <- generateWeatherSeries(
 ```
 
 The output is a list, where the first element is a data frame of resampled dates for each new stochastic realization and a date vector for the new (generated) weather data.
-```{r stochastic3, eval = TRUE, cache=TRUE}
+```{r stochastic3, eval = FALSE, cache=TRUE}
 # Resampled dates
 stochastic_weather$resampled
 

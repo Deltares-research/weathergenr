@@ -31,8 +31,6 @@
 #'
 #' @return
 #' @export
-#' @import MASS
-#' @import quantmod
 #' @import ggplot2
 #' @import tibble
 #' @import tidyr
@@ -181,7 +179,7 @@ generateWeatherSeries <- function(
       # Remove the mean from the component
       MEAN <- mean(warm_variable)
 
-      MODEL <-  forecast::auto.arima((warm_variable - MEAN), max.p = 2,max.q = 2,max.P = 0,max.Q = 0,
+      MODEL <- forecast::auto.arima((warm_variable - MEAN), max.p = 2,max.q = 2,max.P = 0,max.Q = 0,
         stationary = TRUE, seasonal = FALSE)
 
       INTERCEPT <- ifelse(length(which(names(MODEL$coef)=="intercept")) > 0,
@@ -304,6 +302,7 @@ generateWeatherSeries <- function(
 
   if(evaluate.model) {
 
+    # Sample evenly from the grid cells
     sampleGrids <- sf::st_as_sf(weather.grid[,c("x","y")], coords=c("x","y")) %>%
       sf::st_sample(size = min(evaluate.grid.num, ngrids), type="regular") %>%
       sf::st_cast("POINT") %>% sf::st_coordinates() %>% as_tibble() %>%
@@ -321,14 +320,14 @@ generateWeatherSeries <- function(
 
     suppressWarnings(
       evaluateWegen(daily.sim = rlz_sample,
-          daily.obs = obs_sample,
-          output.path = warm_path,
-          variables = variable.names,
-          variable.labels = variable.labels,
-          variable.units = variable.units,
-          realization.num = realization.num,
-          wet.quantile = mc.wet.quantile,
-          extreme.quantile = mc.extreme.quantile
+                    daily.obs = obs_sample,
+                    output.path = warm_path,
+                    variables = variable.names,
+                    variable.labels = variable.labels,
+                    variable.units = variable.units,
+                    realization.num = realization.num,
+                    wet.quantile = mc.wet.quantile,
+                    extreme.quantile = mc.extreme.quantile
       )
     )
 
