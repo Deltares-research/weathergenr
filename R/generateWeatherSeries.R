@@ -26,7 +26,8 @@
 #' @param seed a random seed value (nunmeric)
 #' @param compute.parallel logical value indicating whether to run (some) functions in parallel
 #' @param num.cores Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned
-#'
+#' @param dry.spell.change placeholder
+#' @param wet.spell.change placeholder
 #'
 #' @return
 #' @export
@@ -55,6 +56,8 @@ generateWeatherSeries <- function(
   knn.sample.num = 100,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
+  dry.spell.change = rep(1,12),
+  wet.spell.change = rep(1,12),
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   output.path = getwd(),
@@ -127,10 +130,6 @@ generateWeatherSeries <- function(
 
   # Area-averaged annual weather series
   climate_a_aavg <- Reduce(`+`, climate_a) / ngrids
-
-
-
-
 
 
   # Simulated dates
@@ -261,12 +260,16 @@ generateWeatherSeries <- function(
       ANNUAL_PRCP = warm_variable,
       PRCP = climate_d_aavg$precip,
       TEMP = climate_d_aavg$temp,
+      TMAX = climate_d_aavg$temp_max,
+      TMIN = climate_d_aavg$temp_min,
       START_YEAR_SIM = sim.year.start,
       k1 = n,
       ymax = sim.year.num,
       dates.d = dates_d,
       sim.dates.d = sim_dates_d,
       knn.annual.sample.num = knn.sample.num,
+      dry.spell.change = dry.spell.change,
+      wet.spell.change = wet.spell.change,
       YEAR_D = year_seq,
       month.start = month.start,
       wet.quantile = mc.wet.quantile,

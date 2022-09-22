@@ -22,7 +22,6 @@ knnDaily <- function(
   cur_sim_TEMP = NULL,
   PRCP_TODAY = NULL,
   TEMP_TODAY = NULL,
-  DATE_TOMORROW = NULL,
   k = NULL,
   sd_monthly_PRCP = NULL,
   sd_monthly_TEMP = NULL,
@@ -49,7 +48,7 @@ knnDaily <- function(
 	set.seed(seed + k1*count)
 	selection <- sample(1:k, 1, prob=(1/1:k)/sum(1/1:k))
 
-	return(DATE_TOMORROW[K_Distances[selection]])
+	return(K_Distances[selection])
 
 	}
 

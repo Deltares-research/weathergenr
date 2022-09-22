@@ -16,6 +16,10 @@
 #' @param extreme.quantile quantile threshold to distinguish between extreme wet days
 #' @param knn.annual.sample.num placeholder
 #' @param seed random seed value
+#' @param TMAX placeholder
+#' @param TMIN placeholder
+#' @param dry.spell.change placeholder
+#' @param wet.spell.change placeholder
 #'
 #' @return
 #' @export
@@ -24,6 +28,8 @@ resampleDates <- function(
   ANNUAL_PRCP = NULL,
   PRCP = NULL,
   TEMP = NULL,
+  TMAX = NULL,
+  TMIN = NULL,
   START_YEAR_SIM = NULL,
   k1 = NULL,
   ymax = NULL,
@@ -34,6 +40,8 @@ resampleDates <- function(
   knn.annual.sample.num = 50,
   wet.quantile = 0.2,
   extreme.quantile = 0.8,
+  dry.spell.change = rep(1,12),
+  wet.spell.change = rep(1,12),
   seed = NULL)
 
   {
@@ -44,11 +52,11 @@ resampleDates <- function(
   # Workaround for rlang warning
   month <- day <- wyear <- 0
 
-  if(month.start == 1) {
-    month_list <- 1:12
-  } else {
-    month_list <- c(month.start:12,1:(month.start-1))
-  }
+
+  ### Set date vectors
+
+  if(month.start == 1) {month_list <- 1:12} else {
+    month_list <- c(month.start:12,1:(month.start-1))}
 
   WATER_YEAR_A <- dates.d %>%
     dplyr::filter(month == month.start & day == 1) %>% pull(wyear)
@@ -64,12 +72,11 @@ resampleDates <- function(
   WATER_YEAR_SIM = sim.dates.d$wyear
   SIM_LENGTH <- length(MONTH_SIM)
 
-  #***
   water_year_start = dates.d$wyear[1]
   water_year_end = dates.d$wyear[nrow(dates.d)]
-  #****
 
-	# Vectors to store transition probabilities
+	### Vectors to store MC transition probabilities
+
 	p00_final <- array(NA,SIM_LENGTH)
 	p01_final <- array(NA,SIM_LENGTH)
 	p02_final <- array(NA,SIM_LENGTH)
@@ -80,27 +87,29 @@ resampleDates <- function(
 	p21_final <- array(NA,SIM_LENGTH)
 	p22_final <- array(NA,SIM_LENGTH)
 
-	# Vetor to store simulated results???
+	# Vetor to store intermediate results
 	OCCURENCES <- array(0,c(SIM_LENGTH))
 	SIM_PRCP <- array(0, c(SIM_LENGTH))
 	SIM_TEMP <- array(25, c(SIM_LENGTH))
+  SIM_TMAX <- array(30, c(SIM_LENGTH))
+	SIM_TMIN <- array(20, c(SIM_LENGTH))
+
 
 	SIM_DATE <- array(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
+  #SIM_DATE <- rep(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
 
 	# Current Stochastic trace....
 	count <- 1
 
-	# Generate random numbers btw 0 and 1 for each day of the simulation period
+	# Generate random value btw 0-1 for each simulation day
 	set.seed(seed+k1)
 	rn_all <- stats::runif(SIM_LENGTH,0,1)
 
-  # knn sample size
+  # Define knn sample size
   kk <- max(round(sqrt(length(ANNUAL_PRCP)),0),round(length(ANNUAL_PRCP),0)*.5)
 
 	# For each year start sampling....
 	for (y in 1:ymax) {
-
-	  #print(y)
 
 	  # Current simulated annual precip at y
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
@@ -124,19 +133,22 @@ resampleDates <- function(
 		  conditional_selection <- c(conditional_selection, which(WATER_YEAR_D==CUR_YEARS[yy]))
 		}
 
-		# Find all variables and date indices in the current selection years
+		# Find all variables and date indices in the conditional selection
 		PRCP_CURRENT <- PRCP[conditional_selection]
 		TEMP_CURRENT <- TEMP[conditional_selection]
+		TMAX_CURRENT <- TMAX[conditional_selection]
+		TMIN_CURRENT <- TMIN[conditional_selection]
 		DATE_D_CURRENT <- DATE_D[conditional_selection]
 		MONTH_D_CURRENT <- MONTH_D[conditional_selection]
 		YEAR_D_CURRENT <- YEAR_D[conditional_selection]
 		MONTH_DAY_D_CURRENT <- MONTH_DAY_D[conditional_selection,]
 
-		# Calculate thresholds for each month
+		# Calculate dry to wet threshold for each month
     wet_threshold <- sapply(1:12, function(m)
       stats::quantile(PRCP_CURRENT[which(MONTH_D_CURRENT==month_list[m])],
         wet.quantile, names = F))
 
+    # Calculate wet to very wet threshold for each month
     extreme_threshold <- sapply(1:12, function(m)
       stats::quantile(PRCP_CURRENT[which(MONTH_D_CURRENT==month_list[m] & PRCP_CURRENT > wet_threshold[m])],
         extreme.quantile, names = F))
@@ -154,13 +166,12 @@ resampleDates <- function(
 
 		  # day of the year index in each month
 		  x <- which(MONTH_LAG1==month_list[m])
-
 			r <- which(MONTH_SIM==month_list[m] & WATER_YEAR_SIM == (y+START_YEAR_SIM))
 
 			CUR_PRCP0 <- PRCP_LAG0[x]
 			CUR_PRCP1 <- PRCP_LAG1[x]
 
-			# Transition probabilities
+			# Transition probabilities (0=Dry, 1=Wet, 2=Very wet)
 			p00_final[r] <- length(which(PRCP_LAG1[x]<=wet_threshold[m] & PRCP_LAG0[x]<=wet_threshold[m])) / length(which(PRCP_LAG1[x]<=wet_threshold[m]))
 			p01_final[r] <- length(which(PRCP_LAG1[x]<=wet_threshold[m] & PRCP_LAG0[x]>wet_threshold[m] & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]<=wet_threshold[m]))
 			p02_final[r] <- length(which(PRCP_LAG1[x]<=wet_threshold[m] & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]<=wet_threshold[m]))
@@ -170,6 +181,26 @@ resampleDates <- function(
 			p20_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]<=wet_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
 			p21_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]>wet_threshold[m] & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
 			p22_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
+
+			#adjustments for dry spells
+			p01_final[r] <- p01_final[r]/dry.spell.change[m]
+			p02_final[r] <- p02_final[r]/dry.spell.change[m]
+			p00_final[r] <- 1 - p01_final[r] - p02_final[r]
+
+			#adjustments for wet spells
+			p10_final[r] <- p10_final[r]/wet.spell.change[m]
+			p11_final[r] <- 1 - p10_final[r] - p12_final[r]
+
+			# p01_new <- (p01_final[r] + p02_final[r])/dry.spell.change[m] - p02_final[r]
+			# p00_new <- p00_final[r] + (p01_final[r] - p01_new)
+			# p01_final[r] <- p01_new
+			# p00_final[r] <- p00_new
+			#
+			# #adjustments for wet spells
+			# p10_new <- (p10_final[r] + p12_final[r])/wet.spell.change[m] - p12_final[r]
+			# p11_new <- p11_final[r] + (p10_final[r] - p10_new)
+			# p10_final[r] <- p10_new
+			# p11_final[r] <- p11_new
 
 		} #month-counter close
 
@@ -269,6 +300,10 @@ resampleDates <- function(
   			possible_days <- cur_day[cur_day_cur_state]
   			PRCP_TODAY <- PRCP_CURRENT[possible_days]
   			TEMP_TODAY <- TEMP_CURRENT[possible_days]
+  			PRCP_TOMORROW <- PRCP_CURRENT[possible_days+1]
+				TEMP_TOMORROW <- TEMP_CURRENT[possible_days+1]
+				TMAX_TOMORROW <- TMAX_CURRENT[possible_days+1]
+				TMIN_TOMORROW <- TMIN_CURRENT[possible_days+1]
   			DATE_TOMORROW <- DATE_D_CURRENT[possible_days+1]
 
   			cur_sim_PRCP <- SIM_PRCP[(count-1)]
@@ -290,7 +325,6 @@ resampleDates <- function(
   			  cur_sim_TEMP = cur_sim_TEMP,
   			  PRCP_TODAY = PRCP_TODAY,
   			  TEMP_TODAY = TEMP_TODAY,
-  			  DATE_TOMORROW = DATE_TOMORROW,
   			  k = k,
   			  sd_monthly_PRCP = sd_monthly_PRCP,
   			  sd_monthly_TEMP = sd_monthly_TEMP,
@@ -300,7 +334,11 @@ resampleDates <- function(
   			  count = count,
   			  seed = seed)
 
-  			SIM_DATE[count] <- DATE_D_CURRENT[which(as.numeric(DATE_D_CURRENT)==RESULT)][1]
+  	SIM_PRCP[count] <- PRCP_TOMORROW[RESULT]
+		SIM_TEMP[count] <- TEMP_TOMORROW[RESULT]
+		SIM_TMAX[count] <- TMAX_TOMORROW[RESULT]
+		SIM_TMIN[count] <- TMIN_TOMORROW[RESULT]
+		SIM_DATE[count] <- DATE_D_CURRENT[which(as.numeric(DATE_D_CURRENT)==DATE_TOMORROW[RESULT])][1]
 
 			} # if-condition count close
 
