@@ -27,7 +27,7 @@ imposeClimateChanges <- function(
   transient.temp.change = TRUE,
   transient.precip.change = TRUE,
   calculate.pet = TRUE,
-  compute.parallel = TRUE,
+  compute.parallel = FALSE,
   num.cores = NULL,
   fit.method = "mme")
 
