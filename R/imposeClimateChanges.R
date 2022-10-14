@@ -83,7 +83,7 @@ imposeClimateChanges <- function(
 
   precip <- foreach::foreach(x=seq_len(ngrids)) %d% {
 
-      quantileMapping(
+      weathergenr::quantileMapping(
             value = climate.data[[x]]$precip,
             mon.ts = month_ind,
             year.ts = year_ind,
