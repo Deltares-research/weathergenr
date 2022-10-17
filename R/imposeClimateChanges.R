@@ -71,7 +71,7 @@ imposeClimateChanges <- function(
   for (x in 1:ngrids) {
 
     # Perturb daily precipitation using quantile mapping
-    climate.data[[x]]$precip <- quantileMapping(
+    climate.data[[x]]$precip <- weathergenr::quantileMapping(
             value = climate.data[[x]]$precip,
             mon.ts = month_ind,
             year.ts = year_ind,
