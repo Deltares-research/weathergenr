@@ -10,17 +10,19 @@ License: MIT + file LICENSE
 Depends:
   R (>= 4.1)
 Imports:
-    forecast,
     akima,
     doParallel,
     dplyr,
     e1071,
     fitdistrplus,
+    forecast,
     foreach,
     ggplot2,
+    MASS,
     ncdf4,
     parallel,
     patchwork,
+    quantmod,
     scales,
     sf,
     stats,
