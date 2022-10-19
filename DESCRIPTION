@@ -25,7 +25,6 @@ Imports:
     quantmod,
     scales,
     sf,
-    stats,
     tibble,   
     tidyr,
     utils,

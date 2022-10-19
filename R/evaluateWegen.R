@@ -23,7 +23,6 @@
 #' @return
 #' @export
 #' @import utils ggplot2 dplyr
-#' @importFrom("stats", "setNames", "median")
 evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
