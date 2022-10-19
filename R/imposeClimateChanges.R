@@ -76,7 +76,8 @@ imposeClimateChanges <- function(
             mon.ts = month_ind,
             year.ts = year_ind,
             mean.change = precip_meanf,
-            var.change = precip_varf)
+            var.change = precip_varf,
+            fit.method = "mme")
 
     # Perturb temp, temp_min, and temp_max by delta factors
     climate.data[[x]]$temp <- climate.data[[x]]$temp + tempf2

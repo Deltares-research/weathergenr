@@ -164,7 +164,7 @@ waveletARSubset <- function(
                    power.sim = power.sim[1:pl,sub_clim])  +
           scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    ggsave(paste0(output.path, "warm_sim_matching_spectral.png"), width=8, height=6)
+    ggsave(paste0(output.path, "warm_spectral_matching.png"), width=8, height=6)
 
     # For subsetted realizations only
     p <- waveletPlot(power.period = power.period[1:pl],
@@ -173,7 +173,7 @@ waveletARSubset <- function(
                    power.sim = power.sim[1:pl,sub_sample, drop = FALSE])  +
           scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    ggsave(paste0(output.path, "warm_sim_sample_spectral.png"), width=8, height=6)
+    ggsave(paste0(output.path, "warm_spectral_sampled.png"), width=8, height=6)
 
     # Boxplots of all stats
     stats_obs_gg <- stats_obs %>% mutate(sim=1) %>%
@@ -190,6 +190,7 @@ waveletARSubset <- function(
         labels = c("Mean", "St. Deviation", "Minimum", "Maximum"))) %>%
       arrange(type)
 
+    # Plot subsetted series statistics
     p <- ggplot(mapping = aes(x = par, y = value)) +
       theme_bw() +
       facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1) +
@@ -202,7 +203,7 @@ waveletARSubset <- function(
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank())
 
-      ggsave(paste0(output.path, "warm_sim_sample_stats.png"), width = 8, height = 5)
+      ggsave(paste0(output.path, "warm_stats_sampled.png"), width = 8, height = 5)
 
     # Plot simulated warm-series
     sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
@@ -215,14 +216,15 @@ waveletARSubset <- function(
 
     df2 <- tibble(x=1:length(series.obs), y = series.obs*365)
 
+    # Subsetted annual series
     p <- ggplot(df1, aes(x = x, y = y)) +
       theme_bw(base_size = 12) +
-      geom_line(aes(y = y, group = variable), color = "gray60", alpha = 0.6) +
-      geom_line(aes(y=y), data                                                                                                                                                                                     = df2, color = "black", size = 1) +
+      geom_line(aes(y = y, group = variable, color = variable), alpha = 0.6) +
+      geom_line(aes(y=y), data = df2, color = "black", size = 1) +
       guides(color = "none") +
       labs(y = "Precipitation (mm/year)", x = "Year index")
 
-    ggsave(paste0(output.path, "warm_sim_timeseries.png"), height = 5, width = 8)
+    ggsave(paste0(output.path, "warm_annual_series.png"), height = 5, width = 8)
 
 
   }
@@ -230,10 +232,10 @@ waveletARSubset <- function(
   if(isTRUE(save.series)) {
 
     utils::write.csv(x = series.sim[,sub_clim], row.names = FALSE,
-        file = paste0(output.path, "warm_sim_matching.csv"))
+        file = paste0(output.path, "warm_output_matching.csv"))
 
     utils::write.csv(x = series.sim[,sub_sample], row.names = FALSE,
-        file = paste0(output.path, "warm_sim_sample.csv"))
+        file = paste0(output.path, "warm_output_sampled.csv"))
 
     }
 

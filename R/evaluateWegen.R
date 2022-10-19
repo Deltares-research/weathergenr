@@ -225,8 +225,6 @@ evaluateWegen <- function(
       summarize(value = mean(value)) %>%
         mutate(type = name_st)
 
-
-
   }
 
   sim_stats <- bind_rows(sim_stats, .id = "rlz")
@@ -323,7 +321,7 @@ evaluateWegen <- function(
     theme(plot.caption = element_text(hjust = 0, face= "italic"), #Default is hjust=
         plot.title.position = "plot")
 
-  ggsave(paste0(output.path,"daily_average_spell_length.png"),
+  ggsave(paste0(output.path,"daily_spell_lengths.png"),
         height = base_plot_length, width = base_plot_length*2)
 
   ### Wet dry days
@@ -338,11 +336,12 @@ evaluateWegen <- function(
     scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     labs(x = name_obs, y = name_st)
 
-  ggsave(paste0(output.path,"daily_average_wetdry_days.png"),
+  ggsave(paste0(output.path,"daily_spell_num.png"),
          height = base_plot_length, width = base_plot_length*2)
 
   plabeller <- as_labeller(c(`dry` = "Average dry spell length", `wet` = "Average wet spell length"))
 
+  # Average dry spell lengths
   p <- ggplot(mapping= aes(x = as.factor(mon), y = value)) +
     theme_bw(base_size = base_font_size) +
     facet_wrap(stat ~ ., ncol = 1, scale = "free_y", labeller = plabeller) +
@@ -354,7 +353,7 @@ evaluateWegen <- function(
     geom_line(aes(group = 1), data = hist_wetdry_spells_aavg, color = "blue", linetype = "dashed") +
     labs(x="Calendar month", y = "Days")
 
-  ggsave(paste0(output.path,"monthly_average_spell_length.png"),
+  ggsave(paste0(output.path,"monthly_spell_lengths.png"),
          height = base_plot_length*1.5, width = base_plot_length*1.5)
 
   ### Cross site correlations
@@ -370,7 +369,7 @@ evaluateWegen <- function(
     scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks)
 
-  ggsave(paste0(output.path,"daily_cross_correlation.png"),
+  ggsave(paste0(output.path,"daily_crosscorrelation.png"),
          height = base_plot_length*2, width = base_plot_length*2)
 
   ### Intersite correlations
@@ -386,7 +385,7 @@ evaluateWegen <- function(
     scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks)
 
-  ggsave(paste0(output.path,"daily_inter_correlation.png" ),
+  ggsave(paste0(output.path,"daily_intercorrelation.png" ),
          width = base_plot_length*3, height = base_plot_length*2)
 
   for (v in 1:length(variables)) {
@@ -409,7 +408,7 @@ evaluateWegen <- function(
             legend.background = element_rect(fill = "white", color = NA),
             legend.text=element_text(size=base_font_size))
 
-    ggsave(paste0(output.path,"monthly_pattern_", variables[v],".png" ),
+    ggsave(paste0(output.path,"monthly_", variables[v],".png" ),
            height = base_plot_length*2, width = base_plot_length*2)
   }
 
@@ -433,11 +432,8 @@ evaluateWegen <- function(
       labs(x = name_obs, y = name_st) +
       facet_wrap(variable_stat ~ ., scales = "free", nrow = 2, labeller = label_value)
 
-  ggsave(paste0(output.path,"daily_statistics_scatterplot.png" ),
+  ggsave(paste0(output.path,"daily_stats.png" ),
       height = base_plot_length*1.25, width = base_plot_length*2)
-
-
-
 
 }
 

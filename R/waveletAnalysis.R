@@ -29,6 +29,16 @@ waveletAnalysis <- function(variable = NULL,
   # Workaround for rlang warning
   x <- y <- z <- 0
 
+  # Function to find median values
+  median_index <- function(x) {
+
+    lx <- length(x)
+    if (lx %% 2 == 1) {
+      return(match(median(x), x))
+    }
+    which(rank(x, ties.method = "first") == lx/2 + 1)
+  }
+
   #### Define Wavelet function used that returns transform
   waveletf <- function(k,s) {
     nn <- length(k)
@@ -151,15 +161,16 @@ waveletAnalysis <- function(variable = NULL,
     GWS_signif[a1] <- fft_theor[a1]*variance1*chisquare_GWS[a1]
   }
 
+  # Find significant low-freq periods
   period_lower_limit <- 0
   sig_periods <- which(GWS>GWS_signif & period > period_lower_limit)
-  signif_periods <- unlist(split(sig_periods, cumsum(c(1, diff(sig_periods) != 1))), use.names = F)
+  sig_periods_grp <- split(sig_periods, cumsum(c(1, diff(sig_periods) != 1)))
+  signif_periods <- unlist(lapply(sig_periods_grp, function(x) x[median_index(x)]), use.names = FALSE)
 
   if(plot == TRUE) {
 
     GWS_gg <- tibble(period = period, GWS = GWS, GWS_signif = GWS_signif)
     var_gg <- tibble(x = 1:length(variable), y = variable)
-
 
     df <- t(log(POWER,base=2)) %>%
       as_tibble(.name_repair = ~ as.character(period)) %>%
@@ -167,9 +178,10 @@ waveletAnalysis <- function(variable = NULL,
       gather(key = y, value = z, -x) %>%
       mutate(across(everything(), as.numeric))
 
-    df <- suppressWarnings(with(df, akima::interp(x, y, z, extrap = FALSE, linear = TRUE,
+    df <- suppressWarnings(with(df, akima::interp(x, y, z, extrap = TRUE, linear = FALSE,
                       xo = seq(min(x), max(x), length = 20),
                       yo = seq(min(y), max(y), length = 20))))
+
 
     df1 <- as_tibble(df$z, .name_repair = ~as.character(df$y))  %>%
       mutate(x = df$x) %>%

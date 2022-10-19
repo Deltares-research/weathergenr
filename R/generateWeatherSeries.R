@@ -185,7 +185,7 @@ generateWeatherSeries <- function(
       INTERCEPT <- ifelse(length(which(names(MODEL$coef)=="intercept")) > 0,
               as.vector(MODEL$coef)[which(names(MODEL$coef)=="intercept")],0)
 
-      SIM <- sapply(1:sim.year.num, function(x) {set.seed(seed+x)
+      sim_annual <- sapply(1:warm.sample.num, function(x) {set.seed(seed+x)
         stats::simulate(MODEL, sim.year.num, sd = sqrt(MODEL$sigma2))}) + INTERCEPT + MEAN
 
   }

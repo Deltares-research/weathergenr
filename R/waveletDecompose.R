@@ -124,7 +124,7 @@ waveletDecompose <- function(variable = NULL,
   dofmin <- empir[1]     # Degrees of freedom with no smoothing
   Cdelta <- empir[2]     # reconstruction factor
   gamma_fac <- empir[3]  # time-decorrelation factor
-  dj0 <- empir[4]       # scale-decorrelation factor
+  dj0 <- empir[4]        # scale-decorrelation factor
 
   #for red noise background, lag1 autocorrelation = 0.72,
   #for white noise background, lag1 autocorrelation = 0
@@ -191,7 +191,7 @@ waveletDecompose <- function(variable = NULL,
       bind_cols(Noise=Noise) %>%
       gather(key = variable, value = value, -year) %>%
       mutate(variable = factor(variable,
-        levels = c("Original", paste0("Component_", 1:NUM_FINAL_PERIODS), "Noise")))
+        levels = c("Original", names(COMPS), "Noise")))
 
 
     p <- ggplot(df, aes(x = year, y = value)) +
@@ -202,7 +202,8 @@ waveletDecompose <- function(variable = NULL,
         labs(x = "Time (year)", y = "")
 
     # Save plot to file
-    ggsave(paste0(output.path, "warm_hist_decomposition.png"), height=5, width=7)
+    ggsave(paste0(output.path, "warm_decomposition.png"),
+      height=3 + NUM_FINAL_PERIODS*2, width=8)
 
 
 
