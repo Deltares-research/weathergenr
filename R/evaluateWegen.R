@@ -23,7 +23,7 @@
 #' @return
 #' @export
 #' @import utils ggplot2 dplyr
-#' @importFrom("stats", "setNames")
+#' @importFrom("stats", "setNames", "median")
 evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
@@ -344,7 +344,7 @@ evaluateWegen <- function(
   # Average dry spell lengths
   p <- ggplot(mapping= aes(x = as.factor(mon), y = value)) +
     theme_bw(base_size = base_font_size) +
-    facet_wrap(stat ~ ., ncol = 1, scale = "free_y", labeller = plabeller) +
+    facet_wrap(stat ~ ., ncol = 1, scales = "free_y", labeller = plabeller) +
     stat_summary(data = sim_wetdry_spells_aavg,
       fun.data = "mean_cl_normal", geom = "linerange", alpha = 0.3, size = 1.5) +
     stat_summary(data = sim_wetdry_spells_aavg,

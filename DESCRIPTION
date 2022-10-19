@@ -18,18 +18,15 @@ Imports:
     fitdistrplus,
     foreach,
     ggplot2,
-    MASS,
     ncdf4,
     parallel,
     patchwork,
-    quantmod,
     scales,
     sf,
     stats,
     tibble,   
     tidyr,
-    utils,
-    zoo
+    utils
 Suggests:
     devtools,
     knitr,
