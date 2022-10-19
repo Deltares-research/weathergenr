@@ -28,7 +28,8 @@ Imports:
     stats,
     tibble,   
     tidyr,
-    utils
+    utils,
+    zoo
 Suggests:
     devtools,
     knitr,
