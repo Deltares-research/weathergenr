@@ -8,3 +8,6 @@
 ^pkgdown$
 ^\.github$
 /vignettes/web_only
+/docs/
+/vignettes/
+/tests/
