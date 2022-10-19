@@ -22,10 +22,12 @@ generateWeatherSeries(
   knn.sample.num = 100,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
+  dry.spell.change = rep(1, 12),
+  wet.spell.change = rep(1, 12),
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   output.path = getwd(),
-  seed = NULL,
+  seed = sample.int(1e+05, 1),
   compute.parallel = TRUE,
   num.cores = NULL
 )
@@ -47,7 +49,7 @@ generateWeatherSeries(
 
 \item{sim.year.start}{numeric value indicating the starting year of the generated time-series}
 
-\item{month.start}{the first month of the year (default value is 1). Use a value other than 1 for water-year based analyses}
+\item{month.start}{the first month of the water year (default value is 1).}
 
 \item{realization.num}{number of natural variability realizations to be generated.}
 
@@ -65,6 +67,10 @@ generateWeatherSeries(
 
 \item{mc.extreme.quantile}{extremely wet state threshold (quantile value) for markov-chain modeling}
 
+\item{dry.spell.change}{placeholder}
+
+\item{wet.spell.change}{placeholder}
+
 \item{evaluate.model}{logical value indicating wether to save model evaluation plots}
 
 \item{evaluate.grid.num}{Number of grid cells to be sampled in the evaluation plots}
@@ -76,9 +82,6 @@ generateWeatherSeries(
 \item{compute.parallel}{logical value indicating whether to run (some) functions in parallel}
 
 \item{num.cores}{Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned}
-}
-\value{
-
 }
 \description{
 Description goes here....

@@ -30,9 +30,10 @@ evaluateWegen(
 \item{variable.units}{A vector object specifying the names of weather variable units}
 
 \item{realization.num}{number of weather realizations}
-}
-\value{
 
+\item{wet.quantile}{precip. quantile for calculating monthly wet state threshold}
+
+\item{extreme.quantile}{precip. quantile for calculating monthly extremely wet state threshold}
 }
 \description{
 Function to assess the weather generator skill

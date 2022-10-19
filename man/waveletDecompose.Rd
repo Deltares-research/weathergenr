@@ -26,9 +26,6 @@ waveletDecompose(
 
 \item{output.path}{Output path}
 }
-\value{
-
-}
 \description{
 Function for weather generator decomposition
 }

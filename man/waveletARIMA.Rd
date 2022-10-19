@@ -2,7 +2,7 @@
 % Please edit documentation in R/waveletARIMA.R
 \name{waveletARIMA}
 \alias{waveletARIMA}
-\title{A function for Wavelet Autoregressive Modeling (WARM)}
+\title{Wavelet Autoregressive Modeling (WARM)}
 \usage{
 waveletARIMA(
   wavelet.components = NULL,
@@ -17,7 +17,9 @@ waveletARIMA(
 \item{sim.year.num}{A numeric value defining the desired length of simulated annual time-series}
 
 \item{sim.num}{A numeric value defining the number of synthetic series to be produced.}
+
+\item{seed}{random seed value}
 }
 \description{
-A function for Wavelet Autoregressive Modeling (WARM)
+Wavelet Autoregressive Modeling (WARM)
 }

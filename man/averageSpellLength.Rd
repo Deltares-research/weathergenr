@@ -13,9 +13,6 @@ averageSpellLength(x, threshold = 0, below = TRUE)
 
 \item{below}{placeholder}
 }
-\value{
-
-}
 \description{
 Calculate Spell Length
 }

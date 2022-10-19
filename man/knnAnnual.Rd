@@ -29,9 +29,8 @@ knnAnnual(
 \item{y}{placeholder}
 
 \item{y_sample_size}{placeholder}
-}
-\value{
 
+\item{seed}{random seed value}
 }
 \description{
 This KNN function generates 100 years.....

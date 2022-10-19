@@ -9,7 +9,6 @@ knnDaily(
   cur_sim_TEMP = NULL,
   PRCP_TODAY = NULL,
   TEMP_TODAY = NULL,
-  DATE_TOMORROW = NULL,
   k = NULL,
   sd_monthly_PRCP = NULL,
   sd_monthly_TEMP = NULL,
@@ -29,8 +28,6 @@ knnDaily(
 
 \item{TEMP_TODAY}{placeholder}
 
-\item{DATE_TOMORROW}{placeholder}
-
 \item{k}{placeholder}
 
 \item{sd_monthly_PRCP}{placeholder}
@@ -44,9 +41,10 @@ knnDaily(
 \item{k1}{placeholder}
 
 \item{count}{placeholder}
-}
-\value{
 
+\item{seed}{random seed value}
+
+\item{DATE_TOMORROW}{placeholder}
 }
 \description{
 KNN daily sampling

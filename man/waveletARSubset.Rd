@@ -51,9 +51,6 @@ waveletARSubset(
 
 \item{bounds}{placeholder}
 }
-\value{
-
-}
 \description{
 Resample from WARM outputs
 }

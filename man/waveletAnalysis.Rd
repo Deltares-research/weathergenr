@@ -26,9 +26,6 @@ waveletAnalysis(
 
 \item{output.path}{Output path}
 }
-\value{
-
-}
 \description{
 \code{waveletAnalysis} returns the wavelet analysis results.
 }

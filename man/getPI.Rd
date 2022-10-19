@@ -25,9 +25,6 @@ getPI(p00, p01, p02, p10, p11, p12, p20, p21, p22)
 
 \item{p22}{placeholder}
 }
-\value{
-
-}
 \description{
 Calculate markov chain probobabilities
 }

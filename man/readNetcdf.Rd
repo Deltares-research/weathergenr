@@ -20,9 +20,6 @@ readNetcdf(
 
 \item{spatial.ref}{PLACEHOLDER}
 }
-\value{
-
-}
 \description{
 Wrapper function to read files and create list object that returns a list of weather data for each grid,
 a table of grid coordinates and a date series as well as raw data, dimensions, variables, and attributes

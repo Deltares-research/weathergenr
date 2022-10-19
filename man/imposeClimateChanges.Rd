@@ -2,7 +2,7 @@
 % Please edit documentation in R/imposeClimateChanges.R
 \name{imposeClimateChanges}
 \alias{imposeClimateChanges}
-\title{Perturb weather realizations}
+\title{Perturb weather realizations to reflect climate change}
 \usage{
 imposeClimateChanges(
   climate.data = NULL,
@@ -11,9 +11,12 @@ imposeClimateChanges(
   change.factor.precip.mean = NULL,
   change.factor.precip.variance = NULL,
   change.factor.temp.mean = NULL,
-  change.type.temp = "transient",
-  change.type.precip = "transient",
-  calculate.pet = TRUE
+  transient.temp.change = TRUE,
+  transient.precip.change = TRUE,
+  calculate.pet = TRUE,
+  compute.parallel = FALSE,
+  num.cores = NULL,
+  fit.method = "mme"
 )
 }
 \arguments{
@@ -29,15 +32,18 @@ imposeClimateChanges(
 
 \item{change.factor.temp.mean}{placeholder}
 
-\item{change.type.temp}{placeholder}
+\item{transient.temp.change}{logical value indicating whether temperature changes are applied gradually (transient) or stepwise}
 
-\item{change.type.precip}{placeholder}
+\item{transient.precip.change}{logical value indicating whether precipitation changes are applied gradually (transient) or stepwise}
 
-\item{calculate.pet}{placeholder}
-}
-\value{
+\item{calculate.pet}{shoud pet be calculated? (logical)}
 
+\item{compute.parallel}{should the function run in parallel mode (logical)}
+
+\item{num.cores}{number of cores reserved for parallel computing. Default value is maximum cores minus one (omit if compute.parallel is FALSE)}
+
+\item{fit.method}{placeholder}
 }
 \description{
-Perturb weather realizations
+Perturb weather realizations to reflect climate change
 }

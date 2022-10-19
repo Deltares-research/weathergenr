@@ -38,9 +38,6 @@ writeNetcdf(
 
 \item{nc.file.suffix}{placeholder}
 }
-\value{
-
-}
 \description{
 Write to netcdf file
 }

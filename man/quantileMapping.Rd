@@ -9,7 +9,8 @@ quantileMapping(
   mean.change = NULL,
   var.change = NULL,
   mon.ts = NULL,
-  year.ts = NULL
+  year.ts = NULL,
+  fit.method = "mme"
 )
 }
 \arguments{
@@ -22,9 +23,6 @@ quantileMapping(
 \item{mon.ts}{placeholder}
 
 \item{year.ts}{placeholder}
-}
-\value{
-
 }
 \description{
 Function for perturbing climate statistics using Quantile-Mapping

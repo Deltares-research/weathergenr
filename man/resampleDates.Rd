@@ -9,6 +9,8 @@ resampleDates(
   ANNUAL_PRCP = NULL,
   PRCP = NULL,
   TEMP = NULL,
+  TMAX = NULL,
+  TMIN = NULL,
   START_YEAR_SIM = NULL,
   k1 = NULL,
   ymax = NULL,
@@ -19,6 +21,8 @@ resampleDates(
   knn.annual.sample.num = 50,
   wet.quantile = 0.2,
   extreme.quantile = 0.8,
+  dry.spell.change = rep(1, 12),
+  wet.spell.change = rep(1, 12),
   seed = NULL
 )
 }
@@ -30,6 +34,10 @@ resampleDates(
 \item{PRCP}{placeholder}
 
 \item{TEMP}{placeholder}
+
+\item{TMAX}{placeholder}
+
+\item{TMIN}{placeholder}
 
 \item{START_YEAR_SIM}{placeholder}
 
@@ -51,10 +59,11 @@ resampleDates(
 
 \item{extreme.quantile}{quantile threshold to distinguish between extreme wet days}
 
-\item{kk}{placeholder}
-}
-\value{
+\item{dry.spell.change}{placeholder}
 
+\item{wet.spell.change}{placeholder}
+
+\item{seed}{random seed value}
 }
 \description{
 Dissaggregation function
