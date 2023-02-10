@@ -51,7 +51,7 @@ generateWeatherSeries <- function(
   warm.signif.level = 0.90,
   warm.sample.num = 5000,
   warm.subset.criteria = NULL,
-  knn.sample.num = 100,
+  knn.sample.num = 120,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
   dry.spell.change = rep(1,12),
@@ -63,7 +63,7 @@ generateWeatherSeries <- function(
   compute.parallel = TRUE,
   num.cores = NULL)
 
- {
+{
 
   start_time <- Sys.time()
 
@@ -80,21 +80,23 @@ generateWeatherSeries <- function(
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat("\u2713", "|", paste0("Stochastic weather generation in parallel mode (", num.cores, " cores)")))
+    message(cat(as.character(Sys.time()), "- Running in parallel mode. Number of cores:", num.cores))
 
   } else {
-    message(cat("\u2713", "|", "Stochastic weather generation in sequential mode"))
+    message(cat(as.character(Sys.time()), "- Running in sequential mode."))
   }
 
-  message(cat("\u2713", "|", paste0("Input weather data: ", ngrids, " grid cells, ",
-    length(variable.names), " variables and ", length(weather.date), " days")
-  ))
 
   if (!dir.exists(output.path)) {dir.create(output.path)}
-  warm_path <- paste0(output.path, "weathergen_validation/")
-  if (!dir.exists(warm_path)) {dir.create(warm_path)}
+  plots_path <- file.path(output.path, "plots")
+  if (!dir.exists(plots_path)) {dir.create(plots_path)}
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  message(cat(as.character(Sys.time()), "- Historical climate data being prepared for for the weather generator."))
+  message(cat(as.character(Sys.time()), "- Climate variables:", paste(variable.names, collapse = ', ')))
+  message(cat(as.character(Sys.time()), "- Historical period:", as.character(weather.date[1]), "-", as.character(weather.date[length(weather.date)])))
+  message(cat(as.character(Sys.time()), "- Number of climate grids:", ngrids))
 
   # Historical dates
   year_seq <- as.numeric(format(weather.date,"%Y"))
@@ -145,8 +147,6 @@ generateWeatherSeries <- function(
   filter(wyear >= sim.year.start+1 & wyear <= sim_year_end) %>%
   mutate(date = as.Date(paste(year, month, day, sep = "-")), .before=1)
 
-
-
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   #####  Wavelet analysis on observed annual series
@@ -154,7 +154,7 @@ generateWeatherSeries <- function(
 
   # power spectra analysis of historical series
   warm_power <- waveletAnalysis(variable = warm_variable,
-      signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
+      signif.level = warm.signif.level, plot = TRUE, output.path = plots_path)
 
   # if there is low-frequency signal
   if(length(warm_power$signif_periods) > 0) {
@@ -162,19 +162,22 @@ generateWeatherSeries <- function(
       # wavelet decomposition of historical series
       wavelet_comps <- waveletDecompose(variable = warm_variable,
           signif.periods = warm_power$signif_periods,
-          signif.level = warm.signif.level, plot = TRUE, output.path = warm_path)
+          signif.level = warm.signif.level, plot = TRUE, output.path = plots_path)
 
-      message(cat("\u2713", "|", "Number of low-frequency components:", length(wavelet_comps)-1,
-          paste("(periodicity:", paste(warm_power$signif_periods, collapse=",")), "years)"))
+      message(cat(as.character(Sys.time()), "- Number of significant low-frequency components:", length(wavelet_comps)-1))
+      message(cat(as.character(Sys.time()), "- Annual periodicity (yrs):", paste(warm_power$signif_periods, collapse=",")))
 
       # Simulate annual series of wavelet variable
+      message(cat(as.character(Sys.time()), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), "annual stochastic series."))
+
       sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
           sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
 
     #if there is no low frequency signal
     } else {
 
-      message(cat("\u2713", "|", "No low-frequency signals detected"))
+      message(cat(as.character(Sys.time()), "- No low-frequency signals detected."))
+      message(cat(as.character(Sys.time()), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), "series."))
 
       # Remove the mean from the component
       MEAN <- mean(warm_variable)
@@ -190,9 +193,7 @@ generateWeatherSeries <- function(
 
   }
 
-  message(cat("\u2713", "|", format(warm.sample.num, big.mark=","),
-              "stochastic annual series simulated"))
-
+  message(cat(as.character(Sys.time()), "- Filtering stochastic annual series based on the subsetting criteria."))
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
@@ -224,16 +225,13 @@ generateWeatherSeries <- function(
        power.period = warm_power$GWS_period,
        power.signif = warm_power$GWS_signif,
        sample.num = realization.num,
-       output.path = warm_path,
+       output.path = plots_path,
        bounds = warm.subset.criteria,
        seed = seed,
        save.series = FALSE)
 
-  message(cat("\u2713", "|", ncol(sim_annual_sub$subsetted),
-    "stochastic series match subsetting criteria"))
-
-  message(cat("\u2713", "|", ncol(sim_annual_sub$sampled),
-    "series sampled"))
+  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$subsetted), "stochastic series filtered."))
+  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$sampled), "stochastic series randomly sampled."))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
@@ -281,13 +279,13 @@ generateWeatherSeries <- function(
     resampled_dates[,x] <-dates_d$dateo[match(resampled_ini[[x]], dates_d$date)]
   }
 
-  message(cat("\u2713", "|",
-    "Spatial/temporal dissaggregation with KNN & MC modeling completed"))
+  message(cat(as.character(Sys.time()), "- KNN & MCMC modeling completed."))
 
-  utils::write.csv(sim_dates_d$date, paste0(warm_path, "sim_dates.csv"), row.names = FALSE)
-  utils::write.csv(resampled_dates, paste0(warm_path, "resampled_dates.csv"), row.names = FALSE)
+  utils::write.csv(sim_dates_d$date, file.path(output_path, "sim_dates.csv"), row.names = FALSE)
+  utils::write.csv(resampled_dates, file.path(output_path, "resampled_dates.csv"), row.names = FALSE)
 
-  message(cat("\u2713", "|", "Resampled dates saved to `resampled_dates.csv`"))
+  message(cat(as.character(Sys.time()), "- Resampled dates saved to `resampled_dates.csv.`"))
+
   day_order <- sapply(1:realization.num,
     function(n) match(resampled_dates[[n]], dates_d$dateo))
 
@@ -300,7 +298,9 @@ generateWeatherSeries <- function(
 
   #::::::::::: MODEL EVALUATION (OPTIONAL) :::::::::::::::::::::::::::::::::::::
 
-  if(evaluate.model) {
+    if(evaluate.model) {
+
+    message(cat(as.character(Sys.time()), "- Comparing observed and simulated climate statistics."))
 
     # Sample evenly from the grid cells
     sampleGrids <- sf::st_as_sf(weather.grid[,c("x","y")], coords=c("x","y")) %>%
@@ -321,20 +321,30 @@ generateWeatherSeries <- function(
     suppressWarnings(
       evaluateWegen(daily.sim = rlz_sample,
                     daily.obs = obs_sample,
-                    output.path = warm_path,
+                    output.path = plots_path,
                     variables = variable.names,
                     variable.labels = variable.labels,
                     variable.units = variable.units,
                     realization.num = realization.num,
                     wet.quantile = mc.wet.quantile,
-                    extreme.quantile = mc.extreme.quantile
-      )
+                    extreme.quantile = mc.extreme.quantile)
     )
 
-    message(cat("\u2713", "|", "Evaluation plots saved to:", warm_path))
-
+  } else {
+     message(cat(as.character(Sys.time()), "- Comparison of historical and simulated climate statistics skipped."))
   }
+
+  message(cat(as.character(Sys.time()), "- Stochastic weather generation completed. See `run.log`"))
+  message(cat(as.character(Sys.time()), "- Elapsed time:", Sys.time() - start_time, "mins"))
+  #unlink('weathergenr_run.log')
+
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 
 }
+
+
+
+
+
+

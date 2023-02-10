@@ -5,7 +5,6 @@
 #' @param cur_sim_TEMP placeholder
 #' @param PRCP_TODAY placeholder
 #' @param TEMP_TODAY placeholder
-#' @param DATE_TOMORROW placeholder
 #' @param k placeholder
 #' @param sd_monthly_PRCP placeholder
 #' @param sd_monthly_TEMP placeholder

@@ -164,7 +164,7 @@ waveletARSubset <- function(
                    power.sim = power.sim[1:pl,sub_clim])  +
           scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    ggsave(paste0(output.path, "warm_spectral_matching.png"), width=8, height=6)
+    ggsave(file.path(output.path, "warm_spectral_matching.png"), width=8, height=6)
 
     # For subsetted realizations only
     p <- waveletPlot(power.period = power.period[1:pl],
@@ -173,7 +173,7 @@ waveletARSubset <- function(
                    power.sim = power.sim[1:pl,sub_sample, drop = FALSE])  +
           scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    ggsave(paste0(output.path, "warm_spectral_sampled.png"), width=8, height=6)
+    ggsave(file.path(output.path, "warm_spectral_sampled.png"), width=8, height=6)
 
     # Boxplots of all stats
     stats_obs_gg <- stats_obs %>% mutate(sim=1) %>%
@@ -203,7 +203,7 @@ waveletARSubset <- function(
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank())
 
-      ggsave(paste0(output.path, "warm_stats_sampled.png"), width = 8, height = 5)
+      ggsave(file.path(output.path, "warm_stats_sampled.png"), width = 8, height = 5)
 
     # Plot simulated warm-series
     sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
@@ -224,7 +224,7 @@ waveletARSubset <- function(
       guides(color = "none") +
       labs(y = "Precipitation (mm/year)", x = "Year index")
 
-    ggsave(paste0(output.path, "warm_annual_series.png"), height = 5, width = 8)
+    ggsave(file.path(output.path, "warm_annual_series.png"), height = 5, width = 8)
 
 
   }
@@ -232,10 +232,10 @@ waveletARSubset <- function(
   if(isTRUE(save.series)) {
 
     utils::write.csv(x = series.sim[,sub_clim], row.names = FALSE,
-        file = paste0(output.path, "warm_output_matching.csv"))
+        file = file.path(output.path, "warm_output_matching.csv"))
 
     utils::write.csv(x = series.sim[,sub_sample], row.names = FALSE,
-        file = paste0(output.path, "warm_output_sampled.csv"))
+        file = file.path(output.path, "warm_output_sampled.csv"))
 
     }
 

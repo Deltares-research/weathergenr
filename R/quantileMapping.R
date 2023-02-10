@@ -6,6 +6,7 @@
 #' @param var.change placeholder
 #' @param mon.ts placeholder
 #' @param year.ts placeholder
+#' @param fit.method placeholder
 #'
 #' @return
 #' @export
