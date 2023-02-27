@@ -95,7 +95,7 @@ writeNetcdf <- function(
   ncout_vardata <- df0
 
   # create netCDF file and put arrays
-  ncout_file <- ncdf4::nc_create(file.path(output.path, nc.file.prefix,"_",nc.file.suffix, ".nc"),
+  ncout_file <- ncdf4::nc_create(paste0(output.path, nc.file.prefix,"_",nc.file.suffix, ".nc"),
     ncout_vars, force_v4 = TRUE)
 
   #Loop through each variable and write data to netcdf
