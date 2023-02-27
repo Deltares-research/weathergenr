@@ -77,15 +77,15 @@ generateWeatherSeries <- function(
   grids  <- weather.grid$id
   ngrids <- length(grids)
 
-  message(cat(as.character(Sys.time()), "- Random seed: ", seed))
+  message(cat(as.character(Sys.time()), "- Random seed:", seed))
 
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat(as.character(Sys.time()), "- Parallel mode ( ", num.cores, " cores)"))
+    message(cat(as.character(Sys.time()), "- Parallel mode:", num.cores, "cores)"))
 
   } else {
-    message(cat(as.character(Sys.time()), "- Sequential mode."))
+    message(cat(as.character(Sys.time()), "- Sequential mode"))
   }
 
 
@@ -195,7 +195,7 @@ generateWeatherSeries <- function(
 
   }
 
-  message(cat(as.character(Sys.time()), "- Filtering stochastic annual series based on default subsetting criteria"))
+  message(cat(as.character(Sys.time()), "- Subsetting annual stochastic series based on default criteria"))
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
@@ -232,8 +232,8 @@ generateWeatherSeries <- function(
        seed = seed,
        save.series = FALSE)
 
-  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$subsetted), "stochastic series filtered"))
-  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$sampled), "stochastic series sampled"))
+  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$subsetted), "annual series subsetted"))
+  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$sampled), "annual series sampled"))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
@@ -286,7 +286,7 @@ generateWeatherSeries <- function(
   utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
 
-  message(cat(as.character(Sys.time()), paste0("- Resampled saved to", output.path)))
+  message(cat(as.character(Sys.time()), "- Results saved to the path: `", output.path,"`"))
 
   day_order <- sapply(1:realization.num,
     function(n) match(resampled_dates[[n]], dates_d$dateo))
