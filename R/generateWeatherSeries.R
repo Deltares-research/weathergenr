@@ -82,7 +82,7 @@ generateWeatherSeries <- function(
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat(as.character(Sys.time()), "- Parallel mode:", num.cores, "cores)"))
+    message(cat(as.character(Sys.time()), "- Parallel mode:", num.cores, "cores"))
 
   } else {
     message(cat(as.character(Sys.time()), "- Sequential mode"))
