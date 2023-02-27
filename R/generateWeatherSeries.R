@@ -93,9 +93,9 @@ generateWeatherSeries <- function(
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  message(cat(as.character(Sys.time()), "- Historical climate data being prepared for for the weather generator."))
-  message(cat(as.character(Sys.time()), "- Climate variables:", paste(variable.names, collapse = ', ')))
-  message(cat(as.character(Sys.time()), "- Historical period:", as.character(weather.date[1]), "-", as.character(weather.date[length(weather.date)])))
+  message(cat(as.character(Sys.time()), "- Historical climate data being prepared."))
+  message(cat(as.character(Sys.time()), "- Climate variables included:", paste(variable.names, collapse = ', ')))
+  message(cat(as.character(Sys.time()), "- Historical data period:", as.character(weather.date[1]), "-", as.character(weather.date[length(weather.date)])))
   message(cat(as.character(Sys.time()), "- Number of climate grids:", ngrids))
 
   # Historical dates
@@ -281,8 +281,8 @@ generateWeatherSeries <- function(
 
   message(cat(as.character(Sys.time()), "- KNN & MCMC modeling completed."))
 
-  utils::write.csv(sim_dates_d$date, file.path(output_path, "sim_dates.csv"), row.names = FALSE)
-  utils::write.csv(resampled_dates, file.path(output_path, "resampled_dates.csv"), row.names = FALSE)
+  utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
+  utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
 
   message(cat(as.character(Sys.time()), "- Resampled dates saved to `resampled_dates.csv.`"))
 
