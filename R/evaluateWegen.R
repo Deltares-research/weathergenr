@@ -44,19 +44,16 @@ evaluateWegen <- function(
   rlz <- id1 <- id2 <- variable1 <- variable2 <- type <- Observed <- Stochastic <- 0
   wet_th <- 0
 
+  # General options
   options(dplyr.summarise.inform = FALSE)
   options(tidyverse.quiet = TRUE)
 
+  # General parameters
   stat_level <- c("mean", "sd", "skewness")
   stat_label <- c("mean", "standard dev.", "skewness")
-
-
   name_obs <- "Observed"
   name_st <- "Simulated"
-
-
   nsgrids <- length(daily.sim[[1]])
-
   num_stats <- length(stat_level)
   num_vars <- length(variables)
   var_combs <- expand_grid(var1=variables, var2 = variables)
@@ -66,7 +63,7 @@ evaluateWegen <- function(
 
   hist_year_num <- nrow(daily.obs[[1]])/365
 
-  hist_stats_ini <- lapply(daily.obs, "[", c("date", variables)) %>%
+  hist_daily_tidy <- lapply(daily.obs, "[", c("date", variables)) %>%
     bind_rows(.id = "id") %>%
     mutate(year = as.numeric(format(date,"%Y")),
        mon = as.numeric(format(date,"%m")),
@@ -74,7 +71,8 @@ evaluateWegen <- function(
        id = as.numeric(id)) %>%
     select(id, year, mon, day, {{variables}})
 
-  mc_thresholds <- hist_stats_ini %>% group_by(mon) %>%
+  # Calculate dry, wet, and extremely wet day thresholds
+  mc_thresholds <- hist_daily_tidy %>% group_by(mon) %>%
     group_by(year, mon, day) %>%
     summarize(precip = mean(precip)) %>%
     group_by(mon) %>%
@@ -82,7 +80,7 @@ evaluateWegen <- function(
               extreme_th = stats::quantile(precip, extreme.quantile, names = F))
 
   # Monthly stats per variable
-  hist_stats <- hist_stats_ini %>%
+  hist_stats <- hist_daily_tidy %>%
     group_by(id, mon) %>%
     dplyr::summarize(across({{variables}},
       list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
@@ -91,40 +89,18 @@ evaluateWegen <- function(
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label)) %>%
     mutate(type = name_obs)
 
-  # Area-averaged stats per variable
-  hist_stats_aavg <- hist_stats_ini %>%
-    group_by(year, mon) %>%
-    summarize(across({{variables}},
-      list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
-    gather(key = variable, value = value, -mon, -year) %>%
-    separate(variable, c("variable","stat"), sep=":") %>%
-    mutate(stat = factor(stat, levels = stat_level, labels = stat_label))  %>%
-    mutate(type = name_obs)
-
-  # Intersite/Intervariable correlations
-  hist_stats_icor <- hist_stats_ini %>%
-    gather(key = variable, value = value, -id, -year, -mon, -day) %>%
-    unite(id_variable, c("id","variable"),sep = ":") %>%
-    spread(id_variable, value) %>%
-    dplyr::select(-year, -mon, -day) %>%
-    stats::cor(.$value) %>% as_tibble()
-
-  hist_intercor <- hist_stats_icor %>%
-    mutate(id_variable1 = colnames(hist_stats_icor), .before = 1) %>%
-    gather(key = id_variable2, value = value, -id_variable1) %>%
-    separate(id_variable1, c("id1","variable1"), sep =":") %>%
-    separate(id_variable2, c("id2","variable2"), sep =":") %>%
-    mutate(type = name_obs)
-
-  hist_wetdry_days <- hist_stats_ini %>%
+  # Wet and dry days per month
+  hist_wetdry_days <- hist_daily_tidy %>%
     left_join(mc_thresholds, by = "mon") %>%
-      group_by(id, mon) %>%
-      summarize(wet_count = length(which(precip >= wet_th))/hist_year_num,
-                dry_count = length(which(precip < wet_th))/hist_year_num) %>%
-      gather(key = stat, value = value, wet_count:dry_count) %>%
-      mutate(type = name_obs)
+    group_by(id, mon) %>%
+    summarize(wet_count = length(which(precip >= wet_th))/hist_year_num,
+              dry_count = length(which(precip < wet_th))/hist_year_num) %>%
+    gather(key = stat, value = value, wet_count:dry_count) %>%
+    mutate(variable = "precip", type = name_obs) %>%
+    select(id, mon, variable, stat, Observed = value)
 
-  hist_wetdry_spells <- hist_stats_ini %>%
+  # Wet and dry spell lengths per month
+  hist_wetdry_spells <- hist_daily_tidy %>%
     left_join(mc_thresholds, by = "mon") %>%
     group_by(id, mon) %>%
     summarize(dry = averageSpellLength(precip, threshold = wet_th, below = TRUE),
@@ -133,17 +109,33 @@ evaluateWegen <- function(
     summarize(dry = mean(dry),
               wet = mean(wet)) %>%
     gather(key = stat, value = value, wet:dry) %>%
+    mutate(variable = "precip", type = name_obs) %>%
+    select(id, mon, variable, stat, Observed = value)
+
+  # Intersite/crossite correlations
+  hist_allcor_ini <- hist_daily_tidy %>%
+    gather(key = variable, value = value, -id, -year, -mon, -day) %>%
+    unite(id_variable, c("id","variable"),sep = ":") %>%
+    spread(id_variable, value) %>%
+    dplyr::select(-year, -mon, -day) %>%
+    stats::cor(.$value) %>% as_tibble()
+
+  hist_allcor <- hist_allcor_ini %>%
+    mutate(id_variable1 = colnames(hist_allcor_ini), .before = 1) %>%
+    gather(key = id_variable2, value = value, -id_variable1) %>%
+    separate(id_variable1, c("id1","variable1"), sep =":") %>%
+    separate(id_variable2, c("id2","variable2"), sep =":") %>%
+    rename(Observed = value)
+
+  hist_stats_aavg <- hist_daily_tidy %>%
+    group_by(year, mon) %>%
+    summarize(across({{variables}},
+      list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
+    gather(key = variable, value = value, -mon, -year) %>%
+    separate(variable, c("variable","stat"), sep=":") %>%
+    mutate(stat = factor(stat, levels = stat_level, labels = stat_label))  %>%
     mutate(type = name_obs)
 
-  hist_wetdry_spells_aavg <- hist_wetdry_spells %>%
-    group_by(mon, stat, type) %>%
-    summarize(value = mean(value))
-
-  hist_wetdry_days_aavg <- hist_wetdry_days %>%
-    group_by(mon, stat, type) %>%
-    summarize(value = mean(value))
-
-  # Per variable plots
   hist_stats_aavg_mon <- hist_stats_aavg %>%
     group_by(mon, variable, stat, type) %>%
     summarize(value = mean(value))
@@ -153,18 +145,16 @@ evaluateWegen <- function(
 
   sim_stats <- vector("list", realization.num)
   sim_stats_aavg <- vector("list", realization.num)
-  sim_intercor <- vector("list", realization.num)
+  sim_allcor <- vector("list", realization.num)
   sim_wetdry_days <-vector("list", realization.num)
-  sim_wetdry_days_aavg <-vector("list", realization.num)
   sim_wetdry_spells <- vector("list", realization.num)
-  sim_wetdry_spells_aavg <- vector("list", realization.num)
 
   sim_year_num <- nrow(daily.sim[[1]][[1]])/365
 
   #### Calculate statistics per realization
   for (n in 1:realization.num) {
 
-    sim_stats_ini <- lapply(daily.sim[[n]], "[", c("date", variables)) %>%
+    sim_daily_tidy <- lapply(daily.sim[[n]], "[", c("date", variables)) %>%
       bind_rows(.id = "id") %>%
       mutate(year = as.numeric(format(date,"%Y")),
          mon = as.numeric(format(date,"%m")),
@@ -173,7 +163,7 @@ evaluateWegen <- function(
       select(id, year, mon, day, {{variables}})
 
     # Grid-based stats
-    sim_stats[[n]] <- sim_stats_ini %>%
+    sim_stats[[n]] <- sim_daily_tidy %>%
       group_by(id, mon) %>%
       dplyr::summarize(across({{variables}},
         list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
@@ -182,7 +172,7 @@ evaluateWegen <- function(
       mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
     # Area-averaged stats
-    sim_stats_aavg[[n]] <- sim_stats_ini %>%
+    sim_stats_aavg[[n]] <- sim_daily_tidy %>%
       group_by(year, mon) %>%
       summarize(across({{variables}},
         list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
@@ -191,29 +181,34 @@ evaluateWegen <- function(
       mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
     # Intersite/Intervariable correlations
-    sim_stats_icor <- sim_stats_ini %>%
+    sim_allcor_ini <- sim_daily_tidy %>%
       gather(key = variable, value = value, -id, -year, -mon, -day) %>%
       unite(id_variable, c("id","variable"),sep = ":") %>%
       spread(id_variable, value) %>%
       dplyr::select(-year, -mon, -day) %>%
       stats::cor(.$value) %>% as_tibble()
 
-    sim_intercor[[n]] <- sim_stats_icor %>%
-      mutate(id_variable1 = colnames(sim_stats_icor), .before = 1) %>%
+    sim_allcor[[n]] <- sim_allcor_ini %>%
+      mutate(id_variable1 = colnames(sim_allcor_ini), .before = 1) %>%
       gather(key = id_variable2, value = value, -id_variable1) %>%
       separate(id_variable1, c("id1","variable1"), sep =":") %>%
-      separate(id_variable2, c("id2","variable2"), sep =":") %>%
-      mutate(type = name_st)
+      separate(id_variable2, c("id2","variable2"), sep =":") #%>%
+      #filter(variable1 == variable2) %>%
+      #filter(id1 != id2) %>%
+      #unite(id, c("id1","id2"), sep=":") %>%
+      #filter(id %in% id_combs)
 
-    sim_wetdry_days[[n]] <- sim_stats_ini %>%
+    sim_wetdry_days[[n]] <- sim_daily_tidy %>%
         left_join(mc_thresholds, by = "mon") %>%
         group_by(id, mon) %>%
         summarize(wet_count = length(which(precip >= wet_th))/sim_year_num,
                   dry_count = length(which(precip < wet_th))/sim_year_num) %>%
-      mutate(type = name_st) %>%
-      gather(key = stat, value = value, wet_count:dry_count)
+      gather(key = stat, value = value, wet_count:dry_count) %>%
+      mutate(variable = "precip", type = name_st) %>%
+      select(id, mon, variable, stat, Simulated = value)
 
-    sim_wetdry_spells[[n]] <- sim_stats_ini %>%
+
+    sim_wetdry_spells[[n]] <- sim_daily_tidy %>%
       left_join(mc_thresholds, by = "mon") %>%
       group_by(id, mon) %>%
       summarize(dry = averageSpellLength(precip, threshold = wet_th, below = TRUE),
@@ -222,17 +217,18 @@ evaluateWegen <- function(
       summarize(dry = mean(dry),
                 wet = mean(wet)) %>%
       gather(key = stat, value = value, wet:dry) %>%
-      mutate(type = name_st)
+      mutate(variable = "precip", type = name_st) %>%
+      select(id, mon, variable, stat, Simulated = value)
 
-    sim_wetdry_spells_aavg[[n]] <- sim_wetdry_spells[[n]] %>%
-      group_by(mon, stat, type) %>%
-      summarize(value = mean(value)) %>%
-        mutate(type = name_st)
-
-    sim_wetdry_days_aavg[[n]] <- sim_wetdry_days[[n]] %>%
-      group_by(mon, stat, type) %>%
-      summarize(value = mean(value)) %>%
-      mutate(type = name_st)
+    # sim_wetdry_spells_aavg[[n]] <- sim_wetdry_spells[[n]] %>%
+    #   group_by(mon, stat, type) %>%
+    #   summarize(value = mean(value)) %>%
+    #     mutate(type = name_st)
+    #
+    # sim_wetdry_days_aavg[[n]] <- sim_wetdry_days[[n]] %>%
+    #   group_by(mon, stat, type) %>%
+    #   summarize(value = mean(value)) %>%
+    #   mutate(type = name_st)
 
   }
 
@@ -240,33 +236,7 @@ evaluateWegen <- function(
   sim_stats_aavg <- bind_rows(sim_stats_aavg, .id = "rlz")
   sim_wetdry_days <- bind_rows(sim_wetdry_days, .id = "rlz")
   sim_wetdry_spells <- bind_rows(sim_wetdry_spells, .id = "rlz")
-  sim_wetdry_days_aavg <- bind_rows(sim_wetdry_days_aavg, .id = "rlz")
-  sim_wetdry_spells_aavg <- bind_rows(sim_wetdry_spells_aavg, .id = "rlz")
-  sim_intercor <- bind_rows(sim_intercor, .id = "rlz")
-
-  #### Calculate median statistics
-
-  sim_stats_median <- sim_stats %>%
-    group_by(id, mon, variable, stat) %>%
-    summarize(value = stats::median(value)) %>%
-    mutate(type = name_st)
-
-  sim_wetdry_days_meadian <- sim_wetdry_days %>%
-    gather(key = stat, value = value, wet_count:dry_count) %>%
-    group_by(id, mon, stat) %>%
-    summarize(value = stats::median(value)) %>%
-    mutate(type = name_st)
-
-  sim_wetdry_spells_median <- sim_wetdry_spells %>%
-    group_by(id, mon, stat) %>%
-    summarize(value = stats::median(value)) %>%
-    mutate(type = name_st)
-
-  sim_intercor_median <- sim_intercor %>%
-    group_by(id1, variable1, id2, variable2) %>%
-    summarize(value = stats::median(value)) %>%
-    mutate(type = name_st)
-
+  sim_allcor <- bind_rows(sim_allcor, .id = "rlz") %>% rename(Simulated = value)
 
   #### MERGE STATISTICS #############################################
 
@@ -274,34 +244,39 @@ evaluateWegen <- function(
   id_combs  <- apply(combn(1:nsgrids, 2),2, paste, collapse=":")
 
   # Cross-correlation across sites
-  stats_cross <- bind_rows(hist_intercor, sim_intercor_median) %>%
+  stats_allcor <- sim_allcor %>%
+    left_join(hist_allcor, by = c("id1","variable1", "id2", "variable2"))
+
+  stats_crosscor <- stats_allcor %>%
     filter(variable1 == variable2) %>%
     filter(id1 != id2) %>%
-    unite(id, c("id1","id2"),sep=":") %>%
-    filter(id %in% id_combs) %>%
-    spread(key = type, value = value) %>%
-    dplyr::select(id, variable = variable1, name_obs, name_st) %>%
-    mutate(variable = factor(variable, variables, variable.labels))
+    unite(id, c("id1","id2"), sep=":") %>%
+    filter(id %in% id_combs)
 
-  # Intercorrelation
-  stats_inter <- bind_rows(hist_intercor, sim_intercor_median) %>%
+  stats_intercor <- stats_allcor %>%
     filter(id1 == id2) %>%
     filter(variable1 != variable2) %>%
     unite(id, c("id1","id2"),sep=":") %>%
     unite(variable, c("variable1", "variable2"),sep=":") %>%
-    filter(variable %in% var_combs) %>%
-    spread(key = type, value = value)
+    filter(variable %in% var_combs)
 
   # Wet and Dry days
-  stats_wetdry_days <- hist_wetdry_days %>%
-    bind_rows(sim_wetdry_days_meadian) %>%
-    spread(type, value) %>%
+  stats_wetdry_days <- sim_wetdry_days %>%
+    left_join(hist_wetdry_days, by = c("id","mon","variable","stat")) %>%
     mutate(stat = factor(stat, levels = c("dry_count", "wet_count"), labels = c("Dry", "Wet")))
 
-  stats_wetdry_spells <- hist_wetdry_spells %>%
-    bind_rows(sim_wetdry_spells_median) %>%
-    spread(type, value) %>%
+  stats_wetdry_spells <- sim_wetdry_spells %>%
+    left_join(hist_wetdry_spells, by = c("id","mon","variable","stat")) %>%
     mutate(stat = factor(stat, levels = c("dry", "wet"), labels = c("Dry", "Wet")))
+
+  stats_wetdry_spells_aavg <- stats_wetdry_spells %>%
+    group_by(rlz, mon, variable, stat) %>%
+    summarize(Simulated = mean(Simulated), Observed = mean(Observed))
+
+  stats_wetdry_days_aavg <- stats_wetdry_days %>%
+    group_by(rlz, mon, variable, stat) %>%
+    summarize(Simulated = mean(Simulated), Observed = mean(Observed))
+
 
 
   #:::::::::::::::::::::::::::: PLOTS ::::::::::::::::::::::::::::::::::::::::::
@@ -318,62 +293,64 @@ evaluateWegen <- function(
 
 
   ### Wet and dry spell lengths ++++++++++++++++++++++++++++++++++++++++++++++++
-  xy_breaks <- pretty(unlist(stats_wetdry_spells[,c(4,5)]), 5)
+  xy_breaks <- pretty(unlist(stats_wetdry_spells[,c(6,7)]), 5)
 
-  p <- ggplot(stats_wetdry_spells, aes_string(x = name_obs, y = name_st)) +
+  p <- ggplot(stats_wetdry_spells, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
-    geom_point(alpha = alpha_val, size = 1.5) +
+    stat_summary(geom = "linerange", fun.max = max, fun.min = min,
+                 alpha = alpha_val, size = 0.8) +
+    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 1) +
     facet_wrap(stat ~ ., ncol = 2) +
     scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
-    xlab(name_obs) + ylab(name_st) + coord_fixed()
+    xlab(name_obs) + ylab(name_st)
 
     if(isTRUE(show.title)) {
       p <- p +  labs(title =  "Average length of dry and wet spells per month and grid cell (days)",
-        subtitle = "Median values from all stochastic simulations are shown against the observed values")
+        subtitle = "Range and median of all stochastic simulations are shown against the observed values")
     }
 
   ggsave(file.path(output.path,"average_length_drywet_spells.png"),
         height = base_plot_length, width = base_plot_length*1.75)
 
-  ### Wet dry days +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  xy_breaks <- pretty(unlist(stats_wetdry_days[,c(4,5)]), 5)
 
-  p <- ggplot(stats_wetdry_days, aes_string(x = name_obs, y = name_st)) +
+  ### Wet dry days +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  xy_breaks <- pretty(unlist(stats_wetdry_days[,c(6,7)]), 5)
+
+  p <- ggplot(stats_wetdry_days, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
-    geom_point(alpha = alpha_val, size = 1.5) +
+    stat_summary(geom = "linerange", fun.max = max, fun.min = min,
+                 alpha = alpha_val, size = 0.8) +
+    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 1) +
     facet_wrap(stat ~ ., ncol = 2) +
     scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
-    xlab(name_obs) + ylab(name_st) + coord_fixed()
+    xlab(name_obs) + ylab(name_st)
 
   if(isTRUE(show.title)) {
     p <- p +  labs(title =  "Average number of dry and wet days per month and grid cell",
-                   subtitle = "Median values from all stochastic simulations are shown against the observed values")
+                   subtitle = "Range and median of all stochastic simulations are shown against the observed values")
   }
 
   ggsave(file.path(output.path,"average_number_drywet_days.png"),
          height = base_plot_length, width = base_plot_length*1.75)
 
   # Average dry spell lengths ++++++++++++++++++++++++++++++++++++++++++++++++++
-  p <- ggplot(mapping= aes(x = as.factor(mon), y = value)) +
+  p <- ggplot(stats_wetdry_spells_aavg, aes(x = as.factor(mon), y = Simulated)) +
     theme_wgplots +
-    facet_wrap(stat ~ ., ncol = 2, scales = "free_y", labeller = as_labeller(c(`dry` = "Dry", `wet` = "Wet"))) +
-    stat_summary(data = sim_wetdry_spells_aavg,
-       fun.max = function(x) max(x),
-       fun.min = function(x) min(x),
+    facet_wrap(stat ~ ., ncol = 2, scales = "free_y") +
+    stat_summary(fun.max = max, fun.min = min,
        geom = "linerange", alpha = 0.3, linewidth = 1.5) +
-    stat_summary(data = sim_wetdry_spells_aavg,
-      fun = "median", geom = "point", alpha = 0.7, size = 2) +
-    geom_point(data = hist_wetdry_spells_aavg, color = "blue", size = 2) +
-    geom_line(aes(group = 1), data = hist_wetdry_spells_aavg, color = "blue") +
+    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
+    geom_point(aes(y = Observed), color = "blue", size = 2) +
+    geom_line(aes(y = Observed, group = 1), color = "blue") +
     labs(x="Month", y = "Days")
 
   if(isTRUE(show.title)) {
     p <- p +  labs(title =  "Average length of dry and wet spells per month",
-                   subtitle = "Stochastic simulation range is shown against the observed values (blue color)")
+                   subtitle = "Stochastic simulation range and median is shown against the observed values (blue color)")
   }
 
   ggsave(file.path(output.path,"monthly_average_length_drywet_spells.png"),
@@ -381,22 +358,20 @@ evaluateWegen <- function(
 
 
   # Average dry spell number ++++++++++++++++++++++++++++++++++++++++++++++++++
-  p <- ggplot(mapping= aes(x = as.factor(mon), y = value)) +
+  p <- ggplot(stats_wetdry_days_aavg, aes(x = as.factor(mon), y = Simulated)) +
     theme_wgplots +
-    facet_wrap(stat ~ ., ncol = 2, scales = "free_y", labeller = as_labeller(c(`dry_count` = "Dry", `wet_count` = "Wet"))) +
-    stat_summary(data = sim_wetdry_days_aavg,
-                 fun.max = function(x) max(x),
-                 fun.min = function(x) min(x),
+    facet_wrap(stat ~ ., ncol = 2, scales = "free_y") +
+    stat_summary(fun.max = max, fun.min = min,
                  geom = "linerange", alpha = 0.3, linewidth = 1.5) +
-    stat_summary(data = sim_wetdry_days_aavg,
-                 fun = "median", geom = "point", alpha = 0.7, size = 2) +
-    geom_point(data = hist_wetdry_days_aavg, color = "blue", size = 2) +
-    geom_line(aes(group = 1), data = hist_wetdry_days_aavg, color = "blue") +
+    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
+    geom_point(aes(y = Observed), color = "blue", size = 2) +
+    geom_line(aes(y = Observed, group = 1), color = "blue") +
     labs(x="Month", y = "Days")
+
 
   if(isTRUE(show.title)) {
     p <- p +  labs(title =  "Average number of dry and wet spells per month",
-                   subtitle = "Stochastic simulation range is shown against the observed values (blue color)")
+                   subtitle = "Stochastic simulation range and median is shown against the observed values (blue color)")
   }
 
   ggsave(file.path(output.path,"monthly_average_number_drywet_days.png"),
@@ -404,20 +379,23 @@ evaluateWegen <- function(
 
 
   ### Cross site correlations ++++++++++++++++++++++++++++++++++++++++++++++++++
-  xy_breaks <- pretty(unlist(stats_cross[,c(3,4)]), 5)
+  xy_breaks <- pretty(unlist(stats_crosscor[,c(5,6)]), 3)
 
-  p <- ggplot(stats_cross, aes_string(x = name_obs, y = name_st)) +
+  p <- ggplot(stats_crosscor, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
-    geom_point(alpha = alpha_val, size = 2) +
-    labs(x = name_obs, y = name_st) +
-    facet_wrap(variable ~ ., scales = "free", ncol = 2) +
+    stat_summary(geom = "linerange", fun.max = max, fun.min = min,
+                 alpha = alpha_val, size = 0.8) +
+    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 1) +
+    facet_wrap(variable1 ~ ., ncol = 2, scales = "free") +
     scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
-    scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks)
+    scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    xlab(name_obs) + ylab(name_st)
+
 
   if(isTRUE(show.title)) {
     p <- p +  labs(title =  "Cross-site correlations of all daily variables",
-                   subtitle = "Median values from all stochastic simulations are shown against the observed values for each grid cell.\nCorrelations are calculated over the entire period.")
+                   subtitle = "Range and median values from all stochastic simulations are shown against the observed values for each grid cell.\nCorrelations are calculated over the entire period.")
   }
 
   ggsave(file.path(output.path,"daily_crossite_correlations.png"),
@@ -425,20 +403,22 @@ evaluateWegen <- function(
 
 
   ### Inter-site correlations ++++++++++++++++++++++++++++++++++++++++++++++++++
-  xy_breaks <- pretty(unlist(stats_inter[,c(3,4)]), 5)
+  xy_breaks <- pretty(unlist(stats_intercor[,c(4,5)]), 5)
 
-  p <- ggplot(stats_inter, aes_string(x = name_obs, y = name_st)) +
+  p <- ggplot(stats_intercor, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
-    geom_point(alpha = alpha_val, size = 2) +
-    labs(x = name_obs, y = name_st) +
-    facet_wrap(variable ~ ., scales = "free", ncol = 3) +
+    stat_summary(geom = "linerange", fun.max = max, fun.min = min,
+                 alpha = alpha_val, size = 0.8) +
+    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 1) +
+    facet_wrap(variable ~ ., ncol = 3, scales = "free") +
     scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
-    scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks)
+    scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    xlab(name_obs) + ylab(name_st)
 
   if(isTRUE(show.title)) {
-    p <- p +  labs(title =  "Intersite-site correlations between each pair of variables",
-                   subtitle = "Median values from all stochastic simulations are shown against the observed values for each grid cell.\nCorrelations are calculated over the entire period.")
+    p <- p +  labs(title =  "Inter-site correlations between each pair of variables",
+                   subtitle = "Range and median values from all stochastic simulations are shown against the observed values for each grid cell.\nCorrelations are calculated over the entire period.")
   }
 
   ggsave(file.path(output.path,"daily_intersite_correlations.png"),
@@ -446,7 +426,6 @@ evaluateWegen <- function(
 
 
   ### Monthly statistics per variable +++++++++++++++++++++++++++++++++++++++++++
-
   for (v in 1:length(variables)) {
 
     ##### MONTHLY CYCLE STATISTICS
@@ -476,38 +455,55 @@ evaluateWegen <- function(
 
     ggsave(file.path(output.path, paste0("monthly_variability_", variables[v],".png")),
            height = base_plot_length*2, width = base_plot_length*1.75)
+
   }
 
   ###### DAILY STATISTICS ######################################################
 
-  sim_sts <- sim_stats %>% rename(!!name_st:=  value)
+  sim_sts <- sim_stats %>% rename(!!name_st:= value)
   obs_sts <- hist_stats %>% rename(!!name_obs:= value) %>% select(-type)
 
-  sts <- sim_sts %>% left_join(obs_sts, by = c("id","mon","variable","stat")) %>%
-    filter(stat != "skewness") %>%
-    mutate(variable = factor(variable, levels = unique(hist_stats$variable))) %>%
-    mutate(stat = factor(stat, levels = unique(hist_stats$stat))) %>%
-    arrange(variable, stat)%>%
-    unite("variable_stat", stat:variable, sep = ": ")
+  daily_stats <- sim_sts %>% left_join(obs_sts, by = c("id","mon","variable","stat")) %>%
+    mutate(variable = factor(variable)) %>%
+    mutate(stat = factor(stat, levels = stat_label)) %>%
+    arrange(variable, stat)
 
-   p <- ggplot(sts, aes_string(x = name_obs, y = name_st)) +
-      theme_wgplots +
-      stat_summary(geom = "linerange",
-                   fun.max = function(x) max(x),
-                   fun.min = function(x) min(x),
-                   alpha = alpha_val, size = 0.8) +
-      stat_summary(fun = "median", geom = "point", alpha = 0.7, size = 1) +
-      geom_abline(color = "blue") +
-      labs(x = name_obs, y = name_st) +
-      facet_wrap(variable_stat ~ ., scales = "free", nrow = 2, labeller = label_value)
+  p <- ggplot(filter(daily_stats, stat == "mean"),
+              aes(x = .data[[name_obs]], y = .data[[name_st]])) +
+    theme_wgplots +
+    stat_summary(geom = "linerange", fun.max = max, fun.min = min,
+                 alpha = alpha_val, size = 0.8) +
+    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 1) +
+    geom_abline(color = "blue") +
+    labs(x = name_obs, y = name_st) +
+    facet_wrap(variable ~ ., scales = "free", nrow = 2)
+
+  if(isTRUE(show.title)) {
+    p <- p +  labs(title =  "Mean of daily variables calculated across each month and grid cell",
+                   subtitle = "Range from all stochastic simulations are shown against the observed values")
+  }
+
+  ggsave(file.path(output.path,"daily_mean_all_variables.png" ),
+         height = base_plot_length*2, width = base_plot_length*1.75)
+
+
+  p <- ggplot(filter(daily_stats, stat == "standard dev."),
+              aes(x = .data[[name_obs]], y = .data[[name_st]])) +
+    theme_wgplots +
+    stat_summary(geom = "linerange", fun.max = max, fun.min = min,
+                 alpha = alpha_val, size = 0.8) +
+    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 1) +
+    geom_abline(color = "blue") +
+    labs(x = name_obs, y = name_st) +
+    facet_wrap(variable ~ ., scales = "free", nrow = 2)
 
    if(isTRUE(show.title)) {
-     p <- p +  labs(title =  "Summary statistics of daily variables per month and grid cell",
+     p <- p +  labs(title =  "Standard deviation of daily variables calculated across each month and grid cell",
                     subtitle = "Range from all stochastic simulations are shown against the observed values")
    }
 
-  ggsave(file.path(output.path,"daily_statistics_all_variables.png" ),
-      height = base_plot_length*1.25, width = base_plot_length*2)
+  ggsave(file.path(output.path,"daily_stdev_all_variables.png" ),
+      height = base_plot_length*2, width = base_plot_length*1.75)
 
 }
 
