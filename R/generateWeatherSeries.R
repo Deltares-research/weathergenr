@@ -170,7 +170,7 @@ generateWeatherSeries <- function(
       message(cat(as.character(Sys.time()), "- Annual periodicity (yrs):", paste(warm_power$signif_periods, collapse=",")))
 
       # Simulate annual series of wavelet variable
-      message(cat(as.character(Sys.time()), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), " series"))
+      message(cat(as.character(Sys.time()), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), "series"))
 
       sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
           sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
