@@ -1,7 +1,7 @@
 Package: weathergenr
 Type: Package
 Title: Gridded semi-parametric weather generator
-Version: 0.0.2
+Version: 0.0.3
 Author: Mehmet Umit Taner
 Maintainer: Mehmet Umit Taner <tanerumit@gmail.com>
 Description: This is the gridded, recoded version of the stochastic weather generator 
@@ -39,6 +39,6 @@ Suggests:
 Encoding: UTF-8
 Language: en-US
 LazyData: true
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
 VignetteBuilder: knitr
 URL: https://deltares.github.io/weathergenr/

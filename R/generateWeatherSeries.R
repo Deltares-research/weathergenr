@@ -10,20 +10,20 @@
 #' @param variable.names vector of names for the variables to be included in the weather generator
 #' @param variable.labels vector of labels for the weather variables (optional). If no values provided, it is labels will be same as the names
 #' @param variable.units vector of units for each of the weather variables (optional). If no values provided, a blank vector is used.
-#' @param warm.variable the name of the variable for the wavelet autoregressive mode. Default value is precipitation variable.
+#' @param warm.variable the name of the variable for the wavelet auto regressive mode. Default value is precipitation variable.
 #' @param warm.signif.level the significance level for the warm model.
-#' @param warm.sample.num number of annual sequeces to be generated from the the warm model
+#' @param warm.sample.num number of annual sequences to be generated from the the warm model
 #' @param knn.sample.num number of knn years to be sampled
 #' @param sim.year.start numeric value indicating the starting year of the generated time-series
 #' @param sim.year.num  numeric value indicating the desired total number of years of simulated weather realizations
 #' @param realization.num number of natural variability realizations to be generated.
 #' @param month.start the first month of the water year (default value is 1).
-#' @param evaluate.model logical value indicating wether to save model evaluation plots
+#' @param evaluate.model logical value indicating weather to save model evaluation plots
 #' @param evaluate.grid.num Number of grid cells to be sampled in the evaluation plots
 #' @param warm.subset.criteria A list of statistical parameters used for subsetting from the initial annual simulated series
 #' @param mc.wet.quantile wet state threshold (quantile value) for markov-chain modeling
 #' @param mc.extreme.quantile extremely wet state threshold (quantile value) for markov-chain modeling
-#' @param seed a random seed value (nunmeric)
+#' @param seed a random seed value (numeric)
 #' @param compute.parallel logical value indicating whether to run (some) functions in parallel
 #' @param num.cores Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned
 #' @param dry.spell.change placeholder
