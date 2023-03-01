@@ -232,8 +232,8 @@ generateWeatherSeries <- function(
        seed = seed,
        save.series = FALSE)
 
-  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$subsetted), "annual series subsetted"))
-  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$sampled), "annual series sampled"))
+  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$subsetted), "series subsetted"))
+  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$sampled), "series sampled"))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
@@ -302,8 +302,6 @@ generateWeatherSeries <- function(
 
     if(evaluate.model) {
 
-    message(cat(as.character(Sys.time()), "- Comparing observed and simulated climate statistics"))
-
     # Sample evenly from the grid cells
     sampleGrids <- sf::st_as_sf(weather.grid[,c("x","y")], coords=c("x","y")) %>%
       sf::st_sample(size = min(evaluate.grid.num, ngrids), type="regular") %>%
@@ -339,7 +337,6 @@ generateWeatherSeries <- function(
   message(cat(as.character(Sys.time()), "- Stochastic weather generation completed. See `run.log`"))
   message(cat(as.character(Sys.time()), "- Elapsed time:", Sys.time() - start_time, "mins"))
   #unlink('weathergenr_run.log')
-
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 
