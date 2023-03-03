@@ -77,7 +77,7 @@ generateWeatherSeries <- function(
   grids  <- weather.grid$id
   ngrids <- length(grids)
 
-  message(cat(as.character(Sys.time()), "- Random seed:", seed))
+  message(cat(as.character(Sys.time()), "- Seed for random number generation:", seed))
 
   if(compute.parallel == TRUE) {
 
@@ -195,7 +195,6 @@ generateWeatherSeries <- function(
 
   }
 
-  message(cat(as.character(Sys.time()), "- Subsetting annual stochastic series based on default criteria"))
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
@@ -232,7 +231,7 @@ generateWeatherSeries <- function(
        seed = seed,
        save.series = FALSE)
 
-  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$subsetted), "series subsetted"))
+  message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$subsetted), "stochastic series subsetted based on default criteria"))
   message(cat(as.character(Sys.time()), "-", ncol(sim_annual_sub$sampled), "series sampled"))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
