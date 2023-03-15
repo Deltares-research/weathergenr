@@ -17,12 +17,10 @@ devtools::install_github("Deltares/weathergenr")
 
 ## Quick start
 
-Tutorials (in progress): <br /> [Getting
+*Tutorials (in progress):* <br /> [Getting
 started](http://htmlpreview.github.io/?https://github.com/Deltares/weathergenr/blob/dev/vignettes/Getting_started.html)
 <br /> [Simple climate stress
 test](http://htmlpreview.github.io/?https://github.com/Deltares/weathergenr/blob/dev/vignettes/Climate_stress_test.html)
-<br /> [Running from
-python](https://github.com/Deltares/weathergenr/blob/dev/vignettes/Running_from_python.html)
 
 ## Licence
 
