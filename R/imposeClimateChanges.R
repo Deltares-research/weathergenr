@@ -67,7 +67,7 @@ imposeClimateChanges <- function(
 
   ##############################################################################
 
-    # Apply climate changes (per grid)
+  # Apply climate changes (per grid)
   for (x in 1:ngrids) {
 
     # Perturb daily precipitation using quantile mapping
