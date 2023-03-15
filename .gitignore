@@ -10,6 +10,8 @@ docs
 .DS_Store
 .httr-oauth
 
+/vignettes/*.R
+
 inst/doc
 /*.Rcheck/
 /*.tar.gz
@@ -20,4 +22,6 @@ inst/doc
 *_cache/
 *.utf8.md
 *.knit.md
+LICENSE.md
+README.md
 
