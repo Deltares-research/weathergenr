@@ -45,7 +45,7 @@ imposeClimateChanges <- function(
           seq(0, change.factor.temp.mean[x], length.out = max(year_ind)))
   } else {
       tempf1 <- sapply(1:12, function(x)
-          rep(change.factor.temp.mean[x], length.out = max(year_ind)))
+          rep(change.factor.temp.mean[x]/2, length.out = max(year_ind)))
   }
 
   tempf2 <- sapply(1:length(sim.dates), function(x) tempf1[year_ind[x], month_ind[x]])
@@ -60,9 +60,9 @@ imposeClimateChanges <- function(
 
   } else {
     precip_meanf <- sapply(1:12,
-      function(m) rep(change.factor.precip.mean[m], max(year_ind)))
+      function(m) rep(change.factor.precip.mean[m]/2, max(year_ind)))
     precip_varf  <- sapply(1:12,
-      function(m) rep(change.factor.precip.variance[m], max(year_ind)))
+      function(m) rep(change.factor.precip.variance[m]/2, max(year_ind)))
   }
 
   ##############################################################################
