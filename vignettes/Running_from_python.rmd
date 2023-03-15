@@ -5,7 +5,6 @@ output:
     number_sections: true
     toc: true
     toc_depth: 3
-    css: "style.css"
 vignette: >
   %\VignetteIndexEntry{Running from python}
   %\VignetteEncoding{UTF-8}
@@ -20,15 +19,16 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE)
 
 This vignette shows how the climate forcing data for a climate stress test can be prepared with *weathergenr*. 
 
-
-
 # Running weather generator from python
 *in progress*
 
 Prerequisites: \
 1. Install latest version of R via https://mirror.lyrahosting.com/CRAN/ \
 2. Create a new python environment with packages rpy2, r-base, r-essentials, pandas, numpy2 \
-
+   
+   
+   
+   
 First set the PATH variables correctly
 ```{python, py1, eval = FALSE}
 import os
@@ -41,8 +41,12 @@ os.environ['R_HOME'] = 'C:/Program Files/R/R-4.1.2'
 
 # Location of R packages installed
 os.environ['R_USER'] = 'C:/Users/taner/Anaconda3/envs/wegentest/Lib/site-packages/rpy2'
+```
 
-# Check if variables are correctly defined for rpy2
+
+Check if variables are correctly defined for rpy2
+```{python, py2, eval = FALSE}
+
 import rpy2.situation
 for row in rpy2.situation.iter_info():
     print(row)
@@ -67,7 +71,8 @@ weathergenr = importr('weathergenr', robject_translations = d)
 ```
 
 
-```{python, py2,  eval = FALSE}
+Run test code
+```{python, py3,  eval = FALSE}
 # Load netcdf file
 ncfile = base.system_file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
 ncdata = weathergenr.readNetcdf(ncfile)

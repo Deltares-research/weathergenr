@@ -15,7 +15,7 @@
 #'
 #' @return
 #' @export
-#' @import tibble
+#' @import dplyr
 #' @import tidyr
 imposeClimateChanges <- function(
   climate.data = NULL,

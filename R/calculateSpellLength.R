@@ -1,9 +1,9 @@
 
-#' Calculate Spell Length
+#' Calculate length of a wet or a dry spell
 #'
-#' @param x  placeholder
-#' @param threshold placeholder
-#' @param below placeholder
+#' @param x numeric vector of values
+#' @param threshold numeric threshold to define the wet or a dry spell
+#' @param below binary variable. TRUE considers values less than or equal, FALSE above the threshold.
 #'
 #' @return
 #' @export

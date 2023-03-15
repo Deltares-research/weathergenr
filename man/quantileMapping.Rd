@@ -23,6 +23,8 @@ quantileMapping(
 \item{mon.ts}{placeholder}
 
 \item{year.ts}{placeholder}
+
+\item{fit.method}{placeholder}
 }
 \description{
 Function for perturbing climate statistics using Quantile-Mapping

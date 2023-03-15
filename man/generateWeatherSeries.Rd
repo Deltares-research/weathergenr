@@ -19,7 +19,7 @@ generateWeatherSeries(
   warm.signif.level = 0.9,
   warm.sample.num = 5000,
   warm.subset.criteria = NULL,
-  knn.sample.num = 100,
+  knn.sample.num = 120,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
   dry.spell.change = rep(1, 12),
@@ -53,11 +53,11 @@ generateWeatherSeries(
 
 \item{realization.num}{number of natural variability realizations to be generated.}
 
-\item{warm.variable}{the name of the variable for the wavelet autoregressive mode. Default value is precipitation variable.}
+\item{warm.variable}{the name of the variable for the wavelet auto regressive mode. Default value is precipitation variable.}
 
 \item{warm.signif.level}{the significance level for the warm model.}
 
-\item{warm.sample.num}{number of annual sequeces to be generated from the the warm model}
+\item{warm.sample.num}{number of annual sequences to be generated from the the warm model}
 
 \item{warm.subset.criteria}{A list of statistical parameters used for subsetting from the initial annual simulated series}
 
@@ -71,13 +71,13 @@ generateWeatherSeries(
 
 \item{wet.spell.change}{placeholder}
 
-\item{evaluate.model}{logical value indicating wether to save model evaluation plots}
+\item{evaluate.model}{logical value indicating weather to save model evaluation plots}
 
 \item{evaluate.grid.num}{Number of grid cells to be sampled in the evaluation plots}
 
 \item{output.path}{output path for the weather generator results (string)}
 
-\item{seed}{a random seed value (nunmeric)}
+\item{seed}{a random seed value (numeric)}
 
 \item{compute.parallel}{logical value indicating whether to run (some) functions in parallel}
 

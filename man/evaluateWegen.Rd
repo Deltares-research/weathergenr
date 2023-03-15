@@ -2,7 +2,7 @@
 % Please edit documentation in R/evaluateWegen.R
 \name{evaluateWegen}
 \alias{evaluateWegen}
-\title{Function to assess the weather generator skill}
+\title{Compare observed and simulated climate statistics}
 \usage{
 evaluateWegen(
   daily.sim = NULL,
@@ -13,7 +13,8 @@ evaluateWegen(
   variable.units = NULL,
   realization.num = NULL,
   wet.quantile = 0.2,
-  extreme.quantile = 0.8
+  extreme.quantile = 0.8,
+  show.title = TRUE
 )
 }
 \arguments{
@@ -34,7 +35,9 @@ evaluateWegen(
 \item{wet.quantile}{precip. quantile for calculating monthly wet state threshold}
 
 \item{extreme.quantile}{precip. quantile for calculating monthly extremely wet state threshold}
+
+\item{show.title}{PLACEHOLDER}
 }
 \description{
-Function to assess the weather generator skill
+Compare observed and simulated climate statistics
 }

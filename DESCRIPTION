@@ -18,23 +18,21 @@ Imports:
     forecast,
     foreach,
     ggplot2,
-    MASS,
     ncdf4,
     parallel,
     patchwork,
-    quantmod,
     scales,
     sf,
-    tibble,   
+    stats,
     tidyr,
-    utils,
-    zoo
+    utils
 Suggests:
     devtools,
     knitr,
     magrittr,
     rmarkdown,
     stringr,
+    testthat (>= 3.0.0),
     usethis
 Encoding: UTF-8
 Language: en-US
@@ -42,3 +40,4 @@ LazyData: true
 RoxygenNote: 7.2.3
 VignetteBuilder: knitr
 URL: https://deltares.github.io/weathergenr/
+Config/testthat/edition: 3

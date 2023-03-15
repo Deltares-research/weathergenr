@@ -2,17 +2,17 @@
 % Please edit documentation in R/calculateSpellLength.R
 \name{averageSpellLength}
 \alias{averageSpellLength}
-\title{Calculate Spell Length}
+\title{Calculate length of a wet or a dry spell}
 \usage{
 averageSpellLength(x, threshold = 0, below = TRUE)
 }
 \arguments{
-\item{x}{placeholder}
+\item{x}{numeric vector of values}
 
-\item{threshold}{placeholder}
+\item{threshold}{numeric threshold to define the wet or a dry spell}
 
-\item{below}{placeholder}
+\item{below}{binary variable. TRUE considers values less than or equal, FALSE above the threshold.}
 }
 \description{
-Calculate Spell Length
+Calculate length of a wet or a dry spell
 }

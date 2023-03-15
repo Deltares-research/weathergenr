@@ -43,8 +43,6 @@ knnDaily(
 \item{count}{placeholder}
 
 \item{seed}{random seed value}
-
-\item{DATE_TOMORROW}{placeholder}
 }
 \description{
 KNN daily sampling

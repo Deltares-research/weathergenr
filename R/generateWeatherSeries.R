@@ -32,7 +32,6 @@
 #' @return
 #' @export
 #' @import ggplot2
-#' @import tibble
 #' @import tidyr
 #' @import patchwork
 #' @import dplyr
@@ -109,7 +108,7 @@ generateWeatherSeries <- function(
                     wyear = getWaterYear(weather.date, month.start),
                     month = as.numeric(format(weather.date,"%m")),
                     day = as.numeric(format(weather.date,"%d"))) %>%
-      filter(wyear >= year_start & wyear <= year_end) %>%
+      dplyr::filter(wyear >= year_start & wyear <= year_end) %>%
       mutate(date = as.Date(paste(wyear, month, day, sep = "-")), .before=1) %>%
       mutate(dateo = as.Date(paste(year, month, day, sep = "-")), .before=1)
 

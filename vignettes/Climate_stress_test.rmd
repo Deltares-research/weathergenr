@@ -5,7 +5,6 @@ output:
     number_sections: true
     toc: true
     toc_depth: 3
-    css: "style.css"
 vignette: >
   %\VignetteIndexEntry{Climate stress test}
   %\VignetteEncoding{UTF-8}
@@ -187,17 +186,17 @@ pb = txtProgressBar(min = 1, max = smax, initial = 0, style = 3)
      change.type.precip = "transient")
 
      # Save to netcdf file
-     writeNetcdf(
-       data = rlz_future,
-       coord.grid = ncdata$grid,
-       output.path = output_path,
-       origin.date =  stochastic_weather$dates[1],
-       calendar.type = "noleap",
-       nc.template.file = ncfile,
-       nc.compression = 4,
-       nc.spatial.ref = "spatial_ref",
-       nc.file.prefix = "climx",
-       nc.file.suffix = s)
+     # writeNetcdf(
+     #   data = rlz_future,
+     #   coord.grid = ncdata$grid,
+     #   output.path = output_path,
+     #   origin.date =  stochastic_weather$dates[1],
+     #   calendar.type = "noleap",
+     #   nc.template.file = ncfile,
+     #   nc.compression = 4,
+     #   nc.spatial.ref = "spatial_ref",
+     #   nc.file.prefix = "climx",
+     #   nc.file.suffix = s)
  }
  close(pb)
 ```

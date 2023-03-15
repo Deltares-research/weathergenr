@@ -8,7 +8,13 @@
 ^pkgdown$
 ^\.github$
 ^README.Rmd
+
+^\.httr-oauth$
 /vignettes/web_only
 /docs/
-/vignettes/
+^/vignettes/
 /tests/
+^vignettes/.R$
+^vignettes/.Rmd$
+^vignettes/Climate_stress_test_cache
+^vignettes/Getting_started_cache
