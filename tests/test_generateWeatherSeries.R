@@ -7,7 +7,7 @@ variables <- c("precip", "temp", "temp_min", "temp_max")
 realization_num <- 3
 
 ## ----stochastic2, results='hide', eval = TRUE, cache=TRUE---------------------
-stochastic_weather <- generateWeatherSeries(
+stochastic_weather <- debug(generateWeatherSeries(
   weather.data = ncdata$data,
   weather.grid = ncdata$grid,
   weather.date = ncdata$date,
@@ -28,4 +28,5 @@ stochastic_weather <- generateWeatherSeries(
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   output.path = output_path,
-  seed = 123)
+  seed = 123))
+

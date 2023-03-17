@@ -1,8 +1,8 @@
 Version: 1.0
 
-RestoreWorkspace: Default
-SaveWorkspace: Default
-AlwaysSaveHistory: Default
+RestoreWorkspace: No
+SaveWorkspace: No
+AlwaysSaveHistory: No
 
 EnableCodeIndexing: Yes
 UseSpacesForTab: Yes
@@ -20,3 +20,6 @@ PackageUseDevtools: Yes
 PackageBuildArgs: --no-build-vignettes
 PackageCheckArgs: --ignore-vignettes
 PackageRoxygenize: rd,collate,namespace,vignette
+
+QuitChildProcessesOnExit: Yes
+DisableExecuteRprofile: Yes
