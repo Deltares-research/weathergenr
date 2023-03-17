@@ -76,7 +76,7 @@ generateWeatherSeries <- function(
   grids  <- weather.grid$id
   ngrids <- length(grids)
 
-  message(cat(as.character(Sys.time()), "- Seed for random number generation:", seed))
+  message(cat(as.character(Sys.time()), "- Randomization seed:", seed))
 
   if(compute.parallel == TRUE) {
 
@@ -96,8 +96,8 @@ generateWeatherSeries <- function(
 
   message(cat(as.character(Sys.time()), "- Historical climate data being prepared"))
   message(cat(as.character(Sys.time()), "- Climate variables included:", paste(variable.names, collapse = ', ')))
-  message(cat(as.character(Sys.time()), "- Historical data period:", as.character(weather.date[1]), "-", as.character(weather.date[length(weather.date)])))
-  message(cat(as.character(Sys.time()), "- Number of climate grids:", ngrids))
+  message(cat(as.character(Sys.time()), "- Historical period:", as.character(weather.date[1]), "-", as.character(weather.date[length(weather.date)])))
+  message(cat(as.character(Sys.time()), "- Number of grids:", ngrids))
 
   # Historical dates
   year_seq <- as.numeric(format(weather.date,"%Y"))
@@ -165,8 +165,8 @@ generateWeatherSeries <- function(
           signif.periods = warm_power$signif_periods,
           signif.level = warm.signif.level, plot = TRUE, output.path = plots_path)
 
-      message(cat(as.character(Sys.time()), "- Number of significant low-frequency components:", length(wavelet_comps)-1))
-      message(cat(as.character(Sys.time()), "- Annual periodicity (yrs):", paste(warm_power$signif_periods, collapse=",")))
+      message(cat(as.character(Sys.time()), "- Number of significant low-frequencies:", length(wavelet_comps)-1))
+      message(cat(as.character(Sys.time()), "- Periodicity (yrs):", paste(warm_power$signif_periods, collapse=",")))
 
       # Simulate annual series of wavelet variable
       message(cat(as.character(Sys.time()), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), "series"))
@@ -329,11 +329,11 @@ generateWeatherSeries <- function(
     )
 
   } else {
-     message(cat(as.character(Sys.time()), "- Comparison of historical and simulated climate statistics skipped"))
+     message(cat(as.character(Sys.time()), "- Comparison of climate statistics skipped"))
   }
 
-  message(cat(as.character(Sys.time()), "- Stochastic weather generation completed. See `run.log`"))
-  message(cat(as.character(Sys.time()), "- Elapsed time:", Sys.time() - start_time, "mins"))
+  #message(cat(as.character(Sys.time()), "- Stochastic weather generation completed. See `run.log`"))
+  message(cat(as.character(Sys.time()), "- Elapsed time:", Sys.time() - start_time, "secs"))
   #unlink('weathergenr_run.log')
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
