@@ -27,8 +27,8 @@ waveletPlot <- function(
     df <- tibble(power.period, power.signif, power.obs)
 
     p <- ggplot(df, aes(x = power.period)) +
-      geom_line(aes(y=power.signif), color = "red", linetype = "dashed", size=0.6) +
-      geom_line(aes(y=power.obs), color = "blue", size=0.6)
+      geom_line(aes(y=power.signif), color = "red", linetype = "dashed", linewidth = 0.6) +
+      geom_line(aes(y=power.obs), color = "blue", linewidth = 0.6)
 
   } else {
 
@@ -44,9 +44,9 @@ waveletPlot <- function(
 
     p <- ggplot(df, aes( x = power.period)) +
       geom_ribbon(aes(ymin = slow, ymax = sup), alpha = 0.2) +
-      geom_line(aes(y=power.signif), color = "red" , linetype = "dashed", size=0.6) +
-      geom_line(aes(y=savg), color = "black", size=0.6) +
-      geom_line(aes(y=power.obs), color = "blue", size=0.6)
+      geom_line(aes(y=power.signif), color = "red" , linetype = "dashed", linewidth = 0.6) +
+      geom_line(aes(y=savg), color = "black", linewidth = 0.6) +
+      geom_line(aes(y=power.obs), color = "blue", linewidth = 0.6)
   }
 
   p <- p + theme_light(base_size = 11) +

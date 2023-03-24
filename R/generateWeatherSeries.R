@@ -57,7 +57,7 @@ generateWeatherSeries <- function(
   wet.spell.change = rep(1,12),
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
-  output.path = getwd(),
+  output.path = tempdir(),
   seed = sample.int(1e5,1),
   compute.parallel = TRUE,
   num.cores = NULL)

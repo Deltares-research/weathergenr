@@ -220,7 +220,7 @@ waveletARSubset <- function(
     p <- ggplot(df1, aes(x = x, y = y)) +
       theme_bw(base_size = 12) +
       geom_line(aes(y = y, group = variable, color = variable), alpha = 0.6) +
-      geom_line(aes(y=y), data = df2, color = "black", size = 1) +
+      geom_line(aes(y=y), data = df2, color = "black", linewidth = 1) +
       guides(color = "none") +
       labs(y = "Precipitation (mm/year)", x = "Year index")
 

@@ -54,7 +54,6 @@ readNetcdf <- function(
     time_unit <- ncatt_get(nc_in, "time")$units
     origin_date <- as.Date(sub("^\\D+", "", time_unit))
 
-
     # Dimension names ordered as x, y, time
     nc_dimnames <- list(x = nc_attribs_spref$x_dim,
        y = nc_attribs_spref$y_dim,time = "time")

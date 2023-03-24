@@ -204,7 +204,7 @@ waveletAnalysis <- function(variable = NULL,
       scale_fill_distiller(palette = "YlGnBu") +
       labs(x= "Time (years)", y = "Period (years)") +
       guides(fill = "none") +
-      geom_line(data = df2, linetype = "dashed", color = "red", size = 0.85) +
+      geom_line(data = df2, linetype = "dashed", color = "red", linewidth = 0.85) +
       stat_contour(aes(z = z), data = df3, breaks=c(-99, 1), color = "black") +
       ggtitle("a)")
 
@@ -212,7 +212,7 @@ waveletAnalysis <- function(variable = NULL,
       theme_light() +
       geom_line(aes(period, GWS)) +
       geom_point(aes(period, GWS), shape = 19, size = 1) +
-      geom_line(aes(period, GWS_signif), color = "red", linetype = "dashed", size = 0.85) +
+      geom_line(aes(period, GWS_signif), color = "red", linetype = "dashed", linewidth = 0.85) +
       scale_y_continuous() +
       scale_x_reverse(expand = c(0,0)) +
       coord_flip() +

@@ -26,7 +26,7 @@ generateWeatherSeries(
   wet.spell.change = rep(1, 12),
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
-  output.path = getwd(),
+  output.path = tempdir(),
   seed = sample.int(1e+05, 1),
   compute.parallel = TRUE,
   num.cores = NULL
