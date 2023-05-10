@@ -9,15 +9,22 @@ Steinscheneider and Brown (2013).
 
 ## Installation
 
-The development version of the package can be installed from github:
+If you haven’t already done, first install
+[R](https://cran.r-project.org/bin/windows/base/) and an R IDE,
+preferably [Rstudio](https://posit.co/download/rstudio-desktop/). Next,
+install the development version of **weathergenr** from github, using
+*devtools*:
 
 ``` r
+install.packages("devtools")
 devtools::install_github("Deltares/weathergenr")
 ```
 
 ## Quick start
 
-*Tutorials (in progress):* <br /> [Getting
+Below, you will find several work in progress tutorials:
+
+<br /> [Getting
 started](http://htmlpreview.github.io/?https://github.com/Deltares/weathergenr/blob/dev/vignettes/Getting_started.html)
 <br /> [Simple climate stress
 test](http://htmlpreview.github.io/?https://github.com/Deltares/weathergenr/blob/dev/vignettes/Climate_stress_test.html)
