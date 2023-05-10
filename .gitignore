@@ -17,6 +17,7 @@ inst/doc
 /*.tar.gz
 /Meta/
 /cache/
+/temp/
 
 *-Ex.R
 *_cache/
