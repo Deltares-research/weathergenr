@@ -83,8 +83,8 @@ writeNetcdf <- function(
   )
 
   # Append spatial reference variable
-  ncout_vars[[length(ncout_vars)+1]] <- ncin$var[[nc.spatial.ref]]
-  #ncout_vars[length(ncout_vars)][[1]]$prec <- "integer"
+  ncout_vars[[length(variables)+1]] <- ncin$var[[nc.spatial.ref]]
+  ncout_vars[[length(variables)+1]]$prec <- "integer"
   names(ncout_vars) <- c(variables, "spatial_ref")
 
   # template to store data from wg variables
