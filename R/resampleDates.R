@@ -28,8 +28,8 @@ resampleDates <- function(
   ANNUAL_PRCP = NULL,
   PRCP = NULL,
   TEMP = NULL,
-  TMAX = NULL,
-  TMIN = NULL,
+  #TMAX = NULL,
+  #TMIN = NULL,
   START_YEAR_SIM = NULL,
   k1 = NULL,
   ymax = NULL,
@@ -87,28 +87,31 @@ resampleDates <- function(
 	p21_final <- array(NA,SIM_LENGTH)
 	p22_final <- array(NA,SIM_LENGTH)
 
-	# Vetor to store intermediate results
+	# Vectors to store intermediate results
 	OCCURENCES <- array(0,c(SIM_LENGTH))
 	SIM_PRCP <- array(0, c(SIM_LENGTH))
 	SIM_TEMP <- array(25, c(SIM_LENGTH))
-  SIM_TMAX <- array(30, c(SIM_LENGTH))
-	SIM_TMIN <- array(20, c(SIM_LENGTH))
+  #SIM_TMAX <- array(30, c(SIM_LENGTH))
+	#SIM_TMIN <- array(20, c(SIM_LENGTH))
+
 
 
 	SIM_DATE <- array(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
-  #SIM_DATE <- rep(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
+
+	cur_sim_PRCP <- 0
+	cur_sim_TEMP <- 25
 
 	# Current Stochastic trace....
 	count <- 1
 
-	# Generate random value btw 0-1 for each simulation day
+	# Generate random value between 0-1 for each simulation day
 	set.seed(seed+k1)
 	rn_all <- stats::runif(SIM_LENGTH,0,1)
 
   # Define knn sample size
   kk <- max(round(sqrt(length(ANNUAL_PRCP)),0),round(length(ANNUAL_PRCP),0)*.5)
 
-	# For each year start sampling....
+	# For each year start sampling
 	for (y in 1:ymax) {
 
 	  # Current simulated annual precip at y
@@ -136,8 +139,8 @@ resampleDates <- function(
 		# Find all variables and date indices in the conditional selection
 		PRCP_CURRENT <- PRCP[conditional_selection]
 		TEMP_CURRENT <- TEMP[conditional_selection]
-		TMAX_CURRENT <- TMAX[conditional_selection]
-		TMIN_CURRENT <- TMIN[conditional_selection]
+		#TMAX_CURRENT <- TMAX[conditional_selection]
+		#TMIN_CURRENT <- TMIN[conditional_selection]
 		DATE_D_CURRENT <- DATE_D[conditional_selection]
 		MONTH_D_CURRENT <- MONTH_D[conditional_selection]
 		YEAR_D_CURRENT <- YEAR_D[conditional_selection]
@@ -209,8 +212,6 @@ resampleDates <- function(
 
 		# MARKOV-CHAIN AND DAILY KNN SAMPLING.......................................
 		for (j in 1:365) {
-
-		  #print(j)
 
 		  count <- count + 1
 
@@ -302,12 +303,12 @@ resampleDates <- function(
   			TEMP_TODAY <- TEMP_CURRENT[possible_days]
   			PRCP_TOMORROW <- PRCP_CURRENT[possible_days+1]
 				TEMP_TOMORROW <- TEMP_CURRENT[possible_days+1]
-				TMAX_TOMORROW <- TMAX_CURRENT[possible_days+1]
-				TMIN_TOMORROW <- TMIN_CURRENT[possible_days+1]
+				#TMAX_TOMORROW <- TMAX_CURRENT[possible_days+1]
+				#TMIN_TOMORROW <- TMIN_CURRENT[possible_days+1]
   			DATE_TOMORROW <- DATE_D_CURRENT[possible_days+1]
 
-  			cur_sim_PRCP <- SIM_PRCP[(count-1)]
-  			cur_sim_TEMP <- SIM_TEMP[(count-1)]
+  			#cur_sim_PRCP <- SIM_PRCP[(count-1)]
+  			#cur_sim_TEMP <- SIM_TEMP[(count-1)]
 
   			mm <- which(MONTH_D_CURRENT==m)
   			mm_p <- which(MONTH_D_CURRENT==m & PRCP_CURRENT > 0)
@@ -334,10 +335,14 @@ resampleDates <- function(
   			  count = count,
   			  seed = seed)
 
-  	SIM_PRCP[count] <- PRCP_TOMORROW[RESULT]
-		SIM_TEMP[count] <- TEMP_TOMORROW[RESULT]
-		SIM_TMAX[count] <- TMAX_TOMORROW[RESULT]
-		SIM_TMIN[count] <- TMIN_TOMORROW[RESULT]
+  	#SIM_PRCP[count] <- PRCP_TOMORROW[RESULT]
+		#SIM_TEMP[count] <- TEMP_TOMORROW[RESULT]
+		#SIM_TMAX[count] <- TMAX_TOMORROW[RESULT]
+		#SIM_TMIN[count] <- TMIN_TOMORROW[RESULT]
+
+  	cur_sim_PRCP <- PRCP_TOMORROW[RESULT]
+  	cur_sim_TEMP <- TEMP_TOMORROW[RESULT]
+
 		SIM_DATE[count] <- DATE_D_CURRENT[which(as.numeric(DATE_D_CURRENT)==DATE_TOMORROW[RESULT])][1]
 
 			} # if-condition count close
