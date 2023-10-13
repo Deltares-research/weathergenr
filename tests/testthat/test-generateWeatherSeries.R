@@ -1,5 +1,4 @@
 
-
 testthat::test_that("check if the output dimensions are correct", {
 
  sim_year_start = 2020
@@ -9,7 +8,8 @@ testthat::test_that("check if the output dimensions are correct", {
 
  date_begin <- as.Date(paste(sim_year_start, month_start, "01", sep = "-"))
  date_end <- as.Date(paste(sim_year_start+sim_year_num, month_start, "01", sep = "-"))-1
- date_vector <- seq.Date(date_begin, date_end, by = "day")
+ dvec <- seq.Date(date_begin, date_end, by = "day")
+ dvec <- dvec[!(format(dvec,"%m")=="02" & format(dvec,"%d")=="29")]
 
  output <- generateWeatherSeries(
     weather.data = ncdata$data,
@@ -31,6 +31,7 @@ testthat::test_that("check if the output dimensions are correct", {
     mc.extreme.quantile = 0.8,
     evaluate.model = FALSE,
     evaluate.grid.num = 20,
+    compute.parallel = FALSE,
     output.path = tempdir(),
     seed = 123)
 
@@ -38,6 +39,6 @@ testthat::test_that("check if the output dimensions are correct", {
   expect_true(all(sapply(1:realization_num, function(x) output$resampled[[x]] %in% ncdata$date)))
 
   # Check future date vector
-  expect_equal(output$dates, date_vect)
+  expect_equal(output$dates, dvec)
 
 })

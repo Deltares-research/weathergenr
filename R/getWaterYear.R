@@ -13,15 +13,12 @@
 #' @export
 getWaterYear <- function(date = NULL, water.year.first.month = 1)  {
 
-  w.year <- as.numeric(format(date, "%Y"))
+    w_year <- as.numeric(format(date, "%Y"))
 
-  #if(water.year.first.month != 1) {
+    month_list <- c(water.year.first.month:12,1:(water.year.first.month-1))
+    months_ny <- as.numeric(format(date, "%m")) >= month_list[1]
+    w_year[months_ny] <- w_year[months_ny] + 1
 
-    month.list <- c(water.year.first.month:12,1:(water.year.first.month-1))
-    months_ny <- as.numeric(format(date, "%m")) >= month.list[1]
-    w.year[months_ny] <- w.year[months_ny] + 1
-  #}
-
-  return(w.year)
+  return(w_year)
 
 }
