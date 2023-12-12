@@ -18,6 +18,7 @@ inst/doc
 /Meta/
 /cache/
 /temp/
+/tests/
 
 *-Ex.R
 *_cache/
