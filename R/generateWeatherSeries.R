@@ -300,14 +300,8 @@ generateWeatherSeries <- function(
 
     if(evaluate.model) {
 
-    # Sample evenly from the grid cells
-    #sampleGrids <- sf::st_as_sf(weather.grid[,c("x","y")], coords=c("x","y")) %>%
-    #  sf::st_sample(size = min(evaluate.grid.num, ngrids), type="regular") %>%
-    #  sf::st_cast("POINT") %>% sf::st_coordinates() %>% as_tibble() %>%
-    #  left_join(weather.grid[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
-    #  pull(id)
-
-      sampleGrids <- 1:(min(evaluate.grid.num, ngrids))
+      sampleGrids <sample(grids, size = min(evaluate.grid.num, ngrids))
+      #sampleGrids <- 1:(min(evaluate.grid.num, ngrids))
 
       rlz_sample <- list()
       for (n in 1:realization.num) {
@@ -341,9 +335,3 @@ generateWeatherSeries <- function(
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 
 }
-
-
-
-
-
-
