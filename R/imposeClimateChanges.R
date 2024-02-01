@@ -63,10 +63,18 @@ imposeClimateChanges <- function(
   # Transient changes (gradual)
   if(isTRUE(transient.precip.change)) {
 
+    # Set constraint on maximum change (i.e., maximum = 99%)
+    min_precipf = 0.01
+
+    precip_mean_deltaf <- (change.factor.precip.mean - 1) * 2 + 1
     precip_meanf <- sapply(1:12,
-      function(m) seq(1, change.factor.precip.mean[m] * 2, length.out = max(year_ind)))
+      function(m) seq(1, precip_mean_deltaf[m], length.out = max(year_ind)))
+    precip_meanf[precip_meanf < min_precipf] <- min_precipf
+
+    precip_var_deltaf <- (change.factor.precip.variance - 1) * 2 + 1
     precip_varf  <- sapply(1:12,
-      function(m) seq(1, change.factor.precip.variance[m] * 2, length.out = max(year_ind)))
+      function(m) seq(1, precip_var_deltaf[m], length.out = max(year_ind)))
+    precip_varf[precip_varf < min_precipf] <- min_precipf
 
     # Step changes
     } else {
