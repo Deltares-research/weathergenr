@@ -300,7 +300,7 @@ generateWeatherSeries <- function(
 
     if(evaluate.model) {
 
-      sampleGrids <sample(grids, size = min(evaluate.grid.num, ngrids))
+      sampleGrids <- sample(grids, size = min(evaluate.grid.num, ngrids))
       #sampleGrids <- 1:(min(evaluate.grid.num, ngrids))
 
       rlz_sample <- list()
