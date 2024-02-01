@@ -22,7 +22,6 @@ Imports:
     parallel,
     patchwork,
     scales,
-    sf,
     stats,
     tidyr,
     utils
