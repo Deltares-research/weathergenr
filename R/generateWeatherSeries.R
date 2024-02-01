@@ -300,33 +300,29 @@ generateWeatherSeries <- function(
 
     if(evaluate.model) {
 
-    # Sample evenly from the grid cells
-    sampleGrids <- sf::st_as_sf(weather.grid[,c("x","y")], coords=c("x","y")) %>%
-      sf::st_sample(size = min(evaluate.grid.num, ngrids), type="regular") %>%
-      sf::st_cast("POINT") %>% sf::st_coordinates() %>% as_tibble() %>%
-      left_join(weather.grid[,c("x","y","id")], by = c("X"="x","Y"="y")) %>%
-      pull(id)
+      sampleGrids <- sample(grids, size = min(evaluate.grid.num, ngrids))
+      #sampleGrids <- 1:(min(evaluate.grid.num, ngrids))
 
-    rlz_sample <- list()
-    for (n in 1:realization.num) {
-      rlz_sample[[n]] <- lapply(rlz[[n]][sampleGrids], function(x)
-         mutate(x, date = sim_dates_d$date, .before = 1))
-    }
+      rlz_sample <- list()
+      for (n in 1:realization.num) {
+        rlz_sample[[n]] <- lapply(rlz[[n]][sampleGrids], function(x)
+           mutate(x, date = sim_dates_d$date, .before = 1))
+      }
 
-    obs_sample <- lapply(weather.data[sampleGrids], function(x)
-      dplyr::mutate(x, date = weather.date, .before = 1))
+      obs_sample <- lapply(weather.data[sampleGrids], function(x)
+        dplyr::mutate(x, date = weather.date, .before = 1))
 
-    suppressWarnings(
-      evaluateWegen(daily.sim = rlz_sample,
-                    daily.obs = obs_sample,
-                    output.path = plots_path,
-                    variables = variable.names,
-                    variable.labels = variable.labels,
-                    variable.units = variable.units,
-                    realization.num = realization.num,
-                    wet.quantile = mc.wet.quantile,
-                    extreme.quantile = mc.extreme.quantile)
-    )
+      suppressWarnings(
+        evaluateWegen(daily.sim = rlz_sample,
+                      daily.obs = obs_sample,
+                      output.path = plots_path,
+                      variables = variable.names,
+                      variable.labels = variable.labels,
+                      variable.units = variable.units,
+                      realization.num = realization.num,
+                      wet.quantile = mc.wet.quantile,
+                      extreme.quantile = mc.extreme.quantile)
+      )
 
   } else {
      message(cat(as.character(Sys.time()), "- Comparison of climate statistics skipped"))
@@ -339,9 +335,3 @@ generateWeatherSeries <- function(
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 
 }
-
-
-
-
-
-
