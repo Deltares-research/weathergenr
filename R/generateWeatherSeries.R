@@ -58,7 +58,7 @@ generateWeatherSeries <- function(
   evaluate.model = FALSE,
   evaluate.grid.num = 20,
   output.path = tempdir(),
-  seed = FALSE,
+  seed = NULL,
   compute.parallel = TRUE,
   num.cores = NULL)
 
@@ -73,7 +73,7 @@ generateWeatherSeries <- function(
   if(is.null(variable.units)) variable.units <- rep("", length(variable.names))
 
   # If no seed provided, sample a value
-  if(!isTRUE(seed)) seed <- sample.int(1e5,1)
+  if(is.null(seed)) seed <- sample.int(1e5,1)
 
   # Number of grids
   grids  <- weather.grid$id
