@@ -205,12 +205,12 @@ generateWeatherSeries <- function(
   if(is.null(warm.subset.criteria)) {
 
     warm.subset.criteria = list(
-        mean = c(0.95,1.05),
+        mean = c(0.90,1.10),
         sd = c(0.80,1.20),
-        min = c(0.80,1.20),
-        max = c(0.80,1.20),
-        power = c(0.40,2.60),
-        nonsignif.threshold = 0.75)
+        min = c(0.70,1.30),
+        max = c(0.70,1.30),
+        power = c(0.30,3.00),
+        nonsignif.threshold = 0.98)
 
     if(!length(warm_power$signif_periods > 0)) {
        warm.subset.criteria$power <- NULL
