@@ -206,7 +206,7 @@ generateWeatherSeries <- function(
 
     warm.subset.criteria = list(
         mean = c(0.95,1.05),
-        sd = c(0.85,1.15),
+        sd = c(0.80,1.20),
         min = c(0.80,1.20),
         max = c(0.80,1.20),
         power = c(0.40,2.60),
