@@ -36,11 +36,11 @@ waveletARSubset <- function(
   padding = TRUE,
   bounds = list(
     mean = c(0.95,1.05),
-    sd = c(0.90,1.10),
-    min = c(0.90,1.10),
-    max = c(0.90,1.10),
-    power = c(0.60,2.25),
-    nonsignif.threshold = 0.90)
+    sd = c(0.85,1.15),
+    min = c(0.80,1.20),
+    max = c(0.80,1.20),
+    power = c(0.40,2.60),
+    nonsignif.threshold = 0.75)
   )
 
 {
