@@ -96,7 +96,6 @@ waveletARSubset <- function(
     sub_power  <- 1:ncol(series.sim)
   }
 
-
   if (!is.null(bounds$mean)) {
     sub_mean  <- which((stats_sim$mean > stats_obs$mean * bounds$mean[1]) &
                        (stats_sim$mean < stats_obs$mean * bounds$mean[2]))
@@ -104,14 +103,12 @@ waveletARSubset <- function(
     sub_mean <- 1:ncol(series.sim)
   }
 
-
   if (!is.null(bounds$sd)) {
     sub_sd  <- which((stats_sim$sd > stats_obs$sd * bounds$sd[1]) &
-                       (stats_sim$sd < stats_obs$sd * bounds$sd[2]))
+                     (stats_sim$sd < stats_obs$sd * bounds$sd[2]))
   } else {
     sub_sd <- 1:ncol(series.sim)
   }
-
 
   if (!is.null(bounds$min)) {
     sub_min  <- which((stats_sim$min > stats_obs$min * bounds$min[1]) &
@@ -134,6 +131,9 @@ waveletARSubset <- function(
   # Stochastically select from the initial dataset
   if(!is.null(seed)) set.seed(seed)
   sub_sample <- sample(sub_clim, min(sample.num, length(sub_clim)))
+  if(length(sub_sample) < sample.num) {
+    stop('not enough traces meeting criteria. Please readjust the constraints')
+  }
 
   if(isTRUE(verbose)) {
     print(tribble(
@@ -144,11 +144,6 @@ waveletARSubset <- function(
         "min",   paste0(length(sub_min), " out of ", ncol(series.sim)),
         "max",   paste0(length(sub_max), " out of ", ncol(series.sim)),
         "final", paste0(length(sub_clim), " out of ", ncol(series.sim))))
-  }
-
-  if(length(sub_sample) < sample.num) {
-    stop('subsetted traces less than the desired amount.
-         Please relax the decision criteria and repeat.')
   }
 
   if(isTRUE(save.plots)) {
@@ -195,9 +190,9 @@ waveletARSubset <- function(
       theme_bw() +
       facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1) +
       geom_violin(data = stats_sim_gg, color = "gray60") +
-      geom_point(data = filter(stats_sim_gg, sim %in% sub_sample), size = 3, color = "white", fill = "black", shape = 21) +
+      geom_point(data = filter(stats_sim_gg, sim %in% sub_sample),
+                 size = 3, color = "white", fill = "black", shape = 21) +
       geom_point(data = stats_obs_gg, size = 4, color = "white", fill = "blue", shape = 21) +
-      scale_fill_manual(values = c("Sampled" = "black", "Observed" = "blue")) +
       labs(x="", y = "", color = "", fill="") +
       theme(axis.title.x=element_blank(),
             axis.text.x=element_blank(),
