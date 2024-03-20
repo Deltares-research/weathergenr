@@ -211,7 +211,6 @@ generateWeatherSeries <- function(
     warm.subset.criteria$nonsignif.threshold <- NULL
   }
 
-
   # subsetting from generated warm series
   sim_annual_sub <- waveletARSubset(
        series.obs = warm_variable,
@@ -226,8 +225,10 @@ generateWeatherSeries <- function(
        seed = seed,
        save.series = FALSE)
 
-  message(cat(as.character(trunc(Sys.time())), "-", ncol(sim_annual_sub$subsetted), "stochastic series subsetted based on default criteria"))
-  message(cat(as.character(trunc(Sys.time())), "-", ncol(sim_annual_sub$sampled), "series sampled"))
+  message(cat(as.character(trunc(Sys.time())), "-", ncol(sim_annual_sub$subsetted),
+              "stochastic series subsetted based on default criteria"))
+  message(cat(as.character(trunc(Sys.time())), "-", ncol(sim_annual_sub$sampled),
+              "series sampled"))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
