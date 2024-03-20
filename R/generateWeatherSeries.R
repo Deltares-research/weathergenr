@@ -52,10 +52,10 @@ generateWeatherSeries <- function(
   warm.subset.criteria = list(
            mean = c(0.90,1.10),
            sd = c(0.80,1.20),
-           min = c(0.70,1.30),
-           max = c(0.70,1.30),
-           power = c(0.30, 5.00),
-           nonsignif.threshold = 0.99),
+           min = c(0.60,1.30),
+           max = c(0.70,1.40),
+           power = c(0.20, 10.00),
+           nonsignif.threshold = 1.20),
   knn.sample.num = 120,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
@@ -88,10 +88,10 @@ generateWeatherSeries <- function(
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat(as.character(trunc(Sys.time())), "- Weathergenr started in parallel mode:", num.cores, "cores"))
+    message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Weathergenr started in parallel mode:", num.cores, "cores"))
 
   } else {
-    message(cat(as.character(trunc(Sys.time())), "- Weathergenr started in sequential mode"))
+    message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Weathergenr started in sequential mode"))
   }
 
 
@@ -101,11 +101,12 @@ generateWeatherSeries <- function(
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  message(cat(as.character(trunc(Sys.time())), "- Randomization seed:", seed))
-  message(cat(as.character(trunc(Sys.time())), "- Historical climate data being prepared"))
-  message(cat(as.character(trunc(Sys.time())), "- Climate variables included:", paste(variable.names, collapse = ', ')))
-  message(cat(as.character(trunc(Sys.time())), "- Historical period:", as.character(weather.date[1]), "-", as.character(weather.date[length(weather.date)])))
-  message(cat(as.character(trunc(Sys.time())), "- Number of grids:", ngrids))
+
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Randomization seed:", seed))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Historical climate data being prepared"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Climate variables included:", paste(variable.names, collapse = ', ')))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Historical period:", as.character(weather.date[1]), "-", as.character(weather.date[length(weather.date)])))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Number of grids:", ngrids))
 
   # Historical dates
   year_seq <- as.numeric(format(weather.date,"%Y"))
@@ -159,8 +160,8 @@ generateWeatherSeries <- function(
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   # Simulate annual series of wavelet variable
-  message(cat(as.character(trunc(Sys.time())), "- Wavelet significance threshold set to: ", warm.signif.level))
-  message(cat(as.character(trunc(Sys.time())), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), "series"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- WARM threshold: ", warm.signif.level))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), "series"))
 
   #####  Wavelet analysis on observed annual series
   warm_variable <- climate_a_aavg %>% pull({{warm.variable}})
@@ -177,8 +178,8 @@ generateWeatherSeries <- function(
           signif.periods = warm_power$signif_periods,
           signif.level = warm.signif.level, plot = TRUE, output.path = plots_path)
 
-      message(cat(as.character(trunc(Sys.time())), "- Number of significant low-frequencies:", length(wavelet_comps)-1))
-      message(cat(as.character(trunc(Sys.time())), "- Periodicity (yrs):", paste(warm_power$signif_periods, collapse=",")))
+      message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Number of significant low-frequency signals:", length(wavelet_comps)-1))
+      message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Periodicity (yrs):", paste(warm_power$signif_periods, collapse=",")))
 
       sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
           sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
@@ -186,7 +187,7 @@ generateWeatherSeries <- function(
     #if there is no low frequency signal
     } else {
 
-      message(cat(as.character(trunc(Sys.time())), "- No low-frequency signals detected"))
+      message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- No low-frequency signals detected"))
 
       # Remove the mean from the component
       MEAN <- mean(warm_variable)
@@ -225,10 +226,8 @@ generateWeatherSeries <- function(
        seed = seed,
        save.series = FALSE)
 
-  message(cat(as.character(trunc(Sys.time())), "-", ncol(sim_annual_sub$subsetted),
-              "stochastic series subsetted based on default criteria"))
-  message(cat(as.character(trunc(Sys.time())), "-", ncol(sim_annual_sub$sampled),
-              "series sampled"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- ", ncol(sim_annual_sub$subsetted), "stochastic series subsetted based on default criteria"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- ",  ncol(sim_annual_sub$sampled), "series sampled"))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
@@ -276,12 +275,12 @@ generateWeatherSeries <- function(
     resampled_dates[,x] <-dates_d$dateo[match(resampled_ini[[x]], dates_d$date)]
   }
 
-  message(cat(as.character(trunc(Sys.time())), "- KNN & MCMC modeling completed"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- KNN & MCMC modeling completed"))
 
   utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
 
-  message(cat(as.character(trunc(Sys.time())), "- Results saved to the path: `", output.path,"`"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Results saved to: `", output.path,"`"))
 
   day_order <- sapply(1:realization.num,
     function(n) match(resampled_dates[[n]], dates_d$dateo))
@@ -322,11 +321,13 @@ generateWeatherSeries <- function(
       )
 
   } else {
-    message(cat(as.character(trunc(Sys.time())), "- Comparison of climate statistics skipped"))
+    message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Comparison of climate statistics skipped."))
   }
 
 
-  message(cat(as.character(trunc(Sys.time())), "- Elapsed time:", Sys.time() - start_time, "secs"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')),
+              "- Weather generation completed. Elapsed time:", Sys.time() - start_time, "secs"))
+
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 
