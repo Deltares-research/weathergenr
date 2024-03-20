@@ -32,9 +32,9 @@ waveletPlot <- function(
 
   } else {
 
-    savg <- apply(power.sim, 1, mean)
-    slow <- apply(power.sim, 1, min)
-    sup  <- apply(power.sim, 1, max)
+    savg <- apply(as.matrix(power.sim), 1, mean)
+    slow <- apply(as.matrix(power.sim), 1, min)
+    sup  <- apply(as.matrix(power.sim), 1, max)
 
     #slow <- apply(power.sim, 1, function(x) quantile(x, 0.025))
     #sup  <- apply(power.sim, 1, function(x) quantile(x, 0.975))
