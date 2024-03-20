@@ -40,15 +40,16 @@ waveletARSubset <- function(
     min = c(0.80,1.20),
     max = c(0.80,1.20),
     power = c(0.40,3.00),
-    nonsignif.threshold = 0.60)
-  )
+    nonsignif.threshold = 0.60))
 
 {
 
   # Workaround for rlang warning
   sim <- value <- yind <- par <- type <- variable <- y <- x <- 0
+  sim.year.num <- nrow(series.sim)
 
-  sim.year.num = nrow(series.sim)
+  # If no seed provided, sample a value
+  if(is.null(seed)) seed <- sample.int(1e5,1)
 
   # Statistics for simulated realizations
   stats_sim <- series.sim %>%
@@ -75,64 +76,79 @@ waveletARSubset <- function(
   periods_nonsig <- setdiff(1:length(power.signif),periods_sig)
   periods_nonsig <- periods_nonsig[periods_nonsig %in% 1:dim(power.sim)[1]]
 
+  filterMatchingTS <- function(bounds = NA, stats_sim = NA, stats_obs = NA, series.sim = NA) {
 
-  if (!is.null(bounds$power)) {
+    # Filter based on power spectra
+    if (!is.null(bounds$power)) {
 
-    # Filter scenarios have significant signals
-    sub_power1 <- which(sapply(1:ncol(power.sim), function(x)
-      any(power.sim[periods_sig,x] > power.signif[periods_sig])))
+      # Filter scenarios have significant signals
+      sub_power1 <- which(sapply(1:ncol(power.sim), function(x)
+        any(power.sim[periods_sig,x] > power.signif[periods_sig])))
 
-    # Signals within the bounds
-    sub_power2 <- which(sapply(1:ncol(power.sim), function(x)
+      # Signals within the bounds
+      sub_power2 <- which(sapply(1:ncol(power.sim), function(x)
         all((power.sim[periods_sig,x] > power.obs[periods_sig] * bounds$power[1]) &
-            (power.sim[periods_sig,x] < power.obs[periods_sig] * bounds$power[2]))))
+              (power.sim[periods_sig,x] < power.obs[periods_sig] * bounds$power[2]))))
 
-    # Nonsignificant below threshold
-    sub_power3 <- which(sapply(1:ncol(power.sim), function(x)
+      # Nonsignificant below threshold
+      sub_power3 <- which(sapply(1:ncol(power.sim), function(x)
         all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*bounds$nonsignif.threshold))))
 
-    sub_power <- base::intersect(base::intersect(sub_power1, sub_power2), sub_power3)
-  } else {
-    sub_power  <- 1:ncol(series.sim)
+      sub_power <- base::intersect(base::intersect(sub_power1, sub_power2), sub_power3)
+
+    } else {sub_power  <- 1:ncol(series.sim)}
+
+    # Filter based on means
+    if (!is.null(bounds$mean)) {
+      sub_mean  <- which((stats_sim$mean > stats_obs$mean * bounds$mean[1]) &
+                         (stats_sim$mean < stats_obs$mean * bounds$mean[2]))
+    } else {sub_mean <- 1:ncol(series.sim)}
+
+    # Filter based on standard deviation
+    if (!is.null(bounds$sd)) {
+      sub_sd  <- which((stats_sim$sd > stats_obs$sd * bounds$sd[1]) &
+                         (stats_sim$sd < stats_obs$sd * bounds$sd[2]))
+    } else {sub_sd <- 1:ncol(series.sim)}
+
+    # Filter based on minimum
+    if (!is.null(bounds$min)) {
+      sub_min  <- which((stats_sim$min > stats_obs$min * bounds$min[1]) &
+                          (stats_sim$min < stats_obs$min * bounds$min[2]))
+    } else {sub_min  <- 1:ncol(series.sim)}
+
+    # Filter based on maximum
+    if (!is.null(bounds$max)) {
+      sub_max  <- which((stats_sim$max > stats_obs$max * bounds$max[1]) &
+                          (stats_sim$max < stats_obs$max * bounds$max[2]))
+    } else {sub_max  <- 1:ncol(series.sim)}
+
+    #Select intersection of filtered
+    output <- Reduce(base::intersect,
+        list(sub_mean, sub_sd, sub_power, sub_min, sub_max))
+
+    return(output)
   }
 
-  if (!is.null(bounds$mean)) {
-    sub_mean  <- which((stats_sim$mean > stats_obs$mean * bounds$mean[1]) &
-                       (stats_sim$mean < stats_obs$mean * bounds$mean[2]))
-  } else {
-    sub_mean <- 1:ncol(series.sim)
-  }
+  ### Filter the values
+  sub_clim <- filterMatchingTS(bounds = bounds, stats_sim = stats_sim,
+                           stats_obs = stats_obs, series.sim = series.sim)
 
-  if (!is.null(bounds$sd)) {
-    sub_sd  <- which((stats_sim$sd > stats_obs$sd * bounds$sd[1]) &
-                     (stats_sim$sd < stats_obs$sd * bounds$sd[2]))
-  } else {
-    sub_sd <- 1:ncol(series.sim)
-  }
-
-  if (!is.null(bounds$min)) {
-    sub_min  <- which((stats_sim$min > stats_obs$min * bounds$min[1]) &
-                      (stats_sim$min < stats_obs$min * bounds$min[2]))
-  } else {
-    sub_min  <- 1:ncol(series.sim)
-  }
-
-  if (!is.null(bounds$max)) {
-    sub_max  <- which((stats_sim$max > stats_obs$max * bounds$max[1]) &
-                      (stats_sim$max < stats_obs$max * bounds$max[2]))
-  } else {
-    sub_max  <- 1:ncol(series.sim)
-  }
-
-  #Select intersection
-  sub_clim <- Reduce(base::intersect, list(sub_mean, sub_sd, sub_power,
-                                     sub_min, sub_max))
-
-  # Stochastically select from the initial dataset
-  if(!is.null(seed)) set.seed(seed)
+  set.seed(seed)
   sub_sample <- sample(sub_clim, min(sample.num, length(sub_clim)))
+
   if(length(sub_sample) < sample.num) {
-    stop('not enough traces meeting criteria. Please readjust the constraints')
+    message('Not enough traces meeting criteria. Relaxing criteria and repeating subsetting')
+
+    ### Filter the values
+    bounds_rev = list(mean = c(0.90,1.10), sd = c(0.80,1.20), min = c(0.70,1.30),
+                      max = c(0.70,1.30), power = NULL, nonsignif.threshold = NULL)
+
+    sub_clim <- filterMatchingTS(bounds = bounds_rev, stats_sim = stats_sim,
+                                 stats_obs = stats_obs, series.sim = series.sim)
+
+    set.seed(seed)
+    sub_sample <- sample(sub_clim, min(sample.num, length(sub_clim)))
+
   }
 
   if(isTRUE(verbose)) {
@@ -235,7 +251,7 @@ waveletARSubset <- function(
     }
 
   return(list(subsetted = series.sim[,sub_clim],
-    sampled = series.sim[,sub_sample, drop=FALSE]))
+              sampled = series.sim[,sub_sample, drop=FALSE]))
 
 }
 
