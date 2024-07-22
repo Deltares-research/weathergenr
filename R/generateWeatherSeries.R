@@ -103,7 +103,6 @@ generateWeatherSeries <- function(
 
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Randomization seed:", seed))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Historical climate data being prepared"))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Climate variables included:", paste(variable.names, collapse = ', ')))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Historical period:", as.character(weather.date[1]), "to", as.character(weather.date[length(weather.date)])))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Number of grids:", ngrids))
@@ -160,8 +159,8 @@ generateWeatherSeries <- function(
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   # Simulate annual series of wavelet variable
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- WARM threshold:", warm.signif.level))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), "series"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- WARM significance level:", warm.signif.level))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- WARM: simulating", format(warm.sample.num, big.mark=","), "series"))
 
   #####  Wavelet analysis on observed annual series
   warm_variable <- climate_a_aavg %>% pull({{warm.variable}})
@@ -179,7 +178,7 @@ generateWeatherSeries <- function(
           signif.level = warm.signif.level, plot = TRUE, output.path = plots_path)
 
       message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Number of significant low-frequency signals:", length(wavelet_comps)-1))
-      message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Periodicity (yrs):", paste(warm_power$signif_periods, collapse=",")))
+      message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Periodicity (years):", paste(warm_power$signif_periods, collapse=",")))
 
       sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
           sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
@@ -226,7 +225,7 @@ generateWeatherSeries <- function(
        seed = seed,
        save.series = FALSE)
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$subsetted), "stochastic traces matches criteria"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$subsetted), "stochastic traces match criteria"))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$sampled), "traces sampled"))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
@@ -292,6 +291,8 @@ generateWeatherSeries <- function(
   }
 
 
+  save.image("vakhsh_wegen_data.Rdata")
+
   #::::::::::: MODEL EVALUATION (OPTIONAL) :::::::::::::::::::::::::::::::::::::
 
     if(evaluate.model) {
@@ -326,7 +327,7 @@ generateWeatherSeries <- function(
 
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')),
-              "- Weather generation completed. Elapsed time:", Sys.time() - start_time, "secs"))
+              "- Completed. Elapsed time:", Sys.time() - start_time, "secs"))
 
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
