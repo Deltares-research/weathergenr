@@ -105,7 +105,7 @@ generateWeatherSeries <- function(
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Randomization seed:", seed))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Historical climate data being prepared"))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Climate variables included:", paste(variable.names, collapse = ', ')))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Historical period:", as.character(weather.date[1]), "-", as.character(weather.date[length(weather.date)])))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Historical period:", as.character(weather.date[1]), "to", as.character(weather.date[length(weather.date)])))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Number of grids:", ngrids))
 
   # Historical dates
@@ -160,7 +160,7 @@ generateWeatherSeries <- function(
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   # Simulate annual series of wavelet variable
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- WARM threshold: ", warm.signif.level))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- WARM threshold:", warm.signif.level))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Wavelet AR model: simulating", format(warm.sample.num, big.mark=","), "series"))
 
   #####  Wavelet analysis on observed annual series
@@ -226,8 +226,8 @@ generateWeatherSeries <- function(
        seed = seed,
        save.series = FALSE)
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- ", ncol(sim_annual_sub$subsetted), "stochastic series subsetted based on default criteria"))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- ",  ncol(sim_annual_sub$sampled), "series sampled"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$subsetted), "stochastic traces matches criteria"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$sampled), "traces sampled"))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
