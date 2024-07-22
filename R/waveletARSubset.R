@@ -49,24 +49,26 @@ waveletARSubset <- function(
   # If no seed provided, sample a value
   if(is.null(seed)) seed <- sample.int(1e5,1)
 
-  # Statistics for simulated realizations
-  stats_sim <- series.sim %>%
-    as_tibble(.name_repair = ~as.character(1:ncol(series.sim))) %>%
-    mutate(yind = 1:n()) %>%
-    gather(key = sim, value = value, -yind) %>%
-    mutate(sim = as.numeric(sim)) %>%
-    group_by(sim) %>%
-    summarize(mean = mean(value), sd = stats::sd(value),
-              max = max(value), min = min(value))
-
-  # Statistics for observed weather series
+  # Statistics for observed series
   stats_obs <- tibble(value = series.obs) %>%
     summarize(mean = mean(value), sd = stats::sd(value),
-              max = max(value), min = min(value))
+              max = max(value), min = min(value)) %>%
+    gather(key = par, value = obs)
 
+  # Statistics for synthetic series
+  stats_sim <- tibble(sim = 1:ncol(series.sim)) %>%
+    mutate(mean = apply(series.sim, 2, mean),
+           sd = apply(series.sim, 2, sd),
+           min = apply(series.sim, 2, min),
+           max = apply(series.sim, 2, max)) %>%
+    group_by(sim) %>%
+    gather(key = par, value = value, -sim) %>%
+    left_join(stats_obs, by = "par") %>%
+    mutate(value = 1 - (obs - value)/obs) %>%
+    select(-obs) %>%
+    pivot_wider(names_from = par, values_from = value)
 
-
-  # Significant periods
+  # Set significant and non-significant periods
   periods_sig <- which(power.obs > power.signif)
   periods_sig <- periods_sig[periods_sig %in% 1:length(series.obs)]
 
@@ -96,31 +98,27 @@ waveletARSubset <- function(
 
       sub_power <- base::intersect(base::intersect(sub_power1, sub_power2), sub_power3)
 
-    } else {sub_power  <- 1:ncol(series.sim)}
+    } else {sub_power <- 1:ncol(series.sim)}
 
-    # Filter based on means
-    if (!is.null(bounds$mean)) {
-      sub_mean  <- which((stats_sim$mean > stats_obs$mean * bounds$mean[1]) &
-                         (stats_sim$mean < stats_obs$mean * bounds$mean[2]))
-    } else {sub_mean <- 1:ncol(series.sim)}
+  # Filter based on means
+  if (!is.null(bounds$mean)) {
+    sub_mean  <- which((stats_sim$mean > bounds$mean[1]) & (stats_sim$mean < bounds$mean[2]))
+  } else {sub_mean <- 1:ncol(series.sim)}
 
-    # Filter based on standard deviation
-    if (!is.null(bounds$sd)) {
-      sub_sd  <- which((stats_sim$sd > stats_obs$sd * bounds$sd[1]) &
-                         (stats_sim$sd < stats_obs$sd * bounds$sd[2]))
-    } else {sub_sd <- 1:ncol(series.sim)}
+  # Filter based on standard deviation
+  if (!is.null(bounds$sd)) {
+    sub_sd  <- which((stats_sim$sd > bounds$sd[1]) & (stats_sim$sd < bounds$sd[2]))
+  } else {sub_sd <- 1:ncol(series.sim)}
 
-    # Filter based on minimum
-    if (!is.null(bounds$min)) {
-      sub_min  <- which((stats_sim$min > stats_obs$min * bounds$min[1]) &
-                          (stats_sim$min < stats_obs$min * bounds$min[2]))
-    } else {sub_min  <- 1:ncol(series.sim)}
+  # Filter based on minimum
+  if (!is.null(bounds$min)) {
+    sub_min  <- which((stats_sim$min > bounds$min[1]) & (stats_sim$min <bounds$min[2]))
+  } else {sub_min  <- 1:ncol(series.sim)}
 
-    # Filter based on maximum
-    if (!is.null(bounds$max)) {
-      sub_max  <- which((stats_sim$max > stats_obs$max * bounds$max[1]) &
-                          (stats_sim$max < stats_obs$max * bounds$max[2]))
-    } else {sub_max  <- 1:ncol(series.sim)}
+  # Filter based on maximum
+  if (!is.null(bounds$max)) {
+    sub_max  <- which((stats_sim$max > bounds$max[1]) & (stats_sim$max < bounds$max[2]))
+  } else {sub_max  <- 1:ncol(series.sim)}
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')),
               '- Subsetting bounds: mean=', bounds$mean, ", st.dev=", bounds$sd, ", min=", bounds$min,
@@ -170,29 +168,23 @@ waveletARSubset <- function(
     ggsave(file.path(output.path, "warm_spectral_sampled.png"), width=8, height=6)
 
     # Boxplots of all stats
-    stats_obs_gg <- stats_obs %>% mutate(sim=1) %>%
-      gather(key = par, value = value, -sim) %>% mutate(type = "Observed") %>%
-      mutate(type = factor(type, levels = c("Sampled", "Observed"))) %>%
-      mutate(par = factor(par, levels = c("mean","sd", "min","max"),
-        labels = c("Mean", "St. Deviation", "Minimum", "Maximum"))) %>%
-      arrange(type)
+    par_labels <- c(`mean` = "Mean",`sd` = "StDev", `min` = "Minimum",`max` = "Maximum")
 
     stats_sim_gg <- stats_sim %>%
-      gather(key = par, value = value, -sim) %>% mutate(type = "Sampled") %>%
-      mutate(type = factor(type, levels = c("Sampled", "Observed"))) %>%
-      mutate(par = factor(par, levels = c("mean","sd", "min","max"),
-        labels = c("Mean", "St. Deviation", "Minimum", "Maximum"))) %>%
-      arrange(type)
+      pivot_longer(!sim, names_to = "par", values_to = "value") %>%
+      mutate(value = value * 100 - 100)
 
     # Plot subsetted series statistics
-    p <- ggplot(mapping = aes(x = par, y = value)) +
+    p <- ggplot(stats_sim_gg, aes(x = par, y = value)) +
       theme_bw() +
-      facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1) +
-      geom_violin(data = stats_sim_gg, color = "gray60") +
+      geom_violin(color = "black", fill = "gray90") +
+      facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1,
+                 labeller = as_labeller(par_labels)) +
+      geom_hline(yintercept = 0, size = 1, color = "blue") +
       geom_point(data = filter(stats_sim_gg, sim %in% sub_sample),
                  size = 3, color = "white", fill = "black", shape = 21) +
-      geom_point(data = stats_obs_gg, size = 4, color = "white", fill = "blue", shape = 21) +
-      labs(x="", y = "", color = "", fill="") +
+      scale_y_continuous(limits = c(-50,50), breaks = seq(-50,50,25)) +
+      labs(x="", y = "Change (%)", color = "", fill="") +
       theme(axis.title.x=element_blank(),
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank())
@@ -213,10 +205,11 @@ waveletARSubset <- function(
     # Subsetted annual series
     p <- ggplot(df1, aes(x = x, y = y)) +
       theme_bw(base_size = 12) +
-      geom_line(aes(y = y, group = variable, color = variable), alpha = 0.6) +
-      geom_line(aes(y=y), data = df2, color = "black", linewidth = 1) +
+      geom_line(aes(y = y, group = variable), color = "gray40", alpha = 0.6) +
+      geom_line(aes(y=y), data = df2, color = "blue", linewidth = 1) +
+      scale_x_continuous(expand = c(0,0)) +
       guides(color = "none") +
-      labs(y = "Precipitation (mm/year)", x = "Year index")
+      labs(y = "mm/year", x = "Serial year")
 
     ggsave(file.path(output.path, "warm_annual_series.png"), height = 5, width = 8)
 
