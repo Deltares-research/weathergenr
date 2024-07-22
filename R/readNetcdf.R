@@ -73,10 +73,11 @@ readNetcdf <- function(
 
     # Define date vector based on calendar type
     if(isTRUE(leap.days)) {
-      datev <- origin_date-1 + 1:length(nc_dim[[nc_dimnames$time]])
+      datev <- origin_date + nc_dim[[nc_dimnames$time]]
     } else {
       ymax <- round(length(nc_dim[[nc_dimnames$time]])/365)
-      datev <- tibble(date = seq.Date(origin_date, origin_date + ymax*366, by = "day")) %>%
+      begin_date <- origin_date + nc_dim[[nc_dimnames$time]][[1]]
+      datev <- tibble(date = seq.Date(begin_date, begin_date + ymax*366, by = "day")) %>%
         mutate(month = as.numeric(format(date,"%m")), day = as.numeric(format(date,"%d"))) %>%
         filter(!(month == 2 & day == 29 )) %>%
         slice(1:(ymax*365)) %>% pull(date)
