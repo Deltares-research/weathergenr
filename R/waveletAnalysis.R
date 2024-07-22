@@ -221,7 +221,7 @@ waveletAnalysis <- function(variable = NULL,
 
     # Save results to file
     p <- p2 + p3 + patchwork::plot_layout(widths = c(2, 1.25))
-    ggsave(file.path(output.path, "warm_hist_wavelet_analysis.png"), height=8, width=8)
+    ggsave(file.path(output.path, "warm_hist_wavelet_analysis.png"), width=8, height = 6)
 
   }
 

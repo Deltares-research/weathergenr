@@ -121,8 +121,8 @@ waveletARSubset <- function(
   } else {sub_max  <- 1:ncol(series.sim)}
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')),
-              '- Subsetting bounds: mean=', bounds$mean, ", st.dev=", bounds$sd, ", min=", bounds$min,
-              ", max=", bounds$max, ", power=", bounds$power, ", ns.threshold=", bounds$nonsignif.threshold))
+              '- Error bounds: mean=', bounds$mean, ",sd=", bounds$sd, ",min=", bounds$min,
+              ", max=", bounds$max, ",power=", bounds$power))
 
   #Select intersection of filtered
   sub_clim <- Reduce(base::intersect,
@@ -172,6 +172,7 @@ waveletARSubset <- function(
 
     stats_sim_gg <- stats_sim %>%
       pivot_longer(!sim, names_to = "par", values_to = "value") %>%
+      mutate(par = factor(par, levels = c("mean", "sd", "min", "max"))) %>%
       mutate(value = value * 100 - 100)
 
     # Plot subsetted series statistics
@@ -189,7 +190,7 @@ waveletARSubset <- function(
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank())
 
-      ggsave(file.path(output.path, "warm_stats_sampled.png"), width = 8, height = 5)
+      ggsave(file.path(output.path, "warm_stats_sampled.png"), width = 8, height = 6)
 
     # Plot simulated warm-series
     sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
@@ -205,13 +206,13 @@ waveletARSubset <- function(
     # Subsetted annual series
     p <- ggplot(df1, aes(x = x, y = y)) +
       theme_bw(base_size = 12) +
-      geom_line(aes(y = y, group = variable), color = "gray40", alpha = 0.6) +
+      geom_line(aes(y = y, group = variable), color = "gray50", alpha = 0.5) +
       geom_line(aes(y=y), data = df2, color = "blue", linewidth = 1) +
       scale_x_continuous(expand = c(0,0)) +
       guides(color = "none") +
       labs(y = "mm/year", x = "Serial year")
 
-    ggsave(file.path(output.path, "warm_annual_series.png"), height = 5, width = 8)
+    ggsave(file.path(output.path, "warm_annual_series.png"), width = 8, height = 6)
 
 
   }

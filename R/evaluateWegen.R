@@ -50,11 +50,13 @@ evaluateWegen <- function(
 
 
   nsgrids <- length(daily.sim[[1]])
-  message(cat(as.character(Sys.time()), "- Comparison accross",nsgrids,"grid cells"))
+
+
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Comparison accross",nsgrids,"grid cells"))
 
   # Calculate observed climate statistics ######################################################
 
-  message(cat(as.character(Sys.time()), "- Calculating historical climate statistics"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Calculating historical trace statistics"))
 
   # Number of years in the historical record
   hist_year_num <- nrow(daily.obs[[1]])/365
@@ -135,7 +137,7 @@ evaluateWegen <- function(
 
   # Calculate simulated climate statistics ######################################################
 
-  message(cat(as.character(Sys.time()), "- Calculating simulated climate statistics"))
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Calculating synthetic trace statistics"))
 
   # Initialize lists to store the results
   sim_stats <- vector("list", realization.num)
@@ -267,7 +269,8 @@ evaluateWegen <- function(
 
   # Plot results ###################################################################
 
-  message(cat(as.character(Sys.time()), "- Preparing comparison plots"))
+
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Preparing comparison plots"))
 
   # Various plotting parameters
   plot_length <- 5
@@ -299,7 +302,7 @@ evaluateWegen <- function(
   }
 
   ggsave(file.path(output.path,"daily_mean_all_variables.png" ),
-         height = plot_length*2, width = plot_length*1.75)
+         height = plot_length*1.80, width = plot_length*1.75)
 
 
   p <- ggplot(filter(daily_stats, stat == "standard dev."),
@@ -318,7 +321,7 @@ evaluateWegen <- function(
   }
 
   ggsave(file.path(output.path,"daily_stdev_all_variables.png" ),
-         height = plot_length*2, width = plot_length*1.75)
+         height = plot_length*1.80, width = plot_length*1.75)
 
 
 
@@ -332,9 +335,9 @@ evaluateWegen <- function(
     stat_summary(geom = "linerange", fun.max = max, fun.min = min,
                  alpha = alpha_val, linewidth = 0.8) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 1) +
-    facet_wrap(stat ~ ., ncol = 2) +
-    scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
-    scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    facet_wrap(stat ~ ., ncol = 2, scales = "free") +
+    #scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    #scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     xlab("Observed") + ylab("Simulated")
 
     if(isTRUE(show.title)) {
@@ -348,7 +351,7 @@ evaluateWegen <- function(
 
   #3) Average number of wet and dry days
 
-  xy_breaks <- pretty(unlist(stats_wetdry_days[,c(6,7)]), 5)
+  #xy_breaks <- pretty(unlist(stats_wetdry_days[,c(6,7)]), 5)
 
   p <- ggplot(stats_wetdry_days, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
@@ -356,9 +359,9 @@ evaluateWegen <- function(
     stat_summary(geom = "linerange", fun.max = max, fun.min = min,
                  alpha = alpha_val, linewidth = 0.8) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 1) +
-    facet_wrap(stat ~ ., ncol = 2) +
-    scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
-    scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    facet_wrap(stat ~ ., ncol = 2, scales = "free") +
+    #scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    #scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     xlab("Observed") + ylab("Simulated")
 
   if(isTRUE(show.title)) {
@@ -370,45 +373,45 @@ evaluateWegen <- function(
          height = plot_length, width = plot_length*1.75)
 
 
-  p <- ggplot(stats_wetdry_spells_aavg, aes(x = as.factor(mon), y = Simulated)) +
-    theme_wgplots +
-    facet_wrap(stat ~ ., ncol = 2, scales = "free_y") +
-    stat_summary(fun.max = max, fun.min = min,
-       geom = "linerange", alpha = 0.3, linewidth = 1.5) +
-    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
-    geom_point(aes(y = Observed), color = "blue", size = 2) +
-    geom_line(aes(y = Observed, group = 1), color = "blue") +
-    labs(x="Month", y = "Days")
+  # p <- ggplot(stats_wetdry_spells_aavg, aes(x = as.factor(mon), y = Simulated)) +
+  #   theme_wgplots +
+  #   facet_wrap(stat ~ ., ncol = 2, scales = "free") +
+  #   stat_summary(fun.max = max, fun.min = min,
+  #      geom = "linerange", alpha = 0.3, linewidth = 1.5) +
+  #   stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
+  #   geom_point(aes(y = Observed), color = "blue", size = 2) +
+  #   geom_line(aes(y = Observed, group = 1), color = "blue") +
+  #   labs(x="Month", y = "Days")
+  #
+  # if(isTRUE(show.title)) {
+  #   p <- p +  labs(title =  "Average length of dry and wet spells per month",
+  #                  subtitle = "Stochastic simulation range is shown against the observed values (blue color).")
+  # }
+  #
+  # ggsave(file.path(output.path,"monthly_drywet_spells.png"),
+  #        height = plot_length*1.5, width = plot_length*1.75)
 
-  if(isTRUE(show.title)) {
-    p <- p +  labs(title =  "Average length of dry and wet spells per month",
-                   subtitle = "Stochastic simulation range is shown against the observed values (blue color).")
-  }
 
-  ggsave(file.path(output.path,"monthly_drywet_spells.png"),
-         height = plot_length*1.5, width = plot_length*1.75)
-
-
-  p <- ggplot(stats_wetdry_days_aavg, aes(x = as.factor(mon), y = Simulated)) +
-    theme_wgplots +
-    facet_wrap(stat ~ ., ncol = 2, scales = "free_y") +
-    stat_summary(fun.max = max, fun.min = min,
-                 geom = "linerange", alpha = 0.3, linewidth = 1.5) +
-    stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
-    geom_point(aes(y = Observed), color = "blue", size = 2) +
-    geom_line(aes(y = Observed, group = 1), color = "blue") +
-    labs(x="Month", y = "Days")
-
-  if(isTRUE(show.title)) {
-    p <- p +  labs(title =  "Average number of dry and wet spells per month",
-                   subtitle = "Stochastic simulation range is shown against the observed values (blue color).")
-  }
-
-  ggsave(file.path(output.path,"monthly_drywet_days.png"),
-         height = plot_length*1.5, width = plot_length*1.75)
+  # p <- ggplot(stats_wetdry_days_aavg, aes(x = as.factor(mon), y = Simulated)) +
+  #   theme_wgplots +
+  #   facet_wrap(stat ~ ., ncol = 2, scales = "free") +
+  #   stat_summary(fun.max = max, fun.min = min,
+  #                geom = "linerange", alpha = 0.3, linewidth = 1.5) +
+  #   stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
+  #   geom_point(aes(y = Observed), color = "blue", size = 2) +
+  #   geom_line(aes(y = Observed, group = 1), color = "blue") +
+  #   labs(x="Month", y = "Days")
+  #
+  # if(isTRUE(show.title)) {
+  #   p <- p +  labs(title =  "Average number of dry and wet spells per month",
+  #                  subtitle = "Stochastic simulation range is shown against the observed values (blue color).")
+  # }
+  #
+  # ggsave(file.path(output.path,"monthly_drywet_days.png"),
+  #        height = plot_length*1.5, width = plot_length*1.75)
 
   #4) Inter-site correlations
-  xy_breaks <- pretty(unlist(stats_intersite_cor[,c(5,6)]), 3)
+  #xy_breaks <- pretty(unlist(stats_intersite_cor[,c(5,6)]), 3)
 
   p <- ggplot(stats_intersite_cor, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
@@ -417,8 +420,8 @@ evaluateWegen <- function(
                  alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
     facet_wrap(variable1 ~ ., ncol = 2, scales = "free") +
-    scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
-    scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    #scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    #scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     xlab("Observed") + ylab("Simulated")
 
   if(isTRUE(show.title)) {
@@ -427,7 +430,7 @@ evaluateWegen <- function(
   }
 
   ggsave(file.path(output.path,"intersite_correlations.png"),
-         height = plot_length*1.75, width = plot_length*1.75)
+         height = plot_length*1.70, width = plot_length*1.75)
 
 
   #5) Cross correlations
@@ -440,8 +443,8 @@ evaluateWegen <- function(
                  alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
     facet_wrap(variable ~ ., ncol = 3, scales = "free") +
-    scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
-    scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    #scale_x_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
+    #scale_y_continuous(limits = range(xy_breaks), breaks = xy_breaks) +
     xlab("Observed") + ylab("Simulated")
 
   if(isTRUE(show.title)) {
@@ -450,24 +453,26 @@ evaluateWegen <- function(
   }
 
   ggsave(file.path(output.path,"cross_correlations.png"),
-         height = plot_length*1.75, width = plot_length*1.75)
+         height = plot_length*1.50, width = plot_length*1.75)
 
 
   #6) Monthly statistics per variable
+  plot_cols <- setNames(c("blue", "black"), c("Observed", "Simulated"))
+
   for (v in 1:length(variables)) {
 
-    ##### MONTHLY CYCLE STATISTICS
-    plot_cols <- setNames(c("blue", "black"), c("Observed", "Simulated"))
-    dat <- sim_stats_aavg %>% filter(variable == variables[v] & !is.nan(value))
+    ##### MONTHLY CYCLE STATISTICS (Area-averaged)
+    dat <- sim_stats_aavg %>% filter(variable == variables[v] & !is.nan(value)) %>%
+      group_by(rlz)
 
     p <- ggplot(dat, aes(x = as.factor(mon), y=Simulated)) +
       theme_wgplots +
-      geom_boxplot(color = plot_cols[2], alpha = alpha_val) +
-      facet_wrap(~ stat, scales = "free", ncol = 2) +
-      stat_summary(fun="mean",  alpha = alpha_val,
-                   aes(color=names(plot_cols)[2]),  geom="point") +
+      geom_boxplot(color = plot_cols[2], alpha = alpha_val, outlier.shape = NA) +
       geom_point(data = filter(hist_stats_aavg_mon, variable == variables[v]),
                  aes(color=names(plot_cols)[1], y = Observed), size = 2.5) +
+      facet_wrap(~ stat, scales = "free", ncol = 2) +
+      stat_summary(fun="mean",  alpha = alpha_val, size = 2.5,
+                   aes(color=names(plot_cols)[2]),  geom="point") +
       scale_color_manual("", values=plot_cols) +
       labs(x = "", y = "") +
       theme(legend.position = c(0.875, 0.40),
@@ -482,7 +487,7 @@ evaluateWegen <- function(
     }
 
     ggsave(file.path(output.path, paste0("monthly_variability_", variables[v],".png")),
-           height = plot_length*2, width = plot_length*1.75)
+           height = plot_length*1.75, width = plot_length*1.75)
 
   }
 
