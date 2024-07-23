@@ -70,12 +70,21 @@ evaluateWegen <- function(
        id = as.numeric(id)) %>%
     select(id, year, mon, day, all_of(variables))
 
-  # Calculate summary statistics
+  # Calculate summary statistics (per month)
   hist_stats <- hist_daily_tidy %>%
     group_by(id, mon) %>%
     dplyr::summarize(across(all_of(variables),
                             list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
     gather(key = variable, value = Observed, -id, -year, -mon) %>%
+    separate(variable, c("variable","stat"), sep = ":") %>%
+    mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
+
+  # Calculate summary statistics (per month x per year)
+  hist_stats_aavg_peryear <- hist_daily_tidy %>%
+    group_by(year, mon) %>%
+    dplyr::summarize(across(all_of(variables),
+                            list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
+    gather(key = variable, value = Observed, -year, -mon) %>%
     separate(variable, c("variable","stat"), sep = ":") %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
@@ -456,24 +465,35 @@ evaluateWegen <- function(
          height = plot_length*1.50, width = plot_length*1.75)
 
 
+  ####################################################
+
   #6) Monthly statistics per variable
-  plot_cols <- setNames(c("blue", "black"), c("Observed", "Simulated"))
+  plot_cols <- setNames(c("blue3", "gray40"), c("Observed", "Simulated"))
 
   for (v in 1:length(variables)) {
 
     ##### MONTHLY CYCLE STATISTICS (Area-averaged)
-    dat <- sim_stats_aavg %>% filter(variable == variables[v] & !is.nan(value)) %>%
-      group_by(rlz)
+    dat <- sim_stats_aavg %>%
+      filter(variable == variables[v]) %>%
+      mutate(type = "Simulated") %>%
+      rename(value = Simulated)
 
-    p <- ggplot(dat, aes(x = as.factor(mon), y=Simulated)) +
+    dat2 <- hist_stats_aavg_peryear %>%
+      mutate(rlz = "0", .before = year) %>%
+      filter(variable == variables[v] & !is.nan(value)) %>%
+      mutate(type = "Observed") %>%
+      rename(value = Observed)
+
+    datx <- bind_rows(dat, dat2)
+
+    p <- ggplot(datx, aes(x = as.factor(mon), y = value, fill = type, color = type)) +
       theme_wgplots +
-      geom_boxplot(color = plot_cols[2], alpha = alpha_val, outlier.shape = NA) +
-      geom_point(data = filter(hist_stats_aavg_mon, variable == variables[v]),
-                 aes(color=names(plot_cols)[1], y = Observed), size = 2.5) +
+      geom_boxplot(alpha = alpha_val, outlier.shape = NA) +
       facet_wrap(~ stat, scales = "free", ncol = 2) +
-      stat_summary(fun="mean",  alpha = alpha_val, size = 2.5,
-                   aes(color=names(plot_cols)[2]),  geom="point") +
+      scale_fill_manual("", values=plot_cols) +
       scale_color_manual("", values=plot_cols) +
+      stat_summary(fun="mean",  size = 2, geom="point",
+                   position = position_dodge(0.8)) +
       labs(x = "", y = "") +
       theme(legend.position = c(0.875, 0.40),
             legend.background = element_rect(fill = "white", color = NA),
@@ -481,9 +501,10 @@ evaluateWegen <- function(
             plot.title = element_text(size = 14),
             plot.subtitle = element_text(size = 12))
 
+
     if(isTRUE(show.title)) {
-      p <- p +  labs(title =  paste0("Monthly variability of ", variable.labels[v]),
-        subtitle = "Monthly means from all stochastic simulations compared to the observed values.\nVariability range is averaged accross all grid cells.")
+      p <- p +  labs(title =  paste0("Monthly patterns for ", variable.labels[v]),
+        subtitle = "Statistics from all stochastic simulations compared to the observed values.\nResults are averaged accross all grid cells.")
     }
 
     ggsave(file.path(output.path, paste0("monthly_variability_", variables[v],".png")),
