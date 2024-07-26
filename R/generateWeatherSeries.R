@@ -230,6 +230,8 @@ generateWeatherSeries <- function(
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- KNN & Markov-Chain sampler started"))
+
   resampled_dates <- as_tibble(matrix(0, nrow=nrow(sim_dates_d),
     ncol=realization.num), .name_repair=~paste0("rlz_", 1:realization.num))
 
@@ -274,62 +276,59 @@ generateWeatherSeries <- function(
     resampled_dates[,x] <-dates_d$dateo[match(resampled_ini[[x]], dates_d$date)]
   }
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- KNN & MCMC modeling completed"))
-
   utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Results saved to: `", output.path,"`"))
-
-  day_order <- sapply(1:realization.num,
-    function(n) match(resampled_dates[[n]], dates_d$dateo))
-
-  rlz <- list()
-   for (n in 1:realization.num) {
-      rlz[[n]] <- lapply(climate_d, function(x)
-        x[day_order[,n],] %>% select(-year))
-  }
-
-
-  save.image("vakhsh_wegen_data.Rdata")
-
-  #::::::::::: MODEL EVALUATION (OPTIONAL) :::::::::::::::::::::::::::::::::::::
-
-    if(evaluate.model) {
-
-      sampleGrids <- sample(grids, size = min(evaluate.grid.num, ngrids))
-      #sampleGrids <- 1:(min(evaluate.grid.num, ngrids))
-
-      rlz_sample <- list()
-      for (n in 1:realization.num) {
-        rlz_sample[[n]] <- lapply(rlz[[n]][sampleGrids], function(x)
-           mutate(x, date = sim_dates_d$date, .before = 1))
-      }
-
-      obs_sample <- lapply(weather.data[sampleGrids], function(x)
-        dplyr::mutate(x, date = weather.date, .before = 1))
-
-      suppressWarnings(
-        evaluateWegen(daily.sim = rlz_sample,
-                      daily.obs = obs_sample,
-                      output.path = plots_path,
-                      variables = variable.names,
-                      variable.labels = variable.labels,
-                      variable.units = variable.units,
-                      realization.num = realization.num,
-                      wet.quantile = mc.wet.quantile,
-                      extreme.quantile = mc.extreme.quantile)
-      )
-
-  } else {
-    message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Comparison of climate statistics skipped."))
-  }
-
-
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')),
-              "- Completed. Elapsed time:", Sys.time() - start_time, "secs"))
-
+  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Completed. Elapsed time:", Sys.time() - start_time, "secs"))
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 
 }
+
+#
+#
+# day_order <- sapply(1:realization.num,
+#                     function(n) match(resampled_dates[[n]], dates_d$dateo))
+#
+# rlz <- list()
+# for (n in 1:realization.num) {
+#   rlz[[n]] <- lapply(climate_d, function(x)
+#     x[day_order[,n],] %>% select(-year))
+# }
+#
+#
+# #::::::::::: MODEL EVALUATION (OPTIONAL) :::::::::::::::::::::::::::::::::::::
+#
+# if(evaluate.model) {
+#
+#   sampleGrids <- sample(grids, size = min(evaluate.grid.num, ngrids))
+#
+#   rlz_sample <- list()
+#   for (n in 1:realization.num) {
+#     rlz_sample[[n]] <- lapply(rlz[[n]][sampleGrids], function(x)
+#       mutate(x, date = sim_dates_d$date, .before = 1))
+#   }
+#
+#   obs_sample <- lapply(weather.data[sampleGrids], function(x)
+#     dplyr::mutate(x, date = weather.date, .before = 1))
+#
+#   suppressWarnings(
+#     evaluateWegen(daily.sim = rlz_sample,
+#                   daily.obs = obs_sample,
+#                   output.path = plots_path,
+#                   variables = variable.names,
+#                   variable.labels = variable.labels,
+#                   variable.units = variable.units,
+#                   realization.num = realization.num,
+#                   wet.quantile = mc.wet.quantile,
+#                   extreme.quantile = mc.extreme.quantile)
+#   )
+#
+# } else {
+#   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Comparison of climate statistics skipped."))
+# }
+#
+#
+
+
