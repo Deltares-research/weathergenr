@@ -1,0 +1,46 @@
+---
+title: "Evaluate_results"
+output:
+  rmarkdown::html_vignette:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Getting started}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE, cache = TRUE)
+```
+
+
+```{r setup, eval=TRUE, echo = FALSE}
+library(weathergenr)
+```
+
+```{r load-data}
+#daily.obs
+#daily.sim
+```
+
+```{r prepare-files}
+names(ncdata)
+```
+
+```{r run-evaluate}
+evaluateWegen(daily.sim = rlz_sample,
+              daily.obs = obs_sample,
+              output.path = paste0(plots_path,"plots"),
+              variables = c("precip", "temp", "temp_min", "temp_max"),
+              variable.labels = c("Precipitation", "Avg. Temperature", "Min. Temperature", "Max. Temperature"),
+              variable.units = NULL,
+              realization.num = realization.num,
+              wet.quantile = 0.3,
+              extreme.quantile = 0.8,
+              show.title = TRUE)
+```
+
+
+

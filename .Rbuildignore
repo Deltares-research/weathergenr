@@ -13,7 +13,6 @@
 /vignettes/web_only
 /docs/
 ^/vignettes/
-/tests/
 ^vignettes/.R$
 ^vignettes/.Rmd$
 ^vignettes/Climate_stress_test_cache
