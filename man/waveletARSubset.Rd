@@ -15,11 +15,10 @@ waveletARSubset(
   seed = NULL,
   save.plots = TRUE,
   save.series = TRUE,
-  verbose = FALSE,
   output.path = NULL,
   padding = TRUE,
-  bounds = list(mean = c(0.95, 1.05), sd = c(0.9, 1.1), min = c(0.9, 1.1), max = c(0.9,
-    1.1), power = c(0.6, 2.25), nonsignif.threshold = 0.9)
+  bounds = list(mean = c(0.9, 1.1), sd = c(0.8, 1.2), min = c(0.7, 1.3), max = c(0.7,
+    1.3), power = c(0.2, 10), nonsignif.threshold = 0.999)
 )
 }
 \arguments{
@@ -42,8 +41,6 @@ waveletARSubset(
 \item{save.plots}{A logical, to save the plots to file.}
 
 \item{save.series}{A logical to write the results to csv files.}
-
-\item{verbose}{A logical to decide if further information to be displayed on the screen.}
 
 \item{output.path}{Output folder path}
 

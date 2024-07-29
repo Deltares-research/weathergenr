@@ -35,7 +35,6 @@ evaluateWegen <- function(
   rlz <- id1 <- id2 <- variable1 <- variable2 <- type <- Observed <- Stochastic <- 0
   wet_th <- 0
 
-
   if(is.null(variable.labels)) variable.labels <- variable.names
   if(is.null(variable.units)) variable.units <- rep("", length(variable.names))
 
@@ -317,6 +316,7 @@ evaluateWegen <- function(
   ggsave(file.path(output.path,"daily_stdev.png" ),
          height = plot_length*1.80, width = plot_length*1.75)
 
+
 # 2) Wet and dry spell statistics
 
   p <- ggplot(stats_wetdry_spells, aes(x = Observed, y = Simulated)) +
@@ -352,6 +352,8 @@ evaluateWegen <- function(
 
   ggsave(file.path(output.path,"drywet_days_number.png"), height = plot_length, width = plot_length*1.75)
 
+
+
   #4) INTER-GRID CORRELATIONS
 
   p <- ggplot(stats_intersite_cor, aes(x = Observed, y = Simulated)) +
@@ -369,7 +371,6 @@ evaluateWegen <- function(
   }
 
   ggsave(file.path(output.path,"crossgrid_correlations.png"), height = plot_length*1.70, width = plot_length*1.75)
-
 
   #5) INTERGRID CORRELATIONS
 
@@ -468,6 +469,9 @@ evaluateWegen <- function(
   }
   ggsave(file.path(output.path, paste0("monthly_cycle.png")),
          height = plot_length*1.75, width = plot_length*1.75)
+
+
+  return(plots)
 
 }
 

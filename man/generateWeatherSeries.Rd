@@ -18,18 +18,18 @@ generateWeatherSeries(
   warm.variable = "precip",
   warm.signif.level = 0.9,
   warm.sample.num = 5000,
-  warm.subset.criteria = NULL,
+  warm.subset.criteria = list(mean = c(0.9, 1.1), sd = c(0.8, 1.2), min = c(0.6, 1.3),
+    max = c(0.7, 1.4), power = c(0.2, 10), nonsignif.threshold = 1.2),
   knn.sample.num = 120,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
   dry.spell.change = rep(1, 12),
   wet.spell.change = rep(1, 12),
-  evaluate.model = FALSE,
-  evaluate.grid.num = 20,
   output.path = tempdir(),
-  seed = sample.int(1e+05, 1),
-  compute.parallel = TRUE,
-  num.cores = NULL
+  seed = NULL,
+  compute.parallel = FALSE,
+  num.cores = NULL,
+  save.rdata = FALSE
 )
 }
 \arguments{
@@ -70,10 +70,6 @@ generateWeatherSeries(
 \item{dry.spell.change}{placeholder}
 
 \item{wet.spell.change}{placeholder}
-
-\item{evaluate.model}{logical value indicating weather to save model evaluation plots}
-
-\item{evaluate.grid.num}{Number of grid cells to be sampled in the evaluation plots}
 
 \item{output.path}{output path for the weather generator results (string)}
 
