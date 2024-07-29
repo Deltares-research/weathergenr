@@ -181,7 +181,7 @@ waveletARSubset <- function(
       geom_violin(color = "black", fill = "gray90") +
       facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1,
                  labeller = as_labeller(par_labels)) +
-      geom_hline(yintercept = 0, size = 1, color = "blue") +
+      geom_hline(yintercept = 0, linewidth = 1, color = "blue") +
       geom_point(data = filter(stats_sim_gg, sim %in% sub_sample),
                  size = 3, color = "white", fill = "black", shape = 21) +
       scale_y_continuous(limits = c(-50,50), breaks = seq(-50,50,25)) +

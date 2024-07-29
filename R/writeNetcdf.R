@@ -39,14 +39,15 @@ writeNetcdf <- function(
   # Simulation length
   sim.length = nrow(data[[1]])
 
-  # Open netcdf file
+  # Open template netcdf file
   ncin <- ncdf4::nc_open(nc.template.file)
 
-  # Get dimension variables
-  ncin_dim <- lapply(1:length(names(ncin$dim)), function(x) ncdf4::ncvar_get(ncin,names(ncin$dim)[x]))
+  # Get dimensions from the template file
+  ncin_dim <- lapply(1:length(names(ncin$dim)),
+                     function(x) ncdf4::ncvar_get(ncin,names(ncin$dim)[x]))
   names(ncin_dim) <- names(ncin$dim)
 
-  # Get variables & attributes
+  # Get spatial variables and global attributes
   ncin_var_spref <- ncdf4::ncvar_get(ncin, nc.spatial.ref)
   ncin_attribs_spref <-ncdf4:: ncatt_get(ncin, nc.spatial.ref)
   ncin_attribs_glob <- ncatt_get(ncin, 0)
@@ -59,14 +60,16 @@ writeNetcdf <- function(
   ncout_dim <- list()
   ncout_dim[[ncin_dimnames$time]] <- ncdf4::ncdim_def(name = ncin_dimnames$time,
       units = paste0("days since ", format(round(as.POSIXct(origin.date)), '%Y-%m-%d %M:%H:%S')),
-      vals = 1:sim.length, calendar = calendar.type)
+      vals = as.numeric(1:sim.length)-1, calendar = calendar.type, longname=NULL)
+
   ncout_dim[[ncin_dimnames$y]] <- ncdf4::ncdim_def(ncin_dimnames$y,
-        units= "", vals = ncin_dim[[ncin_dimnames$y]])
+        units= "", vals = as.numeric(ncin_dim[[ncin_dimnames$y]]), longname=NULL)
   ncout_dim[[ncin_dimnames$x]] <- ncdf4::ncdim_def(name = ncin_dimnames$x,
-        units= "", vals = ncin_dim[[ncin_dimnames$x]])
+        units= "", vals = as.numeric(ncin_dim[[ncin_dimnames$x]]), longname=NULL)
 
   # Other nc attributes
-  ncout_chunks <- c(1, length(ncin_dim[[ncin_dimnames$y]]), length(ncin_dim[[ncin_dimnames$x]]))
+  ncout_chunks <- c(sim.length, length(ncin_dim[[ncin_dimnames$y]]),
+                    length(ncin_dim[[ncin_dimnames$x]]))
 
   # Define output variables
   ncout_vars <- lapply(1:length(variables),
@@ -88,8 +91,7 @@ writeNetcdf <- function(
   names(ncout_vars) <- c(variables, "spatial_ref")
 
   # template to store data from wg variables
-  df0 <- array(NA, c(ncout_dim[[ncin_dimnames$time]]$len,
-    ncout_dim[[ncin_dimnames$y]]$len, ncout_dim[[ncin_dimnames$x]]$len))
+  df0 <- array(NA, c(sim.length, ncout_dim[[ncin_dimnames$y]]$len, ncout_dim[[ncin_dimnames$x]]$len))
 
   #Loop through each variable and write data to netcdf
   ncout_vardata <- df0
@@ -112,7 +114,7 @@ writeNetcdf <- function(
 
   }
 
-  # Put spatial_def variable and attributes
+  # Put spatial_def variable and its attributes
   ncdf4::ncvar_put(ncout_file, varid = nc.spatial.ref, vals = ncin_var_spref)
   sapply(1:length(ncin_attribs_spref), function(k)
     ncdf4::ncatt_put(ncout_file, varid = nc.spatial.ref,
