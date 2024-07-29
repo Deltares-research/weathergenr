@@ -18,8 +18,6 @@
 #' @param sim.year.num  numeric value indicating the desired total number of years of simulated weather realizations
 #' @param realization.num number of natural variability realizations to be generated.
 #' @param month.start the first month of the water year (default value is 1).
-#' @param evaluate.model logical value indicating weather to save model evaluation plots
-#' @param evaluate.grid.num Number of grid cells to be sampled in the evaluation plots
 #' @param warm.subset.criteria A list of statistical parameters used for subsetting from the initial annual simulated series
 #' @param mc.wet.quantile wet state threshold (quantile value) for markov-chain modeling
 #' @param mc.extreme.quantile extremely wet state threshold (quantile value) for markov-chain modeling
@@ -61,12 +59,11 @@ generateWeatherSeries <- function(
   mc.extreme.quantile = 0.8,
   dry.spell.change = rep(1,12),
   wet.spell.change = rep(1,12),
-  evaluate.model = FALSE,
-  evaluate.grid.num = 20,
   output.path = tempdir(),
   seed = NULL,
   compute.parallel = TRUE,
-  num.cores = NULL)
+  num.cores = NULL,
+  save.rdata = FALSE)
 
 {
 
@@ -279,56 +276,11 @@ generateWeatherSeries <- function(
   utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
 
+  if(save.rdata) save.image(file = "./tests/testdata/weathergen_out_image.RData")
+
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Results saved to: `", output.path,"`"))
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Completed. Elapsed time:", Sys.time() - start_time, "secs"))
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 
 }
-
-#
-#
-# day_order <- sapply(1:realization.num,
-#                     function(n) match(resampled_dates[[n]], dates_d$dateo))
-#
-# rlz <- list()
-# for (n in 1:realization.num) {
-#   rlz[[n]] <- lapply(climate_d, function(x)
-#     x[day_order[,n],] %>% select(-year))
-# }
-#
-#
-# #::::::::::: MODEL EVALUATION (OPTIONAL) :::::::::::::::::::::::::::::::::::::
-#
-# if(evaluate.model) {
-#
-#   sampleGrids <- sample(grids, size = min(evaluate.grid.num, ngrids))
-#
-#   rlz_sample <- list()
-#   for (n in 1:realization.num) {
-#     rlz_sample[[n]] <- lapply(rlz[[n]][sampleGrids], function(x)
-#       mutate(x, date = sim_dates_d$date, .before = 1))
-#   }
-#
-#   obs_sample <- lapply(weather.data[sampleGrids], function(x)
-#     dplyr::mutate(x, date = weather.date, .before = 1))
-#
-#   suppressWarnings(
-#     evaluateWegen(daily.sim = rlz_sample,
-#                   daily.obs = obs_sample,
-#                   output.path = plots_path,
-#                   variables = variable.names,
-#                   variable.labels = variable.labels,
-#                   variable.units = variable.units,
-#                   realization.num = realization.num,
-#                   wet.quantile = mc.wet.quantile,
-#                   extreme.quantile = mc.extreme.quantile)
-#   )
-#
-# } else {
-#   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Comparison of climate statistics skipped."))
-# }
-#
-#
-
-
