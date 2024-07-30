@@ -9,11 +9,13 @@
 ^\.github$
 ^README.Rmd
 
+^inst/docs
+^inst/examples
+^inst/misc/
 ^\.httr-oauth$
-/vignettes/web_only
-/docs/
-^/vignettes/
+
+^vignettes/
 ^vignettes/.R$
 ^vignettes/.Rmd$
-^vignettes/Climate_stress_test_cache
-^vignettes/Getting_started_cache
+
+^docs/
