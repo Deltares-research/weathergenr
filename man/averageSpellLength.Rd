@@ -13,6 +13,10 @@ averageSpellLength(x, threshold = 0, below = TRUE)
 
 \item{below}{binary variable. TRUE considers values less than or equal, FALSE above the threshold.}
 }
+\value{
+average spell length as a numeric value
+}
 \description{
 Calculate length of a wet or a dry spell
 }
+\keyword{internal}

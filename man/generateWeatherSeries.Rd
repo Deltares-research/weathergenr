@@ -79,6 +79,14 @@ generateWeatherSeries(
 
 \item{num.cores}{Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned}
 }
+\value{
+a list object with two elements
+ \item{resampled}{data frame of the sampled dates for each synthetic trace}
+ \item{dates}{a date vector corresponding to simulated dates}
+}
 \description{
-Description goes here....
+A short description...
+}
+\details{
+Additional details...
 }

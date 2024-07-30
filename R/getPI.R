@@ -11,7 +11,8 @@
 #' @param p21 placeholder
 #' @param p22 placeholder
 #'
-#' @return
+#' @keywords internal
+#' @return a vector of markov probabilities
 #' @export
 	getPI <- function(
 	  p00, p01, p02,
