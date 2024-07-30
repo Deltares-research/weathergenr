@@ -32,7 +32,8 @@ evaluateWegen <- function(
   realization.num = NULL,
   wet.quantile = 0.2,
   extreme.quantile = 0.8,
-  show.title = TRUE)
+  show.title = TRUE,
+  save.plots = TRUE)
 
 {
   # General parameters #########################################################
@@ -41,8 +42,9 @@ evaluateWegen <- function(
   year <- mon <- day <- precip <- sd <- variable <- value <- id_variable <- 0
   Wet <- Dry <- wet <- dry <- id_variable1 <- id_variable2 <- 0
   rlz <- id1 <- id2 <- variable1 <- variable2 <- type <- Observed <- Stochastic <- 0
-  wet_th <- Simulated <- plots <- 0
+  wet_th <- Simulated <- 0
 
+  # Set variable names and labels
   if(is.null(variable.labels)) variable.labels <- variables
   if(is.null(variable.units)) variable.units <- rep("", length(variables))
 
@@ -58,10 +60,7 @@ evaluateWegen <- function(
   num_vars <- length(variables)
   var_combs <- expand_grid(var1=variables, var2 = variables)
   num_var_combs <- choose(num_vars, 2)
-
-
   nsgrids <- length(daily.sim[[1]])
-
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Comparison accross", nsgrids, "grid cells"))
 
@@ -98,6 +97,16 @@ evaluateWegen <- function(
     gather(key = variable, value = Observed, -year, -mon) %>%
     separate(variable, c("variable","stat"), sep = ":") %>%
     mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
+
+  hist_stats_annual_aavg <- hist_daily_tidy %>%
+    group_by(year, mon, day) %>%
+    summarize_at(vars(all_of(variables)), mean) %>%
+    group_by(year) %>%
+    summarize(across(all_of(variables),
+                     list(mean=mean, min=min, max=max),.names = "{.col}:{.fn}")) %>%
+    gather(key = variable, value = Observed, -year) %>%
+    separate(variable, c("variable","stat"), sep=":") %>%
+    mutate(year = year - min(year) + 1)
 
   # Historical stats averaged over grid/cells & months
   hist_stats_season_aavg <- hist_stats_mon_aavg %>% group_by(mon, variable, stat) %>%
@@ -153,6 +162,7 @@ evaluateWegen <- function(
   # Initialize lists to store the results
   sim_stats_season <- vector("list", realization.num)
   sim_stats_mon_aavg <- vector("list", realization.num)
+  sim_stats_annual_aavg <- vector("list", realization.num)
   sim_allcor <- vector("list", realization.num)
   sim_wetdry_days <-vector("list", realization.num)
   sim_wetdry_spells <- vector("list", realization.num)
@@ -189,6 +199,15 @@ evaluateWegen <- function(
       gather(key = variable, value = Simulated, -mon, -year) %>%
       separate(variable, c("variable","stat"), sep=":") %>%
       mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
+
+    sim_stats_annual_aavg[[n]] <- sim_daily_tidy %>%
+      group_by(year, mon, day) %>%
+      summarize_at(vars(all_of(variables)), mean) %>%
+      group_by(year) %>%
+      summarize(across(all_of(variables),
+                       list(mean=mean, min=min, max=max),.names = "{.col}:{.fn}")) %>%
+      gather(key = variable, value = Simulated, -year) %>%
+      separate(variable, c("variable","stat"), sep=":")
 
     # Intersite/Intervariable correlations
     sim_allcor_ini <- sim_daily_tidy %>%
@@ -227,6 +246,8 @@ evaluateWegen <- function(
 
   sim_stats_season <- bind_rows(sim_stats_season, .id = "rlz")
   sim_stats_mon_aavg <- bind_rows(sim_stats_mon_aavg, .id = "rlz")
+  sim_stats_annual_aavg <- bind_rows(sim_stats_annual_aavg, .id = "rlz") %>%
+    mutate(year = year - min(year) + 1)
   sim_allcor <- bind_rows(sim_allcor, .id = "rlz")
   sim_wetdry_days <- bind_rows(sim_wetdry_days, .id = "rlz")
   sim_wetdry_spells <- bind_rows(sim_wetdry_spells, .id = "rlz")
@@ -269,29 +290,40 @@ evaluateWegen <- function(
     left_join(hist_wetdry_spells, by = c("id","mon","variable","stat")) %>%
     mutate(stat = factor(stat, levels = c("Dry", "Wet")))
 
-  # Plot results ###################################################################
 
+  ##############################################################################
+
+  # Plot results
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Preparing comparison plots"))
 
-  # Various plotting parameters
-  plot_length <- 5
+  # Common plotting parameters
+  pl_size <- 8  # 4 for each row/column
   font_size <- 12
   title_size <- font_size + 2
   alpha_val <- 0.4
-  pl_sub <- "Value range and median values from all simulations are shown against the observed values"
+  pl_sub <- "Value range and median values from all simulations are shown against the observed"
 
-  # Common theme for the plots
   theme_wgplots <- theme_bw(base_size = 12) +
     theme(plot.title = element_text(size = 14),
           plot.subtitle = element_text(size = 10))
 
+  plot_cols <- setNames(c("blue3", "gray40"), c("Observed", "Simulated"))
+  plots <- list()
 
-  # 1) Summary statistics for all climate variables
+  # 1) Daily mean statistics for all variables
+  dummy_gg <- daily_stats_season %>%
+    filter(stat == "mean") %>%
+    group_by(variable) %>%
+    summarize(minval = min(Simulated, Observed)*1,
+              maxval = max(Simulated, Observed)*1) %>%
+    pivot_longer(cols = minval:maxval, names_to = "type", values_to = "value") %>%
+    select(variable, Observed = value, Simulated = value)
 
   p <- ggplot(filter(daily_stats_season, stat == "mean"),
               aes(x = Observed, y = Simulated)) +
     theme_wgplots +
+    geom_point(data = dummy_gg, color = NA) +
     stat_summary(geom = "linerange", fun.max = max, fun.min = min,
                  alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
@@ -299,17 +331,28 @@ evaluateWegen <- function(
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", nrow = 2)
 
-  if(isTRUE(show.title)) {
-    p <- p +  labs(title =  "Daily means for all grid cell and months", subtitle = pl_sub)
-  }
+  if(isTRUE(show.title))
+    p <- p + labs(title =  "Daily means for all grid cell and months", subtitle = pl_sub)
 
-  ggsave(file.path(output.path,"daily_means.png" ),
-         height = plot_length*1.80, width = plot_length*1.75)
+  if(isTRUE(save.plots))
+    ggsave(file.path(output.path,"daily_means.png"), height=pl_size, width=pl_size)
+
+  plots$daily_means <- p
+
+  # 2) Daily standard deviations for all variables
+  dummy_gg <- daily_stats_season %>%
+    filter(stat == "standard dev.") %>%
+    group_by(variable) %>%
+    summarize(minval = min(Simulated, Observed)*1,
+              maxval = max(Simulated, Observed)*1) %>%
+    pivot_longer(cols = minval:maxval, names_to = "type", values_to = "value") %>%
+    select(variable, Observed = value, Simulated = value)
 
 
   p <- ggplot(filter(daily_stats_season, stat == "standard dev."),
               aes(x = Observed, y = Simulated)) +
     theme_wgplots +
+    geom_point(data = dummy_gg, color = NA) +
     stat_summary(geom = "linerange", fun.max = max, fun.min = min,
                  alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
@@ -318,18 +361,26 @@ evaluateWegen <- function(
     facet_wrap(variable ~ ., scales = "free", nrow = 2)
 
   if(isTRUE(show.title)) {
-    p <- p +  labs(title =  "Daily standard deviations for all grid cell and months", subtitle = pl_sub)
+    p <- p +  labs(title =  "Daily standard deviations for all grid cell and months", subtitle=pl_sub)
   }
 
-  ggsave(file.path(output.path,"daily_stdev.png" ),
-         height = plot_length*1.80, width = plot_length*1.75)
+  if(isTRUE(save.plots))
+    ggsave(file.path(output.path,"daily_stdev.png"), height=pl_size, width=pl_size)
 
+  plots$daily_sd <- p
 
-# 2) Wet and dry spell statistics
+# 3) Wet and dry spell statistics
+  dummy_gg <- stats_wetdry_spells %>%
+    group_by(stat) %>%
+    summarize(minval = min(Simulated, Observed)*1,
+              maxval = max(Simulated, Observed)*1) %>%
+    pivot_longer(cols = minval:maxval, names_to = "type", values_to = "value") %>%
+    select(stat, Observed = value, Simulated = value)
 
   p <- ggplot(stats_wetdry_spells, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
+    geom_point(data = dummy_gg, color = NA) +
     stat_summary(geom = "linerange", fun.max = max, fun.min = min,
                  alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
@@ -340,14 +391,23 @@ evaluateWegen <- function(
       p <- p +  labs(title =  "Average dry and wet spell length per month, across all grid cells", subtitle = pl_sub)
     }
 
-  ggsave(file.path(output.path,"drywet_spell_length.png"), height = plot_length, width = plot_length*1.75)
+  if(isTRUE(save.plots))
+    ggsave(file.path(output.path,"drywet_spell_length.png"), height = pl_size/2, width = pl_size)
 
+  plots$spell_lengths <- p
 
-  #3) Average number of wet and dry days
+  #4) Average number of wet and dry days
+  dummy_gg <- stats_wetdry_days %>%
+    group_by(stat) %>%
+    summarize(minval = min(Simulated, Observed)*1,
+              maxval = max(Simulated, Observed)*1) %>%
+    pivot_longer(cols = minval:maxval, names_to = "type", values_to = "value") %>%
+    select(stat, Observed = value, Simulated = value)
 
   p <- ggplot(stats_wetdry_days, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
+    geom_point(data = dummy_gg, color = NA) +
     stat_summary(geom = "linerange", fun.max = max, fun.min = min,
                  alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
@@ -358,15 +418,23 @@ evaluateWegen <- function(
     p <- p +  labs(title =  "Average number of dry and wet days per month accross all grid cells", subtitle = pl_sub)
   }
 
-  ggsave(file.path(output.path,"drywet_days_number.png"), height = plot_length, width = plot_length*1.75)
+  if(isTRUE(save.plots))
+    ggsave(file.path(output.path,"drywet_days_number.png"), height = pl_size/2, width = pl_size)
 
+  plots$spell_duration <- p
 
-
-  #4) INTER-GRID CORRELATIONS
+  #5) CROSS-GRID CORRELATIONS
+  dummy_gg <- stats_intersite_cor %>%
+    group_by(variable1) %>%
+    summarize(minval = min(Simulated, Observed)*1,
+              maxval = max(Simulated, Observed)*1) %>%
+    pivot_longer(cols = minval:maxval, names_to = "type", values_to = "value") %>%
+    select(variable1, Observed = value, Simulated = value)
 
   p <- ggplot(stats_intersite_cor, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
+    geom_point(data = dummy_gg, color = NA) +
     stat_summary(geom = "linerange", fun.max = max, fun.min = min,
                  alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
@@ -378,13 +446,23 @@ evaluateWegen <- function(
                    subtitle = paste0(pl_sub,"\nCorrelations are calculated over daily series"))
   }
 
-  ggsave(file.path(output.path,"crossgrid_correlations.png"), height = plot_length*1.70, width = plot_length*1.75)
+  if(isTRUE(save.plots))
+    ggsave(file.path(output.path,"crossgrid_correlations.png"), height = pl_size, width = pl_size)
 
-  #5) INTERGRID CORRELATIONS
+  plots$crossgrid_cor <- p
+
+  #6) INTERGRID CORRELATIONS
+  dummy_gg <- stats_cross_cor %>%
+    group_by(variable) %>%
+    summarize(minval = min(Simulated, Observed)*1,
+              maxval = max(Simulated, Observed)*1) %>%
+    pivot_longer(cols = minval:maxval, names_to = "type", values_to = "value") %>%
+    select(variable, Observed = value, Simulated = value)
 
   p <- ggplot(stats_cross_cor, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
+    geom_point(data = dummy_gg, color = NA) +
     stat_summary(geom = "linerange", fun.max = max, fun.min = min,
                  alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
@@ -396,18 +474,14 @@ evaluateWegen <- function(
                    subtitle = paste0(pl_sub,"\nCorrelations are calculated over daily series"))
   }
 
-  ggsave(file.path(output.path,"intergrid_correlations.png"),
-         height = plot_length*1.50, width = plot_length*1.75)
+  if(isTRUE(save.plots))
+  ggsave(file.path(output.path,"intergrid_correlations.png"), height = pl_size, width = pl_size*1.25)
 
+  plots$intergrid_cor <- p
 
-  ####################################################
-
-  #6) Monthly statistics per variable
-  plot_cols <- setNames(c("blue3", "gray40"), c("Observed", "Simulated"))
-
+  #7) Monthly statistics per variable
   for (v in 1:length(variables)) {
 
-    ##### MONTHLY CYCLE STATISTICS (Area-averaged)
     dat <- sim_stats_mon_aavg %>%
       filter(variable == variables[v]) %>%
       mutate(type = "Simulated") %>%
@@ -423,33 +497,33 @@ evaluateWegen <- function(
 
     p <- ggplot(datx, aes(x = as.factor(mon), y = value, fill = type, color = type)) +
       theme_wgplots +
-      geom_boxplot(alpha = alpha_val, outlier.shape = NA) +
+      geom_boxplot(alpha = 0.2) +
       facet_wrap(~ stat, scales = "free", ncol = 2) +
       scale_fill_manual("", values=plot_cols) +
       scale_color_manual("", values=plot_cols) +
-      stat_summary(fun="mean",  size = 2, geom="point",
-                   position = position_dodge(0.8)) +
+      stat_summary(fun="mean",  size = 3, geom="point", position = position_dodge(0.8), shape = 18) +
       labs(x = "", y = "") +
-      theme(legend.position.inside = c(0.875, 0.40),
+      theme(legend.position = c(1, 0),
+            legend.justification = c(1, 0),
             legend.background = element_rect(fill = "white", color = NA),
             legend.text=element_text(size=12),
             plot.title = element_text(size = 14),
             plot.subtitle = element_text(size = 12)) +
       scale_x_discrete(labels = substr(month.name, 1,1))
 
-
     if(isTRUE(show.title)) {
       p <- p +  labs(title =  paste0("Monthly patterns for ", variable.labels[v]),
         subtitle = paste0(pl_sub,"\nResults are averaged accross all grid cells."))
     }
 
-    ggsave(file.path(output.path, paste0("monthly_patterns_", variables[v],".png")),
-           height = plot_length*1.75, width = plot_length*1.75)
+    if(isTRUE(save.plots))
+      ggsave(file.path(output.path, paste0("monthly_patterns_", variables[v],".png")),
+            height = pl_size, width = pl_size)
 
+    plots[[paste0("annual_pattern_", variables[v])]] <- p
   }
 
-  #6) Monthly mean cycle
-
+  # 8) Monthly mean cycle
   sim_stats_season_aavg <- sim_stats_season %>%
     group_by(rlz, mon, variable) %>%
     filter(stat == "mean") %>%
@@ -470,20 +544,38 @@ evaluateWegen <- function(
     scale_x_discrete(labels = substr(month.name, 1,1)) +
     labs(x = "", y = "")
 
-
   if(isTRUE(show.title)) {
     p <- p +  labs(title =  paste0("Annual cycles of variables"),
                    subtitle = paste0(pl_sub,"\nResults are averaged accross each month"))
   }
-  ggsave(file.path(output.path, paste0("monthly_cycle.png")),
-         height = plot_length*1.75, width = plot_length*1.75)
 
+  if(isTRUE(save.plots))
+    ggsave(file.path(output.path, paste0("monthly_cycle.png")), height = pl_size, width = pl_size)
+
+  plots$annual_cycle <- p
+
+  # Annual precip means as time-series
+  sim_annual_aavg_precip <- sim_stats_annual_aavg %>% filter(stat == "mean") %>% filter(variable == "precip")
+  hist_annual_aavg_precip <- hist_stats_annual_aavg %>% filter(stat == "mean") %>% filter(variable == "precip")
+
+  p <- ggplot(sim_annual_aavg_precip, aes(x = year)) +
+    theme_wgplots +
+    geom_line(aes(y = Simulated, group = rlz), color = "gray30", alpha = 0.4) +
+    geom_point(aes(y = Simulated, group = rlz), size = 0.5, color = "gray30", alpha = 0.3) +
+    geom_line(aes(y = Observed),
+              data = hist_annual_aavg_precip, color = "blue", group = 1) +
+    geom_point(aes(y = Observed), size = 0.5, alpha = 0.3,
+              data = hist_annual_aavg_precip, color = "blue", group = 1) +
+    labs(x = "serial year", y = "mm/day")
+
+  if(isTRUE(show.title)) {
+    p <- p +  labs(title =  paste0("Annual mean precipitation"))
+  }
+
+  if(isTRUE(save.plots))
+    ggsave(file.path(output.path, paste0("annual_precip.png")), height = pl_size/1.9, width = pl_size)
+
+  plots$annual_mean <- p
 
   return(plots)
-
 }
-
-
-
-
-
