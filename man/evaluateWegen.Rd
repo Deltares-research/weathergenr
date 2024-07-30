@@ -14,7 +14,8 @@ evaluateWegen(
   realization.num = NULL,
   wet.quantile = 0.2,
   extreme.quantile = 0.8,
-  show.title = TRUE
+  show.title = TRUE,
+  save.plots = TRUE
 )
 }
 \arguments{
