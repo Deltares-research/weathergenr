@@ -1,4 +1,10 @@
-#' Compare observed and simulated climate statistics
+#' @title Compare observed and simulated climate statistics
+#'
+#' @description
+#' A short description...
+#'
+#' @details
+#' Additional details...
 #'
 #' @param daily.sim A matrix of daily time-series of weather variables
 #' @param daily.obs A vector of daily time-series of observed weather series
@@ -11,9 +17,11 @@
 #' @param extreme.quantile precip. quantile for calculating monthly extremely wet state threshold
 #' @param show.title PLACEHOLDER
 #'
-#' @return
+#' @return returns a list of ggplot2 objects and figures saved to the desired output path
 #' @export
 #' @import ggplot2 dplyr
+#' @importFrom stats median sd setNames
+#' @importFrom utils combn
 evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
@@ -33,10 +41,10 @@ evaluateWegen <- function(
   year <- mon <- day <- precip <- sd <- variable <- value <- id_variable <- 0
   Wet <- Dry <- wet <- dry <- id_variable1 <- id_variable2 <- 0
   rlz <- id1 <- id2 <- variable1 <- variable2 <- type <- Observed <- Stochastic <- 0
-  wet_th <- 0
+  wet_th <- Simulated <- plots <- 0
 
-  if(is.null(variable.labels)) variable.labels <- variable.names
-  if(is.null(variable.units)) variable.units <- rep("", length(variable.names))
+  if(is.null(variable.labels)) variable.labels <- variables
+  if(is.null(variable.units)) variable.units <- rep("", length(variables))
 
   # General options
   options(dplyr.summarise.inform = FALSE)

@@ -1,12 +1,12 @@
-
-#' Calculate length of a wet or a dry spell
+#' @title Calculate length of a wet or a dry spell
 #'
 #' @param x numeric vector of values
 #' @param threshold numeric threshold to define the wet or a dry spell
 #' @param below binary variable. TRUE considers values less than or equal, FALSE above the threshold.
 #'
-#' @return
+#' @return average spell length as a numeric value
 #' @export
+#' @keywords internal
 averageSpellLength <- function (x, threshold = 0, below = TRUE)
 {
 
@@ -33,7 +33,6 @@ averageSpellLength <- function (x, threshold = 0, below = TRUE)
     spell_length = as.numeric(names(table(res)))
     spell_count = as.numeric(table(res))
 
-    sum(spell_length * spell_count)/sum(spell_count)
-
+    return(sum(spell_length * spell_count)/sum(spell_count))
 }
 

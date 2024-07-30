@@ -43,7 +43,8 @@ waveletARSubset <- function(
 {
 
   # Workaround for rlang warning
-  sim <- value <- yind <- par <- type <- variable <- y <- x <- 0
+  sim <- value <- yind <- par <- type <- variable <- y <- x <- obs <- 0
+
   sim.year.num <- nrow(series.sim)
 
   # If no seed provided, sample a value

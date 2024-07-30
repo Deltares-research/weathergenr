@@ -1,7 +1,10 @@
-
-#' Simulate gridded weather function
+#' @title Simulate gridded weather function
 #'
-#' Description goes here....
+#' @description
+#' A short description...
+#'
+#' @details
+#' Additional details...
 #'
 #' @param weather.data list of data frames of daily weather observations per grid cell. Each data frame, columns are weather variables and rows are daily values.
 #' @param weather.date a vector of dates matching the weather.data
@@ -27,8 +30,11 @@
 #' @param dry.spell.change placeholder
 #' @param wet.spell.change placeholder
 #'
-#' @return
-#' @export
+#' @return a list object with two elements
+#'  \item{resampled}{data frame of the sampled dates for each synthetic trace}
+#'  \item{dates}{a date vector corresponding to simulated dates}
+#'
+#' @export generateWeatherSeries
 #' @import ggplot2
 #' @import tidyr
 #' @import patchwork

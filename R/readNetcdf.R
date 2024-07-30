@@ -32,7 +32,7 @@ readNetcdf <- function(
   {
 
     #Workaround for rlang warning
-    month <- day <- xind <- yind <- month <- day <- wyear <- 0
+    data <- month <- day <- xind <- yind <- month <- day <- wyear <- 0
 
     # function to get dimension names
     ncGetDimNames <- function(f, v) {

@@ -38,6 +38,12 @@ evaluateWegen(
 
 \item{show.title}{PLACEHOLDER}
 }
+\value{
+returns a list of ggplot2 objects and figures saved to the desired output path
+}
 \description{
-Compare observed and simulated climate statistics
+A short description...
+}
+\details{
+Additional details...
 }
