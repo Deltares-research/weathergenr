@@ -1,17 +1,17 @@
 
 docs
 
-.Renviron
-.Rhistory
-.Rapp.history
-.RData
 .Rproj.user
+.Rhistory
+.RData
+.Renviron
+.Rapp.history
 .Ruserdata
 .DS_Store
 .httr-oauth
 
 /vignettes/*.R
-
+/inst/extdata/plots/
 inst/doc
 /*.Rcheck/
 /*.tar.gz
@@ -19,6 +19,8 @@ inst/doc
 /cache/
 /temp/
 /tests/
+
+man/.Rapp.history
 
 *-Ex.R
 *_cache/
