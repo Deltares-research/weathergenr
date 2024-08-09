@@ -1,29 +1,37 @@
 
+#### Script to generate synthetic weather traces using a gridded weather forcing dataset (netcdf file)
+#### Last updated: 9/8/2024
 
+# Load libraries
 library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(weathergenr)
 
-output_path <- "C:\\Users\\taner\\Workspace\\test-weathergenr\\data\\vakhsh\\"
-ncfile <- paste0(output_path, "extract_historical.nc")
+## ----Specify forcing dataset -------------------------------------------------
+
+data_path <- "C:/Users/taner/Workspace/weathergenr-applications/Vakhsh/20240809/"
+ncfile <- paste0(data_path, "extract_historical.nc")
 ncdata <- readNetcdf(ncfile)
 
-## ----stochastic1--------------------------------------------------------------
+## ----Set key variables -------------------------------------------------------
 
-# Set path to store weather generator results
+# Variables to include
 variables <- c("precip", "temp", "temp_min", "temp_max")
+
+# Number of stochastic realizations to generate
 realization_num <- 15
 
-## ----stochastic2, results='hide', eval = TRUE, cache=TRUE---------------------
-
+# Wavelet AR model filtering criteria
 warm_criteria = list(
-   mean = c(0.90,1.10),
-   sd = c(0.85,1.15),
-   min = c(0.90,1.10),
-   max = c(0.90,1.10),
-   power = c(0.50,10),
-   nonsignif.threshold = 1.20)
+  mean = c(0.90,1.10),
+  sd = c(0.85,1.15),
+  min = c(0.90,1.10),
+  max = c(0.90,1.10),
+  power = c(0.50,10),
+  nonsignif.threshold = 1.20)
+
+## ----stochastic2, results='hide', eval = TRUE, cache=TRUE---------------------
 
 stochastic_weather <- generateWeatherSeries(
   weather.data = ncdata$data,
@@ -38,18 +46,20 @@ stochastic_weather <- generateWeatherSeries(
   realization.num = realization_num,
   warm.variable = "precip",
   warm.signif.level = 0.80,
-  warm.sample.num = 30000,
+  warm.sample.num = 30000,  # suggested range 10,000 - 50,000
   warm.subset.criteria = warm_criteria,
-  knn.sample.num = 100,
-  mc.wet.quantile= 0.2,
-  mc.extreme.quantile = 0.8,
-  evaluate.model = TRUE,
-  evaluate.grid.num = 30,
-  output.path = output_path,
+  knn.sample.num = 100, # suggested 100 or 120
+  mc.wet.quantile= 0.2, # don't change
+  mc.extreme.quantile = 0.8, # don't change
+  output.path = paste0(data_path, "output"),
   compute.parallel = TRUE,
-  seed = 555)
+  seed = 555  # Randomization seed
+
+)
 
 
+################################################################################
+################################################################################
 
 ## ----clim change, eval = FALSE------------------------------------------------
 

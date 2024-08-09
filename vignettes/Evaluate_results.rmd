@@ -1,12 +1,12 @@
 ---
-title: "Evaluate weather generator results"
+title: "Evaluate results"
 output:
   rmarkdown::html_vignette:
     number_sections: true
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Getting started}
+  %\VignetteIndexEntry{Evaluate results}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 ---
