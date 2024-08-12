@@ -11,6 +11,8 @@
 ^inst/docs
 ^inst/examples
 ^inst/misc$
+
+
 ^\.httr-oauth$
 ^vignettes$
 ^extdata/plots$

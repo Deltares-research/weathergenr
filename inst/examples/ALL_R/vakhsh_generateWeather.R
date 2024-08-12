@@ -1,5 +1,6 @@
 
-#### Script to generate synthetic weather traces using a gridded weather forcing dataset (netcdf file)
+#### Script to generate synthetic weather traces using a gridded weather
+#    forcing dataset (netcdf file)
 #### Last updated: 9/8/2024
 
 # Load libraries
@@ -20,15 +21,15 @@ ncdata <- readNetcdf(ncfile)
 variables <- c("precip", "temp", "temp_min", "temp_max")
 
 # Number of stochastic realizations to generate
-realization_num <- 15
+realization_num <- 5
 
 # Wavelet AR model filtering criteria
 warm_criteria = list(
   mean = c(0.90,1.10),
-  sd = c(0.85,1.15),
+  sd = c(0.90,1.10),
   min = c(0.90,1.10),
   max = c(0.90,1.10),
-  power = c(0.50,10),
+  power = c(0.80,10),
   nonsignif.threshold = 1.20)
 
 ## ----stochastic2, results='hide', eval = TRUE, cache=TRUE---------------------
@@ -45,15 +46,15 @@ stochastic_weather <- generateWeatherSeries(
   month.start = 1,
   realization.num = realization_num,
   warm.variable = "precip",
-  warm.signif.level = 0.80,
+  warm.signif.level = 0.95,
   warm.sample.num = 30000,  # suggested range 10,000 - 50,000
   warm.subset.criteria = warm_criteria,
   knn.sample.num = 100, # suggested 100 or 120
   mc.wet.quantile= 0.2, # don't change
   mc.extreme.quantile = 0.8, # don't change
   output.path = paste0(data_path, "output"),
-  compute.parallel = TRUE,
-  seed = 555  # Randomization seed
+  compute.parallel = FALSE,
+  seed = 2024  # Randomization seed
 
 )
 
