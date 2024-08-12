@@ -1,6 +1,5 @@
 
-#### Script to generate synthetic weather traces using a gridded weather
-#    forcing dataset (netcdf file)
+#### Script to generate synthetic weather traces using a gridded weather forcing dataset (netcdf file)
 #### Last updated: 9/8/2024
 
 # Load libraries
@@ -8,10 +7,17 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(weathergenr)
+library(sf)
+library(sfheaders)
+
+# Additional settings
+sf_use_s2(FALSE)
 
 ## ----Specify forcing dataset -------------------------------------------------
 
 data_path <- "C:/Users/taner/Workspace/weathergenr-applications/Vakhsh/20240809/"
+output_path <- paste0(data_path, "output/")
+
 ncfile <- paste0(data_path, "extract_historical.nc")
 ncdata <- readNetcdf(ncfile)
 
@@ -21,12 +27,12 @@ ncdata <- readNetcdf(ncfile)
 variables <- c("precip", "temp", "temp_min", "temp_max")
 
 # Number of stochastic realizations to generate
-realization_num <- 5
+realization_num <- 11
 
 # Wavelet AR model filtering criteria
 warm_criteria = list(
-  mean = c(0.90,1.10),
-  sd = c(0.90,1.10),
+  mean = c(0.95,1.05),
+  sd = c(0.95,1.05),
   min = c(0.90,1.10),
   max = c(0.90,1.10),
   power = c(0.80,10),
@@ -49,17 +55,89 @@ stochastic_weather <- generateWeatherSeries(
   warm.signif.level = 0.95,
   warm.sample.num = 30000,  # suggested range 10,000 - 50,000
   warm.subset.criteria = warm_criteria,
-  knn.sample.num = 100, # suggested 100 or 120
-  mc.wet.quantile= 0.2, # don't change
+  knn.sample.num = 120, # suggested 100 or 120
+  mc.wet.quantile = 0.2, # don't change
   mc.extreme.quantile = 0.8, # don't change
-  output.path = paste0(data_path, "output"),
+  output.path = output_path,
   compute.parallel = FALSE,
   seed = 2024  # Randomization seed
-
 )
 
-
 ################################################################################
+## ----Evaluate results, results='hide', eval = TRUE, cache=TRUE----------------
+
+# Read in historical and synthetic weather data
+ncfile <- paste0(data_path, "extract_historical.nc")
+sim_dates <- readr::read_csv(paste0(output_path, "sim_dates.csv"))
+resampled_dates <- readr::read_csv(paste0(output_path, "resampled_dates.csv"))
+ncdata <- weathergenr::readNetcdf(ncfile)
+realization.num <- ncol(resampled_dates)
+ngrids <- length(ncdata$data)
+weather.date <- ncdata$date
+weather.data <- ncdata$data
+weather.grid <- ncdata$grid
+
+# Read-in geometry
+rivers_sf <- read_sf(paste0(data_path, "staticgeoms/rivers.geojson"))
+basins_sf <- read_sf(paste0(data_path, "staticgeoms/basins.geojson"))
+basins_vakhsh_sf <- read_sf(paste0(data_path, "staticgeoms/basins_vakhsh.geojson"))
+
+evaluate.grid.num <- 50
+
+# Sample evenly from the grid cells using sf package
+gridpoints_sf <- sf::st_as_sf(weather.grid, coords=c("x","y"), remove = FALSE) %>%
+  sf::st_set_crs(4326)
+
+# Intersecting points
+basinpoints <- which(st_intersects(gridpoints_sf, basins_sf, sparse = FALSE))
+
+gridpoints_sf_sample <- gridpoints_sf %>%
+  filter(id %in% basinpoints) %>%
+  sf::st_sample(size = min(evaluate.grid.num, ngrids), type="regular") %>%
+  sf::st_cast("POINT") %>%
+  sf::st_coordinates() %>%
+  as_tibble() %>%
+  rename(c("x"="X","y"="Y")) %>%
+  inner_join(gridpoints_sf,., by = c("x","y"))
+
+p <- ggplot() +
+  theme_light() +
+  geom_sf(data = basins_sf, fill = "lightgreen", color = "black",  alpha = 0.3) +
+  geom_sf(data = rivers_sf, color = "black", , alpha = 0.3) +
+  geom_sf(data = basins_vakhsh_sf, fill = "blue", alpha = 0.3) +
+  geom_sf(data = gridpoints_sf, color = "gray", size = 1, alpha = 0.5) +
+  geom_sf(data = gridpoints_sf_sample, color = "red", size = 3, shape = 8)
+
+ggsave(filename = paste0(output_path,"eval_sample_grids.png"), width = 7, height = 5)
+sampleGrids <- gridpoints_sf_sample$id
+
+day_order <- sapply(1:realization.num,
+      function(n) match(resampled_dates[[n]], weather.date))
+
+
+rlz_sample <- list()
+for (n in 1:realization.num) {
+  rlz_sample[[n]] <- lapply(weather.data[sampleGrids], function(x) x[day_order[,n],] %>%
+                              select(precip,  temp, temp_min, temp_max) %>%
+                              mutate(date = sim_dates[[1]], .before = 1))
+}
+
+obs_sample <- lapply(weather.data[sampleGrids], function(x) x %>%
+                       select(precip, temp, temp_min, temp_max) %>%
+                       dplyr::mutate(date = weather.date, .before = 1))
+
+out <- evaluateWegen(daily.sim = rlz_sample,
+              daily.obs = obs_sample,
+              output.path = paste0(output_path,"plots1"),
+              variables = c("precip", "temp", "temp_min", "temp_max"),
+              variable.labels = c("Precip.", "Temp. (avg)", "Temp. (min)", "Temp. (max)"),
+              variable.units = NULL,
+              realization.num = realization.num,
+              wet.quantile = 0.2,
+              extreme.quantile =0.8)
+
+
+
 ################################################################################
 
 ## ----clim change, eval = FALSE------------------------------------------------
