@@ -38,6 +38,8 @@ evaluateWegen(
 \item{extreme.quantile}{precip. quantile for calculating monthly extremely wet state threshold}
 
 \item{show.title}{PLACEHOLDER}
+
+\item{save.plots}{PLACEHOLDER}
 }
 \value{
 returns a list of ggplot2 objects and figures saved to the desired output path

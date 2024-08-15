@@ -16,6 +16,7 @@
 #' @param wet.quantile precip. quantile for calculating monthly wet state threshold
 #' @param extreme.quantile precip. quantile for calculating monthly extremely wet state threshold
 #' @param show.title PLACEHOLDER
+#' @param save.plots PLACEHOLDER
 #'
 #' @return returns a list of ggplot2 objects and figures saved to the desired output path
 #' @export

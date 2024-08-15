@@ -29,6 +29,8 @@
 #' @param num.cores Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned
 #' @param dry.spell.change placeholder
 #' @param wet.spell.change placeholder
+#' @param save.rdata placeholder
+
 #'
 #' @return a list object with two elements
 #'  \item{resampled}{data frame of the sampled dates for each synthetic trace}
