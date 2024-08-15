@@ -32,7 +32,7 @@ readNetcdf <- function(
   {
 
     #Workaround for rlang warning
-    data <- month <- day <- xind <- yind <- month <- day <- wyear <- 0
+    month <- day <- xind <- yind <- month <- day <- wyear <- 0
 
     # function to get dimension names
     ncGetDimNames <- function(f, v) {
@@ -44,7 +44,7 @@ readNetcdf <- function(
 
     # Get dimension variables
     nc_dim_names <- attributes(nc_in$dim)$names
-    nc_dim <- lapply(1:length(nc_dim_names), function(x) ncvar_get(nc_in,nc_dim_names[x]))
+    nc_dim <- lapply(1:length(nc_dim_names), function(x) ncdf4::ncvar_get(nc_in,nc_dim_names[x]))
     names(nc_dim) <- nc_dim_names
 
     # Get spatial reference variable
@@ -95,26 +95,25 @@ readNetcdf <- function(
       mutate(yind = as.numeric(yind)) %>%
       mutate(id = 1:n(), .before = xind) %>%
       mutate(x = nc_dim[[nc_dimnames$x]][xind],
-             y = nc_dim[[nc_dimnames$y]][yind], .after = yind, data = list(df0))
+             y = nc_dim[[nc_dimnames$y]][yind], .after = yind)
 
+    data <- rep(list(df0), nrow(grid_mat))
 
-      for (n in 1:nrow(grid_mat)) {
-        grid_mat$data[[n]] <- as_tibble(sapply(nc_var_data,
+    for (n in 1:nrow(grid_mat)) {
+      data[[n]] <- as_tibble(sapply(nc_var_data,
           function(x) x[grid_mat$xind[n], grid_mat$yind[n], ]))
-      }
+    }
 
-      if(omit.empty) {
+    if(omit.empty) {
+      # Remove unnecessary/empty grids from tidy data table
+      grd <- which(sapply(1:nrow(grid_mat), function(x) !is.na(sum(data[[x]]))))
+      grid_mat <- grid_mat[grd,]
+    }
 
-        # Remove unnecessary/empty grids from tidy data table
-        grd <- which(sapply(1:nrow(grid_mat), function(x) !is.na(sum(grid_mat$data[[x]]))))
-        grid_mat <- grid_mat[grd,]
-
-      }
-
-      return(list(data = grid_mat$data,
-                  grid = grid_mat %>% mutate(id = 1:n()) %>% select(-data),
-                  date = datev,
-                  dimensions = nc_dim,
-                  attributes = c(nc_attribs, stats::setNames(list(nc_attribs_spref),
-                                 spatial.ref), global = list(nc_attribs_glob))))
+    return(list(data = data,
+                grid = grid_mat %>% mutate(id = 1:n()),
+                date = datev,
+                dimensions = nc_dim,
+                attributes = c(nc_attribs, stats::setNames(list(nc_attribs_spref),
+                               spatial.ref), global = list(nc_attribs_glob))))
 }

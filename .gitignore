@@ -12,7 +12,9 @@ docs
 
 /vignettes/*.R
 /inst/extdata/plots/
-inst/doc
+/inst/doc
+/inst/misc
+
 /*.Rcheck/
 /*.tar.gz
 /Meta/
