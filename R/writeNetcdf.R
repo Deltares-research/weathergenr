@@ -12,6 +12,7 @@
 #' @param nc.file.prefix placeholder
 #' @param nc.file.suffix placeholder
 #' @param nc.spatial.ref placeholder
+#' @param signif.digits PLACEHOLDER
 #'
 #' @return
 #' @export
@@ -26,7 +27,8 @@ writeNetcdf <- function(
   nc.compression = 4,
   nc.spatial.ref = "spatial_ref",
   nc.file.prefix = "clim_change_rlz",
-  nc.file.suffix = "")
+  nc.file.suffix = "",
+  signif.digits = NULL)
 
 {
 
@@ -99,6 +101,8 @@ writeNetcdf <- function(
   # create netCDF file and put arrays
   ncout_file <- ncdf4::nc_create(paste0(output.path, nc.file.prefix,"_",nc.file.suffix, ".nc"),
     ncout_vars, force_v4 = TRUE)
+
+  if(!is.null(signif.digits)) {data <- lapply(data, function(x) round(x, signif.digits))}
 
   #Loop through each variable and write data to netcdf
   for (i in 1:length(variables)) {

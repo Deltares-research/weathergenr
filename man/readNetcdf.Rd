@@ -8,7 +8,8 @@ readNetcdf(
   nc.file = NULL,
   leap.days = TRUE,
   omit.empty = TRUE,
-  spatial.ref = "spatial_ref"
+  spatial.ref = "spatial_ref",
+  signif.digits = NULL
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ readNetcdf(
 \item{omit.empty}{A lotical value indicating whether empty cells with missing values to be removed}
 
 \item{spatial.ref}{PLACEHOLDER}
+
+\item{signif.digits}{PLACEHOLDER}
 }
 \description{
 Wrapper function to read files and create list object that returns a list of weather data for each grid,

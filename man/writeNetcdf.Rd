@@ -14,7 +14,8 @@ writeNetcdf(
   nc.compression = 4,
   nc.spatial.ref = "spatial_ref",
   nc.file.prefix = "clim_change_rlz",
-  nc.file.suffix = ""
+  nc.file.suffix = "",
+  signif.digits = NULL
 )
 }
 \arguments{
@@ -37,6 +38,8 @@ writeNetcdf(
 \item{nc.file.prefix}{placeholder}
 
 \item{nc.file.suffix}{placeholder}
+
+\item{signif.digits}{PLACEHOLDER}
 }
 \description{
 Write to netcdf file

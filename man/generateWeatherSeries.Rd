@@ -78,6 +78,8 @@ generateWeatherSeries(
 \item{compute.parallel}{logical value indicating whether to run (some) functions in parallel}
 
 \item{num.cores}{Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned}
+
+\item{save.rdata}{placeholder}
 }
 \value{
 a list object with two elements
