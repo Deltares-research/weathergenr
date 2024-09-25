@@ -540,8 +540,8 @@ evaluateWegen <- function(
   p <- ggplot(sim_stats_season_aavg, aes(x = as.factor(mon), y = value)) +
     theme_wgplots +
     facet_wrap(~ variable, scales = "free") +
-    geom_line(aes(group = rlz), color = "gray30", alpha = 0.6) +
-    geom_line(data = hist_stats_season_aavg2, color = "blue", group = 1) +
+    geom_line(aes(group = rlz, color = rlz), alpha = 0.6) +
+    geom_line(data = hist_stats_season_aavg2, color = "blue", group = 1, size = 1.5) +
     scale_x_discrete(labels = substr(month.name, 1,1)) +
     labs(x = "", y = "")
 
@@ -551,7 +551,7 @@ evaluateWegen <- function(
   }
 
   if(isTRUE(save.plots))
-    ggsave(file.path(output.path, paste0("monthly_cycle.png")), height = pl_size, width = pl_size)
+    ggsave(file.path(output.path, paste0("monthly_cycle.png")), height = pl_size, width = pl_size+1)
 
   plots$annual_cycle <- p
 
