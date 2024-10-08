@@ -11,7 +11,7 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
 ---
 
-```{r, include = FALSE}
+```{r initialize, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message=FALSE, cache = TRUE)
 ```
 
@@ -38,6 +38,10 @@ The latest version of the weathergenr package can be installed from github and t
 ```{r setup, eval=TRUE, echo = FALSE}
 #devtools::install_github("Deltares/weathergenr", upgrade = "never")
 library(weathergenr)
+
+# Other R packages that needs to be installed:
+library(dplyr)
+library(ggplot2)
 ```
 
 ## Sample data
@@ -85,16 +89,22 @@ head(ncdata$date)
 In this section, we introduce the procedure to obtain new weather sequences from the historical weather record via the *generateWeatherSeries()* function. This function serves as a wrapper arround a number of statistical procedures including a wavelet autoregressive model (WARM) coupled with a Markov chain knn resampling scheme based on Steinschneider and Brown (2013).
 
 First, lets specify an output path for the results and variables to include from the dataset:
-```{r stochastic1}
+```{r set_params}
+
 # Set path to store weather generator results
 output_path <- tempdir()
+
+# Set the variables to include in the weather generator
 variables <- c("precip", "temp", "temp_min", "temp_max")
-realization_num <- 1
+variable_labels <- c("Precip.", "Temp. (avg)", "Temp. (min)", "Temp. (max)")
+  
+# Set the number of stochastic (random) realizations to be generated from the historical weather record
+realization_num <- 3
 ```
 
 GenerateWeatherSeries() function includes a large set of essential and non-essential parameters to control the weather generation process. Essential parameters include: *weather.data*, *weather.grid*, and *weather.date* and *variable.names* to specify the attributes of the input metereological data, *realization.num* to set the desired number of new weather realizations, and the *output.path*:
 
-```{r stochastic2, results='hide', eval = TRUE, cache=TRUE}
+```{r run_wegen, results='hide', eval=TRUE, cache=TRUE}
 stochastic_weather <- generateWeatherSeries(
   weather.data = ncdata$data,
   weather.grid = ncdata$grid,
@@ -108,16 +118,17 @@ stochastic_weather <- generateWeatherSeries(
   realization.num = realization_num,
   warm.variable = "precip",
   warm.signif.level = 0.90,
-  warm.sample.num = 10000,
+  warm.sample.num = 5000,
   warm.subset.criteria = NULL,
-  knn.sample.num = 120,
+  knn.sample.num = 100,
   mc.wet.quantile= 0.2,
   mc.extreme.quantile = 0.8,
   output.path = output_path,
   seed = 123)
+
 ```
 
-The output is a list, where the first element is a data frame of resampled dates for each new stochastic realization and a date vector for the new (generated) weather data.
+Output from weather generator is a list of resampled dates
 ```{r stochastic3, eval = TRUE, cache=TRUE}
 # Resampled dates
 stochastic_weather$resampled
@@ -127,54 +138,43 @@ head(stochastic_weather$dates)
 tail(stochastic_weather$dates)
 ```
 
-## Apply climate change on the realization
 
-Delta factors can be imposed on the historical or stochastically generated weather data to reflect plausible changes on climate statistics. Currently, it is possible to shift mean and variance of precipitation and mean of temperature. Preciptation changes are specified as ratios, where a value of 1.0 indicates no change for the given calendar month. Temperature changes are specified as increases (or decreases) in degree celsius in a given month.
+Lets compare how the simulated stochastic series compare to the historical
+```{r eval_outputs, eval = TRUE, cache=TRUE, out.width = '100%'}
 
-```{r climchange, eval = FALSE}
-# Temperature changes Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
-delta_temp_mean <- c(3.0, 3.2, 3.4, 4.0, 4.1, 4.4, 5.0, 3.5, 3.3, 2.9, 2.8, 2.7)
+# Find date order from each stochastic simulation
+day_order <- sapply(1:realization_num, function(n) match(stochastic_weather$resampled[[n]], ncdata$date))
 
-# Precipitation changes   Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
-delta_precip_mean     <- c(0.7, 0.7, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7)
-delta_precip_variance <- c(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+rlz_sample <- list()
+for (n in 1:realization_num) {
+  rlz_sample[[n]] <- lapply(ncdata$data[ncdata$grid$id], function(x) x[day_order[,n],] %>%
+                              select(precip,  temp, temp_min, temp_max) %>%
+                              mutate(date = stochastic_weather$dates, .before = 1))
+}
 
-# Obtain stochastic series by re-ordering historical data
-day_order <- match(stochastic_weather$resampled[[1]], ncdata$date)
-stochastic_rlz <- lapply(ncdata$data, function(x) x[day_order,])
+obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) x %>%
+                       select(precip, temp, temp_min, temp_max) %>%
+                       dplyr::mutate(date = ncdata$date, .before = 1))
 
-# Apply climate changes to climate data
-stochastic2 <- imposeClimateChanges(
-  climate.data = stochastic_rlz,
-  climate.grid = ncdata$grid,
-  sim.dates = stochastic_weather$dates,
-  change.factor.precip.mean = delta_precip_mean,
-  change.factor.precip.variance = delta_precip_variance,
-  change.factor.temp.mean = delta_temp_mean,
-  transient.temp.change = TRUE,
-  transient.precip.change = TRUE,
-  calculate.pet = TRUE,
-  compute.parallel = TRUE,
-  num.cores = NULL,
-  fit.method = "mme")
+out <- evaluateWegen(daily.sim = rlz_sample,
+              daily.obs = obs_sample,
+              output.path = paste0(output_path,"/plots"),
+              variables = variables,
+              variable.labels = variable_labels,
+              variable.units = NULL,
+              realization.num = realization_num,
+              wet.quantile = 0.2,
+              extreme.quantile =0.8)
+
+# Daily means
+out$daily_means
+
+# Daily Standard deviations
+out$daily_sd
 ```
 
-Finally we can save the generated weather series back to a netcdf file:
 
-```{r climchange2, eval = FALSE}
-# Save to netcdf file
-writeNetcdf(
-  data = stochastic2,
-  coord.grid = ncdata$grid,
-  output.path = output_path,
-  origin.date =  stochastic_weather$dates[1],
-  calendar.type = "noleap",
-  nc.template.file = ncfile,
-  nc.compression = 4,
-  nc.spatial.ref = "spatial_ref",
-  nc.file.prefix = "clim",
-  nc.file.suffix = NULL)
-```
+
 
 
 
