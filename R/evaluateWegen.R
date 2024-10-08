@@ -540,8 +540,8 @@ evaluateWegen <- function(
   p <- ggplot(sim_stats_season_aavg, aes(x = as.factor(mon), y = value)) +
     theme_wgplots +
     facet_wrap(~ variable, scales = "free") +
-    geom_line(aes(group = rlz, color = rlz), alpha = 0.6) +
-    geom_line(data = hist_stats_season_aavg2, color = "blue", group = 1, size = 1.5) +
+    geom_line(aes(group = rlz, color = rlz), alpha = 0.8) +
+    geom_line(data = hist_stats_season_aavg2, color = "black", group = 1, size = 1.25) +
     scale_x_discrete(labels = substr(month.name, 1,1)) +
     labs(x = "", y = "")
 
