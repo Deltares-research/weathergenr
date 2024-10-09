@@ -105,13 +105,13 @@ climateSurface <- function(
     }
 
     bin_num <- length(z_breaks) - 1
-
     mid_bin <- findInterval(threshold.z, z_breaks)
     colpal <- vector("character", length(z_breaks)-1)
     colpal[[mid_bin]] <- "white"
     bin_num_lw <- mid_bin-1
     bin_num_up <- length(colpal) - mid_bin
 
+    # Set color palette based on direction of increasing performance
     if (failure.direction == "low") {
       colpal[1:bin_num_lw] <- colorRampPalette(c("#99000D", "#FEE5D9"))(bin_num_lw)
       colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#EFF3FF", "#004B88"))(bin_num_up)
@@ -144,17 +144,18 @@ climateSurface <- function(
         color = "Climate\nProjections", fill = "", title = plot.title)
 
       ######## GCM Dots
-      gcm_scenario_color <- c("ssp126" = "#003466", "ssp245"	="#f69320",
-          "ssp370"	="#df0000", "ssp585"	="#980002")
-
       if(!is.null(gcm.data)) {
+
+        gcm_scenario_color <- c("ssp126" = "#003466", "ssp245"	="#f69320",
+                                "ssp370"	="#df0000", "ssp585"	="#980002")
 
         p <- p + geom_point(mapping = aes(x = .data[[variable.x]], y = .data[[variable.y]],
             color = scenario), data = gcm.data, shape = 1,
             stroke = 1.5, size = 2*text.scale, alpha = gcm.transparency) +
             scale_color_manual(values = gcm_scenario_color)
 
-          if(isTRUE(gcm.legend)) {
+        # Draw GCM legend
+        if(isTRUE(gcm.legend)) {
 
             # Set legend for GCM color
             p <- p +  guides(color = guide_legend(order = 2, position = "right",
@@ -162,18 +163,22 @@ climateSurface <- function(
 
           } else {
 
-            # Set legend for GCM color
             p <- p +  guides(color = guide_legend(order = 2, position = "right",
                                                   direction = "vertical",
                                                   override.aes = list(alpha = 0),
                                                   theme = theme(legend.title = element_text(color = "transparent"),
-                                                                legend.text = element_text(color = "transparent"))
-            ))
-
+                                                                legend.text = element_text(color = "transparent"))))
           }
 
+        if(isTRUE(gcm.bivariate.dist)) {
 
-      }
+          p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, type = "norm", level=0.50) +
+            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, type = "norm", level=0.75) +
+            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, type = "norm", level=0.90) +
+            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, type = "norm", level=0.95)
+        }
+
+      } #gcm-data close
 
     return(p)
 
