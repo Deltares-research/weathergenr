@@ -32,14 +32,9 @@ waveletARSubset <- function(
   save.series = TRUE,
   output.path = NULL,
   padding = TRUE,
-  bounds = list(
-    mean = c(0.9,1.10),
-    sd = c(0.80,1.20),
-    min = c(0.70,1.30),
-    max = c(0.70,1.30),
-    power = c(0.20,10.00),
-    nonsignif.threshold = 0.999))
-
+  bounds = list(mean = 0.1, sd = 0.2, min = 0.2,
+    max = 0.2, signif.threshold = 0.5,
+    nonsignif.threshold = 1.5))
 {
 
   # Workaround for rlang warning
@@ -80,6 +75,7 @@ waveletARSubset <- function(
   periods_nonsig <- periods_nonsig[periods_nonsig %in% 1:dim(power.sim)[1]]
 
   ###################################################
+  power_signif_max = 10
 
   # Filter based on power spectra
   if (!is.null(bounds$power)) {
@@ -90,12 +86,12 @@ waveletARSubset <- function(
 
       # Signals within the bounds
       sub_power2 <- which(sapply(1:ncol(power.sim), function(x)
-        all((power.sim[periods_sig,x] > power.obs[periods_sig] * bounds$power[1]) &
-              (power.sim[periods_sig,x] < power.obs[periods_sig] * bounds$power[2]))))
+        all((power.sim[periods_sig,x] > power.obs[periods_sig] * signif.threshold) &
+              (power.sim[periods_sig,x] < power.obs[periods_sig] * power_signif_max))))
 
       # Non-significant below threshold
       sub_power3 <- which(sapply(1:ncol(power.sim), function(x)
-        all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*bounds$nonsignif.threshold))))
+        all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*nonsignif.threshold))))
 
       sub_power <- base::intersect(base::intersect(sub_power1, sub_power2), sub_power3)
 
@@ -103,22 +99,22 @@ waveletARSubset <- function(
 
   # Filter based on means
   if (!is.null(bounds$mean)) {
-    sub_mean  <- which((stats_sim$mean > bounds$mean[1]) & (stats_sim$mean < bounds$mean[2]))
+    sub_mean  <- which((stats_sim$mean > 1 - bounds$mean) & (stats_sim$mean < 1 + bounds$mean))
   } else {sub_mean <- 1:ncol(series.sim)}
 
   # Filter based on standard deviation
   if (!is.null(bounds$sd)) {
-    sub_sd  <- which((stats_sim$sd > bounds$sd[1]) & (stats_sim$sd < bounds$sd[2]))
+    sub_sd  <- which((stats_sim$sd > 1 - bounds$sd) & (stats_sim$sd < 1 + bounds$sd))
   } else {sub_sd <- 1:ncol(series.sim)}
 
   # Filter based on minimum
   if (!is.null(bounds$min)) {
-    sub_min  <- which((stats_sim$min > bounds$min[1]) & (stats_sim$min <bounds$min[2]))
+    sub_min  <- which((stats_sim$min > 1 - bounds$min) & (stats_sim$min < 1 + bounds$min))
   } else {sub_min  <- 1:ncol(series.sim)}
 
   # Filter based on maximum
   if (!is.null(bounds$max)) {
-    sub_max  <- which((stats_sim$max > bounds$max[1]) & (stats_sim$max < bounds$max[2]))
+    sub_max  <- which((stats_sim$max > 1 - bounds$max) & (stats_sim$max < 1 + bounds$max))
   } else {sub_max  <- 1:ncol(series.sim)}
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')),
