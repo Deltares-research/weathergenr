@@ -143,15 +143,21 @@ resampleDates <- function(
 		YEAR_D_CURRENT <- YEAR_D[conditional_selection]
 		MONTH_DAY_D_CURRENT <- MONTH_DAY_D[conditional_selection,]
 
+		############################################################################
+
 		# Calculate dry to wet threshold for each month
-    wet_threshold <- sapply(1:12, function(m)
-      stats::quantile(PRCP_CURRENT[which(MONTH_D_CURRENT==month_list[m])],
-        wet.quantile, names = F))
+    #wet_threshold <- sapply(1:12, function(m)
+    #  stats::quantile(PRCP_CURRENT[which(MONTH_D_CURRENT==month_list[m])],
+    #    wet.quantile, names = F))
+
+    wet_threshold <- rep(stats::quantile(PRCP_CURRENT, wet.quantile, names =F),12)
 
     # Calculate wet to very wet threshold for each month
     extreme_threshold <- sapply(1:12, function(m)
       stats::quantile(PRCP_CURRENT[which(MONTH_D_CURRENT==month_list[m] & PRCP_CURRENT > wet_threshold[m])],
         extreme.quantile, names = F))
+
+    ############################################################################
 
 		#Define lagged variables on daily time-series (for current year set)
 		PRCP_LAG0  <- PRCP_CURRENT[2:length(PRCP_CURRENT)]
@@ -163,6 +169,8 @@ resampleDates <- function(
 
 		# Calculate monthly trahsition probabilities
 		for (m in 1:12) {
+
+		  print(m)
 
 		  # day of the year index in each month
 		  x <- which(MONTH_LAG1==month_list[m])
@@ -210,7 +218,7 @@ resampleDates <- function(
 		# MARKOV-CHAIN AND DAILY KNN SAMPLING.......................................
 		for (j in 1:365) {
 
-		  #print(j)
+		  print(j)
 
 		  count <- count + 1
 
