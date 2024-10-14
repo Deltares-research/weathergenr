@@ -84,7 +84,7 @@ waveletARSubset <- function(
       sub_power1 <- which(sapply(1:ncol(power.sim), function(x)
         any(power.sim[periods_sig,x] > power.signif[periods_sig])))
 
-      # Signals within the bounds
+      # Significant signals within the bound
       sub_power2 <- which(sapply(1:ncol(power.sim), function(x)
         all((power.sim[periods_sig,x] > power.obs[periods_sig] * bounds$signif.threshold) &
               (power.sim[periods_sig,x] < power.obs[periods_sig] * power_signif_max))))
@@ -118,8 +118,9 @@ waveletARSubset <- function(
   } else {sub_max  <- 1:ncol(series.sim)}
 
   message(cat(as.character(format(Sys.time(),'%H:%M:%S')),
-              '- Error bounds: mean=', bounds$mean, ",sd=", bounds$sd, ",min=", bounds$min,
-              ", max=", bounds$max, ",power=", bounds$power))
+              '- WARM error bounds: mean=', bounds$mean, ",st.dev.=", bounds$sd, ",minimum=", bounds$min,
+              ", maximum=", bounds$max, ",power.signif=",  bounds$signif.threshold, ",power.nonsignif=",
+              bounds$nonsignif.threshold))
 
   #Select intersection of filtered
   sub_clim <- Reduce(base::intersect,

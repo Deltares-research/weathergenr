@@ -136,34 +136,44 @@ climateSurface <- function(
       scale_fill_gradientn(colors = colpal,
                            breaks = pretty(z_breaks, variable.z.bin.legend),
                            limits = range(pretty(z_breaks, variable.z.bin.legend)),
-                           guide = guide_colorbar(barwidth=25, show.limits=TRUE, ticks.colour = "white",
-                                              barheight = 1*text.scale, order = 1,
+                           guide = guide_colorbar(barwidth=25, show.limits=TRUE, ticks.colour = "black",
+                                              barheight = 1.30*text.scale, order = 1,
                                               draw.ulim = TRUE, draw.llim = TRUE)) +
       # Set labs
       labs(x = variable.x.label,y = variable.y.label,
         color = "Climate\nProjections", fill = "", title = plot.title)
 
-      ######## GCM Dots
+      ######## GCM Dots ########################################################
+
       if(!is.null(gcm.data)) {
 
         gcm_scenario_color <- c("ssp126" = "#003466", "ssp245"	="#f69320",
                                 "ssp370"	="#df0000", "ssp585"	="#980002")
 
+        gcm_period_shape <- c("near" = 1, "far" = 4)
+
         p <- p + geom_point(mapping = aes(x = .data[[variable.x]], y = .data[[variable.y]],
-            color = scenario), data = gcm.data, shape = 1,
+            color = scenario, shape = horizon), data = gcm.data,
             stroke = 1.5, size = 2*text.scale, alpha = gcm.transparency) +
-            scale_color_manual(values = gcm_scenario_color)
+            scale_color_manual(values = gcm_scenario_color) +
+            scale_shape_manual(values = gcm_period_shape)
 
         # Draw GCM legend
         if(isTRUE(gcm.legend)) {
 
             # Set legend for GCM color
-            p <- p +  guides(color = guide_legend(order = 2, position = "right",
-                                                  direction = "vertical"))
+            p <- p +  guides(color = guide_legend(order = 2, position = "right", direction = "vertical"),
+                             shape = guide_legend(order = 3, position = "right", direction = "vertical"))
+
 
           } else {
 
             p <- p +  guides(color = guide_legend(order = 2, position = "right",
+                                                  direction = "vertical",
+                                                  override.aes = list(alpha = 0),
+                                                  theme = theme(legend.title = element_text(color = "transparent"),
+                                                                legend.text = element_text(color = "transparent"))),
+                             shape = guide_legend(order = 3, position = "right",
                                                   direction = "vertical",
                                                   override.aes = list(alpha = 0),
                                                   theme = theme(legend.title = element_text(color = "transparent"),
