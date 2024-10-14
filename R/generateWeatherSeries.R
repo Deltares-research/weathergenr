@@ -55,13 +55,8 @@ generateWeatherSeries <- function(
   warm.variable = "precip",
   warm.signif.level = 0.90,
   warm.sample.num = 5000,
-  warm.subset.criteria = list(
-           mean = c(0.90,1.10),
-           sd = c(0.80,1.20),
-           min = c(0.60,1.30),
-           max = c(0.70,1.40),
-           power = c(0.20, 10.00),
-           nonsignif.threshold = 1.20),
+  warm.subset.criteria = list(mean = 0.1, sd = 0.2, min = 0.3,
+         max = 0.3, signif.threshold = 0.5, nonsignif.threshold = 1.5),
   knn.sample.num = 120,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
@@ -212,7 +207,7 @@ generateWeatherSeries <- function(
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
 
   if(!length(warm_power$signif_periods > 0)) {
-    warm.subset.criteria$power <- NULL
+    warm.subset.criteria$signif.threshold <- NULL
     warm.subset.criteria$nonsignif.threshold <- NULL
   }
 

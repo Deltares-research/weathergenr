@@ -17,8 +17,8 @@ waveletARSubset(
   save.series = TRUE,
   output.path = NULL,
   padding = TRUE,
-  bounds = list(mean = c(0.9, 1.1), sd = c(0.8, 1.2), min = c(0.7, 1.3), max = c(0.7,
-    1.3), power = c(0.2, 10), nonsignif.threshold = 0.999)
+  bounds = list(mean = 0.1, sd = 0.2, min = 0.2, max = 0.2, signif.threshold = 0.5,
+    nonsignif.threshold = 1.5)
 )
 }
 \arguments{
