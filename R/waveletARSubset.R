@@ -78,7 +78,7 @@ waveletARSubset <- function(
   power_signif_max = 10
 
   # Filter based on power spectra
-  if (!is.null(bounds$power)) {
+  if (!is.null(bounds$signif.threshold)) {
 
       # Filter scenarios have significant signals
       sub_power1 <- which(sapply(1:ncol(power.sim), function(x)
@@ -86,12 +86,12 @@ waveletARSubset <- function(
 
       # Signals within the bounds
       sub_power2 <- which(sapply(1:ncol(power.sim), function(x)
-        all((power.sim[periods_sig,x] > power.obs[periods_sig] * signif.threshold) &
+        all((power.sim[periods_sig,x] > power.obs[periods_sig] * bounds$signif.threshold) &
               (power.sim[periods_sig,x] < power.obs[periods_sig] * power_signif_max))))
 
       # Non-significant below threshold
       sub_power3 <- which(sapply(1:ncol(power.sim), function(x)
-        all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*nonsignif.threshold))))
+        all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*bounds$nonsignif.threshold))))
 
       sub_power <- base::intersect(base::intersect(sub_power1, sub_power2), sub_power3)
 
