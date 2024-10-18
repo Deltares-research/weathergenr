@@ -43,7 +43,7 @@ climateSurface <- function(
     failure.direction = 1,
     gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
     gcm.bivariate.dist = FALSE,
-    gcm.transparency = 0.85,
+    gcm.transparency = 0.75,
     gcm.legend = TRUE,
     variable.z.min = NULL,
     variable.z.max = NULL,
@@ -61,7 +61,7 @@ climateSurface <- function(
     gg_theme_surface <- function(size = 18 * text.scale) {
       theme_light() %+replace%
       theme(
-        plot.background = element_rect(fill = "white"),
+        plot.background = element_rect(fill = "white", color = NA),
         plot.title = element_text(size = size+2, hjust = 0, margin = margin(0,0,-10,0)),
         axis.ticks = element_line(colour = "gray60"),
         axis.title = element_text(size = size),
@@ -70,8 +70,9 @@ climateSurface <- function(
         legend.direction="horizontal",
         legend.title.position = "top",
         legend.text = element_text(size = size-2),
-        legend.box.margin=margin(-2,-2,-2,-2)
-      )
+        legend.box.margin=margin(-2,-2,-2,-2),
+        aspect.ratio = 1)
+
     }
 
     gg_theme_blank <- theme(axis.ticks = element_blank(),
@@ -139,7 +140,7 @@ climateSurface <- function(
       scale_fill_gradientn(colors = colpal,
                            breaks = z_legend_breaks,
                            limits = z_legend_limits,
-                           guide = guide_colorbar(barwidth=25, show.limits=TRUE, ticks.colour = "black",
+                           guide = guide_colorbar(barwidth = 25, show.limits=TRUE, ticks.colour = "black",
                                               barheight = 1.30*text.scale, order = 1,
                                               draw.ulim = TRUE, draw.llim = TRUE)) +
       # Set labs
