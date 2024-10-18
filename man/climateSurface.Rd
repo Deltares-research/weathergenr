@@ -14,7 +14,7 @@ climateSurface(
   plot.title = "change in variable",
   variable.x.label = "change in temperature",
   variable.y.label = "change in precipitation",
-  failure.direction = "low",
+  failure.direction = 1,
   gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
   gcm.bivariate.dist = FALSE,
   gcm.transparency = 0.85,
