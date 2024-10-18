@@ -170,8 +170,6 @@ resampleDates <- function(
 		# Calculate monthly trahsition probabilities
 		for (m in 1:12) {
 
-		  print(m)
-
 		  # day of the year index in each month
 		  x <- which(MONTH_LAG1==month_list[m])
 			r <- which(MONTH_SIM==month_list[m] & WATER_YEAR_SIM == (y+START_YEAR_SIM))
@@ -217,8 +215,6 @@ resampleDates <- function(
 
 		# MARKOV-CHAIN AND DAILY KNN SAMPLING.......................................
 		for (j in 1:365) {
-
-		  print(j)
 
 		  count <- count + 1
 

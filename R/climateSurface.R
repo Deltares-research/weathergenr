@@ -1,29 +1,28 @@
-
 #' Climate Response Surface Generator
 #'
-#' @param str.data
-#' @param gcm.data
-#' @param variable.x
-#' @param variable.y
-#' @param variable.z
-#' @param threshold.z
-#' @param variable.x.label
-#' @param variable.y.label
-#' @param plot.title
-#' @param failure.direction
-#' @param gcm.bivariate.dist
-#' @param gcm.transparency
-#' @param gcm.legend
-#' @param variable.z.min
-#' @param variable.z.max
-#' @param variable.z.bin
-#' @param variable.z.min.legend
-#' @param variable.z.max.legend
-#' @param variable.z.bin.legend
-#' @param variable.x.breaks
-#' @param variable.y.breaks
-#' @param text.scale
-#' @param gcm.scenario.list
+#' @param str.data placeholder
+#' @param gcm.data placeholder
+#' @param variable.x placeholder
+#' @param variable.y placeholder
+#' @param variable.z placeholder
+#' @param threshold.z placeholder
+#' @param variable.x.label placeholder
+#' @param variable.y.label placeholder
+#' @param plot.title placeholder
+#' @param failure.direction placeholder
+#' @param gcm.bivariate.dist placeholder
+#' @param gcm.transparency placeholder
+#' @param gcm.legend placeholder
+#' @param variable.z.min placeholder
+#' @param variable.z.max placeholder
+#' @param variable.z.bin placeholder
+#' @param variable.z.min.legend placeholder
+#' @param variable.z.max.legend placeholder
+#' @param variable.z.bin.legend placeholder
+#' @param variable.x.breaks placeholder
+#' @param variable.y.breaks placeholder
+#' @param text.scale placeholder
+#' @param gcm.scenario.list placeholder
 #'
 #' @return
 #' @export
@@ -106,7 +105,6 @@ climateSurface <- function(
       threshold.z  <- str.data %>% filter(tavg == 0, prcp == 0) %>%
         pull(variable.z) %>% mean()
     }
-
 
     bin_num <- length(z_legend_breaks) - 1
     mid_bin <- findInterval(threshold.z, z_legend_breaks)
