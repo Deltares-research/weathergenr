@@ -17,7 +17,7 @@ climateSurface(
   failure.direction = 1,
   gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
   gcm.bivariate.dist = FALSE,
-  gcm.transparency = 0.85,
+  gcm.transparency = 0.75,
   gcm.legend = TRUE,
   variable.z.min = NULL,
   variable.z.max = NULL,
