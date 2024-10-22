@@ -16,7 +16,7 @@
 #' @import ggplot2
 #'
 #' @examples
-batchCreateResponseSurfaces <- function(
+batchClimateSurface <- function(
   project.dir = NULL,
   str.data = NULL,
   gcm.data = NULL,
