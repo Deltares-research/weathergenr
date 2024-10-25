@@ -38,8 +38,8 @@ climateSurface <- function(
     variable.z = NULL,
     threshold.z = NULL,
     plot.title = "change in variable",
-    variable.x.label = "change in temperature",
-    variable.y.label = "change in precipitation",
+    variable.x.label = expression(Delta~"Precipitation"),
+    variable.y.label = expression(Delta~"Temperature"),
     failure.direction = 1,
     gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
     gcm.bivariate.dist = FALSE,
@@ -53,7 +53,7 @@ climateSurface <- function(
     variable.z.bin.legend = 11,
     variable.x.breaks = NULL,
     variable.y.breaks = NULL,
-    text.scale = 0.8)
+    text.scale = 0.6)
 
   {
 
@@ -136,7 +136,7 @@ climateSurface <- function(
                    breaks = threshold.z, color = "black", linewidth = 1) +
       # Set x,y, and fill scales
       scale_x_continuous(expand = c(0, 0), breaks = variable.x.breaks, labels = ~ paste0(.x, "%")) +
-      scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "Â°C")) +
+      scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "°C")) +
       scale_fill_gradientn(colors = colpal,
                            breaks = z_legend_breaks,
                            limits = z_legend_limits,
@@ -189,10 +189,16 @@ climateSurface <- function(
 
         if(isTRUE(gcm.bivariate.dist)) {
 
-          p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, type = "norm", level=0.50) +
-            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, type = "norm", level=0.75) +
-            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, type = "norm", level=0.90) +
-            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, type = "norm", level=0.95)
+          ellipse_levels <- c(0.50, 0.75, 0.90, 0.95)
+          p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=ellipse_levels[1],
+                         type = "norm", linetype = "dashed", color = "gray20") +
+            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=ellipse_levels[2],
+                         type = "norm", linetype = "dashed", color = "gray20") +
+            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=ellipse_levels[3],
+                         type = "norm", linetype = "dashed", color = "gray20") +
+            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=ellipse_levels[4],
+                         type = "norm", linetype = "dashed", color = "gray20")
+
         }
 
       } #gcm-data close
