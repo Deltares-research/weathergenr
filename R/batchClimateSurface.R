@@ -33,8 +33,6 @@ batchClimateSurface <- function(
      bquote(bold('Mean flow during driest month '(m^3/s))),
      bquote(bold('Mean flow during wettest month '(m^3/s)))),
   metric.direction = c(1,1,0,1,0,1,1,0),
-  variable.x.breaks = NULL,
-  variable.y.breaks = NULL,
   ...)
 
 {
@@ -43,21 +41,14 @@ batchClimateSurface <- function(
 
 
   if(!is.null(gcm.data)) {
-
     gcm_df <- gcm.data %>% filter(horizon %in% gcm.future.period)
 
   } else {
-
     gcm_df <- NULL
   }
 
-
   # Post-process input data
   locations <- str.data %>% select(-statistic, -tavg, -prcp) %>% colnames()
-
-  # Get incremental steps for each uncertain weather variable
-  if(is.null(variable.y.breaks)) variable.y.breaks <- sort(unique(str.data$tavg))
-  if(is.null(variable.x.breaks)) variable.x.breaks <- sort(unique(str.data$prcp))
 
   # Path of output plots
   dir.create(project.dir, showWarnings = F)
@@ -78,13 +69,7 @@ batchClimateSurface <- function(
           variable.y = "tavg",
           variable.z = locations[l],
           plot.title = metric.labels[[m]],
-          variable.y.label = expression(Delta~"Temperature"),
-          variable.x.label = expression(Delta~"Precipitation"),
           failure.direction = metric.direction[m],
-          gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
-          gcm.transparency = 0.75,
-          variable.y.breaks = variable.y.breaks,
-          variable.x.breaks = variable.x.breaks,
           ...)
 
       # Save to file
