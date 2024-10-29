@@ -21,7 +21,7 @@ climateSurface(
   gcm.legend = TRUE,
   variable.z.min = NULL,
   variable.z.max = NULL,
-  variable.z.bin = 11,
+  variable.z.bin = 10,
   variable.z.breaks = NULL,
   variable.x.breaks = NULL,
   variable.y.breaks = NULL,
