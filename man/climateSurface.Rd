@@ -12,8 +12,8 @@ climateSurface(
   variable.z = NULL,
   threshold.z = NULL,
   plot.title = "change in variable",
-  variable.x.label = "change in temperature",
-  variable.y.label = "change in precipitation",
+  variable.x.label = expression(Delta ~ "Precipitation"),
+  variable.y.label = expression(Delta ~ "Temperature"),
   failure.direction = 1,
   gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
   gcm.bivariate.dist = FALSE,
@@ -21,13 +21,11 @@ climateSurface(
   gcm.legend = TRUE,
   variable.z.min = NULL,
   variable.z.max = NULL,
-  variable.z.bin = 15,
-  variable.z.min.legend = NULL,
-  variable.z.max.legend = NULL,
-  variable.z.bin.legend = 11,
+  variable.z.bin = 11,
+  variable.z.breaks = NULL,
   variable.x.breaks = NULL,
   variable.y.breaks = NULL,
-  text.scale = 0.8
+  text.scale = 0.6
 )
 }
 \arguments{
@@ -64,12 +62,6 @@ climateSurface(
 \item{variable.z.max}{placeholder}
 
 \item{variable.z.bin}{placeholder}
-
-\item{variable.z.min.legend}{placeholder}
-
-\item{variable.z.max.legend}{placeholder}
-
-\item{variable.z.bin.legend}{placeholder}
 
 \item{variable.x.breaks}{placeholder}
 

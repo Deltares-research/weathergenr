@@ -44,7 +44,7 @@ climateSurface <- function(
     gcm.legend = TRUE,
     variable.z.min = NULL,
     variable.z.max = NULL,
-    variable.z.bin = 11,
+    variable.z.bin = 10,
     variable.z.breaks = NULL,
     variable.x.breaks = NULL,
     variable.y.breaks = NULL,
@@ -97,17 +97,22 @@ climateSurface <- function(
 
     bin_num <- length(z_breaks) - 1
     mid_bin <- findInterval(threshold.z, z_breaks)
-    colpal <- vector("character", length(z_breaks)-1)
+    colpal <- vector("character", bin_num)
     bin_num_lw <- mid_bin-1
     bin_num_up <- length(colpal) - mid_bin
 
     # Set color palette based on direction of increasing performance
+    color1 <- "#FF3300"; color2 <- "#0033FF"
+
     if (failure.direction == 1) {
-      colpal[1:bin_num_lw] <- colorRampPalette(c("#FF3300", "#FEE5D9"))(bin_num_lw)
-      colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#EFF3FF", "#0033FF"))(bin_num_up)
+
+      colpal[1:bin_num_lw] <- colorRampPalette(c(color1, "#FEE5D9"))(bin_num_lw)
+      colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#EFF3FF", color2))(bin_num_up)
+      #colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#EFF3FF", "#0033FF"))(bin_num_up)
     } else {
-      colpal[1:bin_num_lw] <- colorRampPalette(c("#0033FF", "#EFF3FF"))(bin_num_lw)
-      colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#FEE5D9","#FF3300"))(bin_num_up)
+      colpal[1:bin_num_lw] <- colorRampPalette(c(color2, "#EFF3FF"))(bin_num_lw)
+      colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#FEE5D9",color1))(bin_num_up)
+      #colpal[(mid_bin+1):length(colpal)]
     }
 
     colpal[[mid_bin]] <- "white"
@@ -124,7 +129,7 @@ climateSurface <- function(
                    breaks = threshold.z, color = "black", linewidth = 1) +
       # Set x,y, and fill scales
       scale_x_continuous(expand = c(0, 0), breaks = variable.x.breaks, labels = ~ paste0(.x, "%")) +
-      scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "?C")) +
+      scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "\u00B0 C")) +
       scale_fill_gradientn(colors = colpal, breaks = z_breaks, limits = range(z_breaks),
                            guide = guide_colorbar(barwidth = 25, show.limits=TRUE, ticks.colour = "black",
                                               barheight = 1.30*text.scale, order = 1,
