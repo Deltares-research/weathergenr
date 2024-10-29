@@ -16,9 +16,6 @@
 #' @param variable.z.min placeholder
 #' @param variable.z.max placeholder
 #' @param variable.z.bin placeholder
-#' @param variable.z.min.legend placeholder
-#' @param variable.z.max.legend placeholder
-#' @param variable.z.bin.legend placeholder
 #' @param variable.x.breaks placeholder
 #' @param variable.y.breaks placeholder
 #' @param text.scale placeholder
@@ -47,10 +44,8 @@ climateSurface <- function(
     gcm.legend = TRUE,
     variable.z.min = NULL,
     variable.z.max = NULL,
-    variable.z.bin = 15,
-    variable.z.min.legend = NULL,
-    variable.z.max.legend = NULL,
-    variable.z.bin.legend = 11,
+    variable.z.bin = 11,
+    variable.z.breaks = NULL,
     variable.x.breaks = NULL,
     variable.y.breaks = NULL,
     text.scale = 0.6)
@@ -91,15 +86,8 @@ climateSurface <- function(
     # Specify z range and breaks
     if(is.null(variable.z.min)) variable.z.min <- min(str.data[[variable.z]])
     if(is.null(variable.z.max)) variable.z.max <- max(str.data[[variable.z]])
-    z_breaks <- seq(variable.z.min, variable.z.max, length.out = variable.z.bin+1)
-
-    # Specify z legend
-    if(is.null(variable.z.min.legend)) variable.z.min.legend  <- variable.z.min
-    if(is.null(variable.z.max.legend)) variable.z.max.legend  <- variable.z.max
-    if(is.null(variable.z.bin.legend)) variable.z.bin.legend  <- variable.z.bin
-
-    z_legend_breaks <- pretty(z_breaks, variable.z.bin.legend)
-    z_legend_limits <- range(z_legend_breaks)
+    zi <- pretty(c(variable.z.min, variable.z.max), variable.z.bin)
+    z_breaks <- c(zi[1] - (zi[2] - zi[1]), zi, zi[length(zi)]+ (zi[2] - zi[1]))
 
     # Set threshold to mean if not specified
     if(is.null(threshold.z)) {
@@ -107,9 +95,9 @@ climateSurface <- function(
         pull(variable.z) %>% mean()
     }
 
-    bin_num <- length(z_legend_breaks) - 1
-    mid_bin <- findInterval(threshold.z, z_legend_breaks)
-    colpal <- vector("character", length(z_legend_breaks)-1)
+    bin_num <- length(z_breaks) - 1
+    mid_bin <- findInterval(threshold.z, z_breaks)
+    colpal <- vector("character", length(z_breaks)-1)
     bin_num_lw <- mid_bin-1
     bin_num_up <- length(colpal) - mid_bin
 
@@ -130,16 +118,14 @@ climateSurface <- function(
       gg_theme_surface() +
       # Place z dimension
       geom_contour_filled(aes(z = .data[[variable.z]],
-            fill = after_stat(level_mid)), breaks = z_legend_breaks) +
+            fill = after_stat(level_mid)), breaks = z_breaks) +
       # Place threshold line
       geom_contour(aes(z = .data[[variable.z]]),
                    breaks = threshold.z, color = "black", linewidth = 1) +
       # Set x,y, and fill scales
       scale_x_continuous(expand = c(0, 0), breaks = variable.x.breaks, labels = ~ paste0(.x, "%")) +
-      scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "°C")) +
-      scale_fill_gradientn(colors = colpal,
-                           breaks = z_legend_breaks,
-                           limits = z_legend_limits,
+      scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "?C")) +
+      scale_fill_gradientn(colors = colpal, breaks = z_breaks, limits = range(z_breaks),
                            guide = guide_colorbar(barwidth = 25, show.limits=TRUE, ticks.colour = "black",
                                               barheight = 1.30*text.scale, order = 1,
                                               draw.ulim = TRUE, draw.llim = TRUE)) +
