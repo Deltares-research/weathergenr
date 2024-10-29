@@ -21,8 +21,6 @@ batchClimateSurface(
     bquote(bold(`Mean flow during driest month `(m^3/s))),
     bquote(bold(`Mean flow during wettest month `(m^3/s)))),
   metric.direction = c(1, 1, 0, 1, 0, 1, 1, 0),
-  variable.x.breaks = NULL,
-  variable.y.breaks = NULL,
   ...
 )
 }
@@ -41,9 +39,9 @@ batchClimateSurface(
 
 \item{metric.direction}{placeholder}
 
-\item{variable.x.breaks}{placeholder}
-
 \item{variable.y.breaks}{placeholder}
+
+\item{variable.x.breaks}{placeholder}
 }
 \description{
 Batch create climate response surfaces from CST Toolbox applications
