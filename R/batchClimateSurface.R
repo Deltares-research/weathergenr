@@ -80,7 +80,7 @@ batchClimateSurface <- function(
    } #metrics close
   } #locations close
 
-  message(paste0("All plots saved to: \n", project.dir))
+  message(paste0("All plots saved to: \n", paste0(getwd(), project.dir)))
 
 }
 

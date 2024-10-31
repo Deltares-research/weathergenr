@@ -52,21 +52,24 @@ climateSurface <- function(
 
   {
 
-    ## GGplot themes
-    gg_theme_surface <- function(size = 18 * text.scale) {
-      theme_light() %+replace%
-      theme(
-        plot.background = element_rect(fill = "white", color = NA),
-        plot.title = element_text(size = size+2, hjust = 0, margin = margin(0,0,-10,0)),
-        axis.ticks = element_line(colour = "gray60"),
-        axis.title = element_text(size = size),
-        axis.text = element_text(size = size-2),
-        legend.position="top",
-        legend.direction="horizontal",
-        legend.title.position = "top",
-        legend.text = element_text(size = size-2),
-        legend.box.margin=margin(-2,-2,-2,-2),
-        aspect.ratio = 1)
+  # Surpress warnings
+  options(warn=-1)
+
+  ## GGplot themes
+  gg_theme_surface <- function(size = 18 * text.scale) {
+    theme_light() %+replace%
+    theme(
+      plot.background = element_rect(fill = "white", color = NA),
+      plot.title = element_text(size = size+2, hjust = 0, margin = margin(0,0,-10,0)),
+      axis.ticks = element_line(colour = "gray60"),
+      axis.title = element_text(size = size),
+      axis.text = element_text(size = size-2),
+      legend.position="top",
+      legend.direction="horizontal",
+      legend.title.position = "top",
+      legend.text = element_text(size = size-2),
+      legend.box.margin=margin(-2,-2,-2,-2),
+      aspect.ratio = 1)
 
     }
 
@@ -102,17 +105,15 @@ climateSurface <- function(
     bin_num_up <- length(colpal) - mid_bin
 
     # Set color palette based on direction of increasing performance
-    color1 <- "#FF3300"; color2 <- "#0033FF"
+    color1a <- "#df0000"; color2a <- "#0033FF"
+    color1b <- "#FEE5D9"; color2b <- "#EFF3FF"
 
     if (failure.direction == 1) {
-
-      colpal[1:bin_num_lw] <- colorRampPalette(c(color1, "#FEE5D9"))(bin_num_lw)
-      colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#EFF3FF", color2))(bin_num_up)
-      #colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#EFF3FF", "#0033FF"))(bin_num_up)
+      colpal[1:bin_num_lw] <- colorRampPalette(c(color1a, color1b))(bin_num_lw)
+      colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c(color2b, color2a))(bin_num_up)
     } else {
-      colpal[1:bin_num_lw] <- colorRampPalette(c(color2, "#EFF3FF"))(bin_num_lw)
-      colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c("#FEE5D9",color1))(bin_num_up)
-      #colpal[(mid_bin+1):length(colpal)]
+      colpal[1:bin_num_lw] <- colorRampPalette(c(color2a, color2b))(bin_num_lw)
+      colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c(color1b,color1a))(bin_num_up)
     }
 
     colpal[[mid_bin]] <- "white"
@@ -126,7 +127,7 @@ climateSurface <- function(
             fill = after_stat(level_mid)), breaks = z_breaks) +
       # Place threshold line
       geom_contour(aes(z = .data[[variable.z]]),
-                   breaks = threshold.z, color = "black", linewidth = 1) +
+                   breaks = threshold.z, color = "black", linewidth = 0.8) +
       # Set x,y, and fill scales
       scale_x_continuous(expand = c(0, 0), breaks = variable.x.breaks, labels = ~ paste0(.x, "%")) +
       scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "\u00B0 C")) +
@@ -180,16 +181,8 @@ climateSurface <- function(
 
         if(isTRUE(gcm.bivariate.dist)) {
 
-          ellipse_levels <- c(0.50, 0.75, 0.90, 0.95)
-          p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=ellipse_levels[1],
-                         type = "norm", linetype = "dashed", color = "gray20") +
-            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=ellipse_levels[2],
-                         type = "norm", linetype = "dashed", color = "gray20") +
-            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=ellipse_levels[3],
-                         type = "norm", linetype = "dashed", color = "gray20") +
-            stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=ellipse_levels[4],
-                         type = "norm", linetype = "dashed", color = "gray20")
-
+          p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=0.95,
+                         type = "norm", color = "gray30", linetype = "dashed", size = 0.8)
         }
 
       } #gcm-data close
