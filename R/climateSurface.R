@@ -127,10 +127,10 @@ climateSurface <- function(
             fill = after_stat(level_mid)), breaks = z_breaks) +
       # Place threshold line
       geom_contour(aes(z = .data[[variable.z]]),
-                   breaks = threshold.z, color = "black", linewidth = 0.8) +
+                   breaks = threshold.z, color = "black", linewidth = 0.7) +
       # Set x,y, and fill scales
       scale_x_continuous(expand = c(0, 0), breaks = variable.x.breaks, labels = ~ paste0(.x, "%")) +
-      scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "\u00B0 C")) +
+      scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "\u00B0", "C")) +
       scale_fill_gradientn(colors = colpal, breaks = z_breaks, limits = range(z_breaks),
                            guide = guide_colorbar(barwidth = 25, show.limits=TRUE, ticks.colour = "black",
                                               barheight = 1.30*text.scale, order = 1,
@@ -182,7 +182,7 @@ climateSurface <- function(
         if(isTRUE(gcm.bivariate.dist)) {
 
           p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=0.95,
-                         type = "norm", color = "gray30", linetype = "dashed", size = 0.8)
+                         type = "norm", color = "gray30", linetype = "dashed", size = 0.5)
         }
 
       } #gcm-data close
