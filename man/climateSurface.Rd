@@ -25,7 +25,10 @@ climateSurface(
   variable.z.breaks = NULL,
   variable.x.breaks = NULL,
   variable.y.breaks = NULL,
-  text.scale = 0.6
+  text.scale = 0.6,
+  multi.panel = FALSE,
+  panel.variable = NULL,
+  panel.variable.levels = NULL
 )
 }
 \arguments{
@@ -63,11 +66,19 @@ climateSurface(
 
 \item{variable.z.bin}{placeholder}
 
+\item{variable.z.breaks}{placeholder}
+
 \item{variable.x.breaks}{placeholder}
 
 \item{variable.y.breaks}{placeholder}
 
 \item{text.scale}{placeholder}
+
+\item{multi.panel}{placeholder}
+
+\item{panel.variable}{placeholder}
+
+\item{panel.variable.levels}{placeholder}
 }
 \description{
 Climate Response Surface Generator
