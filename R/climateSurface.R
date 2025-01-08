@@ -20,6 +20,10 @@
 #' @param variable.y.breaks placeholder
 #' @param text.scale placeholder
 #' @param gcm.scenario.list placeholder
+#' @param variable.z.breaks placeholder
+#' @param multi.panel placeholder
+#' @param panel.variable placeholder
+#' @param panel.variable.levels placeholder
 #'
 #' @return
 #' @export
@@ -48,7 +52,10 @@ climateSurface <- function(
     variable.z.breaks = NULL,
     variable.x.breaks = NULL,
     variable.y.breaks = NULL,
-    text.scale = 0.6)
+    text.scale = 0.6,
+    multi.panel = FALSE,
+    panel.variable = NULL,
+    panel.variable.levels = NULL)
 
   {
 
@@ -57,17 +64,23 @@ climateSurface <- function(
 
   ## GGplot themes
   gg_theme_surface <- function(size = 18 * text.scale) {
-    theme_light() %+replace%
+    theme_bw() %+replace%
     theme(
       plot.background = element_rect(fill = "white", color = NA),
       plot.title = element_text(size = size+2, hjust = 0, margin = margin(0,0,-10,0)),
       axis.ticks = element_line(colour = "gray60"),
-      axis.title = element_text(size = size),
+      axis.title = element_text(size = size +1),
       axis.text = element_text(size = size-2),
+      strip.background =element_rect(fill="white"),
+      strip.text = element_text(size = size),
+      panel.spacing = unit(1, "lines"),
       legend.position="top",
       legend.direction="horizontal",
       legend.title.position = "top",
       legend.text = element_text(size = size-2),
+      #legend.justification = c(0, 1),
+      legend.justification.top = "left",
+      legend.justification.right = "center",
       legend.box.margin=margin(-2,-2,-2,-2),
       aspect.ratio = 1)
 
@@ -118,10 +131,15 @@ climateSurface <- function(
 
     colpal[[mid_bin]] <- "white"
 
+    if(isTRUE(multi.panel)) {
+      str.data[[panel.variable]] <- factor(str.data[[panel.variable]], levels = panel.variable.levels)
+    }
+
     # Core climate response surface
     p <- ggplot(str.data, aes(x = .data[[variable.x]], y = .data[[variable.y]])) +
       # Define theme
       gg_theme_surface() +
+      {if(isTRUE(multi.panel)) facet_wrap(~get(panel.variable), ncol = 3)} +
       # Place z dimension
       geom_contour_filled(aes(z = .data[[variable.z]],
             fill = after_stat(level_mid)), breaks = z_breaks) +
@@ -135,14 +153,22 @@ climateSurface <- function(
                            guide = guide_colorbar(barwidth = 25, show.limits=TRUE, ticks.colour = "black",
                                               barheight = 1.30*text.scale, order = 1,
                                               draw.ulim = TRUE, draw.llim = TRUE)) +
+
       # Set labs
       labs(x = variable.x.label,y = variable.y.label,
         color = "Climate\nProjections", fill = "", title = plot.title)
 
+    if(isTRUE(multi.panel)) p <- p + theme(axis.text.x = element_text(angle = 45, vjust = 0.7))
 
-      ######## GCM Dots ########################################################
+    ######## GCM Dots ########################################################
 
       if(!is.null(gcm.data)) {
+
+        gcm.data <- gcm.data %>%
+          filter(get(variable.x) > min(variable.x.breaks) &
+                 get(variable.x) < max(variable.x.breaks) &
+                 get(variable.y) > min(variable.y.breaks) &
+                 get(variable.y) < max(variable.y.breaks))
 
         gcm_scenario_color <- c("ssp126" = "#003466", "ssp245"	="#f69320",
                                 "ssp370"	="#df0000", "ssp585"	="#980002")
@@ -163,21 +189,9 @@ climateSurface <- function(
             # Set legend for GCM color
             p <- p +  guides(color = guide_legend(order = 2, position = "right", direction = "vertical"),
                              shape = guide_legend(order = 3, position = "right", direction = "vertical"))
-
-
           } else {
-
-            p <- p +  guides(color = guide_legend(order = 2, position = "right",
-                                                  direction = "vertical",
-                                                  override.aes = list(alpha = 0),
-                                                  theme = theme(legend.title = element_text(color = "transparent"),
-                                                                legend.text = element_text(color = "transparent"))),
-                             shape = guide_legend(order = 3, position = "right",
-                                                  direction = "vertical",
-                                                  override.aes = list(alpha = 0),
-                                                  theme = theme(legend.title = element_text(color = "transparent"),
-                                                                legend.text = element_text(color = "transparent"))))
-          }
+            p <- p + guides(shape = "none", color = "none")
+         }
 
         if(isTRUE(gcm.bivariate.dist)) {
 
