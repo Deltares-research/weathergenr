@@ -10,7 +10,7 @@
 #' @param variable.y.label placeholder
 #' @param plot.title placeholder
 #' @param failure.direction placeholder
-#' @param gcm.bivariate.dist placeholder
+#' @param gcm.bvnorm.levels placeholder
 #' @param gcm.transparency placeholder
 #' @param gcm.legend placeholder
 #' @param variable.z.min placeholder
@@ -43,7 +43,7 @@ climateSurface <- function(
     variable.y.label = expression(Delta~"Temperature"),
     failure.direction = 1,
     gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
-    gcm.bivariate.dist = FALSE,
+    gcm.bvnorm.levels = FALSE,
     gcm.transparency = 0.75,
     gcm.legend = TRUE,
     variable.z.min = NULL,
@@ -78,9 +78,8 @@ climateSurface <- function(
       legend.direction="horizontal",
       legend.title.position = "top",
       legend.text = element_text(size = size-2),
-      #legend.justification = c(0, 1),
       legend.justification.top = "left",
-      legend.justification.right = "center",
+      legend.justification.right = "left",
       legend.box.margin=margin(-2,-2,-2,-2),
       aspect.ratio = 1)
 
@@ -149,11 +148,19 @@ climateSurface <- function(
       # Set x,y, and fill scales
       scale_x_continuous(expand = c(0, 0), breaks = variable.x.breaks, labels = ~ paste0(.x, "%")) +
       scale_y_continuous(expand = c(0, 0), breaks = variable.y.breaks, labels = ~ paste0(.x, "\u00B0", "C")) +
-      scale_fill_gradientn(colors = colpal, breaks = z_breaks, limits = range(z_breaks),
-                           guide = guide_colorbar(barwidth = 25, show.limits=TRUE, ticks.colour = "black",
-                                              barheight = 1.30*text.scale, order = 1,
-                                              draw.ulim = TRUE, draw.llim = TRUE)) +
 
+      scale_fill_gradientn(colors = colpal, breaks = z_breaks, limits = range(z_breaks),
+                           guide = guide_coloursteps(barwidth = 25.2,
+                                                  show.limits=TRUE,
+                                                  barheight = 1.30*text.scale, order = 1,
+                                                  frame.linewidth = 0.1,
+                                                  frame.colour = "black",
+                                                  ticks.colour = "black",
+                                                  ticks.linewidth = 0.3,
+                                                  draw.ulim = TRUE,
+                                                  draw.llim = TRUE)) +
+      coord_cartesian(xlim=range(variable.x.breaks), ylim = range(variable.y.breaks),
+                      expand = FALSE) +
       # Set labs
       labs(x = variable.x.label,y = variable.y.label,
         color = "Climate\nProjections", fill = "", title = plot.title)
@@ -193,10 +200,13 @@ climateSurface <- function(
             p <- p + guides(shape = "none", color = "none")
          }
 
-        if(isTRUE(gcm.bivariate.dist)) {
+        if(!is.null(gcm.bvnorm.levels)) {
 
-          p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]), gcm.data, level=0.95,
-                         type = "norm", color = "gray30", linetype = "dashed", size = 0.5)
+          for (s in 1:length(gcm.bvnorm.levels)) {
+            p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]),
+                                 gcm.data, level=gcm.bvnorm.levels[s],
+                           type = "norm", color = "gray30", linetype = "dashed", size = 0.4)
+          }
         }
 
       } #gcm-data close
