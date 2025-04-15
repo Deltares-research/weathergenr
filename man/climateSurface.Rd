@@ -16,15 +16,13 @@ climateSurface(
   variable.y.label = expression(Delta ~ "Temperature"),
   failure.direction = 1,
   gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
-  gcm.bivariate.dist = FALSE,
+  gcm.bvnorm.levels = FALSE,
   gcm.transparency = 0.75,
   gcm.legend = TRUE,
-  variable.z.min = NULL,
-  variable.z.max = NULL,
-  variable.z.bin = 10,
   variable.z.breaks = NULL,
   variable.x.breaks = NULL,
   variable.y.breaks = NULL,
+  contour.num = 15,
   text.scale = 0.6,
   multi.panel = FALSE,
   panel.variable = NULL,
@@ -54,23 +52,19 @@ climateSurface(
 
 \item{gcm.scenario.list}{placeholder}
 
-\item{gcm.bivariate.dist}{placeholder}
+\item{gcm.bvnorm.levels}{placeholder}
 
 \item{gcm.transparency}{placeholder}
 
 \item{gcm.legend}{placeholder}
-
-\item{variable.z.min}{placeholder}
-
-\item{variable.z.max}{placeholder}
-
-\item{variable.z.bin}{placeholder}
 
 \item{variable.z.breaks}{placeholder}
 
 \item{variable.x.breaks}{placeholder}
 
 \item{variable.y.breaks}{placeholder}
+
+\item{contour.num}{placeholder}
 
 \item{text.scale}{placeholder}
 
@@ -79,6 +73,10 @@ climateSurface(
 \item{panel.variable}{placeholder}
 
 \item{panel.variable.levels}{placeholder}
+
+\item{variable.z.min}{placeholder}
+
+\item{variable.z.max}{placeholder}
 }
 \description{
 Climate Response Surface Generator
