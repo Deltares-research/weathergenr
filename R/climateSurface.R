@@ -67,7 +67,7 @@ climateSurface <- function(
     theme_bw() %+replace%
     theme(
       plot.background = element_rect(fill = "white", color = NA),
-      plot.title = element_text(size = size+2, hjust = 0, margin = margin(0,0,-10,0)),
+      plot.title = element_text(size = size+3, hjust = 0, margin = margin(0,0,-15,0)),
       axis.ticks = element_line(colour = "gray60"),
       axis.title = element_text(size = size +1),
       axis.text = element_text(size = size-2),
@@ -152,9 +152,9 @@ climateSurface <- function(
 
     # Set fill scale
     scale_fill_gradientn(colors = colpal, breaks = variable.z.breaks, limits = range(variable.z.breaks),
-                         guide = guide_coloursteps(barwidth = 25.2,
+                         guide = guide_coloursteps(barwidth = 25,
                                                 show.limits=TRUE,
-                                                barheight = 1.30*text.scale, order = 1,
+                                                barheight = 1.50*text.scale, order = 1,
                                                 frame.linewidth = 0.1,
                                                 frame.colour = "gray60",
                                                 ticks.colour = "gray60",
@@ -190,7 +190,7 @@ climateSurface <- function(
 
       p <- p + geom_point(mapping = aes(x = .data[[variable.x]], y = .data[[variable.y]],
           color = scenario, shape = horizon), data = gcm.data,
-          stroke = 1.5, size = 2*text.scale, alpha = gcm.transparency) +
+          stroke = 1.5, size = 3*text.scale, alpha = gcm.transparency) +
           scale_color_manual(values = gcm_scenario_color) +
           scale_shape_manual(values = gcm_period_shape) +
           labs(shape = "Time\nHorizon")
@@ -210,7 +210,7 @@ climateSurface <- function(
         for (s in 1:length(gcm.bvnorm.levels)) {
           p = p + stat_ellipse(aes(x = .data[[variable.x]], y = .data[[variable.y]]),
                                gcm.data, level=gcm.bvnorm.levels[s],
-                         type = "norm", color = "gray30", linetype = "dashed", size = 0.4)
+                         type = "norm", color = "gray30", linetype = "dashed", size = 0.5)
         }
       }
 
