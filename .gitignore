@@ -11,9 +11,6 @@ docs
 .httr-oauth
 
 /vignettes/*.R
-/inst/extdata/plots/
-/inst/doc
-/inst/misc
 
 /*.Rcheck/
 /*.tar.gz
