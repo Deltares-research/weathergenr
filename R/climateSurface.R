@@ -67,7 +67,7 @@ climateSurface <- function(
     theme_bw() %+replace%
     theme(
       plot.background = element_rect(fill = "white", color = NA),
-      plot.title = element_text(size = size+3, hjust = 0, margin = margin(0,0,-15,0)),
+      plot.title = element_text(size = size+2, hjust = 0, margin = margin(0,0,-15,0)),
       axis.ticks = element_line(colour = "gray60"),
       axis.title = element_text(size = size +1),
       axis.text = element_text(size = size-2),
@@ -77,7 +77,7 @@ climateSurface <- function(
       legend.position="top",
       legend.direction="horizontal",
       legend.title.position = "top",
-      legend.text = element_text(size = size-2),
+      legend.text = element_text(size = size-3),
       legend.justification.top = "left",
       legend.justification.right = "left",
       legend.box.margin=margin(-2,-2,-2,-2),
@@ -113,7 +113,7 @@ climateSurface <- function(
 
   # Z range and breaks
   if(is.null(variable.z.breaks)) {
-    variable.z.breaks <- pretty(c(min(str.data[[variable.z]]), max(str.data[[variable.z]])), contour.num)
+    variable.z.breaks <- pretty(c(min(str.data[[variable.z]]), max(str.data[[variable.z]])), min(contour.num, 13))
   }
   z_breaks <- pretty(range(variable.z.breaks), contour.num)
 
@@ -123,16 +123,19 @@ climateSurface <- function(
 
   bin_num <- length(z_breaks) - 1
   mid_bin <- findInterval(threshold.z - 1e-5, z_breaks)
-  bin_num_lw <- mid_bin
-  bin_num_up <- bin_num - mid_bin
   colpal <- vector("character", bin_num)
 
   if (failure.direction == 1) {
+    bin_num_lw <- mid_bin - 1
+    bin_num_up <- bin_num - bin_num_lw
     colpal[1:bin_num_lw] <- colorRampPalette(c(color1a, color1b))(bin_num_lw)
-    colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c(color2b, color2a))(bin_num_up)
+    colpal[(bin_num_lw+1):bin_num] <- colorRampPalette(c(color2b, color2a))(bin_num_up)
+
   } else {
+    bin_num_lw <- mid_bin
+    bin_num_up <- bin_num - bin_num_lw
     colpal[1:bin_num_lw] <- colorRampPalette(c(color2a, color2b))(bin_num_lw)
-    colpal[(mid_bin+1):length(colpal)]  <- colorRampPalette(c(color1b,color1a))(bin_num_up)
+    colpal[(bin_num_lw+1):bin_num] <- colorRampPalette(c(color1b,color1a))(bin_num_up)
   }
 
   # Create Basic response surface
