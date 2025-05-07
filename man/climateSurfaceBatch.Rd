@@ -34,9 +34,7 @@ climateSurfaceBatch(
 
 \item{metric.direction}{placeholder}
 
-\item{variable.y.breaks}{placeholder}
-
-\item{variable.x.breaks}{placeholder}
+\item{...}{}
 }
 \description{
 Batch create climate response surfaces from CST Toolbox applications
