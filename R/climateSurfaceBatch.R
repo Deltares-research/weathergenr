@@ -3,12 +3,15 @@
 #' @param str.data placeholder
 #' @param gcm.data placeholder
 #' @param save.dir placeholder
-#' @param variable.y.breaks placeholder
-#' @param variable.x.breaks placeholder
 #' @param gcm.future.period placeholder
 #' @param metrics placeholder
 #' @param metric.direction placeholder
 #' @param metric.labels placeholder
+#' @param gcm.legend
+#' @param locations
+#' @param location.labels
+#' @param relative.results
+#' @param ...
 #'
 #' @return
 #' @export
@@ -27,7 +30,7 @@ climateSurfaceBatch <- function(
   location.labels = NULL,
   metric.labels = NULL,
   metric.direction = NULL,
-  relative.results = TRUE
+  relative.results = TRUE,
   ...)
 
 {
@@ -52,9 +55,6 @@ climateSurfaceBatch <- function(
   } else {
     strdata <- str.data
   }
-
-  # Post-process input data
-  #locations <- str.data %>% select(-statistic, -tavg, -prcp) %>% colnames()
 
   # Path of output plots
   dir.create(save.dir, showWarnings = F)
