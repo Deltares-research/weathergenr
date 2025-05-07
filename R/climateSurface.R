@@ -104,7 +104,9 @@ climateSurface <- function(
 
   # Multipanel option
   if(isTRUE(multi.panel)) {
+    str.data <- str.data %>% filter(get(panel.variable) %in% panel.variable.levels)
     str.data[[panel.variable]] <- factor(str.data[[panel.variable]], levels = panel.variable.levels)
+
   }
 
   # x, y breaks
@@ -142,7 +144,7 @@ climateSurface <- function(
   p <- ggplot(str.data, aes(x = .data[[variable.x]], y = .data[[variable.y]])) +
     # Define theme
     gg_theme_surface() +
-    {if(isTRUE(multi.panel)) facet_wrap(~get(panel.variable), ncol = 3)} +
+    {if(isTRUE(multi.panel)) facet_wrap(~get(panel.variable), nrow = ceiling(length(panel.variable.levels)/2))} +
     # Place z dimension
     geom_contour_filled(aes(z = .data[[variable.z]],
           fill = after_stat(level_mid)), breaks = z_breaks) +
