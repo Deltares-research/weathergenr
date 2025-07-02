@@ -1,11 +1,9 @@
 
 ################################################################################
 
-devtools::install_github("deltares/weathergenr", ref = "Dev")
-
-library(weathergenr)
-library(dplyr)
-library(ggplot2)
+#library(weathergenr)
+#library(dplyr)
+#library(ggplot2)
 
 # Load GCM projections
 gcm_data <- readr::read_csv("./tests/testdata/annual_change_scalar_stats_summary_mean.csv")
@@ -47,5 +45,5 @@ px <- climateSurface(
   panel.variable.levels = NULL)
 
 #Save plot to file
-ggsave(filename=paste0(sdir,"crsplot1.png"), height = 6.5, width = 7.5, dpi = 500)
+#ggsave(filename=paste0(sdir,"crsplot1.png"), height = 6.5, width = 7.5, dpi = 500)
 

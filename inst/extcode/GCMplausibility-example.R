@@ -17,6 +17,6 @@ gcm_plausibility <- GCMplausiblity(str.data = str_data,
                                    location.list = c("Q_1"))
 
 # Save results to csv
-readr::write_csv(gcm_plausibility, file = "./temp/gcm_plausibility.csv")
+#readr::write_csv(gcm_plausibility, file = "./temp/gcm_plausibility.csv")
 
 
