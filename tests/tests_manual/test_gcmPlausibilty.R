@@ -2,10 +2,6 @@
 
 source("./tests/tests_manual/test_loadData.R")
 
-
-
-
-
 # Select the metrics to include in the calculation
 metrics_list <- c("mean", "median", "q70")
 
@@ -24,4 +20,4 @@ gcm_plausibility <- GCMplausiblity(str.data = str_data,
                                    metric.labs = metrics_labels,
                                    location.list = location_list)
 
-readr::write_csv(gcm_plausibility, file = paste0(sdir, "gcm_plausibility.csv"))
+#readr::write_csv(gcm_plausibility, file = paste0(sdir, "gcm_plausibility.csv"))
