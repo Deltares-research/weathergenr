@@ -8,13 +8,13 @@ format: gfm
 The latest version of the `weathergenr` package can be installed from GitHub and then loaded into your R environment:
 
 
-```{r install, eval=FALSE, echo = FALSE}
+```{r install, eval=FALSE, echo = TRUE, results = "hide", warning = FALSE}
 devtools::install_github("Deltares/weathergenr", upgrade = "never")
 ```
 
 Once installed, load the relevant packages:
 
-```{r setup, eval=TRUE, echo = FALSE}
+```{r setup, eval=TRUE, echo = TRUE, results = "hide", warning = FALSE}
 library(weathergenr)
 library(dplyr)
 library(ggplot2)
