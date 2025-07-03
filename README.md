@@ -1,36 +1,47 @@
-# My Package
+# Weathergenr
 
 
-<!-- README.md is generated from README.qmd. Please edit that file -->
+# Overview
 
-## Overview
+*weathergenr* is an R package for generating synthetic weather series
+using a multivariate, gridded, stochastic weather generator. It builds
+on the methodology introduced by [Steinscheineder et al
+(2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528),
+and provides an efficient, user-friendly implementation tailored for
+climate and hydrological studies.
 
-Weathergenr is a simplified, scalable implementation of the
-semi-parametric stochastic weather generator developed by
-Steinscheneider and Brown (2013).
+Key features include:
 
-## Installation
+:open_file_folder: Support for gridded NetCDF datasets  
+:gear: Script automation and enhanced usability  
+:zap: Significant performance gains via vectorized and parallelized code
 
-If you haven’t already done, first install
-[R](https://cran.r-project.org/bin/windows/base/) and an R IDE,
-preferably [Rstudio](https://posit.co/download/rstudio-desktop/). Next,
-install the development version of **weathergenr** from github, using
-*devtools*:
+# Installation
+
+Before installing, make sure you have:
+
+- [R](https://cran.r-project.org/bin/) installed  
+- An R IDE such as [RStudio](https://posit.co/download/rstudio-desktop/)
+
+To install the development version of `weathergenr` from GitHub:
 
 ``` r
 #install.packages("devtools")
 #devtools::install_github("Deltares/weathergenr")
 ```
 
-## Quick start
+# Quick start
 
-Below, you will find several work in progress tutorials:
+Work-in-progress tutorials and examples are available below:
 
-<br /> [1. Getting
-started](http://htmlpreview.github.io/?https://github.com/Deltares-research/weathergenr/blob/Dev/Vignettes/getting_started.html)
+<br /> [:blue_book: Getting Started
+Guide](http://htmlpreview.github.io/?https://github.com/Deltares-research/weathergenr/blob/Dev/Vignettes/getting_started.html)
 <br />
 
-## Licence
+Stay tuned - more vignettes and usage examples will be added as the
+package evolves.
+
+# Licence
 
 Copyright (c) 2019, Deltares
 

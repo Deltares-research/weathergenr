@@ -1,6 +1,10 @@
 ---
 title: "Getting_started"
-format: html
+html:
+  toc: true
+  toc-location: left
+  toc-depth: 3
+  number-sections: true
 vignette: >
   %\VignetteIndexEntry{Introduction to myPackage}
   %\VignetteEngine{quarto::quarto}
@@ -47,7 +51,7 @@ library(ggplot2)
 
 For this exercise, we will use the extracted ERA5 metereological dataset from the Ntoum basin, Gabon.
 
-![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){#fig-basin}
+![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){#fig-basin}{width=60%}
 
 # Reading in gridded multivariate weather data
 
