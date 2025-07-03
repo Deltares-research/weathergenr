@@ -27,6 +27,8 @@ Imports:
     utils
 Suggests:
     devtools,
+    rmarkdown,
+    quarto,
     knitr,
     magrittr,
     stringr,
@@ -36,6 +38,6 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.3.2
-VignetteBuilder: knittr
 URL: https://deltares.github.io/weathergenr/
 Config/testthat/edition: 3
+VignetteBuilder: quarto
