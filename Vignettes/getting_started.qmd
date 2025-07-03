@@ -1,6 +1,12 @@
 ---
-title: "Getting_started"
-format: gfm
+title: "Getting Started"
+format:
+  html: default
+  gfm: default
+vignette: >
+  %\VignetteIndexEntry{Getting Started}
+  %\VignetteEngine{quarto::quarto}
+  %\VignetteEncoding{UTF-8}
 ---
 
 # Installation and setup
