@@ -1,116 +1,79 @@
 ---
 title: "Getting_started"
-html:
-  toc: true
-  toc-location: left
-  toc-depth: 3
-  number-sections: true
-vignette: >
-  %\VignetteIndexEntry{Introduction to myPackage}
-  %\VignetteEngine{quarto::quarto}
-  %\VignetteEncoding{UTF-8}
-execute:
-  echo: true
-  message: false
-  warning: false
-  cache: true
-  fig-width: 6
-  fig-height: 4
+format: gfm
 ---
-
-# Package summary
-
-The package *weathergenr* consists of a series of R scripts and function wrappers for synthetic weather generation based on the work of [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528).
-
-This implementation provides:
-
--   Ability to work with gridded datasets via netcdf files
--   Script automatization and usability improvements\
--   Significant speed improvements through code vectorization and parallization
-
-This vignette introduces you to the basic use of the multivariable, multigrid stochastic daily weather series generation process using *weathergenr*. You will learn\
-
--   Reading in gridded, multivariate weather data for a specific geographic area from netcdf files
--   Generating stochastic weather data based on the inputted gridded weather data
--   Perturbing statistics of selected variables such as daily precipitaton or temperature to develop climate change scenarios.
 
 # Installation and setup
 
-The latest version of the weathergenr package can be installed from github and then loaded to the environment:
+The latest version of the `weathergenr` package can be installed from GitHub and then loaded into your R environment:
+
+
+```{r install, eval=FALSE, echo = FALSE}
+devtools::install_github("Deltares/weathergenr", upgrade = "never")
+```
+
+Once installed, load the relevant packages:
 
 ```{r setup, eval=TRUE, echo = FALSE}
-#devtools::install_github("Deltares/weathergenr", upgrade = "never")
 library(weathergenr)
-
-# Other R packages that needs to be installed:
 library(dplyr)
 library(ggplot2)
 ```
 
-## Sample data
+# :open_file_folder: Reading Gridded Multivariate Weather Data
 
-For this exercise, we will use the extracted ERA5 metereological dataset from the Ntoum basin, Gabon.
+For this exercise, we'll use the ERA5 dataset (ECMWF Reanalysis v5) included with the package, clipped over the Ntoum Basin in Gabon.
 
-![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){#fig-basin}{width=60%}
+![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){width=60%}
 
-# Reading in gridded multivariate weather data
+Use readNetcdf() to extract meteorological data from NetCDF files. It wraps several ncdf4 functions and returns a structured object with:
 
-First, we will upload the gridded multivariate data for the basin from a netcdf file. The *readNetcdf()* is a wrapper for several ncdf4 functions to extract metereological data from netcdf files with associated spatial coordinates, dates, dimensions (time, x, y) and variable attributes.
+- spatial coordinates
+- dates
+- grid info
+- meteorological variables
 
 ```{r ncfile}
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
 ncdata <- readNetcdf(ncfile)
 ```
 
-We can check the structure of this object:
-
+Inspect the structure:
 ```{r ncdata1}
 names(ncdata)
 ```
 
-Metereological data is stored as a list object via the *data* element. Each list represents a different grid cell in "tidy" format, i.e., with observations on rows and metereological variables on columns:
-
+Each grid cell's data is stored as a tidy data frame within the data list:
 ```{r ncdata2}
-# Display climate data for the first gridcell
 ncdata$data[[1]]
 ```
 
-Information on the grids can be accessed via the *grid* element. It is also provided as a data frame with columns grid index followed by x and y dimension indices and x and y coordinate values:
-
+Grid metadata can be accessed through the grid element:
 ```{r ncdata3}
-# Display grid information
 ncdata$grid
 ```
 
-Finally, the date series associated with the data can be accessed with the *date* element:
-
+Associated dates are accessed via the date element:
 ```{r ncdata4}
-# Display start and ending values date vector
 head(ncdata$date)
 ```
 
-# Generate stochastic weather realizations
+# :gear: Generate Stochastic Weather Realizations
 
-In this section, we introduce the procedure to obtain new weather sequences from the historical weather record via the *generateWeatherSeries()* function. This function serves as a wrapper arround a number of statistical procedures including a wavelet autoregressive model (WARM) coupled with a Markov chain knn resampling scheme based on Steinschneider and Brown (2013).
+We use generateWeatherSeries() to simulate new weather sequences from historical record using a coupled a Wavelet Autoregressive Model (WARM) with a a Markov Chain and KNN resampling scheme (See: [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528)
 
-First, lets specify an output path for the results and variables to include from the dataset:
+Define output path, variables, and simulation parameters.
+**realization_num** parameters sets how many stochastic replicates will be generated. 
 
 ```{r set_params}
-
-# Set path to store weather generator results
 output_path <- tempdir()
-
-# Set the variables to include in the weather generator
 variables <- c("precip", "temp", "temp_min", "temp_max")
 variable_labels <- c("Precip.", "Temp. (avg)", "Temp. (min)", "Temp. (max)")
-  
-# Set the number of stochastic (random) realizations to be generated from the historical weather record
 realization_num <- 3
 ```
 
-GenerateWeatherSeries() function includes a large set of essential and non-essential parameters to control the weather generation process. Essential parameters include: *weather.data*, *weather.grid*, and *weather.date* and *variable.names* to specify the attributes of the input metereological data, *realization.num* to set the desired number of new weather realizations, and the *output.path*:
-
-```{r run_wegen, results='hide', eval=TRUE, cache=TRUE}
+Call the generator:
+```{r run_wegen, results='hide', eval=TRUE, cache=TRUE, warning = FALSE}
 stochastic_weather <- generateWeatherSeries(
   weather.data = ncdata$data,
   weather.grid = ncdata$grid,
@@ -131,27 +94,22 @@ stochastic_weather <- generateWeatherSeries(
   mc.extreme.quantile = 0.8,
   output.path = output_path,
   seed = 123)
-
 ```
 
-Output from weather generator is a list of resampled dates
+Check resampled dates by the weather generator:
 
-```{r stochastic3}
-# Resampled dates
+```{r stochastic3, cache=TRUE}
 stochastic_weather$resampled
-
-# Date vector
-head(stochastic_weather$dates)
-tail(stochastic_weather$dates)
 ```
 
-# Evaluate Synthetic series against observed data
-Lets compare how the simulated stochastic series compare to the historical
+# :mag: Evaluate Synthetic Series
 
-```{r eval_outputs, message=FALSE}
+Compare stochastic simulations against historical data using **evaluateWegen** function:
 
-# Find date order from each stochastic simulation
-day_order <- sapply(1:realization_num, function(n) match(stochastic_weather$resampled[[n]], ncdata$date))
+```{r eval_outputs, message=FALSE, cache=TRUE, results = "hide", warning = FALSE}
+
+day_order <- sapply(1:realization_num, 
+                    function(n) match(stochastic_weather$resampled[[n]], ncdata$date))
 
 rlz_sample <- list()
 for (n in 1:realization_num) {
@@ -173,10 +131,21 @@ out <- evaluateWegen(daily.sim = rlz_sample,
               realization.num = realization_num,
               wet.quantile = 0.3,
               extreme.quantile =0.8)
+```
 
-# Daily means
+## Comparison plots
+
+Daily statistics of all weather variables 
+```{r eval_plots1, message=FALSE, cache=TRUE, results = "hide", warning = FALSE}
 out$daily_means
-
-# Daily Standard deviations
 out$daily_sd
+out$annual_pattern_precip
+out$annual_pattern_temp
+out$annual_pattern_precip
+out$annual_pattern_temp
+out$annual_cycle
+out$intergrid_cor
+out$crossgrid_cor
+out$spell_lengths
+out$spell_duration
 ```
