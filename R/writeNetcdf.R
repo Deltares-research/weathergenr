@@ -14,7 +14,6 @@
 #' @param nc.spatial.ref placeholder
 #' @param signif.digits PLACEHOLDER
 #'
-devtools::build_vignettes()#' @return
 #' @export
 #'
 writeNetcdf <- function(
