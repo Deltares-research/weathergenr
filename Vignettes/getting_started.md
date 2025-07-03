@@ -6,7 +6,16 @@
 The latest version of the `weathergenr` package can be installed from
 GitHub and then loaded into your R environment:
 
+``` r
+devtools::install_github("Deltares/weathergenr", upgrade = "never")
+```
+
 Once installed, load the relevant packages:
+
+``` r
+library(weathergenr)
+library(dplyr)
+```
 
 
     Attaching package: 'dplyr'
@@ -18,6 +27,10 @@ Once installed, load the relevant packages:
     The following objects are masked from 'package:base':
 
         intersect, setdiff, setequal, union
+
+``` r
+library(ggplot2)
+```
 
 # :open_file_folder: Reading Gridded Multivariate Weather Data
 
