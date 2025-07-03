@@ -17,3 +17,5 @@
 ^vignettes$
 ^extdata/plots$
 ^docs$
+^README_files$
+^.*_cache$
