@@ -139,8 +139,6 @@ out <- evaluateWegen(daily.sim = rlz_sample,
               extreme.quantile =0.8)
 ```
 
-## Comparison plots
-
 Daily statistics of all weather variables 
 ```{r eval_plots1, message=FALSE, cache=TRUE, results = "hide", warning = FALSE}
 out$daily_means

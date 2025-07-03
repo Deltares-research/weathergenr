@@ -1,4 +1,4 @@
-# Getting_started
+# Getting Started
 
 
 # Installation and setup
@@ -207,8 +207,6 @@ out <- evaluateWegen(daily.sim = rlz_sample,
               wet.quantile = 0.3,
               extreme.quantile =0.8)
 ```
-
-## Comparison plots
 
 Daily statistics of all weather variables
 
