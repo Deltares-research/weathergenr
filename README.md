@@ -1,9 +1,11 @@
+# My Package
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+<!-- README.md is generated from README.qmd. Please edit that file -->
 
 ## Overview
 
-Gridwegen is a simplified, scalable implementation of the
+Weathergenr is a simplified, scalable implementation of the
 semi-parametric stochastic weather generator developed by
 Steinscheneider and Brown (2013).
 
@@ -16,18 +18,17 @@ install the development version of **weathergenr** from github, using
 *devtools*:
 
 ``` r
-install.packages("devtools")
-devtools::install_github("Deltares/weathergenr")
+#install.packages("devtools")
+#devtools::install_github("Deltares/weathergenr")
 ```
 
 ## Quick start
 
 Below, you will find several work in progress tutorials:
 
-<br /> [Getting
-started](http://htmlpreview.github.io/?https://github.com/Deltares/weathergenr/blob/dev/vignettes/Getting_started.html)
-<br /> [Simple climate stress
-test](http://htmlpreview.github.io/?https://github.com/Deltares/weathergenr/blob/dev/vignettes/Climate_stress_test.html)
+<br /> [1. Getting
+started](http://htmlpreview.github.io/?https://github.com/Deltares-research/weathergenr/blob/Dev/Vignettes/getting_started.html)
+<br />
 
 ## Licence
 
