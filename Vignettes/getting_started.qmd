@@ -144,7 +144,7 @@ out <- evaluateWegen(daily.sim = rlz_sample,
 ```
 
 Daily statistics of all weather variables 
-```{r eval_plots1}
+```{r eval_plots1, eval=TRUE, echo=TRUE}
 out$daily_means
 out$daily_sd
 out$annual_pattern_precip
