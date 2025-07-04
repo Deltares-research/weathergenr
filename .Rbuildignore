@@ -18,3 +18,4 @@
 ^docs$
 ^README_files$
 ^.*_cache$
+^vignettes/.*\.html$

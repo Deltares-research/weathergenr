@@ -1,4 +1,4 @@
-# Getting Started
+# Getting started
 
 
 # Installation and setup
@@ -15,20 +15,6 @@ Once installed, load the relevant packages:
 ``` r
 library(weathergenr)
 library(dplyr)
-```
-
-
-    Attaching package: 'dplyr'
-
-    The following objects are masked from 'package:stats':
-
-        filter, lag
-
-    The following objects are masked from 'package:base':
-
-        intersect, setdiff, setequal, union
-
-``` r
 library(ggplot2)
 ```
 
@@ -151,10 +137,6 @@ stochastic_weather <- generateWeatherSeries(
   output.path = output_path,
   seed = 123)
 ```
-
-    Registered S3 method overwritten by 'quantmod':
-      method            from
-      as.zoo.data.frame zoo 
 
 Check resampled dates by the weather generator:
 
