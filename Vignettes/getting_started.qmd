@@ -1,12 +1,17 @@
 ---
-title: "Getting Started"
-format:
+title: "Getting started"
+format: 
   html: default
   gfm: default
+execute:
+  echo: true
+  warning: false
+  cache: true 
 vignette: >
-  %\VignetteIndexEntry{Getting Started}
+  %\VignetteIndexEntry{Getting started}
   %\VignetteEngine{quarto::quarto}
   %\VignetteEncoding{UTF-8}
+  %\VignetteDepends{weathergenr, dplyr, ggplot2}
 ---
 
 # Installation and setup
@@ -79,7 +84,7 @@ realization_num <- 3
 ```
 
 Call the generator:
-```{r run_wegen, results='hide', eval=TRUE, cache=TRUE, warning = FALSE}
+```{r run_wegen, results='hide'}
 stochastic_weather <- generateWeatherSeries(
   weather.data = ncdata$data,
   weather.grid = ncdata$grid,
@@ -104,7 +109,7 @@ stochastic_weather <- generateWeatherSeries(
 
 Check resampled dates by the weather generator:
 
-```{r stochastic3, cache=TRUE}
+```{r stochastic3}
 stochastic_weather$resampled
 ```
 
@@ -112,7 +117,7 @@ stochastic_weather$resampled
 
 Compare stochastic simulations against historical data using **evaluateWegen** function:
 
-```{r eval_outputs, message=FALSE, cache=TRUE, results = "hide", warning = FALSE}
+```{r eval_outputs, results = "hide"}
 
 day_order <- sapply(1:realization_num, 
                     function(n) match(stochastic_weather$resampled[[n]], ncdata$date))
@@ -140,7 +145,7 @@ out <- evaluateWegen(daily.sim = rlz_sample,
 ```
 
 Daily statistics of all weather variables 
-```{r eval_plots1, message=FALSE, cache=TRUE, results = "hide", warning = FALSE}
+```{r eval_plots1}
 out$daily_means
 out$daily_sd
 out$annual_pattern_precip
