@@ -117,11 +117,6 @@ waveletARSubset <- function(
     sub_max  <- which((stats_sim$max > 1 - bounds$max) & (stats_sim$max < 1 + bounds$max))
   } else {sub_max  <- 1:ncol(series.sim)}
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')),
-              '- WARM error bounds: mean=', bounds$mean, ",st.dev.=", bounds$sd, ",minimum=", bounds$min,
-              ", maximum=", bounds$max, ",power.signif=",  bounds$signif.threshold, ",power.nonsignif=",
-              bounds$nonsignif.threshold))
-
   #Select intersection of filtered
   sub_clim <- Reduce(base::intersect,
         list(sub_mean, sub_sd, sub_power, sub_min, sub_max))
