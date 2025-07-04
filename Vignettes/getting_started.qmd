@@ -4,6 +4,7 @@ format: gfm
 execute:
   echo: true
   warning: false
+  eval: true
   cache: true 
 vignette: >
   %\VignetteIndexEntry{Getting started}
@@ -23,7 +24,7 @@ devtools::install_github("Deltares/weathergenr", upgrade = "never")
 
 Once installed, load the relevant packages:
 
-```{r setup, eval=TRUE, echo = TRUE, results = "hide", warning = FALSE}
+```{r setup, echo = TRUE, results = "hide", warning = FALSE}
 library(weathergenr)
 library(dplyr)
 library(ggplot2)

@@ -88,10 +88,10 @@ generateWeatherSeries <- function(
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Weathergenr started in parallel mode:", num.cores, "cores"))
+    message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Weathergenr started in parallel mode:", num.cores, "cores"))
 
   } else {
-    message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Weathergenr started in sequential mode"))
+    message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Weathergenr started in sequential mode"))
   }
 
 
@@ -101,11 +101,10 @@ generateWeatherSeries <- function(
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Randomization seed:", seed))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Climate variables included:", paste(variable.names, collapse = ', ')))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Historical period:", as.character(weather.date[1]), "to", as.character(weather.date[length(weather.date)])))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Number of grids:", ngrids))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Randomization seed:", seed))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Climate variables included:", paste(variable.names, collapse = ', ')))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Historical period:", as.character(weather.date[1]), "to", as.character(weather.date[length(weather.date)])))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Number of grids:", ngrids))
 
   # Historical dates
   year_seq <- as.numeric(format(weather.date,"%Y"))
@@ -159,8 +158,8 @@ generateWeatherSeries <- function(
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   # Simulate annual series of wavelet variable
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- WARM significance level:", warm.signif.level))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- WARM: simulating", format(warm.sample.num, big.mark=","), "series"))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- WARM significance level:", warm.signif.level))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- WARM: simulating", format(warm.sample.num, big.mark=","), "series"))
 
   #####  Wavelet analysis on observed annual series
   warm_variable <- climate_a_aavg %>% pull({{warm.variable}})
@@ -177,8 +176,9 @@ generateWeatherSeries <- function(
           signif.periods = warm_power$signif_periods,
           signif.level = warm.signif.level, plot = TRUE, output.path = plots_path)
 
-      message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Number of significant low-frequency signals:", length(wavelet_comps)-1))
-      message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Periodicity (years):", paste(warm_power$signif_periods, collapse=",")))
+      message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Number of significant low-frequency signals:", length(wavelet_comps)-1))
+      message(cat("\n", format(Sys.time(),'%H:%M:%S'), "- Periodicity (years):", paste(warm_power$signif_periods, collapse=",")))
+
 
       sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
           sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
@@ -186,7 +186,7 @@ generateWeatherSeries <- function(
     #if there is no low frequency signal
     } else {
 
-      message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- No low-frequency signals detected"))
+      message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- No low-frequency signals detected"))
 
       # Remove the mean from the component
       MEAN <- mean(warm_variable)
@@ -225,12 +225,20 @@ generateWeatherSeries <- function(
        seed = seed,
        save.series = FALSE)
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$subsetted), "stochastic traces match criteria"))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$sampled), "traces sampled"))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- WARM error bounds:",
+               ", mean=", warm.subset.criteria$mean,
+               ", std=", warm.subset.criteria$sd,
+               ", min=", warm.subset.criteria$min,
+               ", max=", warm.subset.criteria$max,
+               ", powersig=",  warm.subset.criteria$signif.threshold,
+               ", powernonsig=", warm.subset.criteria$nonsignif.threshold))
+
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$subsetted), "stochastic traces match criteria"))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$sampled), "traces sampled"))
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- KNN & Markov-Chain sampler started"))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- KNN & Markov-Chain sampler started"))
 
   resampled_dates <- as_tibble(matrix(0, nrow=nrow(sim_dates_d),
     ncol=realization.num), .name_repair=~paste0("rlz_", 1:realization.num))
@@ -281,8 +289,8 @@ generateWeatherSeries <- function(
 
   if(save.rdata) save.image(file = "./tests/testdata/weathergen_out_image.RData")
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Results saved to: `", output.path,"`"))
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Completed. Elapsed time:", Sys.time() - start_time, "secs"))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Results saved to: `", output.path,"`"))
+  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Completed. Elapsed time:", Sys.time() - start_time, "secs"))
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 
