@@ -2,36 +2,54 @@
 % Please edit documentation in R/knnAnnual.R
 \name{knnAnnual}
 \alias{knnAnnual}
-\title{This KNN function generates 100 years.....}
+\title{KNN-based Annual Weather Selection}
 \usage{
 knnAnnual(
-  sim_annual_prcp = NULL,
-  ANNUAL_PRCP = NULL,
-  WATER_YEAR_A = NULL,
-  kk = NULL,
-  k1 = NULL,
-  y = NULL,
+  sim_annual_prcp,
+  ANNUAL_PRCP,
+  WATER_YEAR_A,
+  kk,
+  k1,
+  y,
   y_sample_size = 50,
   seed = NULL
 )
 }
 \arguments{
-\item{sim_annual_prcp}{placeholder}
+\item{sim_annual_prcp}{Numeric vector of simulated annual precipitation}
 
-\item{ANNUAL_PRCP}{placeholder}
+\item{ANNUAL_PRCP}{Numeric vector of observed annual precipitation}
 
-\item{WATER_YEAR_A}{placeholder}
+\item{WATER_YEAR_A}{Vector of water year indices or identifiers}
 
-\item{kk}{placeholder}
+\item{kk}{Integer number of nearest neighbors to consider}
 
-\item{k1}{placeholder}
+\item{k1}{Integer, seed modifier (often a simulation run identifier)}
 
-\item{y}{placeholder}
+\item{y}{Integer, year index or current iteration}
 
-\item{y_sample_size}{placeholder}
+\item{y_sample_size}{Integer, number of years to sample}
 
-\item{seed}{random seed value}
+\item{seed}{Optional integer random seed for reproducibility}
+}
+\value{
+Example: Select 5 nearest years for a simulated year
+set.seed(42)
+observed_prcp <- c(800, 850, 900, 780, 870, 820, 830, 890, 810, 860)
+years <- 2001:2010
+sim_year_prcp <- 845
+sampled_years <- knnAnnual(
+  sim_annual_prcp = sim_year_prcp,
+  ANNUAL_PRCP = observed_prcp,
+  WATER_YEAR_A = years,
+  kk = 4,
+  k1 = 2,
+  y = 1,
+  y_sample_size = 6,
+  seed = 101
+)
+sampled_years  # Returns a vector of sampled years, e.g. c(850, 820, ...)
 }
 \description{
-This KNN function generates 100 years.....
+KNN-based Annual Weather Selection
 }

@@ -12,14 +12,31 @@ waveletARIMA(
 )
 }
 \arguments{
-\item{wavelet.components}{A list object, with different components corresponding to low-frequency signals and the noise}
+\item{wavelet.components}{A list or matrix where each column (or list element) is a numeric vector corresponding to a wavelet component (low-frequency signal or noise).}
 
-\item{sim.year.num}{A numeric value defining the desired length of simulated annual time-series}
+\item{sim.year.num}{Integer. Desired length (number of years or timesteps) of each simulated series.}
 
-\item{sim.num}{A numeric value defining the number of synthetic series to be produced.}
+\item{sim.num}{Integer. Number of synthetic series to produce. Default: 1000.}
 
-\item{seed}{random seed value}
+\item{seed}{Optional. Integer random seed for reproducibility.}
+}
+\value{
+A matrix of dimension \code{sim.year.num} x \code{sim.num}, where each column is a synthetic time series realization.
 }
 \description{
-Wavelet Autoregressive Modeling (WARM)
+Simulates synthetic time series by modeling each wavelet component (signal or noise)
+with an ARIMA model, and then summing the simulated components.
+}
+\examples{
+\dontrun{
+# Simulate 10 synthetic annual series (length 30) from two "wavelet" components
+set.seed(42)
+wavelet.components <- list(
+  signal = sin(2 * pi * 1:30 / 8) + rnorm(30, 0, 0.2), # Low-freq
+  noise  = rnorm(30, 0, 0.5)
+)
+result <- waveletARIMA(wavelet.components, sim.year.num = 30, sim.num = 10, seed = 123)
+dim(result)  # Should be 30 x 10
+matplot(result, type = "l", lty = 1, main = "Synthetic Wavelet-ARIMA Realizations")
+}
 }

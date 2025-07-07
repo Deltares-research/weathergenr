@@ -1,22 +1,30 @@
-#' Perturb weather realizations to reflect climate change
+#' Impose Climate Change Signals on Gridded Weather Data
 #'
-#' @param climate.data placeholder
-#' @param climate.grid placeholder
-#' @param sim.dates placeholder
-#' @param change.factor.precip.mean placeholder
-#' @param change.factor.precip.variance placeholder
-#' @param change.factor.temp.mean placeholder
-#' @param transient.temp.change logical value indicating whether temperature changes are applied gradually (transient) or stepwise
-#' @param transient.precip.change logical value indicating whether precipitation changes are applied gradually (transient) or stepwise
-#' @param calculate.pet shoud pet be calculated? (logical)
-#' @param compute.parallel should the function run in parallel mode (logical)
-#' @param num.cores number of cores reserved for parallel computing. Default value is maximum cores minus one (omit if compute.parallel is FALSE)
-#' @param fit.method placeholder
+#' Applies climate change perturbations to gridded daily weather data. The function modifies precipitation and temperature in each grid cell by applying mean and variance change factors (for precipitation) and additive changes (for temperature), with the option for stepwise or gradual (transient) changes over the simulation period. Potential evapotranspiration (PET) can also be recalculated using the perturbed temperature series.
+#'
+#' @param climate.data List of data frames. Each contains daily weather for one grid cell with columns `precip`, `temp`, `temp_min`, `temp_max`, and optionally `pet`.
+#' @param climate.grid Data frame. Metadata for each grid cell; must include a `y` column for latitude.
+#' @param sim.dates Vector of `Date` objects. Dates for each row of the grid cell data frames.
+#' @param change.factor.precip.mean Numeric vector (length 12). Monthly multiplicative mean factors for precipitation
+#' @param change.factor.precip.variance Numeric vector (length 12). Monthly multiplicative variance factors for precipitation.
+#' @param change.factor.temp.mean Numeric vector (length 12). Monthly additive temperature changes in degC
+#' @param transient.temp.change Logical. If TRUE, temperature changes are applied gradually by year; if FALSE, they are applied as a step. Default is TRUE.
+#' @param transient.precip.change Logical. If TRUE, precipitation changes are applied gradually by year; if FALSE, they are applied as a step. Default is TRUE.
+#' @param calculate.pet Logical. If TRUE, recalculates PET using perturbed temperature. Default is TRUE.
+#' @param compute.parallel Logical. If TRUE, function can be run in parallel (template code, not active by default). Default is FALSE.
+#' @param num.cores Integer. Number of cores for parallel computation if used. Default is all minus one.
+#' @param fit.method Character. Method for quantile mapping (see `quantileMapping`). Default is "mme".
+#'
+#' @details
+#' This function is designed for climate change impact assessments, allowing flexible application of mean and variance shifts to gridded weather data. PET is recalculated using the Hargreaves method if enabled. Infinite values in the output are replaced by zero.
 #'
 #' @return
-#' @export
+#' A list of data frames (one per grid cell) containing the weather variables after applying climate change perturbations.
+#'
 #' @import dplyr
 #' @import tidyr
+#' @export
+#'
 imposeClimateChanges <- function(
   climate.data = NULL,
   climate.grid = NULL,

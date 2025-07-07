@@ -2,33 +2,48 @@
 % Please edit documentation in R/waveletAnalysis.R
 \name{waveletAnalysis}
 \alias{waveletAnalysis}
-\title{Wavelet Analysis Function}
+\title{Wavelet Spectral Analysis with Significance Testing}
 \usage{
 waveletAnalysis(
-  variable = NULL,
-  variable.unit = "mm",
+  variable,
   signif.level = 0.9,
   noise.type = "white",
+  variable.unit = "mm",
   plot = FALSE,
   output.path = NULL
 )
 }
 \arguments{
-\item{variable}{A numeric vector of time-series of variables, for example, time-series of annual precipitation.}
+\item{variable}{Numeric vector, the time series (e.g. annual precipitation).}
 
-\item{variable.unit}{A character string to define the unit of the variable.}
+\item{signif.level}{Numeric between 0 and 1. Significance level for test (default = 0.90).}
 
-\item{signif.level}{A numeric value to set the siginificance level of the wavelet analysis (Default= 0.90).}
+\item{noise.type}{"white" (default) or "red". Background noise for spectrum test.}
 
-\item{noise.type}{A character string defining the type of background noise.type. Currently either "white" (default) or "red".}
+\item{variable.unit}{Character; unit for variable (for plotting).}
 
-\item{plot}{Draw plot}
+\item{plot}{Logical, whether to save a plot (default FALSE).}
 
-\item{output.path}{Output path}
+\item{output.path}{Optional string. Directory where plot will be saved (if plot = TRUE).}
+}
+\value{
+A list with:
+  \item{GWS}{Global Wavelet Spectrum}
+  \item{GWS_signif}{Significance threshold for GWS}
+  \item{GWS_period}{Period axis for GWS}
+  \item{signif_periods}{Indices of significant periods}
 }
 \description{
-\code{waveletAnalysis} returns the wavelet analysis results.
+Performs continuous wavelet transform analysis on a time series,
+computes the global wavelet spectrum (GWS) and significance levels,
+and (optionally) produces a plot of power spectrum.
 }
-\details{
-To be completed later...
+\examples{
+set.seed(123)
+# Simulate AR(1) process with periodicity at 8 years
+years <- 1:64
+signal <- sin(2 * pi * years / 8) + arima.sim(n=64, model=list(ar=0.7))
+res <- waveletAnalysis(signal, plot=FALSE)
+print(res$GWS_period[res$signif_periods])
+
 }

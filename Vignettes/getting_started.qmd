@@ -1,6 +1,6 @@
 ---
 title: "Getting started"
-format: gfm
+format: html
 execute:
   echo: true
   warning: false
@@ -16,7 +16,6 @@ vignette: >
 # Installation and setup
 
 The latest version of the `weathergenr` package can be installed from GitHub and then loaded into your R environment:
-
 
 ```{r install, eval=FALSE, echo = TRUE, results = "hide", warning = FALSE}
 devtools::install_github("Deltares/weathergenr", upgrade = "never")
@@ -34,14 +33,14 @@ library(ggplot2)
 
 For this exercise, we'll use the ERA5 dataset (ECMWF Reanalysis v5) included with the package, clipped over the Ntoum Basin in Gabon.
 
-![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){width=60%}
+![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){width="60%"}
 
 Use readNetcdf() to extract meteorological data from NetCDF files. It wraps several ncdf4 functions and returns a structured object with:
 
-- spatial coordinates
-- dates
-- grid info
-- meteorological variables
+-   spatial coordinates
+-   dates
+-   grid info
+-   meteorological variables
 
 ```{r ncfile}
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
@@ -49,21 +48,25 @@ ncdata <- readNetcdf(ncfile)
 ```
 
 Inspect the structure:
+
 ```{r ncdata1}
 names(ncdata)
 ```
 
 Each grid cell's data is stored as a tidy data frame within the data list:
+
 ```{r ncdata2}
 ncdata$data[[1]]
 ```
 
 Grid metadata can be accessed through the grid element:
+
 ```{r ncdata3}
 ncdata$grid
 ```
 
 Associated dates are accessed via the date element:
+
 ```{r ncdata4}
 head(ncdata$date)
 ```
@@ -72,8 +75,7 @@ head(ncdata$date)
 
 We use generateWeatherSeries() to simulate new weather sequences from historical record using a coupled a Wavelet Autoregressive Model (WARM) with a a Markov Chain and KNN resampling scheme (See: [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528)
 
-Define output path, variables, and simulation parameters.
-**realization_num** parameters sets how many stochastic replicates will be generated. 
+Define output path, variables, and simulation parameters. **realization_num** parameters sets how many stochastic replicates will be generated.
 
 ```{r set_params}
 output_path <- tempdir()
@@ -83,7 +85,9 @@ realization_num <- 3
 ```
 
 Call the generator:
+
 ```{r run_wegen, results='hide'}
+set.seed(123)
 stochastic_weather <- generateWeatherSeries(
   weather.data = ncdata$data,
   weather.grid = ncdata$grid,
@@ -102,8 +106,12 @@ stochastic_weather <- generateWeatherSeries(
   knn.sample.num = 100,
   mc.wet.quantile= 0.3,
   mc.extreme.quantile = 0.8,
-  output.path = output_path,
-  seed = 123)
+  output.path = "C:/Users/taner/Workspace/TEMPOUT/1/",
+  seed = 123,
+  compute.parallel = FALSE,
+  num.cores = NULL,
+  save.rdata = FALSE
+)
 ```
 
 Check resampled dates by the weather generator:
@@ -143,7 +151,8 @@ out <- evaluateWegen(daily.sim = rlz_sample,
               extreme.quantile =0.8)
 ```
 
-Daily statistics of all weather variables 
+Daily statistics of all weather variables
+
 ```{r eval_plots1, eval=TRUE, echo=TRUE}
 out$daily_means
 out$daily_sd

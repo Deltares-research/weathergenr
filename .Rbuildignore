@@ -5,7 +5,7 @@
 ^Meta$
 ^pkgdown$
 ^docs$
-^pkgdown$
+
 ^\.github$
 ^README.Rmd
 ^inst/docs
@@ -16,6 +16,14 @@
 ^\.httr-oauth$
 ^extdata/plots$
 ^docs$
-^README_files$
+
 ^.*_cache$
+^\.build_quarto_vignettes\.R$
+
+^vignettes/.*_files$
 ^vignettes/.*\.html$
+
+^README_files$
+^README\.qmd$
+^_pkgdown\.yml$
+^pkgdown$

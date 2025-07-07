@@ -2,7 +2,7 @@
 % Please edit documentation in R/waveletARSubset.R
 \name{waveletARSubset}
 \alias{waveletARSubset}
-\title{Resample from WARM outputs}
+\title{Subset and Sample Synthetic Time Series Based on Climate and Wavelet Criteria}
 \usage{
 waveletARSubset(
   series.obs = NULL,
@@ -17,37 +17,44 @@ waveletARSubset(
   save.series = TRUE,
   output.path = NULL,
   padding = TRUE,
-  bounds = list(mean = 0.1, sd = 0.2, min = 0.2, max = 0.2, signif.threshold = 0.5,
-    nonsignif.threshold = 1.5)
+  bounds = list(mean = 0.1, sd = 0.2, min = 0.2, max = 0.2, sig.thr = 0.5, nsig.thr =
+    1.5)
 )
 }
 \arguments{
-\item{series.obs}{A numeric vector of observd time-series values.}
+\item{series.obs}{Numeric vector. Observed annual time series (length = years).}
 
-\item{series.sim}{A numeric matrix, with simulated time-series.}
+\item{series.sim}{Numeric matrix. Simulated time series (nrow = years, ncol = realizations).}
 
-\item{power.obs}{A numeric vector of power spectra of observed time-series.}
+\item{power.obs}{Numeric vector. Observed global wavelet power spectrum.}
 
-\item{power.sim}{A numeric matrix of power spectrum of simulated time-series.}
+\item{power.sim}{Numeric matrix. Simulated global wavelet spectra (nrow = periods, ncol = realizations).}
 
-\item{power.period}{A time-series of power periods calculated.}
+\item{power.period}{Numeric vector. Periods (years) for power spectra.}
 
-\item{power.signif}{A time-series of power significance.}
+\item{power.signif}{Numeric vector. Significance thresholds for power spectra.}
 
-\item{sample.num}{A numeric value to define the final sample size.}
+\item{sample.num}{Integer. Number of simulations to sample for final output.}
 
-\item{seed}{A numeric value to define a seed for resampling.}
+\item{seed}{Integer or NULL. Seed for reproducible sampling.}
 
-\item{save.plots}{A logical, to save the plots to file.}
+\item{save.plots}{Logical. Whether to save plots (default: TRUE).}
 
-\item{save.series}{A logical to write the results to csv files.}
+\item{save.series}{Logical. Whether to write selected series to .csv (default: TRUE).}
 
-\item{output.path}{Output folder path}
+\item{output.path}{String. Directory to write plots and .csv files to.}
 
-\item{padding}{placeholder}
+\item{padding}{Logical. Whether to pad significant periods (default: TRUE).}
 
-\item{bounds}{placeholder}
+\item{bounds}{List. Bounds for filtering on mean, sd, min, max, sig.thr, nsig.thr.}
+}
+\value{
+A list with two elements:
+  \item{subsetted}{A numeric matrix containing all synthetic traces that pass the filtering criteria.}
+  \item{sampled}{A numeric matrix of the sampled synthetic traces (number set by `sample.num`).}
 }
 \description{
-Resample from WARM outputs
+Selects and samples synthetic (simulated) time series that match statistical
+and spectral (wavelet) criteria relative to observed data. Optionally saves
+plots and selected series to disk.
 }

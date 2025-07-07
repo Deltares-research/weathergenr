@@ -1,82 +1,168 @@
-
-#' Dissaggregation function
+#' Resample Daily Dates for Stochastic Weather Generation
 #'
-#' @param k1 placeholder
-#' @param ymax placeholder
-#' @param PRCP_FINAL_ANNUAL_SIM placeholder
-#' @param ANNUAL_PRCP placeholder
-#' @param PRCP placeholder
-#' @param TEMP placeholder
-#' @param YEAR_D placeholder
-#' @param START_YEAR_SIM placeholder
-#' @param dates.d placeholder
-#' @param sim.dates.d placeholder
-#' @param month.start placeholder
-#' @param wet.quantile Precipitation threshold (mm) to distinguish between wet and dry days
-#' @param extreme.quantile quantile threshold to distinguish between extreme wet days
-#' @param knn.annual.sample.num placeholder
-#' @param seed random seed value
-#' @param TMAX placeholder
-#' @param TMIN placeholder
-#' @param dry.spell.change placeholder
-#' @param wet.spell.change placeholder
+#' @description
+#' Generates a simulated daily weather sequence using a Markov Chain model and KNN-based resampling,
+#' conditioned on annual precipitation and climate statistics. This is designed for use in stochastic
+#' weather generators where daily sequences are resampled to match statistical properties of observed data.
+#'
+#' @param PRCP_FINAL_ANNUAL_SIM Numeric vector. Simulated annual precipitation totals for each simulation year.
+#' @param ANNUAL_PRCP Numeric vector. Observed annual precipitation for historical years.
+#' @param PRCP Numeric vector. Observed daily precipitation series, length must match `dates.d`.
+#' @param TEMP Numeric vector. Observed daily temperature series (e.g., mean temp), length must match `dates.d`.
+#' @param TMAX Numeric vector. Observed daily maximum temperature.
+#' @param TMIN Numeric vector. Observed daily minimum temperature.
+#' @param START_YEAR_SIM Integer. The starting year of the simulation period.
+#' @param k1 Integer. Simulation trace index (seed modifier).
+#' @param ymax Integer. Number of years to simulate.
+#' @param dates.d Data frame. Columns: `date`, `month`, `day`, `wyear` for the observed period.
+#' @param sim.dates.d Data frame. Columns: `month`, `day`, `wyear` for the simulation period.
+#' @param YEAR_D Integer vector. Water year for each observed day (must match `dates.d`).
+#' @param month.start Integer (1-12). Month at which the water year starts.
+#' @param knn.annual.sample.num Integer. Number of nearest years to sample in annual KNN (default 50).
+#' @param wet.quantile Numeric (0-1). Precip threshold quantile for defining wet days (default 0.2).
+#' @param extreme.quantile Numeric (0-1). Precip threshold quantile for extreme wet days (default 0.8).
+#' @param dry.spell.change Numeric vector (length 12). Adjustment factors for dry spells per month.
+#' @param wet.spell.change Numeric vector (length 12). Adjustment factors for wet spells per month.
+#' @param seed Integer or NULL. Random seed for reproducibility (optional).
 #'
 #' @return
+#' Returns a vector of `Date` objects representing the resampled daily dates for the simulation period.
+#'
+#' @details
+#' Uses a Markov Chain to simulate daily precipitation state transitions (dry, wet, extreme)
+#' and KNN-based selection for matching temperature/precipitation values.
+#'
+#' @examples
+#' \dontrun{
+#' sim_dates <- resampleDates(
+#'   PRCP_FINAL_ANNUAL_SIM = runif(3, 900, 1100),
+#'   ANNUAL_PRCP = runif(20, 900, 1100),
+#'   PRCP = rnorm(7300, 3, 5),
+#'   TEMP = rnorm(7300, 18, 5),
+#'   TMAX = rnorm(7300, 25, 6),
+#'   TMIN = rnorm(7300, 11, 4),
+#'   START_YEAR_SIM = 2001,
+#'   k1 = 1,
+#'   ymax = 3,
+#'   dates.d = data.frame(date = seq.Date(as.Date("2000-01-01"), as.Date("2019-12-31"), by = "day"),
+#'                        month = rep(1:12, each = 365, length.out = 7300),
+#'                        day = rep(1:31, length.out = 7300),
+#'                        wyear = rep(2000:2019, each = 365)),
+#'   sim.dates.d = data.frame(month = rep(1:12, each = 365, length.out = 1095),
+#'                            day = rep(1:31, length.out = 1095),
+#'                            wyear = rep(2001:2003, each = 365)),
+#'   YEAR_D = rep(2000:2019, each = 365),
+#'   month.start = 1,
+#'   seed = 123
+#' )
+#' head(sim_dates)
+#' }
+#'
 #' @export
 resampleDates <- function(
-  PRCP_FINAL_ANNUAL_SIM = NULL,
-  ANNUAL_PRCP = NULL,
-  PRCP = NULL,
-  TEMP = NULL,
-  TMAX = NULL,
-  TMIN = NULL,
-  START_YEAR_SIM = NULL,
-  k1 = NULL,
-  ymax = NULL,
-  dates.d = NULL,
-  sim.dates.d = NULL,
-  YEAR_D = NULL,
-  month.start = NULL,
+  PRCP_FINAL_ANNUAL_SIM,
+  ANNUAL_PRCP,
+  PRCP,
+  TEMP,
+  TMAX,
+  TMIN,
+  START_YEAR_SIM,
+  k1,
+  ymax,
+  dates.d,
+  sim.dates.d,
+  YEAR_D,
+  month.start = 1,
   knn.annual.sample.num = 50,
   wet.quantile = 0.2,
   extreme.quantile = 0.8,
   dry.spell.change = rep(1,12),
   wet.spell.change = rep(1,12),
-  seed = NULL)
+  seed = NULL
 
-  {
+) {
 
-  # If ne seed provided, generate a random number
-  if(is.null(seed)) seed = sample.int(1e10,1)
+  ######################## --- Input Validation --- ############################
+
+  stopifnot(
+    !is.null(PRCP_FINAL_ANNUAL_SIM),
+    !is.null(ANNUAL_PRCP),
+    !is.null(PRCP),
+    !is.null(TEMP),
+    !is.null(TMAX),
+    !is.null(TMIN),
+    !is.null(START_YEAR_SIM),
+    !is.null(dates.d),
+    !is.null(sim.dates.d),
+    !is.null(YEAR_D),
+    !is.null(month.start)
+  )
+
+  # Numeric checks
+  if (!is.numeric(PRCP_FINAL_ANNUAL_SIM) || !is.numeric(ANNUAL_PRCP))
+    stop("PRCP_FINAL_ANNUAL_SIM and ANNUAL_PRCP must be numeric vectors.")
+  if (!is.numeric(PRCP) || !is.numeric(TEMP) || !is.numeric(TMAX) || !is.numeric(TMIN))
+    stop("PRCP, TEMP, TMAX, and TMIN must be numeric vectors.")
+  if (!is.numeric(wet.quantile) || wet.quantile < 0 || wet.quantile > 1)
+    stop("wet.quantile must be between 0 and 1.")
+  if (!is.numeric(extreme.quantile) || extreme.quantile < 0 || extreme.quantile > 1)
+    stop("extreme.quantile must be between 0 and 1.")
+  if (!is.numeric(knn.annual.sample.num) || knn.annual.sample.num < 1)
+    stop("knn.annual.sample.num must be a positive integer.")
+  if (!is.numeric(seed) && !is.null(seed))
+    stop("seed must be numeric or NULL.")
+
+  # Data frame checks
+  if (!is.data.frame(dates.d) || !is.data.frame(sim.dates.d))
+    stop("dates.d and sim.dates.d must be data.frames.")
+
+  # Check required columns
+  required_cols <- c("date", "month", "day", "wyear")
+  missing_cols_dates <- setdiff(required_cols, names(dates.d))
+  missing_cols_sim   <- setdiff(c("month", "day", "wyear"), names(sim.dates.d))
+  if (length(missing_cols_dates) > 0)
+    stop(paste("dates.d is missing columns:", paste(missing_cols_dates, collapse = ", ")))
+  if (length(missing_cols_sim) > 0)
+    stop(paste("sim.dates.d is missing columns:", paste(missing_cols_sim, collapse = ", ")))
+
+  # Check lengths (for main time series vectors)
+  expected_length <- nrow(dates.d)
+  if (length(PRCP) != expected_length)
+    stop("Length of PRCP does not match dates.d.")
+  if (length(TEMP) != expected_length)
+    stop("Length of TEMP does not match dates.d.")
+  if (length(TMAX) != expected_length)
+    stop("Length of TMAX does not match dates.d.")
+  if (length(TMIN) != expected_length)
+    stop("Length of TMIN does not match dates.d.")
+  if (length(YEAR_D) != expected_length)
+    stop("Length of YEAR_D does not match dates.d.")
+
+  ######################## --- LOCAL RANDOM SEED --- ##########################
+
+  if (!is.null(seed)) {
+    old_seed <- .Random.seed
+    on.exit({.Random.seed <<- old_seed}, add = TRUE)
+    set.seed(seed + k1)
+  }
 
   # Workaround for rlang warning
   month <- day <- wyear <- 0
 
-
-  ### Set date vectors
-
-  if(month.start == 1) {month_list <- 1:12} else {
-    month_list <- c(month.start:12,1:(month.start-1))}
-
-  WATER_YEAR_A <- dates.d %>%
-    dplyr::filter(month == month.start & day == 1) %>% pull(wyear)
-
+  # Prepare month list and reference vectors
+  month_list <- if(month.start == 1) 1:12 else c(month.start:12, 1:(month.start-1))
+  WATER_YEAR_A <- dplyr::filter(dates.d, month == month.start & day == 1) %>% dplyr::pull(wyear)
   DATE_D <- dates.d$date
   MONTH_D <- dates.d$month
   WATER_YEAR_D <- dates.d$wyear
   MONTH_DAY_D <- dates.d[,c("month","day")]
-
   MONTH_SIM = sim.dates.d$month
   DAY_SIM = sim.dates.d$day
-
   WATER_YEAR_SIM = sim.dates.d$wyear
   SIM_LENGTH <- length(MONTH_SIM)
-
   water_year_start = dates.d$wyear[1]
-  water_year_end = dates.d$wyear[nrow(dates.d)]
 
-	### Vectors to store MC transition probabilities
-
+  # Initialize Markov transition arrays and simulated states
 	p00_final <- array(NA,SIM_LENGTH)
 	p01_final <- array(NA,SIM_LENGTH)
 	p02_final <- array(NA,SIM_LENGTH)
@@ -86,35 +172,28 @@ resampleDates <- function(
 	p20_final <- array(NA,SIM_LENGTH)
 	p21_final <- array(NA,SIM_LENGTH)
 	p22_final <- array(NA,SIM_LENGTH)
-
-	# Vetor to store intermediate results
 	OCCURENCES <- array(0,c(SIM_LENGTH))
 	SIM_PRCP <- array(0, c(SIM_LENGTH))
 	SIM_TEMP <- array(25, c(SIM_LENGTH))
   SIM_TMAX <- array(30, c(SIM_LENGTH))
 	SIM_TMIN <- array(20, c(SIM_LENGTH))
-
-
 	SIM_DATE <- array(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
-  #SIM_DATE <- rep(as.Date(paste(water_year_start+1, month.start,"01",sep="-")), SIM_LENGTH)
-
-	# Current Stochastic trace....
 	count <- 1
-
-	# Generate random value btw 0-1 for each simulation day
-	set.seed(seed+k1)
+	set.seed(seed + k1)
 	rn_all <- stats::runif(SIM_LENGTH,0,1)
-
-  # Define knn sample size
   kk <- max(round(sqrt(length(ANNUAL_PRCP)),0),round(length(ANNUAL_PRCP),0)*.5)
 
-	# For each year start sampling....
-	for (y in 1:ymax) {
 
-	  # Current simulated annual precip at y
+  # ----- 3. Simulate years -----
+	for (y in seq_len(ymax)) {
+
+	  # - For each simulated year, select similar years from the observed record via KNN
+	  # - Calculate monthly precipitation thresholds (wet, extreme)
+	  # - Calculate Markov transition probabilities
+	  # - For each simulated day, use Markov Chain to determine state, then sample a day from historical record
+
+	  # --- 3a. Sample annual years ---
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
-
-		# Sample 100 similar years from the historical record for the current year
 		CUR_YEARS <- knnAnnual(
 		  sim_annual_prcp = sim_annual_prcp,
 		  ANNUAL_PRCP = ANNUAL_PRCP,
@@ -123,17 +202,19 @@ resampleDates <- function(
 		  k1 = k1,
 		  y = y,
 		  seed = seed,
-		  y_sample_size = knn.annual.sample.num)
+		  y_sample_size = knn.annual.sample.num
+		)
 
-		# Find indices of days in all sampled years in CUR_YEARS
-		conditional_selection <- NULL
-
-		#Indices of days in the selected 100 years....
-		for (yy in 1:length(CUR_YEARS)) {
-		  conditional_selection <- c(conditional_selection, which(WATER_YEAR_D==CUR_YEARS[yy]))
-		}
+		# # Find indices of days in all sampled years in CUR_YEARS
+		# conditional_selection <- NULL
+		#
+		# #Indices of days in the selected 100 years....
+		# for (yy in 1:length(CUR_YEARS)) {
+		#   conditional_selection <- c(conditional_selection, which(WATER_YEAR_D==CUR_YEARS[yy]))
+		# }
 
 		# Find all variables and date indices in the conditional selection
+		conditional_selection <- unlist(lapply(CUR_YEARS, function(cur_y) which(WATER_YEAR_D == cur_y)))
 		PRCP_CURRENT <- PRCP[conditional_selection]
 		TEMP_CURRENT <- TEMP[conditional_selection]
 		TMAX_CURRENT <- TMAX[conditional_selection]
@@ -143,16 +224,8 @@ resampleDates <- function(
 		YEAR_D_CURRENT <- YEAR_D[conditional_selection]
 		MONTH_DAY_D_CURRENT <- MONTH_DAY_D[conditional_selection,]
 
-		############################################################################
-
-		# Calculate dry to wet threshold for each month
-    #wet_threshold <- sapply(1:12, function(m)
-    #  stats::quantile(PRCP_CURRENT[which(MONTH_D_CURRENT==month_list[m])],
-    #    wet.quantile, names = F))
-
-    wet_threshold <- rep(stats::quantile(PRCP_CURRENT, wet.quantile, names =F),12)
-
-    # Calculate wet to very wet threshold for each month
+		# --- 3b. Thresholds ---
+		wet_threshold <- rep(stats::quantile(PRCP_CURRENT, wet.quantile, names = FALSE), 12)
     extreme_threshold <- sapply(1:12, function(m)
       stats::quantile(PRCP_CURRENT[which(MONTH_D_CURRENT==month_list[m] & PRCP_CURRENT > wet_threshold[m])],
         extreme.quantile, names = F))
@@ -164,57 +237,25 @@ resampleDates <- function(
 		PRCP_LAG1  <- PRCP_CURRENT[1:(length(PRCP_CURRENT)-1)]
 		MONTH_LAG0 <- MONTH_D_CURRENT[2:length(PRCP_CURRENT)]
 		MONTH_LAG1 <- MONTH_D_CURRENT[1:(length(PRCP_CURRENT)-1)]
-		YEAR_LAG0  <- YEAR_D_CURRENT[2:length(PRCP_CURRENT)]
-		YEAR_LAG1  <- YEAR_D_CURRENT[1:(length(PRCP_CURRENT)-1)]
 
-		# Calculate monthly trahsition probabilities
-		for (m in 1:12) {
+		# --- 3d. Vectorized Markov transition probability calculation ---
+		probs <- calculateMarkovProbs(
+		  PRCP_LAG0, PRCP_LAG1, MONTH_LAG0, MONTH_LAG1,
+		  wet_threshold, extreme_threshold, month_list,
+		  MONTH_SIM, WATER_YEAR_SIM, y, START_YEAR_SIM,
+		  dry.spell.change, wet.spell.change, SIM_LENGTH
+		)
 
-		  # day of the year index in each month
-		  x <- which(MONTH_LAG1==month_list[m])
-			r <- which(MONTH_SIM==month_list[m] & WATER_YEAR_SIM == (y+START_YEAR_SIM))
-
-			CUR_PRCP0 <- PRCP_LAG0[x]
-			CUR_PRCP1 <- PRCP_LAG1[x]
-
-			# Transition probabilities (0=Dry, 1=Wet, 2=Very wet)
-			p00_final[r] <- length(which(PRCP_LAG1[x]<=wet_threshold[m] & PRCP_LAG0[x]<=wet_threshold[m])) / length(which(PRCP_LAG1[x]<=wet_threshold[m]))
-			p01_final[r] <- length(which(PRCP_LAG1[x]<=wet_threshold[m] & PRCP_LAG0[x]>wet_threshold[m] & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]<=wet_threshold[m]))
-			p02_final[r] <- length(which(PRCP_LAG1[x]<=wet_threshold[m] & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]<=wet_threshold[m]))
-			p10_final[r] <- length(which(PRCP_LAG1[x]>wet_threshold[m] & PRCP_LAG1[x]<=extreme_threshold[m] & PRCP_LAG0[x]<=wet_threshold[m])) / length(which(PRCP_LAG1[x]>wet_threshold[m] & PRCP_LAG1[x]<=extreme_threshold[m]))
-			p11_final[r] <- length(which(PRCP_LAG1[x]>wet_threshold[m] & PRCP_LAG1[x]<=extreme_threshold[m] & PRCP_LAG0[x]>wet_threshold[m] & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]>wet_threshold[m] & PRCP_LAG1[x]<=extreme_threshold[m]))
-			p12_final[r] <- length(which(PRCP_LAG1[x]>wet_threshold[m] & PRCP_LAG1[x]<=extreme_threshold[m] & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]>wet_threshold[m] & PRCP_LAG1[x]<=extreme_threshold[m]))
-			p20_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]<=wet_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
-			p21_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]>wet_threshold[m] & PRCP_LAG0[x]<=extreme_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
-			p22_final[r] <- length(which(PRCP_LAG1[x]>extreme_threshold[m] & PRCP_LAG0[x]>extreme_threshold[m])) / length(which(PRCP_LAG1[x]>extreme_threshold[m]))
-
-			#adjustments for dry spells
-			p01_final[r] <- p01_final[r]/dry.spell.change[m]
-			p02_final[r] <- p02_final[r]/dry.spell.change[m]
-			p00_final[r] <- 1 - p01_final[r] - p02_final[r]
-
-			#adjustments for wet spells
-			p10_final[r] <- p10_final[r]/wet.spell.change[m]
-			p11_final[r] <- 1 - p10_final[r] - p12_final[r]
-
-			# p01_new <- (p01_final[r] + p02_final[r])/dry.spell.change[m] - p02_final[r]
-			# p00_new <- p00_final[r] + (p01_final[r] - p01_new)
-			# p01_final[r] <- p01_new
-			# p00_final[r] <- p00_new
-			#
-			# #adjustments for wet spells
-			# p10_new <- (p10_final[r] + p12_final[r])/wet.spell.change[m] - p12_final[r]
-			# p11_new <- p11_final[r] + (p10_final[r] - p10_new)
-			# p10_final[r] <- p10_new
-			# p11_final[r] <- p11_new
-
-		} #month-counter close
+		p00_final <- probs$p00_final; p01_final <- probs$p01_final; p02_final <- probs$p02_final
+		p10_final <- probs$p10_final; p11_final <- probs$p11_final; p12_final <- probs$p12_final
+		p20_final <- probs$p20_final; p21_final <- probs$p21_final; p22_final <- probs$p22_final
 
 		############################################################################
 		############################################################################
 
 		# MARKOV-CHAIN AND DAILY KNN SAMPLING.......................................
 		for (j in 1:365) {
+
 
 		  count <- count + 1
 
@@ -336,13 +377,33 @@ resampleDates <- function(
   			  mean_monthly_TEMP = mean_monthly_TEMP,
   			  k1 = k1,
   			  count = count,
-  			  seed = seed)
+  			  seed = seed
+  			)
 
-  	SIM_PRCP[count] <- PRCP_TOMORROW[RESULT]
-		SIM_TEMP[count] <- TEMP_TOMORROW[RESULT]
-		SIM_TMAX[count] <- TMAX_TOMORROW[RESULT]
-		SIM_TMIN[count] <- TMIN_TOMORROW[RESULT]
-		SIM_DATE[count] <- DATE_D_CURRENT[which(as.numeric(DATE_D_CURRENT)==DATE_TOMORROW[RESULT])][1]
+  			# Fallback if no valid RESULT
+  			if (is.na(RESULT) || length(RESULT) == 0 ||
+  			    RESULT < 1 || RESULT > length(PRCP_TOMORROW)) {
+  			  # Fallback: sample randomly, or assign NA, or use 1st available
+  			  if (length(PRCP_TOMORROW) > 0) {
+  			    fallback_index <- sample(seq_along(PRCP_TOMORROW), 1)
+  			  } else {
+  			    fallback_index <- NA_integer_
+  			  }
+  			  RESULT <- fallback_index
+  			}
+
+  			# Now safely assign, even if fallback_index is NA
+  			SIM_PRCP[count] <- if (!is.na(RESULT)) PRCP_TOMORROW[RESULT] else NA_real_
+  			SIM_TEMP[count] <- if (!is.na(RESULT)) TEMP_TOMORROW[RESULT] else NA_real_
+  			SIM_TMAX[count] <- if (!is.na(RESULT)) TMAX_TOMORROW[RESULT] else NA_real_
+  			SIM_TMIN[count] <- if (!is.na(RESULT)) TMIN_TOMORROW[RESULT] else NA_real_
+  			SIM_DATE[count] <- if (!is.na(RESULT)) DATE_TOMORROW[RESULT] else as.Date(NA)
+
+      	#SIM_PRCP[count] <- PRCP_TOMORROW[RESULT]
+    		#SIM_TEMP[count] <- TEMP_TOMORROW[RESULT]
+    		#SIM_TMAX[count] <- TMAX_TOMORROW[RESULT]
+    		#SIM_TMIN[count] <- TMIN_TOMORROW[RESULT]
+    		#SIM_DATE[count] <- DATE_D_CURRENT[which(as.numeric(DATE_D_CURRENT)==DATE_TOMORROW[RESULT])][1]
 
 			} # if-condition count close
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/climateSurfaceBatch.R
 \name{climateSurfaceBatch}
 \alias{climateSurfaceBatch}
-\title{Batch create climate response surfaces from CST Toolbox applications}
+\title{Batch Generation of Climate Response Surface Plots}
 \usage{
 climateSurfaceBatch(
   save.dir = NULL,
@@ -20,22 +20,71 @@ climateSurfaceBatch(
 )
 }
 \arguments{
-\item{save.dir}{placeholder}
+\item{save.dir}{Character. Directory path where plots will be saved. If `NULL`, defaults to a subdirectory \code{climSurfaces} in the working directory.}
 
-\item{str.data}{placeholder}
+\item{str.data}{Data frame. Stress-test data, typically containing surface response variables, metric columns, and covariates (`prcp`, `tavg`, etc.).}
 
-\item{gcm.data}{placeholder}
+\item{gcm.data}{Data frame. Downscaled GCM projections for plotting scenario points/ellipses (must include columns matching those in `climateSurface()`).}
 
-\item{gcm.future.period}{placeholder}
+\item{gcm.legend}{Logical. If `TRUE`, include a legend for GCM scenarios in the plot.}
 
-\item{metrics}{placeholder}
+\item{gcm.future.period}{Character or vector. Which GCM future horizons to include (e.g., "near", "far").}
 
-\item{metric.labels}{placeholder}
+\item{metrics}{Character vector. Names of performance metrics/statistics to plot (must match `statistic` column in `str.data`).}
 
-\item{metric.direction}{placeholder}
+\item{locations}{Character vector. Names of locations or columns in `str.data` for which to create plots.}
 
-\item{...}{}
+\item{location.labels}{Character vector. Human-readable labels for locations (for plot titles). Optional.}
+
+\item{metric.labels}{Character vector. Human-readable labels for metrics (for plot titles). Optional.}
+
+\item{metric.direction}{Integer vector. Indicates failure direction for each metric (e.g., 1 = high values are worse, -1 = low values are worse).}
+
+\item{relative.results}{Logical. If `TRUE` (default), express metric values as percent change from baseline; if `FALSE`, use raw values.}
+
+\item{...}{Additional arguments passed to [climateSurface()].}
+}
+\value{
+Invisibly returns `NULL`. Side effect: saves PNG files for all locations and metrics to the specified directory.
 }
 \description{
-Batch create climate response surfaces from CST Toolbox applications
+Automatically generates and saves climate response surface plots for multiple locations and metrics,
+based on stress-test results from the CST Toolbox and projections from General Circulation Models (GCMs).
+This function loops over user-specified metrics and locations, creating and saving a set of response surface figures to disk,
+leveraging the `climateSurface()` plotting function.
+
+Typically used in automated analysis pipelines for climate impact and risk studies.
+}
+\details{
+For each location and metric, the function:
+  - Optionally expresses results as percent change from the baseline (centered at zero change).
+  - Filters and relabels the data for plotting.
+  - Calls [climateSurface()] to generate the plot.
+  - Saves the plot as a high-resolution PNG in a location-specific subfolder.
+
+Plot filenames are constructed as: \code{<save.dir>/<location>/<location>_<metric>.png}.
+}
+\examples{
+\dontrun{
+# Suppose you have stress-test and GCM data frames `str_data` and `gcm_data`
+metrics <- c("Reliability", "Resilience")
+locations <- c("Q_A", "Q_B")
+metric.labels <- c("System Reliability", "System Resilience")
+location.labels <- c("Catchment A", "Catchment B")
+metric.direction <- c(1, 1)
+
+climateSurfaceBatch(
+  save.dir = tempdir(),
+  str.data = str_data,
+  gcm.data = gcm_data,
+  metrics = metrics,
+  locations = locations,
+  location.labels = location.labels,
+  metric.labels = metric.labels,
+  metric.direction = metric.direction
+)
+}
+}
+\seealso{
+\code{\link{climateSurface}}
 }

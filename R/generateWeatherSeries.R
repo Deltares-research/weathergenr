@@ -1,35 +1,35 @@
-#' @title Simulate gridded weather function
+#' @title Generate Synthetic Gridded Weather Series
 #'
 #' @description
-#' A short description...
+#' Generates synthetic weather time-series for grid cells using hybrid Wavelet Autoregressive Modeling and KNN resampling.
 #'
 #' @details
-#' Additional details...
-#'
-#' @param weather.data list of data frames of daily weather observations per grid cell. Each data frame, columns are weather variables and rows are daily values.
-#' @param weather.date a vector of dates matching the weather.data
-#' @param weather.grid Data frame of grid cells. Each grid cell is assigned an id starting from 1, x and y coordinate index value, and x and y coordinates.
-#' @param output.path output path for the weather generator results (string)
-#' @param variable.names vector of names for the variables to be included in the weather generator
-#' @param variable.labels vector of labels for the weather variables (optional). If no values provided, it is labels will be same as the names
-#' @param variable.units vector of units for each of the weather variables (optional). If no values provided, a blank vector is used.
-#' @param warm.variable the name of the variable for the wavelet auto regressive mode. Default value is precipitation variable.
-#' @param warm.signif.level the significance level for the warm model.
-#' @param warm.sample.num number of annual sequences to be generated from the the warm model
-#' @param knn.sample.num number of knn years to be sampled
-#' @param sim.year.start numeric value indicating the starting year of the generated time-series
-#' @param sim.year.num  numeric value indicating the desired total number of years of simulated weather realizations
-#' @param realization.num number of natural variability realizations to be generated.
-#' @param month.start the first month of the water year (default value is 1).
-#' @param warm.subset.criteria A list of statistical parameters used for subsetting from the initial annual simulated series
-#' @param mc.wet.quantile wet state threshold (quantile value) for markov-chain modeling
-#' @param mc.extreme.quantile extremely wet state threshold (quantile value) for markov-chain modeling
-#' @param seed a random seed value (numeric)
-#' @param compute.parallel logical value indicating whether to run (some) functions in parallel
-#' @param num.cores Number of cores to be allocated for parallel computing. If left NULL, maximum possible cores minus one is assigned
-#' @param dry.spell.change placeholder
-#' @param wet.spell.change placeholder
-#' @param save.rdata placeholder
+#' For detailed description of the methodology, see Steinschneider et al. (2013).
+#'#'
+#' @param weather.data A named list of data frames containing daily weather observations for each grid cell. Each data frame should have one column per weather variable (e.g., precipitation, temperature) and one row per day.
+#' @param weather.date A vector of `Date` objects corresponding to the daily time series in `weather.data`. The same date vector should apply to all grid cells.
+#' @param weather.grid A data frame describing the spatial layout of grid cells. Must include columns `id` (unique grid identifier starting from 1), `xind`, `yind` (index positions), and spatial coordinates `x`, `y`.
+#' @param output.path File path to the directory where generated output files, such as figures and NetCDFs, will be saved.
+#' @param variable.names A character vector of names of weather variables to be included in the simulation (e.g., `c("precip", "temp")`).
+#' @param variable.labels Optional character vector of human-readable labels corresponding to `variable.names`. Defaults to `variable.names` if not provided.
+#' @param variable.units Optional character vector specifying the units of each weather variable (e.g., `c("mm", "?C")`). If not provided, units will be left blank.
+#' @param warm.variable Name of the weather variable used for Wavelet Autoregressive Modeling (WARM). Typically this is a low-frequency driver like precipitation. Defaults to `"precip"`.
+#' @param warm.signif.level Significance level (between 0 and 1) for retaining low-frequency components during wavelet decomposition. Higher values retain fewer components.
+#' @param warm.sample.num Number of annual time series realizations to generate using the WARM model prior to filtering with statistical criteria.
+#' @param knn.sample.num Number of historical years to sample from using the K-nearest neighbor (KNN) method during daily weather reconstruction.
+#' @param sim.year.start Integer indicating the first year of the synthetic weather time series (e.g., 2020).
+#' @param sim.year.num Integer specifying the total number of years to generate in each synthetic weather realization.
+#' @param realization.num Number of independent stochastic realizations (i.e., synthetic weather traces) to simulate.
+#' @param month.start Integer indicating the first month of the hydrological (or water) year. Defaults to `1` (January).
+#' @param warm.subset.criteria A named list of numeric thresholds used to filter annual time series generated by WARM, based on summary statistics such as `mean`, `sd`, `min`, `max`, `sig.thr`, and `nsig.thr`.
+#' @param mc.wet.quantile Quantile threshold (between 0 and 1) defining "wet" days for Markov Chain state modeling. Days above this threshold are considered wet.
+#' @param mc.extreme.quantile Quantile threshold (between 0 and 1) for identifying "extremely wet" days, used for refining Markov Chain transitions.
+#' @param seed Optional integer used to initialize random number generation for reproducible results. If not provided, a random seed is chosen.
+#' @param compute.parallel Logical; if `TRUE`, parallel processing is enabled for performance-intensive steps.
+#' @param num.cores Integer specifying the number of CPU cores to use for parallel processing. If `NULL`, all available cores minus one are used.
+#' @param dry.spell.change A numeric vector of length 12 specifying monthly adjustment factors for dry spell lengths (e.g., `1` = no change, `>1` = longer spells). Defaults to `rep(1, 12)`.
+#' @param wet.spell.change A numeric vector of length 12 specifying monthly adjustment factors for wet spell lengths (e.g., `1` = no change, `>1` = longer spells). Defaults to `rep(1, 12)`.
+#' @param save.rdata Logical; if `TRUE`, saves intermediate R objects to disk in `.RData` format for debugging or reuse.
 
 #'
 #' @return a list object with two elements
@@ -41,6 +41,8 @@
 #' @import tidyr
 #' @import patchwork
 #' @import dplyr
+#' @import logger
+#' @importFrom dplyr mutate
 generateWeatherSeries <- function(
   weather.data = NULL,
   weather.grid = NULL,
@@ -55,8 +57,7 @@ generateWeatherSeries <- function(
   warm.variable = "precip",
   warm.signif.level = 0.90,
   warm.sample.num = 5000,
-  warm.subset.criteria = list(mean = 0.1, sd = 0.2, min = 0.3,
-         max = 0.3, signif.threshold = 0.5, nonsignif.threshold = 1.5),
+  warm.subset.criteria = list(mean = 0.1, sd = 0.2, min = 0.3, max = 0.3, sig.thr = 0.5, nsig.thr = 1.5),
   knn.sample.num = 120,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
@@ -72,14 +73,26 @@ generateWeatherSeries <- function(
 
   start_time <- Sys.time()
 
+  # Seed handling
+  if (!is.null(seed)) {
+    old_seed <- .Random.seed
+    on.exit({ .Random.seed <<- old_seed }, add = TRUE)
+    set.seed(seed)
+  }
+
+  # Directory checks
+  dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
+  plots_path <- file.path(output.path, "plots")
+  dir.create(plots_path, recursive = TRUE, showWarnings = FALSE)
+
+  # Validation checks
+  stopifnot(is.list(weather.data), is.data.frame(weather.grid))
+
   # Workaround for rlang warning
   wyear <- month <- day <- year <- 0
 
   if(is.null(variable.labels)) variable.labels <- variable.names
   if(is.null(variable.units)) variable.units <- rep("", length(variable.names))
-
-  # If no seed provided, sample a value
-  if(is.null(seed)) seed <- sample.int(1e5,1)
 
   # Number of grids
   grids  <- weather.grid$id
@@ -88,23 +101,18 @@ generateWeatherSeries <- function(
   if(compute.parallel == TRUE) {
 
     if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-    message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Weathergenr started in parallel mode:", num.cores, "cores"))
+    logger::log_info("\n[Initialize] Starting in parallel mode:")
+    logger::log_info("[Initialize] Number of cores: {num.cores}")
 
   } else {
-    message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Weathergenr started in sequential mode"))
+    logger::log_info("\n[Initialize] Starting in sequential mode")
   }
 
-
-  if (!dir.exists(output.path)) {dir.create(output.path)}
-  plots_path <- file.path(output.path, "plots")
-  if (!dir.exists(plots_path)) {dir.create(plots_path)}
-
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Randomization seed:", seed))
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Climate variables included:", paste(variable.names, collapse = ', ')))
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Historical period:", as.character(weather.date[1]), "to", as.character(weather.date[length(weather.date)])))
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Number of grids:", ngrids))
+  logger::log_info("[Initialize] Randomization seed set to: {seed}")
+  logger::log_info("[Initialize] Climate variables: {paste(variable.names, collapse = ', ')}")
+  logger::log_info("[Initialize] Historical period: {weather.date[1]} to {weather.date[length(weather.date)]}")
+  logger::log_info("[Initialize] Total number of grid cells: {ngrids}")
 
   # Historical dates
   year_seq <- as.numeric(format(weather.date,"%Y"))
@@ -157,10 +165,6 @@ generateWeatherSeries <- function(
 
   #::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
-  # Simulate annual series of wavelet variable
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- WARM significance level:", warm.signif.level))
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- WARM: simulating", format(warm.sample.num, big.mark=","), "series"))
-
   #####  Wavelet analysis on observed annual series
   warm_variable <- climate_a_aavg %>% pull({{warm.variable}})
 
@@ -176,9 +180,9 @@ generateWeatherSeries <- function(
           signif.periods = warm_power$signif_periods,
           signif.level = warm.signif.level, plot = TRUE, output.path = plots_path)
 
-      message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Number of significant low-frequency signals:", length(wavelet_comps)-1))
-      message(cat("\n", format(Sys.time(),'%H:%M:%S'), "- Periodicity (years):", paste(warm_power$signif_periods, collapse=",")))
-
+      logger::log_info("[WARM] Significant low-frequency components detected: {length(wavelet_comps)-1}")
+      logger::log_info("[WARM] Detected periodiocity (years): {paste(warm_power$signif_periods, collapse=",")}")
+      logger::log_info("[WARM] Generating {format(warm.sample.num, big.mark=",")} annual traces")
 
       sim_annual <- waveletARIMA(wavelet.components = wavelet_comps,
           sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
@@ -186,7 +190,8 @@ generateWeatherSeries <- function(
     #if there is no low frequency signal
     } else {
 
-      message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- No low-frequency signals detected"))
+      logger::log_info("[WARM] No low-frequency signals detected")
+      logger::log_info("[WARM] Generating {format(warm.sample.num, big.mark=",")} annual traces")
 
       # Remove the mean from the component
       MEAN <- mean(warm_variable)
@@ -202,13 +207,15 @@ generateWeatherSeries <- function(
 
   }
 
+
+
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
 
   if(!length(warm_power$signif_periods > 0)) {
-    warm.subset.criteria$signif.threshold <- NULL
-    warm.subset.criteria$nonsignif.threshold <- NULL
+    warm.subset.criteria$sig.thr <- NULL
+    warm.subset.criteria$nsig.thr <- NULL
   }
 
   # subsetting from generated warm series
@@ -223,22 +230,16 @@ generateWeatherSeries <- function(
        output.path = plots_path,
        bounds = warm.subset.criteria,
        seed = seed,
+       save.plots = TRUE,
        save.series = FALSE)
 
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- WARM error bounds:",
-               ", mean=", warm.subset.criteria$mean,
-               ", std=", warm.subset.criteria$sd,
-               ", min=", warm.subset.criteria$min,
-               ", max=", warm.subset.criteria$max,
-               ", powersig=",  warm.subset.criteria$signif.threshold,
-               ", powernonsig=", warm.subset.criteria$nonsignif.threshold))
-
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$subsetted), "stochastic traces match criteria"))
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "-", ncol(sim_annual_sub$sampled), "traces sampled"))
+  logger::log_info("[WARM] Subset bounds: {paste(names(warm.subset.criteria), unlist(warm.subset.criteria), sep = '=', collapse = ', ')}")
+  logger::log_info("[WARM] {ncol(sim_annual_sub$subsetted)} traces meet criteria")
+  logger::log_info("[WARM] Sampling {ncol(sim_annual_sub$sampled)} traces for daily simulation")
 
   #::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- KNN & Markov-Chain sampler started"))
+  logger::log_info("[KNN] Starting daily weather simulation using KNN + Markov Chain scheme")
 
   resampled_dates <- as_tibble(matrix(0, nrow=nrow(sim_dates_d),
     ncol=realization.num), .name_repair=~paste0("rlz_", 1:realization.num))
@@ -287,10 +288,13 @@ generateWeatherSeries <- function(
   utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
 
-  if(save.rdata) save.image(file = "./tests/testdata/weathergen_out_image.RData")
+  if(save.rdata) {
+    save.image(file = file.path(output.path, "swg_image.RData"))
+    logger::log_info("[Output] Image saved to: {file.path(output.path, 'swg_image.RData')}")
+  }
 
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Results saved to: `", output.path,"`"))
-  message(cat("\n", as.character(format(Sys.time(),'%H:%M:%S')), "- Completed. Elapsed time:", Sys.time() - start_time, "secs"))
+  logger::log_info("[Output] Results saved to: `", output.path,"`")
+  logger::log_info("[Done] Simulation complete. Elapsed time: {Sys.time() - start_time} secs")
 
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 

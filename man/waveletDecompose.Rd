@@ -2,7 +2,7 @@
 % Please edit documentation in R/waveletDecompose.R
 \name{waveletDecompose}
 \alias{waveletDecompose}
-\title{Function for weather generator decomposition}
+\title{Wavelet Decomposition of Time Series into Low-Frequency Components and Noise}
 \usage{
 waveletDecompose(
   variable = NULL,
@@ -14,18 +14,49 @@ waveletDecompose(
 )
 }
 \arguments{
-\item{variable}{A vector of time-series of weather variables.}
+\item{variable}{Numeric vector. The time series to be decomposed (e.g., annual precipitation).}
 
-\item{signif.periods}{Significant low-frequency periods in the original time-series.}
+\item{signif.periods}{List. Each element is a vector of integer scale indices representing significant periods,
+as returned by \code{waveletAnalysis()} (see its \code{signif_periods} output).}
 
-\item{noise.type}{A logical specifying the type of background noise.}
+\item{noise.type}{Character string. Background noise type: either `"white"` (default) or `"red"`.}
 
-\item{signif.level}{Significance level for the wavelet analysis.}
+\item{signif.level}{Numeric between 0 and 1. Significance level for wavelet significance testing (default 0.90).}
 
-\item{plot}{Draw plot}
+\item{plot}{Logical. If TRUE, saves a plot of decomposition (default TRUE).}
 
-\item{output.path}{Output path}
+\item{output.path}{String. Directory to save the plot if `plot=TRUE` (default: NULL).}
+}
+\value{
+A tibble (data frame) with columns:
+  \item{Component_1, Component_2, ...}{Numeric vectors: extracted low-frequency signals for each significant period.}
+  \item{NOISE}{Numeric vector: residual high-frequency noise.}
 }
 \description{
-Function for weather generator decomposition
+Decomposes a univariate time series into significant low-frequency (periodic) components and residual noise
+using Morlet wavelet analysis, based on periods identified as significant by prior wavelet analysis.
+Each significant periodic component is extracted and returned as a column, along with the reconstructed "noise" (high-frequency residual).
+}
+\details{
+This function is used in the Wavelet Autoregressive Modeling (WARM) framework to isolate low-frequency signals
+(such as decadal or multi-annual climate cycles) for separate stochastic modeling, while treating the remaining noise
+as a stationary process. The decomposition uses a Morlet wavelet transform and reconstructs time series components
+at each significant period (as found by prior `waveletAnalysis`), plus a residual ("noise") component.
+}
+\examples{
+\dontrun{
+# Example usage:
+x <- as.numeric(scale(rnorm(50))) # Example annual series
+sig_periods <- list(c(3, 5))      # Assume periods 3 and 5 are significant (from waveletAnalysis)
+comp <- waveletDecompose(
+  variable = x,
+  signif.periods = sig_periods,
+  plot = FALSE
+)
+head(comp)
+}
+
+}
+\seealso{
+\code{\link{waveletAnalysis}} for identification of significant periods.
 }
