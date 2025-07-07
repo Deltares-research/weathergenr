@@ -1,8 +1,6 @@
 
-library(dplyr)
-library(tidyr)
+
 library(ncdf4)
-library(weathergenr)
 
 testthat::test_that("Check if write_netcdf works correctly", {
 
@@ -13,22 +11,27 @@ testthat::test_that("Check if write_netcdf works correctly", {
   ncdata <- readNetcdf(nc.file = ncfile, leap.days = FALSE,  omit.empty = TRUE,
                        spatial.ref = "spatial_ref", signif.digits = signif_digits)
 
+
+  file_prefix <- "testfile"
+  file_suffix <- as.integer(Sys.time())
+  output_path <- "C:/TEMP/"
+
   # save to new file
   writeNetcdf(
     data = ncdata$data,
     coord.grid = ncdata$grid,
     origin.date =  ncdata$date[1],
-    output.path = paste0(tempdir(),"/"),
+    output.path = output_path,
     calendar.type = "proleptic_gregorian",
     nc.template.file = ncfile,
     nc.compression = 4,
     nc.spatial.ref = "spatial_ref",
-    nc.file.prefix = "testfile",
-    nc.file.suffix = "7",
+    nc.file.prefix = file_prefix,
+    nc.file.suffix = file_suffix,
     signif.digits = signif_digits
   )
 
-  ncfile2 <- paste0(tempdir(),"/", "testfile_7.nc")
+  ncfile2 <- paste0(output_path,file_prefix,"_",file_suffix,".nc")
   ncdata2 <- readNetcdf(nc.file = ncfile2, leap.days = FALSE,
                         signif.digits = signif_digits)
 

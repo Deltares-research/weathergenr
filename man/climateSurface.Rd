@@ -2,7 +2,7 @@
 % Please edit documentation in R/climateSurface.R
 \name{climateSurface}
 \alias{climateSurface}
-\title{Climate Response Surface Generator}
+\title{Generate a Climate Response Surface Plot}
 \usage{
 climateSurface(
   str.data = NULL,
@@ -30,54 +30,84 @@ climateSurface(
 )
 }
 \arguments{
-\item{str.data}{placeholder}
+\item{str.data}{Data frame containing grid of response surface points. Must include columns for x, y, and z variables.}
 
-\item{gcm.data}{placeholder}
+\item{gcm.data}{Optional data frame of GCM (General Circulation Model) projections with columns matching `variable.x`, `variable.y`,
+and optionally `scenario`, `horizon` for coloring and shape.}
 
-\item{variable.x}{placeholder}
+\item{variable.x}{Name of the column in `str.data` for the x-axis (e.g., "prcp_change").}
 
-\item{variable.y}{placeholder}
+\item{variable.y}{Name of the column in `str.data` for the y-axis (e.g., "temp_change").}
 
-\item{variable.z}{placeholder}
+\item{variable.z}{Name of the column in `str.data` for the z value to contour (e.g., "reliability", "failure_prob").}
 
-\item{threshold.z}{placeholder}
+\item{threshold.z}{Value (numeric or length-1 vector) of z at which to draw the threshold contour (e.g., 0.5 for reliability).
+If NULL, uses value at baseline (x=0, y=0).}
 
-\item{plot.title}{placeholder}
+\item{plot.title}{Title of the plot.}
 
-\item{variable.x.label}{placeholder}
+\item{variable.x.label}{Label for x-axis (supports expressions for formatting).}
 
-\item{variable.y.label}{placeholder}
+\item{variable.y.label}{Label for y-axis (supports expressions).}
 
-\item{failure.direction}{placeholder}
+\item{failure.direction}{Integer; if 1 (default), blue for safe, red for failure. If -1, colors reversed.}
 
-\item{gcm.scenario.list}{placeholder}
+\item{gcm.scenario.list}{Character vector of GCM scenario names to include (default: `c("rcp26", "rcp45", "rcp60", "rcp85")`).}
 
-\item{gcm.bvnorm.levels}{placeholder}
+\item{gcm.bvnorm.levels}{Numeric vector; probability levels for GCM bivariate normal ellipses (e.g., c(0.5, 0.9)), or NULL for none.}
 
-\item{gcm.transparency}{placeholder}
+\item{gcm.transparency}{Numeric; alpha transparency for GCM points.}
 
-\item{gcm.legend}{placeholder}
+\item{gcm.legend}{Logical; show GCM legend (default TRUE).}
 
-\item{variable.z.breaks}{placeholder}
+\item{variable.z.breaks}{Optional vector; contour levels for z variable. If NULL, set automatically.}
 
-\item{variable.x.breaks}{placeholder}
+\item{variable.x.breaks}{Optional vector of breaks for x-axis. If NULL, unique values are used.}
 
-\item{variable.y.breaks}{placeholder}
+\item{variable.y.breaks}{Optional vector of breaks for y-axis.}
 
-\item{contour.num}{placeholder}
+\item{contour.num}{Integer; number of contour levels (default 15).}
 
-\item{text.scale}{placeholder}
+\item{text.scale}{Numeric; global text scaling factor (default 0.6).}
 
-\item{multi.panel}{placeholder}
+\item{multi.panel}{Logical; if TRUE, makes a multi-panel plot using `panel.variable`.}
 
-\item{panel.variable}{placeholder}
+\item{panel.variable}{Optional string, name of column in `str.data` to use for faceting.}
 
-\item{panel.variable.levels}{placeholder}
-
-\item{variable.z.min}{placeholder}
-
-\item{variable.z.max}{placeholder}
+\item{panel.variable.levels}{Optional character vector of levels for faceting variable (controls panel order and inclusion).}
+}
+\value{
+Returns a `ggplot2` plot object representing the climate response surface, optionally with GCM overlays and/or multi-panel facets.
 }
 \description{
-Climate Response Surface Generator
+Plots a climate response surface by contouring a user-provided variable (e.g., system performance, failure probability, hydrologic index)
+across axes of climate change, typically delta precipitation and delta temperature. Optionally overlays GCM projections, multi-panel layouts,
+and threshold lines. Useful for visualizing risk and sensitivity in climate stress testing or climate impact studies.
+}
+\details{
+This function supports flexible plotting of any 2D climate response surface, with support for color-filled contours, threshold overlays,
+customized axis breaks, GCM scenario scatter overlays (with support for ellipses and multi-panel faceting), and fine control of appearance.
+Useful for advanced communication and analysis in climate change impact research.
+}
+\examples{
+\dontrun{
+# Example: Simple climate response surface with dummy data
+df <- expand.grid(
+  prcp_change = seq(-20, 20, by = 5),
+  temp_change = seq(-2, 6, by = 1)
+)
+df$response <- with(df, 1 - 0.01 * prcp_change + 0.05 * temp_change + rnorm(length(prcp_change), 0, 0.05))
+
+climateSurface(
+  str.data = df,
+  variable.x = "prcp_change",
+  variable.y = "temp_change",
+  variable.z = "response",
+  plot.title = "System Reliability Response",
+  variable.x.label = expression(Delta*"P"~"(\%)"),
+  variable.y.label = expression(Delta*"T"~"(DegC)"),
+  threshold.z = 0.9,
+  failure.direction = 1
+)
+}
 }

@@ -5,7 +5,7 @@
 #' @description ggplot wrapper for visualization of wavelet spectral analysis
 #'
 #' @param power.period A numeric vector of fourier periods from wavelet analysis
-#' @param power.signif A numeric value to set the sigicance level of the spectral analysis
+#' @param power.signif A numeric value to set the significance level of the spectral analysis
 #' @param power.obs A numeric vector of observed  global wavelet spectra.
 #' @param power.sim A numeric matrix of simulated global wavelet spectrum. Each column is an independent observation
 #'
@@ -27,6 +27,7 @@ waveletPlot <- function(
     df <- tibble(power.period, power.signif, power.obs)
 
     p <- ggplot(df, aes(x = power.period)) +
+      theme_light(base_size = 11) +
       geom_line(aes(y=power.signif), color = "red", linetype = "dashed", linewidth = 0.6) +
       geom_line(aes(y=power.obs), color = "blue", linewidth = 0.6)
 
@@ -41,8 +42,8 @@ waveletPlot <- function(
 
     df <- tibble(power.period, power.signif, power.obs, slow=slow[1:tsn], sup=sup[1:tsn], savg=savg[1:tsn])
 
-
     p <- ggplot(df, aes( x = power.period)) +
+      theme_light(base_size = 11) +
       geom_ribbon(aes(ymin = slow, ymax = sup), alpha = 0.2) +
       geom_line(aes(y=power.signif), color = "red" , linetype = "dashed", linewidth = 0.6) +
       geom_line(aes(y=savg), color = "black", linewidth = 0.6) +

@@ -2,10 +2,10 @@
 % Please edit documentation in R/readNetcdf.R
 \name{readNetcdf}
 \alias{readNetcdf}
-\title{Read netcdf files}
+\title{Read a gridded NetCDF file and return weather data in tidy format}
 \usage{
 readNetcdf(
-  nc.file = NULL,
+  nc.file,
   leap.days = TRUE,
   omit.empty = TRUE,
   spatial.ref = "spatial_ref",
@@ -13,27 +13,24 @@ readNetcdf(
 )
 }
 \arguments{
-\item{nc.file}{The name of the netcdf file to be read}
+\item{nc.file}{Path to the NetCDF file.}
 
-\item{leap.days}{A logical value indicating whether the gridded data includes leap days.}
+\item{leap.days}{Logical: does data include leap days? (default: TRUE)}
 
-\item{omit.empty}{A lotical value indicating whether empty cells with missing values to be removed}
+\item{omit.empty}{Logical: remove empty/missing-value cells? (default: TRUE)}
 
-\item{spatial.ref}{PLACEHOLDER}
+\item{spatial.ref}{String: name of spatial reference variable in NetCDF (default: "spatial_ref")}
 
-\item{signif.digits}{PLACEHOLDER}
+\item{signif.digits}{(optional) Number of significant digits to round data.}
+}
+\value{
+List with elements:
+  \item{data}{List of tibbles of weather variables for each grid cell (length = number of cells)}
+  \item{grid}{Tibble of grid coordinates and indices}
+  \item{date}{Vector of Date objects}
+  \item{dimensions}{Named list of dimension variables (time, x, y, etc.)}
+  \item{attributes}{List of attributes for variables and global attributes}
 }
 \description{
-Wrapper function to read files and create list object that returns a list of weather data for each grid,
-a table of grid coordinates and a date series as well as raw data, dimensions, variables, and attributes
-from the netcdf file.
-}
-\examples{
-\dontrun{
-output <- readNetcdf(nc.path = system.file('extdata', package = 'gridwegen'),
-    nc.file = "ntoum.nc", nc_dimnames = list(x = "lon", y = "lat", time = "time"),
-    nc.variables = c("precip", "temp", "temp_min", "temp_max"),
-    origin_date = as.Date("1981-01-01"),
-    leap.days = TRUE)
-}
+Read a gridded NetCDF file and return weather data in tidy format
 }

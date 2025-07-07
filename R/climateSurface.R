@@ -1,36 +1,68 @@
-#' Climate Response Surface Generator
+#' Generate a Climate Response Surface Plot
 #'
-#' @param str.data placeholder
-#' @param gcm.data placeholder
-#' @param variable.x placeholder
-#' @param variable.y placeholder
-#' @param variable.z placeholder
-#' @param threshold.z placeholder
-#' @param variable.x.label placeholder
-#' @param variable.y.label placeholder
-#' @param plot.title placeholder
-#' @param failure.direction placeholder
-#' @param gcm.bvnorm.levels placeholder
-#' @param gcm.transparency placeholder
-#' @param gcm.legend placeholder
-#' @param variable.z.min placeholder
-#' @param variable.z.max placeholder
-#' @param contour.num placeholder
-#' @param variable.x.breaks placeholder
-#' @param variable.y.breaks placeholder
-#' @param text.scale placeholder
-#' @param gcm.scenario.list placeholder
-#' @param variable.z.breaks placeholder
-#' @param multi.panel placeholder
-#' @param panel.variable placeholder
-#' @param panel.variable.levels placeholder
+#' @description
+#' Plots a climate response surface by contouring a user-provided variable (e.g., system performance, failure probability, hydrologic index)
+#' across axes of climate change, typically delta precipitation and delta temperature. Optionally overlays GCM projections, multi-panel layouts,
+#' and threshold lines. Useful for visualizing risk and sensitivity in climate stress testing or climate impact studies.
+#'
+#' @details
+#' This function supports flexible plotting of any 2D climate response surface, with support for color-filled contours, threshold overlays,
+#' customized axis breaks, GCM scenario scatter overlays (with support for ellipses and multi-panel faceting), and fine control of appearance.
+#' Useful for advanced communication and analysis in climate change impact research.
+#'
+#' @param str.data Data frame containing grid of response surface points. Must include columns for x, y, and z variables.
+#' @param gcm.data Optional data frame of GCM (General Circulation Model) projections with columns matching `variable.x`, `variable.y`,
+#'   and optionally `scenario`, `horizon` for coloring and shape.
+#' @param variable.x Name of the column in `str.data` for the x-axis (e.g., "prcp_change").
+#' @param variable.y Name of the column in `str.data` for the y-axis (e.g., "temp_change").
+#' @param variable.z Name of the column in `str.data` for the z value to contour (e.g., "reliability", "failure_prob").
+#' @param threshold.z Value (numeric or length-1 vector) of z at which to draw the threshold contour (e.g., 0.5 for reliability).
+#'   If NULL, uses value at baseline (x=0, y=0).
+#' @param plot.title Title of the plot.
+#' @param variable.x.label Label for x-axis (supports expressions for formatting).
+#' @param variable.y.label Label for y-axis (supports expressions).
+#' @param failure.direction Integer; if 1 (default), blue for safe, red for failure. If -1, colors reversed.
+#' @param gcm.scenario.list Character vector of GCM scenario names to include (default: `c("rcp26", "rcp45", "rcp60", "rcp85")`).
+#' @param gcm.bvnorm.levels Numeric vector; probability levels for GCM bivariate normal ellipses (e.g., c(0.5, 0.9)), or NULL for none.
+#' @param gcm.transparency Numeric; alpha transparency for GCM points.
+#' @param gcm.legend Logical; show GCM legend (default TRUE).
+#' @param variable.z.breaks Optional vector; contour levels for z variable. If NULL, set automatically.
+#' @param variable.x.breaks Optional vector of breaks for x-axis. If NULL, unique values are used.
+#' @param variable.y.breaks Optional vector of breaks for y-axis.
+#' @param contour.num Integer; number of contour levels (default 15).
+#' @param text.scale Numeric; global text scaling factor (default 0.6).
+#' @param multi.panel Logical; if TRUE, makes a multi-panel plot using `panel.variable`.
+#' @param panel.variable Optional string, name of column in `str.data` to use for faceting.
+#' @param panel.variable.levels Optional character vector of levels for faceting variable (controls panel order and inclusion).
 #'
 #' @return
-#' @export
+#' Returns a `ggplot2` plot object representing the climate response surface, optionally with GCM overlays and/or multi-panel facets.
+#'
 #' @import ggplot2
 #' @import dplyr
+#' @export
 #'
 #' @examples
+#' \dontrun{
+#' # Example: Simple climate response surface with dummy data
+#' df <- expand.grid(
+#'   prcp_change = seq(-20, 20, by = 5),
+#'   temp_change = seq(-2, 6, by = 1)
+#' )
+#' df$response <- with(df, 1 - 0.01 * prcp_change + 0.05 * temp_change + rnorm(length(prcp_change), 0, 0.05))
+#'
+#' climateSurface(
+#'   str.data = df,
+#'   variable.x = "prcp_change",
+#'   variable.y = "temp_change",
+#'   variable.z = "response",
+#'   plot.title = "System Reliability Response",
+#'   variable.x.label = expression(Delta*"P"~"(%)"),
+#'   variable.y.label = expression(Delta*"T"~"(DegC)"),
+#'   threshold.z = 0.9,
+#'   failure.direction = 1
+#' )
+#' }
 climateSurface <- function(
     str.data = NULL,
     gcm.data = NULL,

@@ -14,7 +14,7 @@ waveletPlot(
 \arguments{
 \item{power.period}{A numeric vector of fourier periods from wavelet analysis}
 
-\item{power.signif}{A numeric value to set the sigicance level of the spectral analysis}
+\item{power.signif}{A numeric value to set the significance level of the spectral analysis}
 
 \item{power.obs}{A numeric vector of observed  global wavelet spectra.}
 

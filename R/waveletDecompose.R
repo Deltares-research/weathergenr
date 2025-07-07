@@ -1,18 +1,47 @@
-
-
-
-#' Function for weather generator decomposition
+#' Wavelet Decomposition of Time Series into Low-Frequency Components and Noise
 #'
-#' @param variable        A vector of time-series of weather variables.
-#' @param signif.periods Significant low-frequency periods in the original time-series.
-#' @param noise.type     A logical specifying the type of background noise.
-#' @param signif.level   Significance level for the wavelet analysis.
-#' @param plot           Draw plot
-#' @param output.path    Output path
+#' @description
+#' Decomposes a univariate time series into significant low-frequency (periodic) components and residual noise
+#' using Morlet wavelet analysis, based on periods identified as significant by prior wavelet analysis.
+#' Each significant periodic component is extracted and returned as a column, along with the reconstructed "noise" (high-frequency residual).
 #'
+#' @details
+#' This function is used in the Wavelet Autoregressive Modeling (WARM) framework to isolate low-frequency signals
+#' (such as decadal or multi-annual climate cycles) for separate stochastic modeling, while treating the remaining noise
+#' as a stationary process. The decomposition uses a Morlet wavelet transform and reconstructs time series components
+#' at each significant period (as found by prior `waveletAnalysis`), plus a residual ("noise") component.
+#'
+#' @param variable Numeric vector. The time series to be decomposed (e.g., annual precipitation).
+#' @param signif.periods List. Each element is a vector of integer scale indices representing significant periods,
+#'    as returned by \code{waveletAnalysis()} (see its \code{signif_periods} output).
+#' @param noise.type Character string. Background noise type: either `"white"` (default) or `"red"`.
+#' @param signif.level Numeric between 0 and 1. Significance level for wavelet significance testing (default 0.90).
+#' @param plot Logical. If TRUE, saves a plot of decomposition (default TRUE).
+#' @param output.path String. Directory to save the plot if `plot=TRUE` (default: NULL).
+#'
+#' @import dplyr tidyr ggplot2
 #' @return
+#' A tibble (data frame) with columns:
+#'   \item{Component_1, Component_2, ...}{Numeric vectors: extracted low-frequency signals for each significant period.}
+#'   \item{NOISE}{Numeric vector: residual high-frequency noise.}
+#'
+#' @seealso
+#'   \code{\link{waveletAnalysis}} for identification of significant periods.
+#'
+#' @examples
+#' \dontrun{
+#' # Example usage:
+#' x <- as.numeric(scale(rnorm(50))) # Example annual series
+#' sig_periods <- list(c(3, 5))      # Assume periods 3 and 5 are significant (from waveletAnalysis)
+#' comp <- waveletDecompose(
+#'   variable = x,
+#'   signif.periods = sig_periods,
+#'   plot = FALSE
+#' )
+#' head(comp)
+#' }
+#'
 #' @export
-#' @import ggplot2
 waveletDecompose <- function(variable = NULL,
        signif.periods = NULL,
        noise.type = "white",
@@ -20,6 +49,15 @@ waveletDecompose <- function(variable = NULL,
        plot = TRUE,
        output.path = NULL)
 {
+
+
+  if (is.null(signif.periods)) {
+    stop("signif.periods must not be NULL")
+  }
+  if (length(signif.periods) == 0) {
+    # If empty, return just the noise (no components)
+    return(tibble::tibble(NOISE = variable))
+  }
 
   # Workaround for rlang warning
   value <- year <- 0
@@ -158,7 +196,7 @@ waveletDecompose <- function(variable = NULL,
   #:::::::::::::::: DEFINE TIME-SERIES COMPONENTS  :::::::::::::::::::::::::::::
 
   COMPS <- array(0, c(length(variable), NUM_FINAL_PERIODS)) %>%
-    as_tibble(.name_repair = ~paste0("COMP", 1:NUM_FINAL_PERIODS))
+    tibble::as_tibble(.name_repair = ~paste0("COMP", 1:NUM_FINAL_PERIODS))
 
   #Loop through each component
   for (i in 1:NUM_FINAL_PERIODS) {
@@ -189,25 +227,23 @@ waveletDecompose <- function(variable = NULL,
     df <- tibble(year = 1:length(variable), Original = variable) %>%
       bind_cols(COMPS) %>%
       bind_cols(Noise=Noise) %>%
-      gather(key = variable, value = value, -year) %>%
-      mutate(variable = factor(variable,
+      tidyr::gather(key = variable, value = value, -year) %>%
+      dplyr::mutate(variable = factor(variable,
         levels = c("Original", names(COMPS), "Noise")))
 
 
-    p <- ggplot(df, aes(x = year, y = value)) +
-        theme_bw(base_size = 11) +
-        facet_wrap(~ variable, ncol = 1, scales = "free") +
-        scale_x_continuous(expand=c(0,0)) +
-        geom_line() +
-        labs(x = "Time (year)", y = "")
+    p <- ggplot2::ggplot(df, aes(x = year, y = value)) +
+      ggplot2::theme_bw(base_size = 11) +
+      ggplot2::facet_wrap(~ variable, ncol = 1, scales = "free") +
+      ggplot2::scale_x_continuous(expand=c(0,0)) +
+      ggplot2::geom_line() +
+      ggplot2::labs(x = "Time (year)", y = "")
 
     # Save plot to file
-    ggsave(file.path(output.path, "warm_decomposition.png"), height=6, width=8)
-
-
+    ggplot2::ggsave(file.path(output.path, "warm_decomposition.png"), height=6, width=8)
 
   }
 
-  return(COMPS %>% mutate(NOISE = Noise))
+  return(COMPS %>% dplyr::mutate(NOISE = Noise))
 
 }

@@ -1,14 +1,61 @@
-
-#' Function for perturbing climate statistics using Quantile-Mapping
+#' Quantile Mapping for Climate Change Perturbation of Precipitation
 #'
-#' @param value To be completed...
-#' @param mean.change placeholder
-#' @param var.change placeholder
-#' @param mon.ts placeholder
-#' @param year.ts placeholder
-#' @param fit.method placeholder
+#' @description
+#' Applies quantile mapping to adjust a daily precipitation time series to reflect changes in monthly mean and variance,
+#' consistent with climate change scenarios. The method fits a gamma distribution to observed nonzero precipitation
+#' in each calendar month, then modifies the distribution's mean and variance according to supplied monthly/yearly change factors,
+#' and maps the original values to their new quantiles in the perturbed distribution.
+#'
+#' This function is designed to be used within larger climate stress-testing workflows to impose user-specified
+#' changes in mean and variance on daily precipitation data, while preserving realistic distributional characteristics.
+#'
+#' @param value Numeric vector. Original daily precipitation values to perturb (typically for one grid cell), must be non-negative.
+#' @param mean.change Matrix or array of mean change factors (multiplicative), dimension: `n_years` x 12 (year, month). Each entry indicates the scaling for that year's/month's mean.
+#' @param var.change Matrix or array of variance change factors (multiplicative), dimension: `n_years` x 12 (year, month).
+#' @param mon.ts Integer vector (same length as `value`). Calendar month for each day (1-12).
+#' @param year.ts Integer vector (same length as `value`). Simulation year index for each day (1 = first year, etc).
+#' @param fit.method Character. Method for fitting the base gamma distribution; passed to [fitdistrplus::fitdist()]. Default is `"mme"`.
 #'
 #' @return
+#' Numeric vector, same length as `value`. Precipitation time series perturbed according to quantile mapping procedure.
+#'
+#' @details
+#' - Only nonzero precipitation days in months with at least 10 such days are perturbed; all others are returned unchanged.
+#' - For each month and simulation year, a gamma distribution is fitted to the base data, then mean and variance are scaled
+#'   by `mean.change` and `var.change` to define the perturbed distribution.
+#' - The original nonzero value is mapped to a quantile in the base distribution, then transformed to the same quantile
+#'   in the target distribution.
+#' - The `mean.change` and `var.change` inputs should be either matrices with dimensions (`n_years` x 12), or objects
+#'   that can be indexed as `mean.change[year, month]`.
+#'
+#' @importFrom fitdistrplus fitdist
+#' @importFrom stats pgamma qgamma
+#'
+#' @examples
+#' \dontrun{
+#' # Example: 2 years of daily data, simple 5% mean and 10% variance increase
+#' set.seed(123)
+#' n_days <- 730
+#' year_idx <- rep(1:2, each = 365)
+#' month_idx <- rep(rep(1:12, times = c(31,28,31,30,31,30,31,31,30,31,30,31)), 2)[1:n_days]
+#' daily_precip <- rgamma(n_days, shape = 1, scale = 5)
+#'
+#' mean.change <- matrix(1.05, nrow = 2, ncol = 12)
+#' var.change <- matrix(1.10, nrow = 2, ncol = 12)
+#'
+#' perturbed_precip <- quantileMapping(
+#'   value = daily_precip,
+#'   mean.change = mean.change,
+#'   var.change = var.change,
+#'   mon.ts = month_idx,
+#'   year.ts = year_idx
+#' )
+#'
+#' summary(daily_precip)
+#' summary(perturbed_precip)
+#' }
+#'
+#' @seealso \code{\link[fitdistrplus]{fitdist}}
 #' @export
 quantileMapping <- function(
   value = NULL,

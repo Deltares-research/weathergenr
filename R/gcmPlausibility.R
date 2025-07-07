@@ -1,18 +1,67 @@
-
-#' Calculate likelihood from gcm projections
+#' Quantify Plausible Ranges of Impact Metrics Based on GCM Projections
 #'
-#' @param str.data placeholder
-#' @param gcm.data placeholder
-#' @param clevel.list placeholder
-#' @param metric.list placeholder
-#' @param metric.labs placeholder
-#' @param location.list placeholder
-#' @param gcm.scenario.list placeholder
+#' @description
+#' Calculates the plausible range of climate impact metrics (e.g., system performance, failure probability)
+#' for a set of locations and metrics, based on the overlap between user-provided climate response surfaces (`str.data`)
+#' and the distribution of future climate change as projected by General Circulation Models (GCMs, `gcm.data`).
+#' For each metric and location, the function extracts the range of metric values falling within GCM ellipses
+#' (e.g., 50% and 95% probability contours) in delta-precipitation/delta-temperature space.
 #'
-#' @returns
+#' The main application is to support "plausibility" or "stress-testing" analyses in climate risk assessments.
+#'
+#' @param str.data Data frame. Climate response surface with columns for x (precip), y (temp), and z (metric of interest)
+#'   plus `statistic` and location identifier. Typically produced by a climate stress-test workflow.
+#' @param gcm.data Data frame. GCM projections, must include columns for `prcp`, `tavg`, `scenario`, and optionally `location`.
+#' @param gcm.scenario.list Character vector. GCM scenario names to include (default: c("ssp126", "ssp245", "ssp370", "ssp585")).
+#' @param clevel.list Numeric vector. List of probability levels for GCM ellipses (e.g., c(0.5, 0.95)).
+#' @param metric.list Character vector. List of metric names (e.g., c("reliability", "failure_prob")) to summarize.
+#' @param metric.labs Character vector. Labels for metrics (used in output; defaults to metric.list).
+#' @param location.list Character vector. Locations or system units to summarize (must match column in str.data/gcm.data).
+#'
+#' @return
+#' A data frame (tibble) with the following columns:
+#'   - `Location`: Location name.
+#'   - `Metric`: Metric name.
+#'   - `Baseline`: Metric value at baseline (no climate change).
+#'   - Additional columns for each probability level in `clevel.list` (e.g., "CL:50%", "CL:95%"), containing
+#'     the plausible range ("min to max") of metric values within the GCM ellipse for each location and metric.
+#'
+#' @details
+#' For each location/metric, interpolates the response surface, finds points within the specified GCM probability ellipse
+#' (in climate space), and records the range of metric values within that region. Useful for reporting GCM-informed
+#' plausible ranges of change for each system/metric.
+#'
 #' @export
 #'
+#' @import dplyr
+#' @import ggplot2
+#' @importFrom tidyr expand_grid unite pivot_wider
+#' @importFrom akima interp
+#' @importFrom sp point.in.polygon
+#'
 #' @examples
+#' \dontrun{
+#' # Example data setup (must match your workflow's response surfaces & GCM format)
+#' str.data <- data.frame(
+#'   prcp = rep(seq(-20, 20, 5), each = 9),
+#'   tavg = rep(seq(-2, 6, 1), times = 9),
+#'   z = runif(81, 70, 100),
+#'   statistic = "reliability",
+#'   Location = "SiteA"
+#' )
+#' gcm.data <- data.frame(
+#'   prcp = rnorm(100, 0, 10),
+#'   tavg = rnorm(100, 2, 2),
+#'   scenario = sample(c("ssp126", "ssp245", "ssp370", "ssp585"), 100, replace = TRUE)
+#' )
+#' results <- GCMplausiblity(
+#'   str.data = str.data,
+#'   gcm.data = gcm.data,
+#'   metric.list = c("reliability"),
+#'   location.list = c("SiteA")
+#' )
+#' print(results)
+#' }
 GCMplausiblity <- function(
     str.data = NULL,
     gcm.data = NULL,
@@ -45,7 +94,7 @@ GCMplausiblity <- function(
   # Surpress warnings
   options(warn=-1)
 
-  if (is.null(metric.labs)) metric.labs <- metric.list
+  #if (is.null(metric.labs)) metric.labs <- metric.list
 
   clevel_labs <- paste0("CL:",clevel.list*100,"%")
   plausDF <- expand_grid(Location = location.list, clevel = clevel.list, Metric = metric.list) %>%
@@ -57,10 +106,12 @@ GCMplausiblity <- function(
 
   for (x in 1:nrow(plausDF)) {
 
-    strDF_ini <- str_data %>% filter(statistic == plausDF$Metric[x]) %>%
+    strDF_ini <- str.data %>% filter(statistic == plausDF$Metric[x]) %>%
       select(x = prcp, y = tavg, z = plausDF$Location[x])
 
     bindex <- which(strDF_ini$x == 0 & strDF_ini$y == 0)
+    if (length(bindex) == 0) stop("No baseline point (x=0, y=0) found in str.data for metric ", plausDF$Metric[x])
+
     strDF <- strDF_ini %>% mutate(z = z/strDF_ini[[bindex,"z"]] * 100 - 100)
 
     strDF_interp <- gridInterpolate(strDF$x, strDF$y, strDF$z) %>%
@@ -76,9 +127,16 @@ GCMplausiblity <- function(
 
     # Find intersecting points on the ellipse
     con <- which(as.logical(sp::point.in.polygon(points$x, points$y, ell$x, ell$y)))
+
+    if (length(con) == 0) {
+      plausDF$min[x] <- NA
+      plausDF$max[x] <- NA
+    } else {
+      plausDF$min[x] <- min(strDF_interp[con,]$z)
+      plausDF$max[x] <- max(strDF_interp[con,]$z)
+    }
+
     plausDF$Baseline[x] <- strDF_ini$z[which(strDF_ini$x == 0 & strDF_ini$y == 0)]
-    plausDF$min[x] <- min(strDF_interp[con,]$z)
-    plausDF$max[x] <- max(strDF_interp[con,]$z)
 
   }
 

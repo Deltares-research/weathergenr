@@ -1,21 +1,26 @@
-
-#' Resample from WARM outputs
+#' Subset and Sample Synthetic Time Series Based on Climate and Wavelet Criteria
 #'
-#' @param series.sim  A numeric matrix, with simulated time-series.
-#' @param series.obs  A numeric vector of observd time-series values.
-#' @param save.plots A logical, to save the plots to file.
-#' @param power.obs A numeric vector of power spectra of observed time-series.
-#' @param power.sim A numeric matrix of power spectrum of simulated time-series.
-#' @param power.period A time-series of power periods calculated.
-#' @param power.signif A time-series of power significance.
-#' @param sample.num A numeric value to define the final sample size.
-#' @param seed A numeric value to define a seed for resampling.
-#' @param save.series A logical to write the results to csv files.
-#' @param output.path Output folder path
-#' @param padding placeholder
-#' @param bounds placeholder
+#' Selects and samples synthetic (simulated) time series that match statistical
+#' and spectral (wavelet) criteria relative to observed data. Optionally saves
+#' plots and selected series to disk.
 #'
-#' @return
+#' @param series.obs Numeric vector. Observed annual time series (length = years).
+#' @param series.sim Numeric matrix. Simulated time series (nrow = years, ncol = realizations).
+#' @param power.obs Numeric vector. Observed global wavelet power spectrum.
+#' @param power.sim Numeric matrix. Simulated global wavelet spectra (nrow = periods, ncol = realizations).
+#' @param power.period Numeric vector. Periods (years) for power spectra.
+#' @param power.signif Numeric vector. Significance thresholds for power spectra.
+#' @param sample.num Integer. Number of simulations to sample for final output.
+#' @param seed Integer or NULL. Seed for reproducible sampling.
+#' @param save.plots Logical. Whether to save plots (default: TRUE).
+#' @param save.series Logical. Whether to write selected series to .csv (default: TRUE).
+#' @param output.path String. Directory to write plots and .csv files to.
+#' @param padding Logical. Whether to pad significant periods (default: TRUE).
+#' @param bounds List. Bounds for filtering on mean, sd, min, max, sig.thr, nsig.thr.
+#'
+#' @return A list with two elements:
+#'   \item{subsetted}{A numeric matrix containing all synthetic traces that pass the filtering criteria.}
+#'   \item{sampled}{A numeric matrix of the sampled synthetic traces (number set by `sample.num`).}
 #' @export
 #' @import dplyr
 #' @import ggplot2
@@ -32,18 +37,30 @@ waveletARSubset <- function(
   save.series = TRUE,
   output.path = NULL,
   padding = TRUE,
-  bounds = list(mean = 0.1, sd = 0.2, min = 0.2,
-    max = 0.2, signif.threshold = 0.5,
-    nonsignif.threshold = 1.5))
+  bounds = list(mean = 0.1, sd = 0.2, min = 0.2, max = 0.2,
+                sig.thr = 0.5, nsig.thr = 1.5))
 {
+
+  # Input checks
+  if (is.null(series.obs) || !is.numeric(series.obs)) stop("'series.obs' must be a numeric vector.")
+  if (is.null(series.sim) || !is.numeric(series.sim)) stop("'series.sim' must be a numeric matrix.")
+  if (is.null(power.obs) || !is.numeric(power.obs)) stop("'power.obs' must be a numeric vector.")
+  if (is.null(power.sim) || !is.numeric(power.sim)) stop("'power.sim' must be a numeric matrix.")
+  if (is.null(power.period) || !is.numeric(power.period)) stop("'power.period' must be a numeric vector.")
+  if (is.null(power.signif) || !is.numeric(power.signif)) stop("'power.signif' must be a numeric vector.")
+  if (!is.numeric(sample.num) || sample.num < 1) stop("'sample.num' must be a positive integer.")
 
   # Workaround for rlang warning
   sim <- value <- yind <- par <- type <- variable <- y <- x <- obs <- 0
 
   sim.year.num <- nrow(series.sim)
 
-  # If no seed provided, sample a value
-  if(is.null(seed)) seed <- sample.int(1e5,1)
+  # Seed handling (local only)
+  if (!is.null(seed)) {
+    old_seed <- .Random.seed
+    on.exit({ .Random.seed <<- old_seed }, add = TRUE)
+    set.seed(seed)
+  }
 
   # Statistics for observed series
   stats_obs <- tibble(value = series.obs) %>%
@@ -78,7 +95,7 @@ waveletARSubset <- function(
   power_signif_max = 10
 
   # Filter based on power spectra
-  if (!is.null(bounds$signif.threshold)) {
+  if (!is.null(bounds$sig.thr)) {
 
       # Filter scenarios have significant signals
       sub_power1 <- which(sapply(1:ncol(power.sim), function(x)
@@ -86,12 +103,12 @@ waveletARSubset <- function(
 
       # Significant signals within the bound
       sub_power2 <- which(sapply(1:ncol(power.sim), function(x)
-        all((power.sim[periods_sig,x] > power.obs[periods_sig] * bounds$signif.threshold) &
+        all((power.sim[periods_sig,x] > power.obs[periods_sig] * bounds$sig.thr) &
               (power.sim[periods_sig,x] < power.obs[periods_sig] * power_signif_max))))
 
       # Non-significant below threshold
       sub_power3 <- which(sapply(1:ncol(power.sim), function(x)
-        all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*bounds$nonsignif.threshold))))
+        all((power.sim[periods_nonsig,x] < power.signif[periods_nonsig]*bounds$nsig.thr))))
 
       sub_power <- base::intersect(base::intersect(sub_power1, sub_power2), sub_power3)
 
@@ -136,77 +153,77 @@ waveletARSubset <- function(
   }
 
   if(isTRUE(save.plots)) {
+    suppressWarnings({
 
+      ### Global Wavelet Spectral Plot
+      pl <- min(length(power.period),dim(power.sim)[1])
+      plr <- 5 * ceiling(power.period[pl] / 5)
 
-    ### Global Wavelet Spectral Plot
-    pl <- min(length(power.period),dim(power.sim)[1])
-    plr <- 5 * ceiling(power.period[pl] / 5)
+      # For all matching realizations
+      p <- waveletPlot(power.period = power.period[1:pl],
+                     power.signif = power.signif[1:pl],
+                     power.obs = power.obs[1:pl],
+                     power.sim = power.sim[1:pl,sub_clim])  +
+            scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    # For all matching realizations
-    p <- waveletPlot(power.period = power.period[1:pl],
-                   power.signif = power.signif[1:pl],
-                   power.obs = power.obs[1:pl],
-                   power.sim = power.sim[1:pl,sub_clim])  +
-          scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
+      ggsave(file.path(output.path, "warm_spectral_matching.png"), width=8, height=6)
 
-    ggsave(file.path(output.path, "warm_spectral_matching.png"), width=8, height=6)
+      # For subsetted realizations only
+      p <- waveletPlot(power.period = power.period[1:pl],
+                     power.signif = power.signif[1:pl],
+                     power.obs = power.obs[1:pl],
+                     power.sim = power.sim[1:pl,sub_sample, drop = FALSE])  +
+            scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
 
-    # For subsetted realizations only
-    p <- waveletPlot(power.period = power.period[1:pl],
-                   power.signif = power.signif[1:pl],
-                   power.obs = power.obs[1:pl],
-                   power.sim = power.sim[1:pl,sub_sample, drop = FALSE])  +
-          scale_x_continuous(breaks=seq(5,plr,5), limits=c(0,plr), expand=c(0,0))
+      ggsave(file.path(output.path, "warm_spectral_sampled.png"), width=8, height=6)
 
-    ggsave(file.path(output.path, "warm_spectral_sampled.png"), width=8, height=6)
+      # Boxplots of all stats
+      par_labels <- c(`mean` = "Mean",`sd` = "StDev", `min` = "Minimum",`max` = "Maximum")
 
-    # Boxplots of all stats
-    par_labels <- c(`mean` = "Mean",`sd` = "StDev", `min` = "Minimum",`max` = "Maximum")
+      stats_sim_gg <- stats_sim %>%
+        pivot_longer(!sim, names_to = "par", values_to = "value") %>%
+        mutate(par = factor(par, levels = c("mean", "sd", "min", "max"))) %>%
+        mutate(value = value * 100 - 100)
 
-    stats_sim_gg <- stats_sim %>%
-      pivot_longer(!sim, names_to = "par", values_to = "value") %>%
-      mutate(par = factor(par, levels = c("mean", "sd", "min", "max"))) %>%
-      mutate(value = value * 100 - 100)
+      # Plot subsetted series statistics
+      p <- ggplot(stats_sim_gg, aes(x = par, y = value)) +
+        theme_bw() +
+        geom_violin(color = "black", fill = "gray90") +
+        facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1,
+                   labeller = as_labeller(par_labels)) +
+        geom_hline(yintercept = 0, linewidth = 1, color = "blue") +
+        geom_point(data = filter(stats_sim_gg, sim %in% sub_sample),
+                   size = 3, color = "white", fill = "black", shape = 21) +
+        scale_y_continuous(limits = c(-50,50), breaks = seq(-50,50,25)) +
+        labs(x="", y = "Change (%)", color = "", fill="") +
+        theme(axis.title.x=element_blank(),
+              axis.text.x=element_blank(),
+              axis.ticks.x=element_blank())
 
-    # Plot subsetted series statistics
-    p <- ggplot(stats_sim_gg, aes(x = par, y = value)) +
-      theme_bw() +
-      geom_violin(color = "black", fill = "gray90") +
-      facet_wrap(~par, scales = "free", drop = TRUE, nrow = 1,
-                 labeller = as_labeller(par_labels)) +
-      geom_hline(yintercept = 0, linewidth = 1, color = "blue") +
-      geom_point(data = filter(stats_sim_gg, sim %in% sub_sample),
-                 size = 3, color = "white", fill = "black", shape = 21) +
-      scale_y_continuous(limits = c(-50,50), breaks = seq(-50,50,25)) +
-      labs(x="", y = "Change (%)", color = "", fill="") +
-      theme(axis.title.x=element_blank(),
-            axis.text.x=element_blank(),
-            axis.ticks.x=element_blank())
+        ggsave(file.path(output.path, "warm_stats_sampled.png"), width = 8, height = 6)
 
-      ggsave(file.path(output.path, "warm_stats_sampled.png"), width = 8, height = 6)
+      # Plot simulated warm-series
+      sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
 
-    # Plot simulated warm-series
-    sub_clim_plot <- sub_clim[1:min(length(sub_clim), 50)]
+      df1 <- series.sim[,sub_sample] %>%
+        as_tibble(.name_repair = ~paste0("rlz",1:length(sub_sample))) %>%
+        mutate(x = 1:sim.year.num) %>%
+        gather(key = variable, value=y, -x) %>%
+        mutate(y = y * 365)
 
-    df1 <- series.sim[,sub_sample] %>%
-      as_tibble(.name_repair = ~paste0("rlz",1:length(sub_sample))) %>%
-      mutate(x = 1:sim.year.num) %>%
-      gather(key = variable, value=y, -x) %>%
-      mutate(y = y * 365)
+      df2 <- tibble(x=1:length(series.obs), y = series.obs*365)
 
-    df2 <- tibble(x=1:length(series.obs), y = series.obs*365)
+      # Subsetted annual series
+      p <- ggplot(df1, aes(x = x, y = y)) +
+        theme_bw(base_size = 12) +
+        geom_line(aes(y = y, group = variable), color = "gray50", alpha = 0.5) +
+        geom_line(aes(y=y), data = df2, color = "blue", linewidth = 1) +
+        scale_x_continuous(expand = c(0,0)) +
+        guides(color = "none") +
+        labs(y = "mm/year", x = "Serial year")
 
-    # Subsetted annual series
-    p <- ggplot(df1, aes(x = x, y = y)) +
-      theme_bw(base_size = 12) +
-      geom_line(aes(y = y, group = variable), color = "gray50", alpha = 0.5) +
-      geom_line(aes(y=y), data = df2, color = "blue", linewidth = 1) +
-      scale_x_continuous(expand = c(0,0)) +
-      guides(color = "none") +
-      labs(y = "mm/year", x = "Serial year")
-
-    ggsave(file.path(output.path, "warm_annual_series.png"), width = 8, height = 6)
-
+      ggsave(file.path(output.path, "warm_annual_series.png"), width = 8, height = 6)
+    }) # close supress warnings
 
   }
 

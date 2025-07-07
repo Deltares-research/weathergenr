@@ -2,7 +2,7 @@
 % Please edit documentation in R/knnDaily.R
 \name{knnDaily}
 \alias{knnDaily}
-\title{KNN daily sampling}
+\title{K-Nearest Neighbor (KNN) Daily Weather Resampling}
 \usage{
 knnDaily(
   cur_sim_PRCP = NULL,
@@ -20,30 +20,51 @@ knnDaily(
 )
 }
 \arguments{
-\item{cur_sim_PRCP}{placeholder}
+\item{cur_sim_PRCP}{Numeric value of current simulated precipitation.}
 
-\item{cur_sim_TEMP}{placeholder}
+\item{cur_sim_TEMP}{Numeric value of current simulated temperature.}
 
-\item{PRCP_TODAY}{placeholder}
+\item{PRCP_TODAY}{Numeric vector of historical daily precipitation values.}
 
-\item{TEMP_TODAY}{placeholder}
+\item{TEMP_TODAY}{Numeric vector of historical daily temperature values.}
 
-\item{k}{placeholder}
+\item{k}{Number of nearest neighbors to consider.}
 
-\item{sd_monthly_PRCP}{placeholder}
+\item{sd_monthly_PRCP}{Monthly standard deviation of historical precipitation.}
 
-\item{sd_monthly_TEMP}{placeholder}
+\item{sd_monthly_TEMP}{Monthly standard deviation of historical temperature.}
 
-\item{mean_monthly_PRCP}{placeholder}
+\item{mean_monthly_PRCP}{Monthly mean of historical precipitation.}
 
-\item{mean_monthly_TEMP}{placeholder}
+\item{mean_monthly_TEMP}{Monthly mean of historical temperature.}
 
-\item{k1}{placeholder}
+\item{k1}{Integer index for simulation trace (used for seed offset).}
 
-\item{count}{placeholder}
+\item{count}{Integer time step (e.g., day index in simulation; used for seed offset).}
 
-\item{seed}{random seed value}
+\item{seed}{Optional integer seed for reproducibility.}
+}
+\value{
+An integer index corresponding to the selected historical day from `PRCP_TODAY`.
 }
 \description{
-KNN daily sampling
+Selects a historical day most similar to the current simulated weather using
+K-nearest neighbor resampling based on standardized precipitation and temperature.
+}
+\examples{
+set.seed(42)
+knnDaily(
+  cur_sim_PRCP = 5,
+  cur_sim_TEMP = 22,
+  PRCP_TODAY = runif(100, 0, 20),
+  TEMP_TODAY = runif(100, 15, 30),
+  k = 10,
+  sd_monthly_PRCP = 5,
+  sd_monthly_TEMP = 3,
+  mean_monthly_PRCP = 10,
+  mean_monthly_TEMP = 20,
+  k1 = 1,
+  count = 7,
+  seed = 123)
+
 }
