@@ -262,8 +262,6 @@ generateWeatherSeries <- function(
       ANNUAL_PRCP = warm_variable,
       PRCP = climate_d_aavg$precip,
       TEMP = climate_d_aavg$temp,
-      TMAX = climate_d_aavg$temp_max,
-      TMIN = climate_d_aavg$temp_min,
       START_YEAR_SIM = sim.year.start,
       k1 = n,
       ymax = sim.year.num,

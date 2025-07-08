@@ -2,7 +2,7 @@
 % Please edit documentation in R/knnDaily.R
 \name{knnDaily}
 \alias{knnDaily}
-\title{K-Nearest Neighbor (KNN) Daily Weather Resampling}
+\title{K-Nearest Neighbors (KNN) Daily Weather Resampling}
 \usage{
 knnDaily(
   cur_sim_PRCP = NULL,
@@ -10,46 +10,48 @@ knnDaily(
   PRCP_TODAY = NULL,
   TEMP_TODAY = NULL,
   k = NULL,
-  sd_monthly_PRCP = NULL,
-  sd_monthly_TEMP = NULL,
-  mean_monthly_PRCP = NULL,
-  mean_monthly_TEMP = NULL,
-  k1 = NULL,
-  count = NULL,
+  w_PRCP = 100/sd_monthly_PRCP,
+  w_TEMP = 10/sd_monthly_TEMP,
   seed = NULL
 )
 }
 \arguments{
-\item{cur_sim_PRCP}{Numeric value of current simulated precipitation.}
+\item{cur_sim_PRCP}{Numeric scalar. Simulated precipitation value for the current day.}
 
-\item{cur_sim_TEMP}{Numeric value of current simulated temperature.}
+\item{cur_sim_TEMP}{Numeric scalar. Simulated temperature value for the current day.}
 
-\item{PRCP_TODAY}{Numeric vector of historical daily precipitation values.}
+\item{PRCP_TODAY}{Numeric vector. Historical daily precipitation values to compare against.}
 
-\item{TEMP_TODAY}{Numeric vector of historical daily temperature values.}
+\item{TEMP_TODAY}{Numeric vector. Historical daily temperature values to compare against.}
 
-\item{k}{Number of nearest neighbors to consider.}
+\item{k}{Integer. Number of nearest neighbors to consider (must be at least 1).}
 
-\item{sd_monthly_PRCP}{Monthly standard deviation of historical precipitation.}
+\item{w_PRCP}{Numeric scalar. Weight for precipitation in distance calculation. Typically `100 / sd_monthly_PRCP`.}
 
-\item{sd_monthly_TEMP}{Monthly standard deviation of historical temperature.}
+\item{w_TEMP}{Numeric scalar. Weight for temperature in distance calculation. Typically `10 / sd_monthly_TEMP`.}
 
-\item{mean_monthly_PRCP}{Monthly mean of historical precipitation.}
-
-\item{mean_monthly_TEMP}{Monthly mean of historical temperature.}
-
-\item{k1}{Integer index for simulation trace (used for seed offset).}
-
-\item{count}{Integer time step (e.g., day index in simulation; used for seed offset).}
-
-\item{seed}{Optional integer seed for reproducibility.}
+\item{seed}{Optional integer. If provided, ensures reproducibility of random selection among neighbors.}
 }
 \value{
-An integer index corresponding to the selected historical day from `PRCP_TODAY`.
+Integer. Index of the selected historical day from `PRCP_TODAY`/`TEMP_TODAY`.
+Returns `NA_integer_` if no valid selection is possible.
 }
 \description{
-Selects a historical day most similar to the current simulated weather using
-K-nearest neighbor resampling based on standardized precipitation and temperature.
+Selects the index of a historical day whose weather is most similar to a simulated day's weather,
+using the K-nearest neighbors algorithm. Similarity is determined based on standardized precipitation
+and temperature. The function allows for stochastic selection among the K closest matches, favoring
+closer neighbors.
+}
+\details{
+For each simulated day, the Euclidean distance between the simulated and historical days is computed
+using weighted precipitation and temperature differences. Among the K nearest days, a single day is
+stochastically selected with a probability inversely proportional to its rank (closer neighbors are
+more likely).
+
+The weights `w_PRCP` and `w_TEMP` are typically set as the inverse of the standard deviations of precipitation
+and temperature, scaled to balance their influence in the distance metric.
+
+If `k` exceeds the number of available historical days, it is automatically reduced.
 }
 \examples{
 set.seed(42)
@@ -59,12 +61,9 @@ knnDaily(
   PRCP_TODAY = runif(100, 0, 20),
   TEMP_TODAY = runif(100, 15, 30),
   k = 10,
-  sd_monthly_PRCP = 5,
-  sd_monthly_TEMP = 3,
-  mean_monthly_PRCP = 10,
-  mean_monthly_TEMP = 20,
-  k1 = 1,
-  count = 7,
-  seed = 123)
+  w_PRCP = 20,
+  w_TEMP = 5,
+  seed = 123
+)
 
 }

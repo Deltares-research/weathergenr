@@ -9,10 +9,6 @@ test_that("knnDaily returns an integer index within correct bounds", {
   k <- 5
   sd_monthly_PRCP <- 5
   sd_monthly_TEMP <- 2
-  mean_monthly_PRCP <- 10
-  mean_monthly_TEMP <- 20
-  k1 <- 1
-  count <- 1
   seed <- 100
 
   result <- knnDaily(
@@ -21,12 +17,8 @@ test_that("knnDaily returns an integer index within correct bounds", {
     PRCP_TODAY = PRCP_TODAY,
     TEMP_TODAY = TEMP_TODAY,
     k = k,
-    sd_monthly_PRCP = sd_monthly_PRCP,
-    sd_monthly_TEMP = sd_monthly_TEMP,
-    mean_monthly_PRCP = mean_monthly_PRCP,
-    mean_monthly_TEMP = mean_monthly_TEMP,
-    k1 = k1,
-    count = count,
+    w_PRCP = 100/sd_monthly_PRCP,
+    w_TEMP = 10/sd_monthly_TEMP,
     seed = seed
   )
   expect_type(result, "integer")
@@ -48,18 +40,24 @@ test_that("knnDaily is reproducible with the same seed and settings", {
   seed <- 77
 
   res1 <- knnDaily(
-    cur_sim_PRCP, cur_sim_TEMP,
-    PRCP_TODAY, TEMP_TODAY,
-    k, sd_monthly_PRCP, sd_monthly_TEMP,
-    mean_monthly_PRCP, mean_monthly_TEMP,
-    k1, count, seed
+    cur_sim_PRCP = cur_sim_PRCP,
+    cur_sim_TEMP = cur_sim_TEMP,
+    PRCP_TODAY = PRCP_TODAY,
+    TEMP_TODAY = TEMP_TODAY,
+    k = k,
+    w_PRCP = 100/sd_monthly_PRCP,
+    w_TEMP = 10/sd_monthly_TEMP,
+    seed = seed
   )
   res2 <- knnDaily(
-    cur_sim_PRCP, cur_sim_TEMP,
-    PRCP_TODAY, TEMP_TODAY,
-    k, sd_monthly_PRCP, sd_monthly_TEMP,
-    mean_monthly_PRCP, mean_monthly_TEMP,
-    k1, count, seed
+    cur_sim_PRCP = cur_sim_PRCP,
+    cur_sim_TEMP = cur_sim_TEMP,
+    PRCP_TODAY = PRCP_TODAY,
+    TEMP_TODAY = TEMP_TODAY,
+    k = k,
+    w_PRCP = 100/sd_monthly_PRCP,
+    w_TEMP = 10/sd_monthly_TEMP,
+    seed = seed
   )
   expect_identical(res1, res2)
 })
@@ -79,11 +77,14 @@ test_that("knnDaily works when k = 1", {
   seed <- 888
 
   result <- knnDaily(
-    cur_sim_PRCP, cur_sim_TEMP,
-    PRCP_TODAY, TEMP_TODAY,
-    k, sd_monthly_PRCP, sd_monthly_TEMP,
-    mean_monthly_PRCP, mean_monthly_TEMP,
-    k1, count, seed
+    cur_sim_PRCP = cur_sim_PRCP,
+    cur_sim_TEMP = cur_sim_TEMP,
+    PRCP_TODAY = PRCP_TODAY,
+    TEMP_TODAY = TEMP_TODAY,
+    k = k,
+    w_PRCP = 100/sd_monthly_PRCP,
+    w_TEMP = 10/sd_monthly_TEMP,
+    seed = seed
   )
   expect_type(result, "integer")
   expect_true(result >= 1 && result <= length(PRCP_TODAY))

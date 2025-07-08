@@ -9,8 +9,6 @@ resampleDates(
   ANNUAL_PRCP,
   PRCP,
   TEMP,
-  TMAX,
-  TMIN,
   START_YEAR_SIM,
   k1,
   ymax,
@@ -27,55 +25,59 @@ resampleDates(
 )
 }
 \arguments{
-\item{PRCP_FINAL_ANNUAL_SIM}{Numeric vector. Simulated annual precipitation totals for each simulation year.}
+\item{PRCP_FINAL_ANNUAL_SIM}{Numeric vector. Simulated annual precipitation totals, one per simulation year.}
 
-\item{ANNUAL_PRCP}{Numeric vector. Observed annual precipitation for historical years.}
+\item{ANNUAL_PRCP}{Numeric vector. Observed historical annual precipitation totals, one per observed year.}
 
-\item{PRCP}{Numeric vector. Observed daily precipitation series, length must match `dates.d`.}
+\item{PRCP}{Numeric vector. Observed daily precipitation series (length must match `dates.d`).}
 
-\item{TEMP}{Numeric vector. Observed daily temperature series (e.g., mean temp), length must match `dates.d`.}
+\item{TEMP}{Numeric vector. Observed daily temperature series (e.g., mean temperature; length must match `dates.d`).}
 
-\item{TMAX}{Numeric vector. Observed daily maximum temperature.}
+\item{START_YEAR_SIM}{Integer. First year of the simulation period.}
 
-\item{TMIN}{Numeric vector. Observed daily minimum temperature.}
+\item{k1}{Integer. Simulation trace index (used as a seed modifier for reproducibility).}
 
-\item{START_YEAR_SIM}{Integer. The starting year of the simulation period.}
+\item{ymax}{Integer. Number of years to simulate (simulation period length).}
 
-\item{k1}{Integer. Simulation trace index (seed modifier).}
+\item{dates.d}{Data frame. Observed period with columns: `date`, `month`, `day`, `wyear` (water year).}
 
-\item{ymax}{Integer. Number of years to simulate.}
+\item{sim.dates.d}{Data frame. Simulation period with columns: `month`, `day`, `wyear`.}
 
-\item{dates.d}{Data frame. Columns: `date`, `month`, `day`, `wyear` for the observed period.}
+\item{YEAR_D}{Integer vector. Water year for each observed day (length must match `dates.d`).}
 
-\item{sim.dates.d}{Data frame. Columns: `month`, `day`, `wyear` for the simulation period.}
+\item{month.start}{Integer (1-12). First month of the water year (e.g., 1 for January).}
 
-\item{YEAR_D}{Integer vector. Water year for each observed day (must match `dates.d`).}
+\item{knn.annual.sample.num}{Integer. Number of nearest neighbors to sample for annual KNN matching (default: 50).}
 
-\item{month.start}{Integer (1-12). Month at which the water year starts.}
+\item{wet.quantile}{Numeric (0-1). Quantile threshold for defining wet days (default: 0.2).}
 
-\item{knn.annual.sample.num}{Integer. Number of nearest years to sample in annual KNN (default 50).}
+\item{extreme.quantile}{Numeric (0-1). Quantile threshold for defining extreme wet days (default: 0.8).}
 
-\item{wet.quantile}{Numeric (0-1). Precip threshold quantile for defining wet days (default 0.2).}
+\item{dry.spell.change}{Numeric vector (length 12). Monthly adjustment factors for dry spell lengths (default: rep(1, 12)).}
 
-\item{extreme.quantile}{Numeric (0-1). Precip threshold quantile for extreme wet days (default 0.8).}
+\item{wet.spell.change}{Numeric vector (length 12). Monthly adjustment factors for wet spell lengths (default: rep(1, 12)).}
 
-\item{dry.spell.change}{Numeric vector (length 12). Adjustment factors for dry spells per month.}
-
-\item{wet.spell.change}{Numeric vector (length 12). Adjustment factors for wet spells per month.}
-
-\item{seed}{Integer or NULL. Random seed for reproducibility (optional).}
+\item{seed}{Optional integer. Seed for random number generation to ensure reproducibility.}
 }
 \value{
-Returns a vector of `Date` objects representing the resampled daily dates for the simulation period.
+A vector of `Date` objects representing the resampled daily dates for the simulation period.
 }
 \description{
-Generates a simulated daily weather sequence using a Markov Chain model and KNN-based resampling,
-conditioned on annual precipitation and climate statistics. This is designed for use in stochastic
-weather generators where daily sequences are resampled to match statistical properties of observed data.
+Generates a simulated daily weather date sequence using a Markov Chain model and K-Nearest Neighbors (KNN) resampling,
+conditioned on annual precipitation and climate statistics. This function is intended for stochastic weather generators,
+producing daily dates that preserve the statistical characteristics and persistence of observed wet/dry/extreme spells.
 }
 \details{
-Uses a Markov Chain to simulate daily precipitation state transitions (dry, wet, extreme)
-and KNN-based selection for matching temperature/precipitation values.
+This function resamples daily weather dates to create a synthetic weather sequence that matches both annual
+and daily precipitation/temperature statistics of the observed record. The process involves:
+
+1. **Annual selection:** For each simulation year, similar observed years are identified using KNN based on annual precipitation.
+2. **Markov Chain simulation:** Daily precipitation states (dry, wet, extreme) are generated using a Markov Chain model, with transition probabilities estimated from the observed years and adjusted for each month.
+3. **Daily KNN resampling:** For each simulated day, a corresponding observed day is selected via KNN based on standardized anomalies of precipitation and temperature, to match the simulated state and maintain realistic temporal structure.
+4. **Spell adjustments:** `dry.spell.change` and `wet.spell.change` allow monthly control over the lengths of dry and wet spells in the synthetic sequence.
+
+The result is a vector of `Date` objects for the synthetic daily weather sequence, preserving the statistical
+properties of both annual and sub-annual (spell and state) variability.
 }
 \examples{
 \dontrun{
@@ -84,18 +86,20 @@ sim_dates <- resampleDates(
   ANNUAL_PRCP = runif(20, 900, 1100),
   PRCP = rnorm(7300, 3, 5),
   TEMP = rnorm(7300, 18, 5),
-  TMAX = rnorm(7300, 25, 6),
-  TMIN = rnorm(7300, 11, 4),
   START_YEAR_SIM = 2001,
   k1 = 1,
   ymax = 3,
-  dates.d = data.frame(date = seq.Date(as.Date("2000-01-01"), as.Date("2019-12-31"), by = "day"),
-                       month = rep(1:12, each = 365, length.out = 7300),
-                       day = rep(1:31, length.out = 7300),
-                       wyear = rep(2000:2019, each = 365)),
-  sim.dates.d = data.frame(month = rep(1:12, each = 365, length.out = 1095),
-                           day = rep(1:31, length.out = 1095),
-                           wyear = rep(2001:2003, each = 365)),
+  dates.d = data.frame(
+    date = seq.Date(as.Date("2000-01-01"), as.Date("2019-12-31"), by = "day"),
+    month = rep(1:12, each = 365, length.out = 7300),
+    day = rep(1:31, length.out = 7300),
+    wyear = rep(2000:2019, each = 365)
+  ),
+  sim.dates.d = data.frame(
+    month = rep(1:12, each = 365, length.out = 1095),
+    day = rep(1:31, length.out = 1095),
+    wyear = rep(2001:2003, each = 365)
+  ),
   YEAR_D = rep(2000:2019, each = 365),
   month.start = 1,
   seed = 123
