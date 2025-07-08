@@ -114,7 +114,7 @@ imposeClimateChanges <- function(
     # Calculate adjusted PET based on temperature variables
     if(isTRUE(calculate.pet)) {
       climate.data[[x]]$pet <- with(climate.data[[x]],
-                hargreavesPet(months = month_ind,
+                hargreavesPET(months = month_ind,
                               temp = temp,
                               tdiff = temp_max - temp_min,
                               lat = climate.grid$y[x]))
