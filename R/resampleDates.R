@@ -149,53 +149,6 @@ resampleDates <- function(
   # Workaround for rlang warning
   month <- day <- wyear <- 0
 
-  ######################## HELPER FUNCTIONS ####################################
-
-  get_state_indices <- function(cur_occ, next_occ, PRCP, cur_day, wet_thr, extreme_thr) {
-    if (cur_occ == 0 && next_occ == 0)
-      which(PRCP[cur_day] <= wet_thr & PRCP[(cur_day + 1)] <= wet_thr)
-    else if (cur_occ == 0 && next_occ == 1)
-      which(PRCP[cur_day] <= wet_thr & PRCP[(cur_day + 1)] > wet_thr & PRCP[(cur_day + 1)] <= extreme_thr)
-    else if (cur_occ == 0 && next_occ == 2)
-      which(PRCP[cur_day] <= wet_thr & PRCP[(cur_day + 1)] > extreme_thr)
-    else if (cur_occ == 1 && next_occ == 0)
-      which(PRCP[cur_day] > wet_thr & PRCP[cur_day] <= extreme_thr & PRCP[(cur_day + 1)] <= wet_thr)
-    else if (cur_occ == 1 && next_occ == 1)
-      which(PRCP[cur_day] > wet_thr & PRCP[cur_day] <= extreme_thr & PRCP[(cur_day + 1)] > wet_thr & PRCP[(cur_day + 1)] <= extreme_thr)
-    else if (cur_occ == 1 && next_occ == 2)
-      which(PRCP[cur_day] > wet_thr & PRCP[cur_day] <= extreme_thr & PRCP[(cur_day + 1)] > extreme_thr)
-    else if (cur_occ == 2 && next_occ == 0)
-      which(PRCP[cur_day] > extreme_thr & PRCP[(cur_day + 1)] <= wet_thr)
-    else if (cur_occ == 2 && next_occ == 1)
-      which(PRCP[cur_day] > extreme_thr & PRCP[(cur_day + 1)] > wet_thr & PRCP[(cur_day + 1)] <= extreme_thr)
-    else if (cur_occ == 2 && next_occ == 2)
-      which(PRCP[cur_day] > extreme_thr & PRCP[(cur_day + 1)] > extreme_thr)
-    else
-      integer(0)
-  }
-
-  markov_next_state <- function(prev_state, rn, idx, p00, p01, p10, p11, p20, p21) {
-    if (prev_state == 0) {
-      pp1 <- p00[idx]; pp2 <- p00[idx] + p01[idx]
-    } else if (prev_state == 1) {
-      pp1 <- p10[idx]; pp2 <- p10[idx] + p11[idx]
-    } else {
-      pp1 <- p20[idx]; pp2 <- p20[idx] + p21[idx]
-    }
-    if (is.na(pp1)) pp1 <- 0
-    if (is.na(pp2)) pp2 <- 0
-    if (rn < pp1) 0 else if (rn < pp2) 1 else 2
-  }
-
-  get_result_index <- function(RESULT, PRCP_TOMORROW) {
-    if (is.na(RESULT) || length(RESULT) == 0 || RESULT < 1 || RESULT > length(PRCP_TOMORROW)) {
-      if (length(PRCP_TOMORROW) > 0) sample(seq_along(PRCP_TOMORROW), 1)
-      else NA_integer_
-    } else {
-      RESULT
-    }
-  }
-
   ####################################################################################################
 
   # Prepare month list and reference vectors
@@ -249,16 +202,16 @@ resampleDates <- function(
 
 	  # --- 3a. Sample annual years ---
 		sim_annual_prcp <- PRCP_FINAL_ANNUAL_SIM[y]
-		CUR_YEARS <- knnAnnual(
-		  sim_annual_prcp = sim_annual_prcp,
-		  ANNUAL_PRCP = ANNUAL_PRCP,
-		  WATER_YEAR_A = WATER_YEAR_A,
-		  kk = kk,
-		  k1 = k1,
-		  y = y,
-		  seed = seed,
-		  y_sample_size = knn.annual.sample.num
-		)
+
+		cur_year_index <- knn_sample(candidates = ANNUAL_PRCP,
+		                        target = sim_annual_prcp,
+		                        k = kk,
+		                        n = knn.annual.sample.num,
+		                        prob = TRUE,
+		                        weights = NULL,
+		                        seed = seed + k1 * y)
+
+		CUR_YEARS <- WATER_YEAR_A[cur_year_index]
 
 		# # Find indices of days in all sampled years in CUR_YEARS
 		conditional_selection <- unlist(lapply(CUR_YEARS, function(x) which(WATER_YEAR_D == x)))
@@ -330,12 +283,12 @@ resampleDates <- function(
 			next_OCC <- OCCURENCES[(count)]
 
 			# Subset non-zero days?
-			#cur_day <- which(MONTH_DAY_D_CURRENT[,1]==m & MONTH_DAY_D_CURRENT[,2]==d)
 			cur_day <- lookup_cur_day[[paste(m, d, sep = ".")]]
 			cur_day <- c((cur_day-3),(cur_day-2),(cur_day-1),cur_day,(cur_day+1),(cur_day+2),(cur_day+3))
 			cur_day <- subset(cur_day,cur_day > 0)
 
-			state_idx <- get_state_indices(cur_OCC, next_OCC, PRCP_CURRENT, cur_day, wet_threshold[m], extreme_threshold[mmm])
+			state_idx <- get_state_indices(cur_OCC, next_OCC, PRCP_CURRENT, cur_day,
+			                               wet_threshold[m], extreme_threshold[mmm])
 
 			# --- Expand window if no suitable days found ---
 			if (length(state_idx) == 0) {
@@ -362,18 +315,6 @@ resampleDates <- function(
 			TEMP_TOMORROW <- TEMP_CURRENT[possible_days + 1]
 			DATE_TOMORROW <- DATE_D_CURRENT[possible_days + 1]
 
-    	#cur_sim_PRCP <- SIM_PRCP[(idx)]
-    	#cur_sim_TEMP <- SIM_TEMP[(idx)]
-
-  		#mm <- which(MONTH_D_CURRENT==m)
-  		#mm_p <- which(MONTH_D_CURRENT==m & PRCP_CURRENT > 0)
-
-  		#sd_monthly_TEMP <- stats::sd(TEMP_CURRENT[mm], na.rm=TRUE)
-  		#sd_monthly_PRCP <- stats::sd(PRCP_CURRENT[mm_p], na.rm=TRUE)
-
-  		#mean_monthly_TEMP <- mean(TEMP_CURRENT[mm], na.rm=TRUE)
-  		#mean_monthly_PRCP <- mean(PRCP_CURRENT[mm_p], na.rm=TRUE)
-
   		k <- round(sqrt(length(possible_days)))
 
   		cur_sim_PRCP_anom <- SIM_PRCP[(idx)] - mean_monthly_PRCP[m]
@@ -382,14 +323,13 @@ resampleDates <- function(
   		TEMP_TODAY_anom <- TEMP_TODAY - mean_monthly_TEMP[m]
 
   		# Weights
-  		RESULT <- knnDaily(
-  		  cur_sim_PRCP = cur_sim_PRCP_anom,
-  		  cur_sim_TEMP = cur_sim_TEMP_anom,
-  		  PRCP_TODAY = PRCP_TODAY_anom,
-  		  TEMP_TODAY = TEMP_TODAY_anom,
+  		RESULT <- knn_sample(
+  		  candidates = cbind(PRCP_TODAY_anom, TEMP_TODAY_anom),
+  		  target = c(cur_sim_PRCP_anom, cur_sim_TEMP_anom),
   		  k = k,
-  		  w_PRCP = 100/sd_monthly_PRCP[m],
-  		  w_TEMP = 10/sd_monthly_TEMP[m],
+  		  n = 1,
+  		  prob = TRUE,
+  		  weights = c(100/sd_monthly_PRCP[m], 10/sd_monthly_TEMP[m]),
   		  seed = seed + k1 * count
   		)
 
