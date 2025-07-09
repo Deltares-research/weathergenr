@@ -1,6 +1,11 @@
 ---
 title: "Getting started"
-format: html
+format: 
+  html:
+    toc: true
+    toc-location: body
+    toc-title: "Table of Contents"
+    toc-depth: 3  # Optional: controls heading levels shown
 execute:
   echo: true
   warning: false
