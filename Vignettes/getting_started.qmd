@@ -18,23 +18,15 @@ vignette: >
   %\VignetteDepends{weathergenr, dplyr, ggplot2}
 ---
 
-# Installation and setup
+# :open_file_folder: Reading Gridded Multivariate Weather Data
 
-The latest version of the `weathergenr` package can be installed from GitHub and then loaded into your R environment:
-
-```{r install, eval=FALSE, echo = TRUE, results = "hide", warning = FALSE}
-devtools::install_github("Deltares/weathergenr", upgrade = "never")
-```
-
-Once installed, load the relevant packages:
+First lets load the packages required
 
 ```{r setup, echo = TRUE, results = "hide", warning = FALSE}
 library(weathergenr)
 library(dplyr)
 library(ggplot2)
 ```
-
-# :open_file_folder: Reading Gridded Multivariate Weather Data
 
 For this exercise, we'll use the ERA5 dataset (ECMWF Reanalysis v5) included with the package, clipped over the Ntoum Basin in Gabon.
 

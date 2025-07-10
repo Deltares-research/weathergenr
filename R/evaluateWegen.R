@@ -1,28 +1,52 @@
-#' @title Compare observed and simulated climate statistics
+#' Evaluate Synthetic Weather Simulations Against Historical Observations
 #'
-#' @description
-#' A short description...
+#' This function compares daily synthetic weather simulations with observed data
+#' across multiple grid cells. It computes summary statistics, wet/dry day counts,
+#' spell lengths, and inter-site correlations, and generates diagnostic plots to
+#' assess the performance of stochastic weather generators.
+#'
+#' @param daily.sim A list of simulated weather realizations. Each element should be a list of data frames, one per grid cell, containing daily values and a `date` column.
+#' @param daily.obs A list of observed weather data frames, one per grid cell. Each should contain a `date` column and the variables specified in `variables`.
+#' @param output.path File path to save generated plots. If `NULL`, plots are not saved.
+#' @param variables A character vector of variable names to evaluate (e.g., `c("precip", "temp")`).
+#' @param variable.labels Optional character vector of variable labels for use in plots. Defaults to `variables` if `NULL`.
+#' @param variable.units Optional character vector of variable units. Defaults to empty strings.
+#' @param realization.num Integer. Number of synthetic realizations in `daily.sim`.
+#' @param wet.quantile Quantile threshold for wet days (default is 0.2).
+#' @param extreme.quantile Quantile threshold for extremely wet days (default is 0.8).
+#' @param show.title Logical. Whether to display titles in the generated plots (default is `TRUE`).
+#' @param save.plots Logical. Whether to save plots to `output.path` (default is `TRUE`).
+#'
+#' @return A named list of `ggplot2` plot objects. These include:
+#' \itemize{
+#'   \item \code{daily_means}, \code{daily_sd}: Daily mean and standard deviation comparisons.
+#'   \item \code{spell_lengths}, \code{spell_duration}: Wet/dry spell length and frequency plots.
+#'   \item \code{crossgrid_cor}, \code{intergrid_cor}: Correlation plots between sites and variables.
+#'   \item \code{annual_cycle}: Monthly mean climatology.
+#'   \item \code{annual_mean}: Annual mean precipitation time series.
+#'   \item \code{annual_pattern_<var>}: Monthly summary statistics per variable.
+#' }
 #'
 #' @details
-#' Additional details...
+#' - Observed and simulated data must be structured consistently.
+#' - Precipitation variable is used for wet/dry analysis and must be included in `variables`.
+#' - Computations include monthly, annual, and cross-site statistics.
+#' - Extensive use of `dplyr`, `tidyr`, `ggplot2`, and `e1071` packages.
 #'
-#' @param daily.sim A matrix of daily time-series of weather variables
-#' @param daily.obs A vector of daily time-series of observed weather series
-#' @param output.path  A character string to define the path of resulting netcdf file
-#' @param variables A vector object specifying the names of weather variables
-#' @param variable.labels A vector object specifying the names of weather variable labels
-#' @param variable.units A vector object specifying the names of weather variable units
-#' @param realization.num number of weather realizations
-#' @param wet.quantile precip. quantile for calculating monthly wet state threshold
-#' @param extreme.quantile precip. quantile for calculating monthly extremely wet state threshold
-#' @param show.title PLACEHOLDER
-#' @param save.plots PLACEHOLDER
+#' @examples
+#' \dontrun{
+#' plots <- evaluateWegen(
+#'   daily.sim = synthetic_data,
+#'   daily.obs = observed_data,
+#'   output.path = "output/",
+#'   variables = c("precip", "temp"),
+#'   variable.labels = c("Precipitation", "Temperature"),
+#'   realization.num = 3
+#' )
+#' plots$daily_means
+#' }
 #'
-#' @return returns a list of ggplot2 objects and figures saved to the desired output path
 #' @export
-#' @import ggplot2 dplyr
-#' @importFrom stats median sd setNames
-#' @importFrom utils combn
 evaluateWegen <- function(
   daily.sim = NULL,
   daily.obs = NULL,
@@ -37,13 +61,28 @@ evaluateWegen <- function(
   save.plots = TRUE)
 
 {
-  # General parameters #########################################################
 
-  #Workaround for rlang warning
-  year <- mon <- day <- precip <- sd <- variable <- value <- id_variable <- 0
-  Wet <- Dry <- wet <- dry <- id_variable1 <- id_variable2 <- 0
-  rlz <- id1 <- id2 <- variable1 <- variable2 <- type <- Observed <- Stochastic <- 0
-  wet_th <- Simulated <- 0
+  ############ Helper functions ###############################################
+
+  compute_summary_stats <- function(df, variables, by,
+                                    stat_levels = c("mean", "sd", "skewness"),
+                                    stat_labels = c("mean", "standard dev.", "skewness")) {
+
+    df %>%
+      group_by(across(all_of(by))) %>%
+      dplyr::summarize(across(all_of(variables),
+                              list(mean = mean,
+                                   sd = stats::sd,
+                                   skewness = e1071::skewness),
+                              .names = "{.col}:{.fn}"),
+                       .groups = "drop") %>%
+      pivot_longer(cols = -all_of(by), names_to = "variable", values_to = "value") %>%
+      separate(variable, into = c("variable", "stat"), sep = ":") %>%
+      mutate(stat = factor(stat, levels = stat_levels, labels = stat_labels),
+             id = as.numeric(id), mon = as.numeric(mon), variable = as.character(variable))
+  }
+
+  # General parameters #########################################################
 
   # Set variable names and labels
   if(is.null(variable.labels)) variable.labels <- variables
@@ -53,6 +92,10 @@ evaluateWegen <- function(
   options(dplyr.summarise.inform = FALSE)
   options(tidyverse.quiet = TRUE)
 
+
+  nsgrids <- length(daily.sim[[1]])
+  logger::log_info("Comparison accross {nsgrids} grid cells")
+
   # General parameters
   stat_level <- c("mean", "sd", "skewness")
   stat_label <- c("mean", "standard dev.", "skewness")
@@ -61,13 +104,11 @@ evaluateWegen <- function(
   num_vars <- length(variables)
   var_combs <- expand_grid(var1=variables, var2 = variables)
   num_var_combs <- choose(num_vars, 2)
-  nsgrids <- length(daily.sim[[1]])
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Comparison accross", nsgrids, "grid cells"))
 
   # Calculate observed climate statistics ######################################################
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Calculating historical trace statistics"))
+  logger::log_info("Calculating historical trace statistics")
 
   # Number of years in the historical record
   hist_year_num <- nrow(daily.obs[[1]])/365
@@ -82,13 +123,16 @@ evaluateWegen <- function(
     select(id, year, mon, day, all_of(variables))
 
   # Calculate summary statistics (per month)
-  hist_stats_season <- hist_daily_tidy %>%
-    group_by(id, mon) %>%
-    dplyr::summarize(across(all_of(variables),
-                            list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
-    gather(key = variable, value = Observed, -id, -year, -mon) %>%
-    separate(variable, c("variable","stat"), sep = ":") %>%
-    mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
+  hist_stats_season <- compute_summary_stats(hist_daily_tidy, variables, by = c("id", "mon"))
+  names(hist_stats_season)[names(hist_stats_season) == "value"] <- "Observed"
+
+  # hist_stats_season <- hist_daily_tidy %>%
+  #   group_by(id, mon) %>%
+  #   dplyr::summarize(across(all_of(variables),
+  #                           list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
+  #   gather(key = variable, value = Observed, -id, -year, -mon) %>%
+  #   separate(variable, c("variable","stat"), sep = ":") %>%
+  #   mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
   # Calculate summary statistics (per month x per year)
   hist_stats_mon_aavg <- hist_daily_tidy %>%
@@ -144,21 +188,22 @@ evaluateWegen <- function(
 
   # Intersite/crossite correlations
   hist_allcor_ini <- hist_daily_tidy %>%
-    gather(key = variable, value = value, -id, -year, -mon, -day) %>%
-    unite(id_variable, c("id","variable"),sep = ":") %>%
-    spread(id_variable, value) %>%
+    pivot_longer(cols = -c(id, year, mon, day), names_to = "variable", values_to = "value") %>%
+    unite(id_variable, id, variable, sep = ":") %>%   # "site:var" identifier
+    pivot_wider(names_from  = id_variable, values_from = value) %>%
     dplyr::select(-year, -mon, -day) %>%
-    stats::cor(.$value) %>% as_tibble()
+    cor(use = "pairwise.complete.obs") %>%
+    as_tibble()
 
   hist_allcor <- hist_allcor_ini %>%
     mutate(id_variable1 = colnames(hist_allcor_ini), .before = 1) %>%
-    gather(key = id_variable2, value = Observed, -id_variable1) %>%
+    pivot_longer(cols = -id_variable1, names_to = "id_variable2", values_to = "Observed") %>%
     separate(id_variable1, c("id1","variable1"), sep =":") %>%
     separate(id_variable2, c("id2","variable2"), sep =":")
 
   # Calculate simulated climate statistics #####################################
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Calculating synthetic trace statistics"))
+  logger::log_info("Calculating synthetic trace statistics")
 
   # Initialize lists to store the results
   sim_stats_season <- vector("list", realization.num)
@@ -171,28 +216,27 @@ evaluateWegen <- function(
   # Total years of simulation
   sim_year_num <- nrow(daily.sim[[1]][[1]])/365
 
+  sim_date_tbl <- daily.sim[[1]][[1]] %>%
+    select(date) %>%
+    mutate(
+      year = as.numeric(format(date,"%Y")),
+      mon = as.numeric(format(date,"%m")),
+      day = as.numeric(format(date,"%d")))
+
   #### Calculate statistics per realization
   for (n in 1:realization.num) {
 
-    # Simulated series in tidy format
+    #--- Step 1: Tidy simulated daily data -------------------------------------
     sim_daily_tidy <- lapply(daily.sim[[n]], "[", c("date", variables)) %>%
       bind_rows(.id = "id") %>%
-      mutate(year = as.numeric(format(date,"%Y")),
-         mon = as.numeric(format(date,"%m")),
-         day = as.numeric(format(date,"%d")),
-         id = as.numeric(id)) %>%
+      left_join(sim_date_tbl, by = "date") %>%
       select(id, year, mon, day, all_of(variables))
 
-    # Calculate summary statistics per grid cell
-    sim_stats_season[[n]] <- sim_daily_tidy %>%
-      group_by(id, mon) %>%
-      dplyr::summarize(across(all_of(variables),
-        list(mean=mean, sd=stats::sd, skewness=e1071::skewness),.names = "{.col}:{.fn}")) %>%
-      gather(key = variable, value = Simulated,-id, -year, -mon) %>%
-      separate(variable, c("variable","stat"), sep = ":") %>%
-      mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
+    #--- Step 2: Monthly summary stats (by grid/month) -------------------------
+    sim_stats_season[[n]] <- compute_summary_stats(sim_daily_tidy, variables, by = c("id", "mon"))
+    names(sim_stats_season[[n]])[names(sim_stats_season[[n]]) == "value"] <- "Simulated"
 
-    # Area-averaged stats
+    #--- Step 3: Area-averaged monthly summary stats (by year/month) ----------
     sim_stats_mon_aavg[[n]] <- sim_daily_tidy %>%
       group_by(year, mon) %>%
       summarize(across(all_of(variables),
@@ -201,38 +245,42 @@ evaluateWegen <- function(
       separate(variable, c("variable","stat"), sep=":") %>%
       mutate(stat = factor(stat, levels = stat_level, labels = stat_label))
 
+    #--- Step 4: Annual averages per variable ----------------------------------
     sim_stats_annual_aavg[[n]] <- sim_daily_tidy %>%
       group_by(year, mon, day) %>%
-      summarize_at(vars(all_of(variables)), mean) %>%
+      summarize(across(all_of(variables), mean), .groups = "drop") %>%
       group_by(year) %>%
       summarize(across(all_of(variables),
                        list(mean=mean, min=min, max=max),.names = "{.col}:{.fn}")) %>%
-      gather(key = variable, value = Simulated, -year) %>%
+      pivot_longer(cols = -year, names_to = "variable", values_to = "Simulated") %>%
       separate(variable, c("variable","stat"), sep=":")
 
-    # Intersite/Intervariable correlations
+    #--- Step 5: Correlation matrix --------------------------------------------
     sim_allcor_ini <- sim_daily_tidy %>%
-      gather(key = variable, value = value, -id, -year, -mon, -day) %>%
+      pivot_longer(cols = all_of(variables), names_to = "variable", values_to = "value") %>%
       unite(id_variable, c("id","variable"),sep = ":") %>%
-      spread(id_variable, value) %>%
+      pivot_wider(names_from = id_variable, values_from = value) %>%
       dplyr::select(-year, -mon, -day) %>%
-      stats::cor(.$value) %>% as_tibble()
+      cor(use = "pairwise.complete.obs") %>%
+      as_tibble()
 
     sim_allcor[[n]] <- sim_allcor_ini %>%
       mutate(id_variable1 = colnames(sim_allcor_ini), .before = 1) %>%
-      gather(key = id_variable2, value = Simulated, -id_variable1) %>%
+      pivot_longer(-id_variable1, names_to = "id_variable2", values_to = "Simulated") %>%
       separate(id_variable1, c("id1","variable1"), sep =":") %>%
-      separate(id_variable2, c("id2","variable2"), sep =":") #%>%
+      separate(id_variable2, c("id2","variable2"), sep =":")
 
+    #--- Step 6: Wet/Dry days per month ----------------------------------------
     sim_wetdry_days[[n]] <- sim_daily_tidy %>%
         left_join(mc_thresholds, by = "mon") %>%
         group_by(id, mon) %>%
         summarize(Wet = length(which(precip >= wet_th))/sim_year_num,
                   Dry = length(which(precip < wet_th))/sim_year_num) %>%
-      gather(key = stat, value = value, Wet:Dry) %>%
+      pivot_longer(cols = Wet:Dry, names_to = "stat", values_to = "value") %>%
       mutate(variable = "precip") %>%
       select(id, mon, variable, stat, Simulated = value)
 
+    #--- Step 7: Wet/Dry spell lengths per month -------------------------------
     sim_wetdry_spells[[n]] <- sim_daily_tidy %>%
       left_join(mc_thresholds, by = "mon") %>%
       group_by(id, mon) %>%
@@ -240,8 +288,8 @@ evaluateWegen <- function(
                 Wet = averageSpellLength(precip, threshold = wet_th, below = FALSE)) %>%
       group_by(id, mon) %>%
       summarize(Dry = mean(Dry),Wet = mean(Wet)) %>%
-      gather(key = stat, value = Simulated, Wet:Dry) %>%
-      mutate(variable = "precip", .after = mon)
+      pivot_longer(cols = c("Dry", "Wet"), names_to = "stat", values_to = "Simulated") %>%
+      mutate(variable = "precip", .before = stat)
 
   }
 
@@ -250,8 +298,8 @@ evaluateWegen <- function(
   sim_stats_annual_aavg <- bind_rows(sim_stats_annual_aavg, .id = "rlz") %>%
     mutate(year = year - min(year) + 1)
   sim_allcor <- bind_rows(sim_allcor, .id = "rlz")
-  sim_wetdry_days <- bind_rows(sim_wetdry_days, .id = "rlz")
-  sim_wetdry_spells <- bind_rows(sim_wetdry_spells, .id = "rlz")
+  sim_wetdry_days <- bind_rows(sim_wetdry_days, .id = "rlz") %>% mutate(id = as.numeric(id))
+  sim_wetdry_spells <- bind_rows(sim_wetdry_spells, .id = "rlz") %>% mutate(id = as.numeric(id))
 
   # Merge results ##############################################################
 
@@ -275,7 +323,7 @@ evaluateWegen <- function(
     unite(id, c("id1","id2"), sep=":") %>%
     filter(id %in% id_combs)
 
-  # Intersite correlations
+  # Inter-site correlations
   stats_cross_cor <- stats_allcor %>%
     filter(id1 == id2) %>%
     filter(variable1 != variable2) %>%
@@ -296,7 +344,7 @@ evaluateWegen <- function(
 
   # Plot results
 
-  message(cat(as.character(format(Sys.time(),'%H:%M:%S')), "- Preparing comparison plots"))
+  logger::log_info("Preparing comparison plots")
 
   # Common plotting parameters
   pl_size <- 8  # 4 for each row/column
@@ -332,11 +380,11 @@ evaluateWegen <- function(
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", nrow = 2)
 
-  if(isTRUE(show.title))
+  if(show.title)
     p <- p + labs(title =  "Daily means for all grid cell and months", subtitle = pl_sub)
 
-  if(isTRUE(save.plots))
-    ggsave(file.path(output.path,"daily_means.png"), height=pl_size, width=pl_size)
+  if(save.plots)
+    ggsave(file.path(output.path,"daily_means.png"), height=pl_size*1.2, width=pl_size)
 
   plots$daily_means <- p
 
@@ -361,12 +409,12 @@ evaluateWegen <- function(
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", nrow = 2)
 
-  if(isTRUE(show.title)) {
+  if(show.title) {
     p <- p +  labs(title =  "Daily standard deviations for all grid cell and months", subtitle=pl_sub)
   }
 
-  if(isTRUE(save.plots))
-    ggsave(file.path(output.path,"daily_stdev.png"), height=pl_size, width=pl_size)
+  if(save.plots)
+    ggsave(file.path(output.path,"daily_stdev.png"), height=pl_size*1.2, width=pl_size)
 
   plots$daily_sd <- p
 
@@ -388,12 +436,12 @@ evaluateWegen <- function(
     facet_wrap(stat ~ ., ncol = 2, scales = "free") +
     xlab("Observed") + ylab("Simulated")
 
-    if(isTRUE(show.title)) {
+    if(show.title) {
       p <- p +  labs(title =  "Average dry and wet spell length per month, across all grid cells", subtitle = pl_sub)
     }
 
-  if(isTRUE(save.plots))
-    ggsave(file.path(output.path,"drywet_spell_length.png"), height = pl_size/2, width = pl_size)
+  if(save.plots)
+    ggsave(file.path(output.path,"drywet_spell_length.png"), height = pl_size/2.2, width = pl_size)
 
   plots$spell_lengths <- p
 
@@ -415,12 +463,12 @@ evaluateWegen <- function(
     facet_wrap(stat ~ ., ncol = 2, scales = "free") +
     xlab("Observed") + ylab("Simulated")
 
-  if(isTRUE(show.title)) {
+  if(show.title) {
     p <- p +  labs(title =  "Average number of dry and wet days per month accross all grid cells", subtitle = pl_sub)
   }
 
-  if(isTRUE(save.plots))
-    ggsave(file.path(output.path,"drywet_days_number.png"), height = pl_size/2, width = pl_size)
+  if(save.plots)
+    ggsave(file.path(output.path,"drywet_days_number.png"), height = pl_size/2.2, width = pl_size)
 
   plots$spell_duration <- p
 
@@ -447,8 +495,8 @@ evaluateWegen <- function(
                    subtitle = paste0(pl_sub,"\nCorrelations are calculated over daily series"))
   }
 
-  if(isTRUE(save.plots))
-    ggsave(file.path(output.path,"crossgrid_correlations.png"), height = pl_size, width = pl_size)
+  if(save.plots)
+    ggsave(file.path(output.path,"crossgrid_correlations.png"), height = pl_size*1.2, width = pl_size)
 
   plots$crossgrid_cor <- p
 
@@ -470,12 +518,12 @@ evaluateWegen <- function(
     facet_wrap(variable ~ ., ncol = 3, scales = "free") +
     xlab("Observed") + ylab("Simulated")
 
-  if(isTRUE(show.title)) {
+  if(show.title) {
     p <- p +  labs(title = "Inter-grid correlations",
                    subtitle = paste0(pl_sub,"\nCorrelations are calculated over daily series"))
   }
 
-  if(isTRUE(save.plots))
+  if(save.plots)
   ggsave(file.path(output.path,"intergrid_correlations.png"), height = pl_size, width = pl_size*1.25)
 
   plots$intergrid_cor <- p
@@ -512,14 +560,14 @@ evaluateWegen <- function(
             plot.subtitle = element_text(size = 12)) +
       scale_x_discrete(labels = substr(month.name, 1,1))
 
-    if(isTRUE(show.title)) {
+    if(show.title) {
       p <- p +  labs(title =  paste0("Monthly patterns for ", variable.labels[v]),
         subtitle = paste0(pl_sub,"\nResults are averaged accross all grid cells."))
     }
 
-    if(isTRUE(save.plots))
+    if(save.plots)
       ggsave(file.path(output.path, paste0("monthly_patterns_", variables[v],".png")),
-            height = pl_size, width = pl_size)
+            height = pl_size*1.2, width = pl_size)
 
     plots[[paste0("annual_pattern_", variables[v])]] <- p
   }
@@ -545,13 +593,13 @@ evaluateWegen <- function(
     scale_x_discrete(labels = substr(month.name, 1,1)) +
     labs(x = "", y = "")
 
-  if(isTRUE(show.title)) {
+  if(show.title) {
     p <- p +  labs(title =  paste0("Annual cycles of variables"),
                    subtitle = paste0(pl_sub,"\nResults are averaged accross each month"))
   }
 
   if(isTRUE(save.plots))
-    ggsave(file.path(output.path, paste0("monthly_cycle.png")), height = pl_size, width = pl_size+1)
+    ggsave(file.path(output.path, paste0("monthly_cycle.png")), height = pl_size*1.2, width = pl_size+1)
 
   plots$annual_cycle <- p
 
@@ -569,14 +617,16 @@ evaluateWegen <- function(
               data = hist_annual_aavg_precip, color = "blue", group = 1) +
     labs(x = "serial year", y = "mm/day")
 
-  if(isTRUE(show.title)) {
+  if(show.title) {
     p <- p +  labs(title =  paste0("Annual mean precipitation"))
   }
 
-  if(isTRUE(save.plots))
-    ggsave(file.path(output.path, paste0("annual_precip.png")), height = pl_size/1.9, width = pl_size)
+  if(save.plots)
+    ggsave(file.path(output.path, paste0("annual_precip.png")), height = pl_size/2, width = pl_size)
 
   plots$annual_mean <- p
 
-  return(plots)
+  logger::log_info("Evaluation completed!")
+
+  plots
 }
