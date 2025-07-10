@@ -36,7 +36,7 @@ wavelet.components <- list(
   noise  = rnorm(30, 0, 0.5)
 )
 result <- waveletARIMA(wavelet.components, sim.year.num = 30, sim.num = 10, seed = 123)
-dim(result)  # Should be 30 x 10
+dim(result) # Should be 30 x 10
 matplot(result, type = "l", lty = 1, main = "Synthetic Wavelet-ARIMA Realizations")
 }
 }

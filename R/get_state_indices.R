@@ -34,24 +34,25 @@
 #'
 #' @export
 get_state_indices <- function(cur_occ, next_occ, PRCP, cur_day, wet_thr, extreme_thr) {
-  if (cur_occ == 0 && next_occ == 0)
+  if (cur_occ == 0 && next_occ == 0) {
     which(PRCP[cur_day] <= wet_thr & PRCP[(cur_day + 1)] <= wet_thr)
-  else if (cur_occ == 0 && next_occ == 1)
+  } else if (cur_occ == 0 && next_occ == 1) {
     which(PRCP[cur_day] <= wet_thr & PRCP[(cur_day + 1)] > wet_thr & PRCP[(cur_day + 1)] <= extreme_thr)
-  else if (cur_occ == 0 && next_occ == 2)
+  } else if (cur_occ == 0 && next_occ == 2) {
     which(PRCP[cur_day] <= wet_thr & PRCP[(cur_day + 1)] > extreme_thr)
-  else if (cur_occ == 1 && next_occ == 0)
+  } else if (cur_occ == 1 && next_occ == 0) {
     which(PRCP[cur_day] > wet_thr & PRCP[cur_day] <= extreme_thr & PRCP[(cur_day + 1)] <= wet_thr)
-  else if (cur_occ == 1 && next_occ == 1)
+  } else if (cur_occ == 1 && next_occ == 1) {
     which(PRCP[cur_day] > wet_thr & PRCP[cur_day] <= extreme_thr & PRCP[(cur_day + 1)] > wet_thr & PRCP[(cur_day + 1)] <= extreme_thr)
-  else if (cur_occ == 1 && next_occ == 2)
+  } else if (cur_occ == 1 && next_occ == 2) {
     which(PRCP[cur_day] > wet_thr & PRCP[cur_day] <= extreme_thr & PRCP[(cur_day + 1)] > extreme_thr)
-  else if (cur_occ == 2 && next_occ == 0)
+  } else if (cur_occ == 2 && next_occ == 0) {
     which(PRCP[cur_day] > extreme_thr & PRCP[(cur_day + 1)] <= wet_thr)
-  else if (cur_occ == 2 && next_occ == 1)
+  } else if (cur_occ == 2 && next_occ == 1) {
     which(PRCP[cur_day] > extreme_thr & PRCP[(cur_day + 1)] > wet_thr & PRCP[(cur_day + 1)] <= extreme_thr)
-  else if (cur_occ == 2 && next_occ == 2)
+  } else if (cur_occ == 2 && next_occ == 2) {
     which(PRCP[cur_day] > extreme_thr & PRCP[(cur_day + 1)] > extreme_thr)
-  else
+  } else {
     integer(0)
+  }
 }

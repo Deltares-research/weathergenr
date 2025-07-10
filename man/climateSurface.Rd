@@ -104,8 +104,8 @@ climateSurface(
   variable.y = "temp_change",
   variable.z = "response",
   plot.title = "System Reliability Response",
-  variable.x.label = expression(Delta*"P"~"(\%)"),
-  variable.y.label = expression(Delta*"T"~"(DegC)"),
+  variable.x.label = expression(Delta * "P" ~ "(\%)"),
+  variable.y.label = expression(Delta * "T" ~ "(DegC)"),
   threshold.z = 0.9,
   failure.direction = 1
 )

@@ -27,11 +27,11 @@ behavior is needed when a computed index is not valid.
 PRCP_TOMORROW <- c(0, 5, 10, 20)
 
 # Valid index
-get_result_index(2, PRCP_TOMORROW)  # returns 2
+get_result_index(2, PRCP_TOMORROW) # returns 2
 
 # Invalid index: falls back to sampling
 set.seed(1)
-get_result_index(10, PRCP_TOMORROW)  # randomly returns a valid index
+get_result_index(10, PRCP_TOMORROW) # randomly returns a valid index
 
 # NA index: falls back to sampling
 get_result_index(NA, PRCP_TOMORROW)

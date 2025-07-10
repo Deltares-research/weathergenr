@@ -20,16 +20,14 @@
 #'   noise  = rnorm(30, 0, 0.5)
 #' )
 #' result <- waveletARIMA(wavelet.components, sim.year.num = 30, sim.num = 10, seed = 123)
-#' dim(result)  # Should be 30 x 10
+#' dim(result) # Should be 30 x 10
 #' matplot(result, type = "l", lty = 1, main = "Synthetic Wavelet-ARIMA Realizations")
 #' }
 waveletARIMA <- function(
     wavelet.components = NULL,
     sim.year.num = NULL,
     sim.num = 1000,
-    seed = NULL
-) {
-
+    seed = NULL) {
   # Input validation
   if (is.null(wavelet.components)) {
     stop("Input 'wavelet.components' must not be NULL.")
@@ -64,7 +62,6 @@ waveletARIMA <- function(
   # Simulate each component
   SIM <- vector("list", ncomp)
   for (k in seq_len(ncomp)) {
-
     component <- unlist(comp_list[[k]], use.names = FALSE)
     MEAN <- mean(component)
     CENTERED <- component - MEAN
@@ -73,7 +70,8 @@ waveletARIMA <- function(
     suppressPackageStartupMessages({
       MODEL <- forecast::auto.arima(CENTERED,
         max.p = 2, max.q = 2, max.P = 0, max.Q = 0,
-        stationary = TRUE, seasonal = FALSE)
+        stationary = TRUE, seasonal = FALSE
+      )
     })
     INTERCEPT <- if ("intercept" %in% names(MODEL$coef)) MODEL$coef[["intercept"]] else 0
     SD <- sqrt(MODEL$sigma2)
@@ -81,16 +79,20 @@ waveletARIMA <- function(
     # Simulate sim.num synthetic series for this component
     if (!is.null(seed)) {
       old_seed <- .Random.seed
-      on.exit({ .Random.seed <<- old_seed }, add = TRUE)
-      set.seed(seed + k*1000)
+      on.exit(
+        {
+          .Random.seed <<- old_seed
+        },
+        add = TRUE
+      )
+      set.seed(seed + k * 1000)
     }
 
     SIM[[k]] <- replicate(sim.num, {
       # To ensure different random streams, combine seed and simulation index
       as.numeric(stats::simulate(MODEL, sim.year.num, sd = SD)) + INTERCEPT + MEAN
     })
-
-}
+  }
 
   # Sum across components: each SIM[[k]] is sim.year.num x sim.num
   if (ncomp == 1) {
@@ -101,4 +103,3 @@ waveletARIMA <- function(
   # Return as a matrix: sim.year.num x sim.num
   return(output)
 }
-

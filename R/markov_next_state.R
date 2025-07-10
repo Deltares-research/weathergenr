@@ -43,11 +43,14 @@
 #' @export
 markov_next_state <- function(prev_state, rn, idx, p00, p01, p10, p11, p20, p21) {
   if (prev_state == 0) {
-    pp1 <- p00[idx]; pp2 <- p00[idx] + p01[idx]
+    pp1 <- p00[idx]
+    pp2 <- p00[idx] + p01[idx]
   } else if (prev_state == 1) {
-    pp1 <- p10[idx]; pp2 <- p10[idx] + p11[idx]
+    pp1 <- p10[idx]
+    pp2 <- p10[idx] + p11[idx]
   } else {
-    pp1 <- p20[idx]; pp2 <- p20[idx] + p21[idx]
+    pp1 <- p20[idx]
+    pp2 <- p20[idx] + p21[idx]
   }
   if (is.na(pp1)) pp1 <- 0
   if (is.na(pp2)) pp2 <- 0

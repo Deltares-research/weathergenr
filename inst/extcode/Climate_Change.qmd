@@ -53,7 +53,7 @@ stochastic_weather <- generateWeatherSeries(
   warm.sample.num = 10000,
   warm.subset.criteria = NULL,
   knn.sample.num = 100,
-  mc.wet.quantile= 0.3,
+  mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
   output.path = output_path,
   seed = 123,

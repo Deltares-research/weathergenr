@@ -1,5 +1,4 @@
-
-#devtools::install_github("deltares/weathergenr", ref = "Dev")
+# devtools::install_github("deltares/weathergenr", ref = "Dev")
 
 ################################################################################
 
@@ -14,8 +13,8 @@ climateSurfaceBatch(
   str.data = str_data_rel,
   gcm.data = gcm_data,
   save.dir = sdir,
-  variable.x.breaks = seq(-30,30,10),
-  variable.y.breaks = seq(0,3,1),
+  variable.x.breaks = seq(-30, 30, 10),
+  variable.y.breaks = seq(0, 3, 1),
   gcm.legend = TRUE,
   gcm.future.period = "near",
   gcm.scenario.list = c("rcp26", "rcp45", "rcp60", "rcp85"),
@@ -24,8 +23,7 @@ climateSurfaceBatch(
   metric.labels = paste0("Metric: ", metrics_to_plot),
   locations = locations_to_plot,
   location.labels = paste0("Location: ", locations_to_plot),
-  metric.direction = c(1,1,0,1,0,1,1,0),
+  metric.direction = c(1, 1, 0, 1, 0, 1, 1, 0),
   relative.results = FALSE,
-  text.scale = 0.6)
-
-
+  text.scale = 0.6
+)

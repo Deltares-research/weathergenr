@@ -1,6 +1,13 @@
 ---
 format: gfm
+editor: visual
 ---
+
+[![R-CMD-check](https://github.com/Deltares/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Deltares/weathergenr/actions)
+[![CRAN status](https://www.r-pkg.org/badges/version/weathergenr)](https://CRAN.R-project.org/package=weathergenr)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html)
+
 
 # Overview
 
@@ -22,8 +29,8 @@ Before installing, make sure you have:
 To install the development version of `weathergenr` from GitHub:
 
 ```{r, eval = FALSE}
-#install.packages("devtools")
-#devtools::install_github("Deltares/weathergenr")
+# install.packages("devtools")
+# devtools::install_github("Deltares/weathergenr")
 ```
 
 # Quick start

@@ -53,7 +53,7 @@ changes in mean and variance on daily precipitation data, while preserving reali
 set.seed(123)
 n_days <- 730
 year_idx <- rep(1:2, each = 365)
-month_idx <- rep(rep(1:12, times = c(31,28,31,30,31,30,31,31,30,31,30,31)), 2)[1:n_days]
+month_idx <- rep(rep(1:12, times = c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)), 2)[1:n_days]
 daily_precip <- rgamma(n_days, shape = 1, scale = 5)
 
 mean.change <- matrix(1.05, nrow = 2, ncol = 12)

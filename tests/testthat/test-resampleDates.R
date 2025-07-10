@@ -1,15 +1,12 @@
-
-
 library(weathergenr)
 library(testthat)
 
 test_that("check results are generated", {
-
   rdata_path <- testthat::test_path("data", "testdata_resampleDates.RData")
   load(rdata_path)
-  n=1
+  n <- 1
 
-  #Global seed
+  # Global seed
   set.seed(999)
 
   cur_time <- Sys.time()
@@ -31,7 +28,8 @@ test_that("check results are generated", {
     month.start = month.start,
     wet.quantile = mc.wet.quantile,
     extreme.quantile = mc.extreme.quantile,
-    seed = 100)
+    seed = 100
+  )
 
   print(Sys.time() - cur_time)
 

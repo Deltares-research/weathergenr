@@ -1,18 +1,14 @@
-
 library(testthat)
 
 testthat::test_that("Check if netcdf object is correctly created", {
-
   nc_path <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
   if (!file.exists(nc_path)) skip("No NetCDF file available for testing.")
   ncdata <- readNetcdf(nc.file = nc_path, signif.digits = 2)
   expect_equal(length(ncdata), 5)
-
 })
 
 
 test_that("readNetcdf returns correct structure for a sample file", {
-
   nc_path <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
   if (!file.exists(nc_path)) skip("No NetCDF file available for testing.")
 
@@ -25,7 +21,6 @@ test_that("readNetcdf returns correct structure for a sample file", {
 })
 
 test_that("readNetcdf returns list of correct length when omit.empty = FALSE", {
-
   nc_path <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
   if (!file.exists(nc_path)) skip("No NetCDF file available for testing.")
 

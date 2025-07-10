@@ -1,4 +1,3 @@
-
 # Packages required
 library(weathergenr)
 library(dplyr)
@@ -19,5 +18,5 @@ file.remove(list.files(path = sdir, full.names = TRUE))
 str_data_rel <- str_data %>%
   pivot_longer(cols = starts_with("Q_"), names_to = "location", values_to = "value") %>%
   group_by(statistic, location) %>%
-  mutate(value = value/.data[["value"]][which(.data$tavg == 0 & .data$prcp == 0)] * 100 - 100) %>%
+  mutate(value = value / .data[["value"]][which(.data$tavg == 0 & .data$prcp == 0)] * 100 - 100) %>%
   pivot_wider(names_from = "location", values_from = "value")

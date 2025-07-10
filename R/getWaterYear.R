@@ -28,7 +28,6 @@
 #'
 #' @export
 getWaterYear <- function(date, water.year.first.month = 1) {
-
   # Input validation
   if (!inherits(date, "Date")) {
     stop("'date' must be of class Date")
@@ -44,7 +43,7 @@ getWaterYear <- function(date, water.year.first.month = 1) {
 
   # Adjust year for months >= start of water year
   water_year <- year
-  if(water.year.first.month > 1) {
+  if (water.year.first.month > 1) {
     water_year[month >= water.year.first.month] <- water_year[month >= water.year.first.month] + 1
   }
   return(as.integer(water_year))
