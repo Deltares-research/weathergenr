@@ -42,8 +42,8 @@ and (optionally) produces a plot of power spectrum.
 set.seed(123)
 # Simulate AR(1) process with periodicity at 8 years
 years <- 1:64
-signal <- sin(2 * pi * years / 8) + arima.sim(n=64, model=list(ar=0.7))
-res <- waveletAnalysis(signal, plot=FALSE)
+signal <- sin(2 * pi * years / 8) + arima.sim(n = 64, model = list(ar = 0.7))
+res <- waveletAnalysis(signal, plot = FALSE)
 print(res$GWS_period[res$signif_periods])
 
 }

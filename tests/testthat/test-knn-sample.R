@@ -26,7 +26,7 @@ test_that("knn_sample is reproducible with seed", {
 })
 
 test_that("knn_sample handles weights", {
-  candidates <- matrix(c(0,0, 1,1, 2,2), ncol = 2, byrow = TRUE)
+  candidates <- matrix(c(0, 0, 1, 1, 2, 2), ncol = 2, byrow = TRUE)
   target <- c(1, 1)
   idx <- knn_sample(candidates, target, k = 1, weights = c(10, 1))
   expect_true(idx %in% 1:3)

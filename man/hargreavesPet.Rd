@@ -26,10 +26,10 @@ Reference: \url{http://www.civil.uwaterloo.ca/watflood/manual/02_03_2.htm}
 }
 \examples{
 # Example: Estimate PET for three months in Amsterdam (lat 52.37)
-months <- c(1, 6, 12)                         # January, June, December
-mean_temp <- c(3.2, 16.1, 4.0)                # Example monthly mean temperatures (DegC)
-temp_range <- c(6.0, 8.5, 5.2)                # Example monthly Tmax-Tmin (DegC)
-latitude <- 52.37                             # Amsterdam
+months <- c(1, 6, 12) # January, June, December
+mean_temp <- c(3.2, 16.1, 4.0) # Example monthly mean temperatures (DegC)
+temp_range <- c(6.0, 8.5, 5.2) # Example monthly Tmax-Tmin (DegC)
+latitude <- 52.37 # Amsterdam
 pet_values <- hargreavesPET(months, mean_temp, temp_range, latitude)
 print(pet_values)
 

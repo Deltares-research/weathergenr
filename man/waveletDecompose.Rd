@@ -47,7 +47,7 @@ at each significant period (as found by prior `waveletAnalysis`), plus a residua
 \dontrun{
 # Example usage:
 x <- as.numeric(scale(rnorm(50))) # Example annual series
-sig_periods <- list(c(3, 5))      # Assume periods 3 and 5 are significant (from waveletAnalysis)
+sig_periods <- list(c(3, 5)) # Assume periods 3 and 5 are significant (from waveletAnalysis)
 comp <- waveletDecompose(
   variable = x,
   signif.periods = sig_periods,

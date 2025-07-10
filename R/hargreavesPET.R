@@ -14,10 +14,10 @@
 #' @return A numeric vector of PET values (in mm/day), one for each month.
 #' @examples
 #' # Example: Estimate PET for three months in Amsterdam (lat 52.37)
-#' months <- c(1, 6, 12)                         # January, June, December
-#' mean_temp <- c(3.2, 16.1, 4.0)                # Example monthly mean temperatures (DegC)
-#' temp_range <- c(6.0, 8.5, 5.2)                # Example monthly Tmax-Tmin (DegC)
-#' latitude <- 52.37                             # Amsterdam
+#' months <- c(1, 6, 12) # January, June, December
+#' mean_temp <- c(3.2, 16.1, 4.0) # Example monthly mean temperatures (DegC)
+#' temp_range <- c(6.0, 8.5, 5.2) # Example monthly Tmax-Tmin (DegC)
+#' latitude <- 52.37 # Amsterdam
 #' pet_values <- hargreavesPET(months, mean_temp, temp_range, latitude)
 #' print(pet_values)
 #'
@@ -31,7 +31,6 @@
 #'
 #' @export
 hargreavesPET <- function(months, temp, tdiff, lat) {
-
   # Validate inputs
   if (any(months < 1 | months > 12)) {
     stop("All 'months' values must be between 1 and 12.")
@@ -48,9 +47,9 @@ hargreavesPET <- function(months, temp, tdiff, lat) {
   phi <- pi / 180 * lat
 
   # Calculate solar-related components
-  dr <- 1 + 0.033 * cos(2 * pi / 365 * j)         # Inverse relative distance Earth-Sun
-  delta <- 0.409 * sin(2 * pi / 365 * j - 1.39)   # Solar declination
-  ws <- acos(-tan(phi) * tan(delta))              # Sunset hour angle
+  dr <- 1 + 0.033 * cos(2 * pi / 365 * j) # Inverse relative distance Earth-Sun
+  delta <- 0.409 * sin(2 * pi / 365 * j - 1.39) # Solar declination
+  ws <- acos(-tan(phi) * tan(delta)) # Sunset hour angle
 
   # Extraterrestrial radiation (Ra) in MJ/m/day, converted to mm/day with 0.408
   Ra <- (24 * 60 / pi) * 0.082 * dr * (ws * sin(phi) * sin(delta) + cos(phi) * cos(delta) * sin(ws))

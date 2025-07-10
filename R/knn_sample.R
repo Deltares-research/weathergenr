@@ -40,7 +40,6 @@
 #'
 #' @export
 knn_sample <- function(candidates, target, k, n = 1, prob = FALSE, weights = NULL, seed = NULL) {
-
   # Save and restore RNG state if seed is used
   if (!is.null(seed)) {
     old_seed <- .Random.seed

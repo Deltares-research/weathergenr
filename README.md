@@ -1,5 +1,13 @@
 
 
+[![R-CMD-check](https://github.com/Deltares/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Deltares/weathergenr/actions)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/weathergenr.png)](https://CRAN.R-project.org/package=weathergenr)
+[![License:
+MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html)
+
 # Overview
 
 *weathergenr* is an R package for generating synthetic weather series
@@ -33,8 +41,8 @@ To install the development version of `weathergenr` from GitHub:
 
 Work-in-progress tutorials and examples are available below:
 
-<br /> [:blue_book: Getting Started
-vignette](https://github.com/Deltares-research/weathergenr/blob/Dev/Vignettes/getting_started.md)
+<br /> [:blue_book: Getting
+Started](https://github.com/Deltares-research/weathergenr/blob/Dev/Vignettes/getting_started.md)
 <br />
 
 Stay tuned - more vignettes and usage examples will be added as the

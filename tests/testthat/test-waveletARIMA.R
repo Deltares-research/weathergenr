@@ -1,4 +1,3 @@
-
 library(testthat)
 
 # Minimal reproducible input generator for ARIMA

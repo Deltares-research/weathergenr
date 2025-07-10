@@ -10,35 +10,32 @@
 #' @export
 #' @keywords internal
 
-averageSpellLength <- function (x, threshold = 0, below = TRUE)
-{
+averageSpellLength <- function(x, threshold = 0, below = TRUE) {
+  # Validate input
+  if (!is.numeric(x)) {
+    stop("'x' must be a numeric vector")
+  }
 
-    # Validate input
-    if (!is.numeric(x)) {
-      stop("'x' must be a numeric vector")
-    }
+  n <- length(x)
+  if (n == 0L) {
+    return(NA_real_)
+  }
 
-    n <- length(x)
-    if (n == 0L) {
-      return(NA_real_)
-    }
+  # Convert to binary: 0 = dry, 1 = wet (or vice versa, depending on 'below')
+  binary <- ifelse(x <= threshold, 0, 1)
 
-    # Convert to binary: 0 = dry, 1 = wet (or vice versa, depending on 'below')
-    binary <- ifelse(x <= threshold, 0, 1)
+  # Identify transitions
+  change_points <- c(which(diff(binary) != 0), n)
+  spell_lengths <- diff(c(0L, change_points))
+  spell_types <- binary[change_points]
 
-    # Identify transitions
-    change_points <- c(which(diff(binary) != 0), n)
-    spell_lengths <- diff(c(0L, change_points))
-    spell_types <- binary[change_points]
+  # Select spell type
+  selected_lengths <- spell_lengths[spell_types == if (below) 0 else 1]
 
-    # Select spell type
-    selected_lengths <- spell_lengths[spell_types == if (below) 0 else 1]
+  if (length(selected_lengths) == 0) {
+    return(0)
+  }
 
-    if (length(selected_lengths) == 0) {
-      return(0)
-    }
-
-    # Calculate average length
-    return(mean(selected_lengths))
+  # Calculate average length
+  return(mean(selected_lengths))
 }
-

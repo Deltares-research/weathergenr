@@ -1,5 +1,3 @@
-
-
 library(testthat)
 
 # Example synthetic data
@@ -10,7 +8,6 @@ x <- as.numeric(scale(rnorm(40))) # Length-40 "annual" series
 sig_periods <- list(c(2), c(4))
 
 test_that("waveletDecompose returns tibble with expected columns", {
-
   result <- waveletDecompose(variable = x, signif.periods = sig_periods, plot = FALSE)
 
   expect_true(is.data.frame(result) || inherits(result, "tbl"))
@@ -25,8 +22,10 @@ test_that("Components and NOISE have correct length", {
 })
 
 test_that("waveletDecompose errors for NULL variable", {
-  expect_error(waveletDecompose(variable = NULL, signif.periods = sig_periods, plot = FALSE),
-               "NULL|missing|variable")
+  expect_error(
+    waveletDecompose(variable = NULL, signif.periods = sig_periods, plot = FALSE),
+    "NULL|missing|variable"
+  )
 })
 
 # test_that("waveletDecompose errors for NULL signif.periods", {

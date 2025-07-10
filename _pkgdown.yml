@@ -1,3 +1,10 @@
+pkgdown:
+  title: "weathergenr"
+  navbar:
+    structure:
+      left:
+        - home
+        - reference
 url: https://deltares.github.io/weathergenr/
 template:
   bootstrap: 5

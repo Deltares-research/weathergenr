@@ -16,11 +16,11 @@
 #' PRCP_TOMORROW <- c(0, 5, 10, 20)
 #'
 #' # Valid index
-#' get_result_index(2, PRCP_TOMORROW)  # returns 2
+#' get_result_index(2, PRCP_TOMORROW) # returns 2
 #'
 #' # Invalid index: falls back to sampling
 #' set.seed(1)
-#' get_result_index(10, PRCP_TOMORROW)  # randomly returns a valid index
+#' get_result_index(10, PRCP_TOMORROW) # randomly returns a valid index
 #'
 #' # NA index: falls back to sampling
 #' get_result_index(NA, PRCP_TOMORROW)
@@ -31,8 +31,11 @@
 #' @export
 get_result_index <- function(RESULT, PRCP_TOMORROW) {
   if (is.na(RESULT) || length(RESULT) == 0 || RESULT < 1 || RESULT > length(PRCP_TOMORROW)) {
-    if (length(PRCP_TOMORROW) > 0) sample(seq_along(PRCP_TOMORROW), 1)
-    else NA_integer_
+    if (length(PRCP_TOMORROW) > 0) {
+      sample(seq_along(PRCP_TOMORROW), 1)
+    } else {
+      NA_integer_
+    }
   } else {
     RESULT
   }

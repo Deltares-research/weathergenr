@@ -22,8 +22,11 @@
 
 ^vignettes/.*_files$
 ^vignettes/.*\.html$
+^vignettes/.quarto$
+^vignettes/.quarto/
 
 ^README_files$
 ^README\.qmd$
 ^_pkgdown\.yml$
 ^pkgdown$
+
