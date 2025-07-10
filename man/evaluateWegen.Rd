@@ -2,7 +2,7 @@
 % Please edit documentation in R/evaluateWegen.R
 \name{evaluateWegen}
 \alias{evaluateWegen}
-\title{Compare observed and simulated climate statistics}
+\title{Evaluate Synthetic Weather Simulations Against Historical Observations}
 \usage{
 evaluateWegen(
   daily.sim = NULL,
@@ -19,34 +19,62 @@ evaluateWegen(
 )
 }
 \arguments{
-\item{daily.sim}{A matrix of daily time-series of weather variables}
+\item{daily.sim}{A list of simulated weather realizations. Each element should be a list of data frames, one per grid cell, containing daily values and a `date` column.}
 
-\item{daily.obs}{A vector of daily time-series of observed weather series}
+\item{daily.obs}{A list of observed weather data frames, one per grid cell. Each should contain a `date` column and the variables specified in `variables`.}
 
-\item{output.path}{A character string to define the path of resulting netcdf file}
+\item{output.path}{File path to save generated plots. If `NULL`, plots are not saved.}
 
-\item{variables}{A vector object specifying the names of weather variables}
+\item{variables}{A character vector of variable names to evaluate (e.g., `c("precip", "temp")`).}
 
-\item{variable.labels}{A vector object specifying the names of weather variable labels}
+\item{variable.labels}{Optional character vector of variable labels for use in plots. Defaults to `variables` if `NULL`.}
 
-\item{variable.units}{A vector object specifying the names of weather variable units}
+\item{variable.units}{Optional character vector of variable units. Defaults to empty strings.}
 
-\item{realization.num}{number of weather realizations}
+\item{realization.num}{Integer. Number of synthetic realizations in `daily.sim`.}
 
-\item{wet.quantile}{precip. quantile for calculating monthly wet state threshold}
+\item{wet.quantile}{Quantile threshold for wet days (default is 0.2).}
 
-\item{extreme.quantile}{precip. quantile for calculating monthly extremely wet state threshold}
+\item{extreme.quantile}{Quantile threshold for extremely wet days (default is 0.8).}
 
-\item{show.title}{PLACEHOLDER}
+\item{show.title}{Logical. Whether to display titles in the generated plots (default is `TRUE`).}
 
-\item{save.plots}{PLACEHOLDER}
+\item{save.plots}{Logical. Whether to save plots to `output.path` (default is `TRUE`).}
 }
 \value{
-returns a list of ggplot2 objects and figures saved to the desired output path
+A named list of `ggplot2` plot objects. These include:
+\itemize{
+  \item \code{daily_means}, \code{daily_sd}: Daily mean and standard deviation comparisons.
+  \item \code{spell_lengths}, \code{spell_duration}: Wet/dry spell length and frequency plots.
+  \item \code{crossgrid_cor}, \code{intergrid_cor}: Correlation plots between sites and variables.
+  \item \code{annual_cycle}: Monthly mean climatology.
+  \item \code{annual_mean}: Annual mean precipitation time series.
+  \item \code{annual_pattern_<var>}: Monthly summary statistics per variable.
+}
 }
 \description{
-A short description...
+This function compares daily synthetic weather simulations with observed data
+across multiple grid cells. It computes summary statistics, wet/dry day counts,
+spell lengths, and inter-site correlations, and generates diagnostic plots to
+assess the performance of stochastic weather generators.
 }
 \details{
-Additional details...
+- Observed and simulated data must be structured consistently.
+- Precipitation variable is used for wet/dry analysis and must be included in `variables`.
+- Computations include monthly, annual, and cross-site statistics.
+- Extensive use of `dplyr`, `tidyr`, `ggplot2`, and `e1071` packages.
+}
+\examples{
+\dontrun{
+plots <- evaluateWegen(
+  daily.sim = synthetic_data,
+  daily.obs = observed_data,
+  output.path = "output/",
+  variables = c("precip", "temp"),
+  variable.labels = c("Precipitation", "Temperature"),
+  realization.num = 3
+)
+plots$daily_means
+}
+
 }

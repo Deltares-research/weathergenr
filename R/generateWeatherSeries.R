@@ -207,8 +207,6 @@ generateWeatherSeries <- function(
 
   }
 
-
-
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x)
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS)
