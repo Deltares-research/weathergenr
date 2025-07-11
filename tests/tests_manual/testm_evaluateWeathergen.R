@@ -1,3 +1,7 @@
+
+library(dplyr)
+library(weathergenr)
+
 rdata_path <- testthat::test_path("data", "testdata_generateWS.RData")
 load(rdata_path)
 
@@ -29,20 +33,23 @@ obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) {
 
 daily.sim <- rlz_sample
 daily.obs <- obs_sample
-save.plots <- FALSE
+save.plots <- TRUE
 variables <- variables
 variable.labels <- variable_labels
 variable.units <- NULL
 realization.num <- realization_num
 wet.quantile <- 0.3
 extreme.quantile <- 0.8
+output.path = "C:/TEMP/EVAL/"
+
 
 timez <- Sys.time()
 
 out <- evaluateWegen(
+  output.path = output.path,
   daily.sim = rlz_sample,
   daily.obs = obs_sample,
-  save.plots = FALSE,
+  save.plots = save.plots,
   variables = variables,
   variable.labels = variable_labels,
   variable.units = NULL,

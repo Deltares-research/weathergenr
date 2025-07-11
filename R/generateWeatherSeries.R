@@ -45,11 +45,11 @@
 #' @importFrom dplyr mutate
 generateWeatherSeries <- function(
     weather.data = NULL,
-    weather.grid = NULL,
-    weather.date = NULL,
+    weather.grid = NULL,               #
+    weather.date = NULL,               #
     variable.names = NULL,
-    variable.labels = NULL,
-    variable.units = NULL,
+    variable.labels = NULL,            #
+    variable.units = NULL,             #
     sim.year.num = NULL,
     sim.year.start = 2020,
     month.start = 1,
@@ -67,7 +67,8 @@ generateWeatherSeries <- function(
     seed = NULL,
     compute.parallel = FALSE,
     num.cores = NULL,
-    save.rdata = FALSE) {
+    save.rdata = FALSE
+) {
   start_time <- Sys.time()
 
   # Seed handling
@@ -97,15 +98,15 @@ generateWeatherSeries <- function(
   if (is.null(variable.units)) variable.units <- rep("", length(variable.names))
 
   # Number of grids
-  grids <- weather.grid$id
-  ngrids <- length(grids)
+  ngrids <- length(weather.data)
 
-  if (compute.parallel == TRUE) {
+  if (compute.parallel) {
+
     if (is.null(num.cores)) num.cores <- parallel::detectCores() - 1
-    logger::log_info("\n[Initialize] Starting in parallel mode:")
-    logger::log_info("[Initialize] Number of cores: {num.cores}")
-  } else {
-    logger::log_info("\n[Initialize] Starting in sequential mode")
+      logger::log_info("\n[Initialize] Starting in parallel mode:")
+      logger::log_info("[Initialize] Number of cores: {num.cores}")
+    } else {
+      logger::log_info("\n[Initialize] Starting in sequential mode")
   }
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -273,7 +274,8 @@ generateWeatherSeries <- function(
   }
 
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
-    weathergenr::resampleDates(
+
+    resampleDates(
       PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],
       ANNUAL_PRCP = warm_variable,
       PRCP = climate_d_aavg$precip,
