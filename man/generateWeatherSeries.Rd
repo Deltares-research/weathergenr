@@ -10,7 +10,6 @@ generateWeatherSeries(
   weather.date = NULL,
   variable.names = NULL,
   variable.labels = NULL,
-  variable.units = NULL,
   sim.year.num = NULL,
   sim.year.start = 2020,
   month.start = 1,
@@ -42,8 +41,6 @@ generateWeatherSeries(
 \item{variable.names}{A character vector of names of weather variables to be included in the simulation (e.g., `c("precip", "temp")`).}
 
 \item{variable.labels}{Optional character vector of human-readable labels corresponding to `variable.names`. Defaults to `variable.names` if not provided.}
-
-\item{variable.units}{Optional character vector specifying the units of each weather variable (e.g., `c("mm", "?C")`). If not provided, units will be left blank.}
 
 \item{sim.year.num}{Integer specifying the total number of years to generate in each synthetic weather realization.}
 

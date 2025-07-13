@@ -12,7 +12,6 @@
 #' @param output.path File path to the directory where generated output files, such as figures and NetCDFs, will be saved.
 #' @param variable.names A character vector of names of weather variables to be included in the simulation (e.g., `c("precip", "temp")`).
 #' @param variable.labels Optional character vector of human-readable labels corresponding to `variable.names`. Defaults to `variable.names` if not provided.
-#' @param variable.units Optional character vector specifying the units of each weather variable (e.g., `c("mm", "?C")`). If not provided, units will be left blank.
 #' @param warm.variable Name of the weather variable used for Wavelet Autoregressive Modeling (WARM). Typically this is a low-frequency driver like precipitation. Defaults to `"precip"`.
 #' @param warm.signif.level Significance level (between 0 and 1) for retaining low-frequency components during wavelet decomposition. Higher values retain fewer components.
 #' @param warm.sample.num Number of annual time series realizations to generate using the WARM model prior to filtering with statistical criteria.
@@ -45,11 +44,10 @@
 #' @importFrom dplyr mutate
 generateWeatherSeries <- function(
     weather.data = NULL,
-    weather.grid = NULL,               #
-    weather.date = NULL,               #
+    weather.grid = NULL,
+    weather.date = NULL,
     variable.names = NULL,
-    variable.labels = NULL,            #
-    variable.units = NULL,             #
+    variable.labels = NULL,
     sim.year.num = NULL,
     sim.year.start = 2020,
     month.start = 1,
@@ -57,7 +55,8 @@ generateWeatherSeries <- function(
     warm.variable = "precip",
     warm.signif.level = 0.90,
     warm.sample.num = 5000,
-    warm.subset.criteria = list(mean = 0.1, sd = 0.2, min = 0.3, max = 0.3, sig.thr = 0.5, nsig.thr = 1.5),
+    warm.subset.criteria = list(mean = 0.1, sd = 0.2, min = 0.3,
+                                max = 0.3, sig.thr = 0.5, nsig.thr = 1.5),
     knn.sample.num = 120,
     mc.wet.quantile = 0.3,
     mc.extreme.quantile = 0.8,
@@ -71,7 +70,8 @@ generateWeatherSeries <- function(
 ) {
   start_time <- Sys.time()
 
-  # Seed handling
+
+  # -- Seed handling
   if (!is.null(seed)) {
     old_seed <- .Random.seed
     on.exit(
@@ -85,8 +85,6 @@ generateWeatherSeries <- function(
 
   # Directory checks
   dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
-  plots_path <- file.path(output.path, "plots")
-  dir.create(plots_path, recursive = TRUE, showWarnings = FALSE)
 
   # Validation checks
   stopifnot(is.list(weather.data), is.data.frame(weather.grid))
@@ -95,7 +93,6 @@ generateWeatherSeries <- function(
   wyear <- month <- day <- year <- 0
 
   if (is.null(variable.labels)) variable.labels <- variable.names
-  if (is.null(variable.units)) variable.units <- rep("", length(variable.names))
 
   # Number of grids
   ngrids <- length(weather.data)
@@ -110,10 +107,10 @@ generateWeatherSeries <- function(
   }
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  logger::log_info("[Initialize] Randomization seed set to: {seed}")
+  logger::log_info("[Initialize] Randomization seed: {seed}")
   logger::log_info("[Initialize] Climate variables: {paste(variable.names, collapse = ', ')}")
   logger::log_info("[Initialize] Historical period: {weather.date[1]} to {weather.date[length(weather.date)]}")
-  logger::log_info("[Initialize] Total number of grid cells: {ngrids}")
+  logger::log_info("[Initialize] Total number of grids: {ngrids}")
 
   # Historical dates
   year_seq <- as.numeric(format(weather.date, "%Y"))
@@ -131,11 +128,11 @@ generateWeatherSeries <- function(
     mutate(dateo = as.Date(paste(year, month, day, sep = "-")), .before = 1)
 
   year.num <- length(unique(dates_d$wyear))
-  wyear_index <- which(weather.date %in% dates_d$dateo)
+  wyear_idx <- which(weather.date %in% dates_d$dateo)
 
   # Multivariate list of daily climate data
   climate_d <- lapply(1:ngrids, function(i) {
-    weather.data[[i]][wyear_index, ] %>%
+    weather.data[[i]][wyear_idx, ] %>%
       select(all_of(variable.names)) %>%
       mutate(year = dates_d$wyear, .)
   })
@@ -146,7 +143,7 @@ generateWeatherSeries <- function(
   climate_a <- lapply(1:ngrids, function(i) {
     climate_d[[i]] %>%
       group_by(year) %>%
-      summarize(across({{ variable.names }}, mean)) %>%
+      summarize(across({{variable.names}}, mean)) %>%
       ungroup() %>%
       suppressMessages()
   })
@@ -154,22 +151,19 @@ generateWeatherSeries <- function(
   # Area-averaged annual weather series
   climate_a_aavg <- Reduce(`+`, climate_a) / ngrids
 
-
   # Simulated dates
   if (is.null(sim.year.num)) sim.year.num <- year.num
   sim_year_end <- sim.year.start + sim.year.num
 
   date_sim <- seq(as.Date(paste(sim.year.start, "-1-01", sep = "")),
     as.Date(paste(sim_year_end, "-12-31", sep = "")),
-    by = "day"
-  )
+    by = "day")
 
   sim_dates_d <- tibble(
     year = as.numeric(format(date_sim, "%Y")),
     wyear = getWaterYear(date_sim, month.start),
     month = as.numeric(format(date_sim, "%m")),
-    day = as.numeric(format(date_sim, "%d"))
-  ) %>%
+    day = as.numeric(format(date_sim, "%d"))) %>%
     filter(month != 2 | day != 29) %>%
     filter(wyear >= sim.year.start + 1 & wyear <= sim_year_end) %>%
     mutate(date = as.Date(paste(year, month, day, sep = "-")), .before = 1)
@@ -182,7 +176,7 @@ generateWeatherSeries <- function(
   # power spectra analysis of historical series
   warm_power <- waveletAnalysis(
     variable = warm_variable,
-    signif.level = warm.signif.level, plot = TRUE, output.path = plots_path
+    signif.level = warm.signif.level, plot = TRUE, output.path = output.path
   )
 
   # if there is low-frequency signal
@@ -191,7 +185,7 @@ generateWeatherSeries <- function(
     wavelet_comps <- waveletDecompose(
       variable = warm_variable,
       signif.periods = warm_power$signif_periods,
-      signif.level = warm.signif.level, plot = TRUE, output.path = plots_path
+      signif.level = warm.signif.level, plot = TRUE, output.path = output.path
     )
 
     logger::log_info("[WARM] Significant low-frequency components detected: {length(wavelet_comps)-1}")
@@ -245,7 +239,7 @@ generateWeatherSeries <- function(
     power.period = warm_power$GWS_period,
     power.signif = warm_power$GWS_signif,
     sample.num = realization.num,
-    output.path = plots_path,
+    output.path = output.path,
     bounds = warm.subset.criteria,
     seed = seed,
     save.plots = TRUE,
