@@ -53,6 +53,7 @@ calculateMarkovProbs <- function(PRCP_LAG0, PRCP_LAG1, MONTH_LAG0, MONTH_LAG1,
   p22_final <- numeric(SIM_LENGTH)
 
   for (m in 1:12) {
+
     x <- which(MONTH_LAG1 == month_list[m])
     r <- which(MONTH_SIM == month_list[m] & WATER_YEAR_SIM == (y + START_YEAR_SIM))
     if (length(x) == 0 || length(r) == 0) next

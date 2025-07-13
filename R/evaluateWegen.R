@@ -428,12 +428,12 @@ evaluateWegen <- function(
     ylab("Simulated")
 
   plots[[4]] <- gg_multipanel_export(p = p,
-                                     p.name = "spell_duration.png",
+                                     p.name = "wetdry_days_count.png",
                                      p.title = "Average number of dry and wet days per month accross all grid cells",
                                      p.subtitle = pl_sub,
                                      output.path = output.path)
 
-  # 5) INTERSITE CORRELATIONS
+  # 5) INTERGRID CORRELATIONS
   dummy_gg <- generate_symmetric_dummy_points(
     df = stats_intersite_cor,
     facet_var = "variable1", x_col = "Observed", y_col = "Simulated")
@@ -452,7 +452,7 @@ evaluateWegen <- function(
     ylab("Simulated")
 
   plots[[5]] <- gg_multipanel_export(p = p,
-                                     p.name = "spell_duration.png",
+                                     p.name = "intergrid_correlations.png",
                                      p.title = "Inter-grid correlations",
                                      p.subtitle = paste0(pl_sub, "\nCorrelations are calculated over daily series"),
                                      output.path = output.path)
@@ -478,7 +478,7 @@ evaluateWegen <- function(
     ylab("Simulated")
 
   plots[[6]] <- gg_multipanel_export(p = p,
-                                     p.name = "spell_duration.png",
+                                     p.name = "crossgrid_correlations.png",
                                      p.title = "Cross-grid correlations",
                                      p.subtitle = paste0(pl_sub, "\nCorrelations are calculated over daily series"),
                                      output.path = output.path)
