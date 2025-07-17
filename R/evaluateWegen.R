@@ -171,8 +171,8 @@ evaluateWegen <- function(
     summarize(precip = mean(precip), .groups = "drop") %>%
     group_by(mon) %>%
     summarize(
-      wet_th = quantile(precip, wet.quantile, names = FALSE),
-      extreme_th = quantile(precip, extreme.quantile, names = FALSE),
+      wet_th = stats::quantile(precip, wet.quantile, names = FALSE),
+      extreme_th = stats::quantile(precip, extreme.quantile, names = FALSE),
       .groups = "drop"
     )
 
@@ -234,7 +234,9 @@ evaluateWegen <- function(
       day = as.numeric(format(date, "%d"))
     )
 
+  # Loop over each realization and calculate statistics
   for (n in 1:realization.num) {
+
     sim_daily_tidy <- lapply(daily.sim[[n]], "[", c("date", variables)) %>%
       bind_rows(.id = "id") %>%
       left_join(sim_date_tbl, by = "date") %>%
@@ -347,6 +349,7 @@ evaluateWegen <- function(
                                      p.name = "daily_mean.png",
                                      p.title = "Daily means for all grid cell and months",
                                      p.subtitle = pl_sub,
+                                     save.plots = save.plots,
                                      output.path = output.path)
 
 
@@ -374,6 +377,7 @@ evaluateWegen <- function(
                                      p.name = "daily_sd.png",
                                      p.title = "Daily standard deviations for all grid cell and months",
                                      p.subtitle = pl_sub,
+                                     save.plots = save.plots,
                                      output.path = output.path)
 
   # 3) Wet and dry spell statistics
@@ -402,6 +406,7 @@ evaluateWegen <- function(
                                      p.name = "spell_length.png",
                                      p.title = "Average dry and wet spell length per month, across all grid cells",
                                      p.subtitle = pl_sub,
+                                     save.plots = save.plots,
                                      output.path = output.path)
 
   # 4) Average number of wet and dry days
@@ -431,6 +436,7 @@ evaluateWegen <- function(
                                      p.name = "wetdry_days_count.png",
                                      p.title = "Average number of dry and wet days per month accross all grid cells",
                                      p.subtitle = pl_sub,
+                                     save.plots = save.plots,
                                      output.path = output.path)
 
   # 5) INTERGRID CORRELATIONS
@@ -455,6 +461,7 @@ evaluateWegen <- function(
                                      p.name = "intergrid_correlations.png",
                                      p.title = "Inter-grid correlations",
                                      p.subtitle = paste0(pl_sub, "\nCorrelations are calculated over daily series"),
+                                     save.plots = save.plots,
                                      output.path = output.path)
 
 
@@ -481,6 +488,7 @@ evaluateWegen <- function(
                                      p.name = "crossgrid_correlations.png",
                                      p.title = "Cross-grid correlations",
                                      p.subtitle = paste0(pl_sub, "\nCorrelations are calculated over daily series"),
+                                     save.plots = save.plots,
                                      output.path = output.path)
 
 
@@ -521,6 +529,7 @@ evaluateWegen <- function(
                                          p.name = paste0("annual_pattern_", variables[v], ".png"),
                                          p.title = paste0("Monthly patterns for ", variable.labels[v]),
                                          p.subtitle = paste0(pl_sub, "\nResults are averaged accross all grid cells."),
+                                         save.plots = save.plots,
                                          output.path = output.path)
 
   }
@@ -550,6 +559,7 @@ evaluateWegen <- function(
                                                    p.name = "monthly_cycle.png",
                                                    p.title = paste0("Annual cycles of variables"),
                                                    p.subtitle =  paste0(pl_sub, "\nResults are averaged accross each month"),
+                                                   save.plots = save.plots,
                                                    output.path = output.path)
 
   # Annual precip means as time-series

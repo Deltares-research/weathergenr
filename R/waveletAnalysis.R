@@ -25,7 +25,6 @@
 #' res <- waveletAnalysis(signal, plot = FALSE)
 #' print(res$GWS_period[res$signif_periods])
 #'
-#' @import ggplot2
 #' @import patchwork
 #' @import dplyr
 #' @export
@@ -34,8 +33,11 @@ waveletAnalysis <- function(variable,
                             noise.type = "white",
                             variable.unit = "mm",
                             plot = FALSE,
-                            output.path = NULL) {
-  # --- Input checks
+                            output.path = NULL
+) {
+
+
+  # --- Input Valiation
   stopifnot(is.numeric(variable), length(variable) > 8)
   if (anyNA(variable)) stop("Variable contains missing values.")
   if (!(noise.type %in% c("white", "red"))) stop("noise.type must be 'white' or 'red'")
@@ -43,10 +45,45 @@ waveletAnalysis <- function(variable,
     stop("signif.level must be between 0 and 1.")
   }
 
-  # Workaround for rlang warning
-  x <- y <- z <- 0
+  #### Wavelet decomposition helper function
+  extract_wavelet_components <- function(wave, signif.periods, scale, dj = 0.25, dt = 1, Cdelta = 0.776,  w0_0 = pi^(-1 / 4),
+                                         variable_sd) {
 
-  # Morlet wavelet
+    num_periods <- length(signif.periods)
+    n <- ncol(wave)
+    COMPS <- matrix(0, nrow = n, ncol = num_periods)
+
+    for (i in seq_len(num_periods)) {
+
+      cur_periods <- signif.periods[[i]]
+      sj <- scale[cur_periods]
+
+      # Extract real part of the wavelet coefficients for the selected periods
+      W <- Re(wave)[cur_periods, , drop = FALSE]
+      # Reconstruction factor (constant for this variable)
+      recon_fac <- variable_sd * (dj * sqrt(dt) / (Cdelta * w0_0))
+      # Divide each row by sqrt(sj)
+      W_scaled <- sweep(W, 1, sqrt(sj), "/")
+      # Sum across selected periods if more than one
+      if (nrow(W_scaled) > 1) {
+        component <- recon_fac * colSums(W_scaled)
+      } else {
+        component <- as.numeric(recon_fac * W_scaled)
+      }
+      COMPS[, i] <- component
+    }
+    # Convert to tibble and name columns
+    comps_tb <- tibble::as_tibble(COMPS, .name_repair = ~paste0("Component_", seq_len(num_periods)))
+    return(comps_tb)
+  }
+
+  ##############################################################################
+
+
+  # ---- Wavelet Analysis ----
+  # Perform wavelet decomposition and calculate power spectrum)
+
+  # Helper: Morlet wavelet (Fourier domain)
   waveletf <- function(k, s) {
     nn <- length(k)
     k0 <- 6
@@ -57,6 +94,7 @@ waveletAnalysis <- function(variable,
     return(daughter)
   }
 
+  # Helper: Morlet parameters (for period/coi/dofmin)
   waveletf2 <- function(k, s) {
     k0 <- 6
     fourier_factor <- (4 * pi) / (k0 + sqrt(2 + k0^2))
@@ -65,7 +103,7 @@ waveletAnalysis <- function(variable,
     c(fourier_factor, coi, dofmin)
   }
 
-  # Standardize & pad
+  # Standardize and zero-pad the time series
   variable_org <- variable
   variance1 <- stats::var(variable_org)
   n1 <- length(variable_org)
@@ -83,7 +121,7 @@ waveletAnalysis <- function(variable,
   k <- c(0:(floor(n / 2)), -rev(1:floor((n - 1) / 2))) * ((2 * pi) / (n * dt))
 
 
-  # FFT of series
+  # Compute FFT and wavelet transform
   f <- stats::fft(variable)
   wave <- array(as.complex(0), c(J + 1, n))
   for (a1 in 1:(J + 1)) {
@@ -101,7 +139,9 @@ waveletAnalysis <- function(variable,
   POWER <- abs(wave)^2
   GWS <- variance1 * rowMeans(POWER)
 
-  # --- Significance testing
+  # ---- Significance Testing ----
+  # Assess significance of observed power vs. noise background)
+
   empir <- c(2, 0.776, 2.32, 0.60)
   dofmin <- empir[1]
   gamma_fac <- empir[3]
@@ -110,7 +150,7 @@ waveletAnalysis <- function(variable,
   fft_theor <- (1 - lag1^2) / (1 - 2 * lag1 * cos(freq * 2 * pi) + lag1^2)
   chisquare <- stats::qchisq(signif.level, dofmin) / dofmin
   signif <- fft_theor * chisquare
-  sig95 <- POWER / (outer(signif, rep(1, n1)))
+  sigm <- POWER / (outer(signif, rep(1, n1)))
   dof <- n1 - scale
   dof[dof < 1] <- 1
   dof <- dofmin * sqrt(1 + (dof * dt / gamma_fac / scale)^2)
@@ -118,81 +158,69 @@ waveletAnalysis <- function(variable,
   chisquare_GWS <- stats::qchisq(signif.level, dof) / dof
   GWS_signif <- fft_theor * variance1 * chisquare_GWS
 
+  # Identify periods where GWS exceeds significance threshold
   period_lower_limit <- 0
   sig_periods <- which(GWS > GWS_signif & period > period_lower_limit)
   sig_periods_grp <- split(sig_periods, cumsum(c(1, diff(sig_periods) != 1)))
   signif_periods <- unlist(lapply(sig_periods_grp,
                                   function(x) as.integer(round(stats::median(x)))), use.names = FALSE)
 
-  # --- Plotting (optional)
-  if (plot) {
-    if (is.null(output.path)) output.path <- tempdir()
-    if (!dir.exists(output.path)) dir.create(output.path, recursive = TRUE)
+  # If no low-frequency signal present, exit and return WARM outputs
+  if(any(is.na(signif_periods))) {
 
-    GWS_gg <- data.frame(period = period, GWS = GWS, GWS_signif = GWS_signif)
-    var_gg <- data.frame(x = 1:length(variable), y = variable)
+    return(list(
+      GWS = GWS,
+      GWS_signif = GWS_signif,
+      GWS_period = period,
+      signif_periods = signif_periods))
 
-    df <- t(log(POWER, base = 2)) %>%
-      tibble::as_tibble(.name_repair = ~ as.character(period)) %>%
-      dplyr::mutate(x = 1:n1) %>%
-      tidyr::gather(key = y, value = z, -x) %>%
-      dplyr::mutate(across(everything(), as.numeric))
+  } else {
 
-    df <- suppressWarnings(with(df, akima::interp(x, y, z,
-      extrap = TRUE, linear = FALSE,
-      xo = seq(min(x), max(x), length = 20),
-      yo = seq(min(y), max(y), length = 20)
-    )))
+    # EXTRACT WAVELET COMPONENTS -------------------------------------------------
+    variable_sd <- stats::sd(variable_org)
 
+    COMPS <- extract_wavelet_components(
+      wave = wave,
+      signif.periods = signif_periods,
+      scale = scale,
+      dj = dj,
+      dt = dt,
+      variable_sd = variable_sd
+    )
 
-    df1 <- tibble::as_tibble(df$z, .name_repair = ~ as.character(df$y)) %>%
-      dplyr::mutate(x = df$x) %>%
-      tidyr::gather(key = y, value = z, -x) %>%
-      dplyr::mutate(across(everything(), as.numeric))
+    names(COMPS) <- paste0("Component_", 1:length(signif_periods))
+    COMPS$NOISE = variable_org - apply(COMPS, 1, sum)
 
+    ##############################################################################
 
-    df2 <- tibble::tibble(x = 1:n1, y = coi) %>% filter(y > min(df1$x))
+    # --- Plotting (optional)
+    if (plot) {
 
-    df3 <- tibble::as_tibble(t(sig95), .name_repair = ~ as.character(period)) %>%
-      dplyr::mutate(x = 1:n1) %>%
-      tidyr::gather(key = y, value = z, -x) %>%
-      dplyr::mutate(across(everything(), as.numeric))
+      if (is.null(output.path)) output.path <- tempdir()
+      if (!dir.exists(output.path)) dir.create(output.path, recursive = TRUE)
 
-    p2 <- ggplot2::ggplot(df1, ggplot2::aes(x = x, y = y)) +
-      ggplot2::theme_light() +
-      ggplot2::geom_raster(ggplot2::aes(fill = z)) +
-      ggplot2::scale_x_continuous(expand = c(0, 0)) +
-      ggplot2::scale_y_reverse(expand = c(0, 0)) +
-      ggplot2::scale_fill_distiller(palette = "YlGnBu") +
-      ggplot2::labs(x = "Time (years)", y = "Period (years)") +
-      ggplot2::guides(fill = "none") +
-      ggplot2::geom_line(
-        data = df2, ggplot2::aes(x = x, y = y),
-        linetype = "dashed", color = "red", linewidth = 0.85
-      ) +
-      ggplot2::stat_contour(ggplot2::aes(z = z), data = df3, breaks = c(-99, 1), color = "black") +
-      ggplot2::ggtitle("a)")
+      p <- plot_wavelet_spectra(
+        variable = variable_org,
+        period = period,
+        POWER = POWER,
+        GWS = GWS,
+        GWS_signif = GWS_signif,
+        coi =  coi,
+        sigm =  sigm)
 
-    p3 <- ggplot2::ggplot(GWS_gg) +
-      ggplot2::theme_light() +
-      ggplot2::geom_line(ggplot2::aes(period, GWS)) +
-      ggplot2::geom_point(ggplot2::aes(period, GWS), shape = 19, size = 1) +
-      ggplot2::geom_line(ggplot2::aes(period, GWS_signif), color = "red", linetype = "dashed", linewidth = 0.85) +
-      ggplot2::scale_y_continuous() +
-      ggplot2::scale_x_reverse(expand = c(0, 0)) +
-      ggplot2::coord_flip() +
-      ggplot2::labs(y = bquote(Power ~ (.(variable.unit)^2)), x = "") +
-      ggplot2::ggtitle("b)")
+      ggsave(file.path(output.path, "warm_hist_analysis.png"),
+             width = 8, height = 6)
+    }
 
-    # Save results to file
-    p <- p2 + p3 + patchwork::plot_layout(widths = c(2, 1.25))
-    ggsave(file.path(output.path, "warm_hist_wavelet_analysis.png"), width = 8, height = 6)
+    return(list(
+      GWS = GWS,
+      GWS_signif = GWS_signif,
+      GWS_period = period,
+      signif_periods = signif_periods,
+      COMPS = COMPS))
+
   }
 
-  return(list(
-    GWS = GWS,
-    GWS_signif = GWS_signif,
-    GWS_period = period,
-    signif_periods = signif_periods
-  ))
+
 }
+

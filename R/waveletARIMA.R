@@ -28,6 +28,7 @@ waveletARIMA <- function(
     sim.year.num = NULL,
     sim.num = 1000,
     seed = NULL) {
+
   # Input validation
   if (is.null(wavelet.components)) {
     stop("Input 'wavelet.components' must not be NULL.")
@@ -61,7 +62,9 @@ waveletARIMA <- function(
 
   # Simulate each component
   SIM <- vector("list", ncomp)
+
   for (k in seq_len(ncomp)) {
+
     component <- unlist(comp_list[[k]], use.names = FALSE)
     MEAN <- mean(component)
     CENTERED <- component - MEAN
@@ -89,7 +92,6 @@ waveletARIMA <- function(
     }
 
     SIM[[k]] <- replicate(sim.num, {
-      # To ensure different random streams, combine seed and simulation index
       as.numeric(stats::simulate(MODEL, sim.year.num, sd = SD)) + INTERCEPT + MEAN
     })
   }

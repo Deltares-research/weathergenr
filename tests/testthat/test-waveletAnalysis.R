@@ -1,3 +1,6 @@
+
+library(testthat)
+
 test_that("waveletAnalysis returns expected structure and types", {
   set.seed(42)
   n <- 64
@@ -8,7 +11,7 @@ test_that("waveletAnalysis returns expected structure and types", {
   result <- waveletAnalysis(y, plot = FALSE)
 
   expect_type(result, "list")
-  expect_named(result, c("GWS", "GWS_signif", "GWS_period", "signif_periods"))
+  expect_named(result, c("GWS", "GWS_signif", "GWS_period", "signif_periods", "COMPS"))
   expect_true(is.numeric(result$GWS))
   expect_true(is.numeric(result$GWS_signif))
   expect_true(is.numeric(result$GWS_period))
