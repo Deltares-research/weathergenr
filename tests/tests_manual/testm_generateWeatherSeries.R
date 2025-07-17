@@ -4,7 +4,7 @@ library(weathergenr)
 library(dplyr)
 library(tidyr)
 
-output_path <- "C:/TEMP/TEST5"
+output_path <- "C:/TEMP/TEST8"
 variables <- c("precip", "temp", "temp_min", "temp_max")
 variable_labels <- c("Precip.", "Temp. (avg)", "Temp. (min)", "Temp. (max)")
 realization_num <- 5
@@ -47,7 +47,6 @@ stochastic_weather <- generateWeatherSeries(
   weather.date = ncdata$date,
   variable.names = variables,
   variable.labels = variables,
-  variable.units = NULL,
   sim.year.num = 20,
   sim.year.start = 2020,
   month.start = 1,
@@ -91,5 +90,3 @@ out <- evaluateWegen(daily.sim = rlz_sample,
                      realization.num = realization_num,
                      wet.quantile = mc.wet.quantile,
                      extreme.quantile = mc.extreme.quantile)
-
-

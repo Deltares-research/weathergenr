@@ -1,5 +1,8 @@
 # .build_quarto_vignettes.R
 
+# Set TMPDIR
+Sys.setenv(TMPDIR = tempdir())
+
 # Ensure output directory exists
 if (!dir.exists("inst/doc")) dir.create("inst/doc", recursive = TRUE)
 

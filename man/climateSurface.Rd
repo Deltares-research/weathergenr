@@ -96,8 +96,9 @@ df <- expand.grid(
   prcp_change = seq(-20, 20, by = 5),
   temp_change = seq(-2, 6, by = 1)
 )
-df$response <- with(df, 1 - 0.01 * prcp_change + 0.05 * temp_change + rnorm(length(prcp_change), 0, 0.05))
+val <- rnorm(length(df$prcp_change), 0, 0.05)
 
+df$response <- with(df, 1 - 0.01 * prcp_change + 0.05 * temp_change + val)
 climateSurface(
   str.data = df,
   variable.x = "prcp_change",

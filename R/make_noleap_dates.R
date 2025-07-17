@@ -21,31 +21,23 @@
 #'
 #' @export
 make_noleap_dates <- function(start_year, n_years) {
+
   # Build a template year (non-leap, e.g. 2001) and remove Feb 29 if present
   template <- seq.Date(as.Date("2001-01-01"), as.Date("2001-12-31"), by = "day")
   template <- template[format(template, "%m-%d") != "02-29"]  # Removes Feb 29 if present (should not be, but robust)
 
-  dates <- as.Date(unlist(lapply(0:(n_years - 1), function(i) {
-    # Use template month and day, but with incremented year
-    sprintf("%04d-%02d-%02d",
-            start_year + i,
-            as.integer(format(template, "%m")),
-            as.integer(format(template, "%d")))
-  })))
-  dates
-}
+  # Make a sequence of years
+  years <- seq(start_year, by = 1, length.out = n_years)
 
-make_noleap_dates <- function(start_year, n_years) {
-  # Build a template year (non-leap, e.g. 2001) and remove Feb 29 if present
-  template <- seq.Date(as.Date("2001-01-01"), as.Date("2001-12-31"), by = "day")
-  template <- template[format(template, "%m-%d") != "02-29"]  # Removes Feb 29 if present (should not be, but robust)
+  # Extract month and day for template year
+  month_day <- format(template, "%m-%d")
 
-  dates <- as.Date(unlist(lapply(0:(n_years - 1), function(i) {
-    # Use template month and day, but with incremented year
-    sprintf("%04d-%02d-%02d",
-            start_year + i,
-            as.integer(format(template, "%m")),
-            as.integer(format(template, "%d")))
-  })))
-  dates
+  # Efficiently build all dates for each year
+  # Outer product: years (rows) x days (cols)
+  all_dates <- as.Date(paste0(
+    rep(years, each = length(month_day)), "-",
+    rep(month_day, times = n_years)
+  ))
+
+  return(all_dates)
 }

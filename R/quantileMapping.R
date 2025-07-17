@@ -68,6 +68,18 @@ quantileMapping <- function(
   emp1 <- matrix(0, nrow = 12, ncol = ymax)
   emp2 <- vector("list", 12)
 
+
+  if (is.null(value) | is.null(mean.change) | is.null(var.change) | is.null(mon.ts) | is.null(year.ts)) {
+    stop("All input arguments must be provided.")
+  }
+  if (length(value) != length(mon.ts) || length(value) != length(year.ts)) {
+    stop("Length of value, mon.ts, and year.ts must be equal.")
+  }
+  if (!is.matrix(mean.change) || !is.matrix(var.change)) {
+    stop("mean.change and var.change must be matrices with nrow = n_years, ncol = 12.")
+  }
+
+
   bdist <- list(fit = emp2, shape = emp2, scale = emp2, mean = emp2, var = emp2)
   tdist <- list(fit = NA, shape = emp1, scale = emp1, mean = emp1, var = emp1)
 

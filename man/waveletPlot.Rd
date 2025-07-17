@@ -2,7 +2,7 @@
 % Please edit documentation in R/waveletPlot.R
 \name{waveletPlot}
 \alias{waveletPlot}
-\title{A ggplot wrapper for wavelet spectra plot}
+\title{Plot Global Wavelet Power Spectrum Using ggplot2}
 \usage{
 waveletPlot(
   power.period = NULL,
@@ -12,20 +12,58 @@ waveletPlot(
 )
 }
 \arguments{
-\item{power.period}{A numeric vector of fourier periods from wavelet analysis}
+\item{power.period}{Numeric vector. Fourier periods (typically in years) returned by wavelet analysis.}
 
-\item{power.signif}{A numeric value to set the significance level of the spectral analysis}
+\item{power.signif}{Numeric vector. Significance thresholds for each period, e.g., the 95th percentile global power at each scale.}
 
-\item{power.obs}{A numeric vector of observed  global wavelet spectra.}
+\item{power.obs}{Numeric vector. Observed global wavelet power spectrum.}
 
-\item{power.sim}{A numeric matrix of simulated global wavelet spectrum. Each column is an independent observation}
+\item{power.sim}{Optional numeric matrix. Simulated global wavelet spectra (each column = one simulation); if provided, displays simulation envelopes and mean.}
 }
 \value{
-A ggplot2 object
+A `ggplot2` object representing the wavelet power spectrum plot.
 }
 \description{
-ggplot wrapper for visualization of wavelet spectral analysis
+This function generates a publication-quality plot of the global wavelet power spectrum using `ggplot2`.
+It can display observed power spectra, significance thresholds, and simulated spectra as envelopes or ribbons.
+Designed to visually compare observed versus simulated spectral power across Fourier periods.
 }
 \details{
-place holder
+The function provides a flexible visualization of wavelet spectra, supporting both single observed spectra and comparisons to simulated ensembles.
+\itemize{
+  \item When `power.sim` is `NULL`, only the observed power and significance threshold are plotted.
+  \item When `power.sim` is provided, the plot includes:
+    \itemize{
+      \item The envelope (min/max) of the simulated spectra as a ribbon,
+      \item The mean of the simulations as a solid line,
+      \item The observed spectrum and significance threshold as lines.
+    }
+}
+}
+\section{Aesthetics}{
+
+\describe{
+  \item{Red dashed line}{Significance threshold}
+  \item{Blue line}{Observed power spectrum}
+  \item{Black line}{Mean of simulated spectra (if provided)}
+  \item{Gray ribbon}{Range of simulated spectra (min/max; if provided)}
+}
+}
+
+\examples{
+# Example data
+period <- seq(1, 64, by = 1)
+signif <- rep(1500, length(period))
+obs <- 2000 * exp(-((period - 15) / 10)^2) + 1000
+sim_mat <- sapply(1:30, function(i) obs + rnorm(length(period), sd = 200))
+
+# Plot observed and simulated spectra
+p <- waveletPlot(
+  power.period = period,
+  power.signif = signif,
+  power.obs = obs,
+  power.sim = sim_mat
+)
+print(p)
+
 }

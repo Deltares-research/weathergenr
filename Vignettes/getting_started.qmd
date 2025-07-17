@@ -91,7 +91,6 @@ stochastic_weather <- generateWeatherSeries(
   weather.date = ncdata$date,
   variable.names = variables,
   variable.labels = variables,
-  variable.units = NULL,
   sim.year.num = 20,
   sim.year.start = 2020,
   month.start = 1,
@@ -145,6 +144,7 @@ obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) {
 out <- evaluateWegen(
   daily.sim = rlz_sample,
   daily.obs = obs_sample,
+  output.path = NULL,
   save.plots = FALSE,
   variables = variables,
   variable.labels = variable_labels,
@@ -158,15 +158,5 @@ out <- evaluateWegen(
 Daily statistics of all weather variables
 
 ```{r eval_plots1, eval=TRUE, echo=TRUE}
-out$daily_means
-out$daily_sd
-out$annual_pattern_precip
-out$annual_pattern_temp
-out$annual_pattern_precip
-out$annual_pattern_temp
-out$annual_cycle
-out$intergrid_cor
-out$crossgrid_cor
-out$spell_lengths
-out$spell_duration
+out
 ```

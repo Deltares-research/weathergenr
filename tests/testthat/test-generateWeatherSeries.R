@@ -34,8 +34,7 @@ testthat::test_that("check if the output dimensions are correct", {
     output.path = tempdir(),
     seed = 2024,
     compute.parallel = FALSE,
-    num.cores = NULL,
-    save.rdata = FALSE)
+    num.cores = NULL)
 
 
   # Structure checks

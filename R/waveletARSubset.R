@@ -174,6 +174,7 @@ waveletARSubset <- function(
   }
 
   if (isTRUE(save.plots)) {
+
     suppressWarnings({
       ### Global Wavelet Spectral Plot
       pl <- min(length(power.period), dim(power.sim)[1])
@@ -253,7 +254,7 @@ waveletARSubset <- function(
         labs(y = "mm/year", x = "Serial year")
 
       ggsave(file.path(output.path, "warm_annual_series.png"), width = 8, height = 6)
-    }) # close supress warnings
+    }) # close suppress warnings
   }
 
   if (isTRUE(save.series)) {
@@ -273,3 +274,4 @@ waveletARSubset <- function(
     sampled = series.sim[, sub_sample, drop = FALSE]
   ))
 }
+

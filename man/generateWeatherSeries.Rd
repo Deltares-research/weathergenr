@@ -27,8 +27,7 @@ generateWeatherSeries(
   output.path = tempdir(),
   seed = NULL,
   compute.parallel = FALSE,
-  num.cores = NULL,
-  save.rdata = FALSE
+  num.cores = NULL
 )
 }
 \arguments{
