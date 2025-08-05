@@ -1,4 +1,4 @@
-#' Quantify Plausible Ranges of Impact Metrics Based on GCM Projections
+#' Quantify Plausible Ranges of Impact metrics Based on GCM Projections
 #'
 #' @description
 #' Calculates the plausible range of climate impact metrics (e.g., system performance, failure probability)
@@ -16,13 +16,13 @@
 #' @param clevel.list Numeric vector. List of probability levels for GCM ellipses (e.g., c(0.5, 0.95)).
 #' @param metric.list Character vector. List of metric names (e.g., c("reliability", "failure_prob")) to summarize.
 #' @param metric.labs Character vector. Labels for metrics (used in output; defaults to metric.list).
-#' @param location.list Character vector. Locations or system units to summarize (must match column in str.data/gcm.data).
+#' @param location.list Character vector. locations or system units to summarize (must match column in str.data/gcm.data).
 #'
 #' @return
 #' A data frame (tibble) with the following columns:
-#'   - `Location`: Location name.
-#'   - `Metric`: Metric name.
-#'   - `Baseline`: Metric value at baseline (no climate change).
+#'   - `location`: location name.
+#'   - `metric`: metric name.
+#'   - `Baseline`: metric value at baseline (no climate change).
 #'   - Additional columns for each probability level in `clevel.list` (e.g., "CL:50%", "CL:95%"), containing
 #'     the plausible range ("min to max") of metric values within the GCM ellipse for each location and metric.
 #'
@@ -47,7 +47,7 @@
 #'   tavg = rep(seq(-2, 6, 1), times = 9),
 #'   z = runif(81, 70, 100),
 #'   statistic = "reliability",
-#'   Location = "SiteA"
+#'   location = "SiteA"
 #' )
 #' gcm.data <- data.frame(
 #'   prcp = rnorm(100, 0, 10),
@@ -70,6 +70,8 @@ GCMplausiblity <- function(
     metric.list = NULL,
     metric.labs = NULL,
     location.list = NULL) {
+
+
   # Custom function for interpolation between grid cells
   gridInterpolate <- function(x, y, z = NULL, resolution = 100, ...) {
     # Interpolation for three-dimensional array
@@ -96,8 +98,8 @@ GCMplausiblity <- function(
   # if (is.null(metric.labs)) metric.labs <- metric.list
 
   clevel_labs <- paste0("CL:", clevel.list * 100, "%")
-  plausDF <- expand_grid(Location = location.list, clevel = clevel.list, Metric = metric.list) %>%
-    mutate(baseline = 0, min = 0, max = 0)
+  plausDF <- expand_grid(location = location.list, clevel = clevel.list, metric = metric.list) %>%
+    mutate(baseline = 0, mean = NA, low = 0, high = 0)
 
   # Filter selected GCM scenarios
   gcm.data <- gcm.data %>%
@@ -106,14 +108,16 @@ GCMplausiblity <- function(
 
 
   for (x in 1:nrow(plausDF)) {
+
+
     strDF_ini <- str.data %>%
-      filter(statistic == plausDF$Metric[x]) %>%
-      select(x = prcp, y = tavg, z = plausDF$Location[x])
+      filter(statistic == plausDF$metric[x]) %>%
+      select(x = prcp, y = tavg, z = plausDF$location[x])
 
     bindex <- which(strDF_ini$x == 0 & strDF_ini$y == 0)
-    if (length(bindex) == 0) stop("No baseline point (x=0, y=0) found in str.data for metric ", plausDF$Metric[x])
+    if (length(bindex) == 0) stop("No baseline point (x=0, y=0) found in str.data for metric ", plausDF$metric[x])
 
-    strDF <- strDF_ini %>% mutate(z = z / strDF_ini[[bindex, "z"]] * 100 - 100)
+    strDF <- strDF_ini #%>% mutate(z = z / strDF_ini[[bindex, "z"]] * 100 - 100)
 
     strDF_interp <- gridInterpolate(strDF$x, strDF$y, strDF$z) %>%
       as_tibble() %>%
@@ -132,27 +136,30 @@ GCMplausiblity <- function(
     con <- which(as.logical(sp::point.in.polygon(points$x, points$y, ell$x, ell$y)))
 
     if (length(con) == 0) {
-      plausDF$min[x] <- NA
-      plausDF$max[x] <- NA
+      plausDF$low[x] <- NA
+      plausDF$high[x] <- NA
     } else {
-      plausDF$min[x] <- min(strDF_interp[con, ]$z)
-      plausDF$max[x] <- max(strDF_interp[con, ]$z)
+      plausDF$low[x] <- min(strDF_interp[con, ]$z)
+      plausDF$high[x] <- max(strDF_interp[con, ]$z)
     }
 
-    plausDF$Baseline[x] <- strDF_ini$z[which(strDF_ini$x == 0 & strDF_ini$y == 0)]
+    plausDF$baseline[x] <- strDF_ini$z[which(strDF_ini$x == 0 & strDF_ini$y == 0)]
+
+    #Find mean
+    x1 <- mean(gcm.data$x)
+    y1 <- mean(gcm.data$y)
+    distances <- sqrt((strDF_interp$x - x1)^2 + (strDF_interp$y - y1)^2)
+    closest_index <- which.min(distances)
+    plausDF$mean[x] <- strDF_interp$z[closest_index]
+
   }
 
-  df2 <- plausDF %>%
-    mutate(
-      min = paste0(round(min), "%"),
-      max = paste0(round(max), "%")
-    ) %>%
-    mutate(clevel = factor(clevel, levels = clevel.list, labels = clevel_labs)) %>%
-    unite(range, c(min, max), sep = " to ") %>%
+  plausDF %>%
+    select(location, metric, clevel, baseline, mean, low, high) %>%
     pivot_wider(
-      names_from = clevel, values_from = range,
-      id_cols = c(Location, Metric, Baseline)
-    )
+      id_cols = c(location, metric, baseline, mean),
+      names_from = clevel,
+      values_from = c("low", "high"),
+      names_glue = "{.value}_{clevel}")
 
-  return(df2)
 }

@@ -64,8 +64,8 @@ climateSurfaceBatch <- function(
     save.dir = NULL,
     str.data = NULL,
     gcm.data = NULL,
-    gcm.legend = TRUE,
     gcm.future.period = "near",
+    gcm.legend = FALSE,
     metrics = NULL,
     locations = NULL,
     location.labels = NULL,
@@ -111,6 +111,7 @@ climateSurfaceBatch <- function(
       p <- climateSurface(
         str.data = strdata %>% filter(statistic == metrics[m]),
         gcm.data = gcm_df,
+        gcm.legend = gcm.legend,
         variable.x = "prcp",
         variable.y = "tavg",
         variable.z = locations[l],
