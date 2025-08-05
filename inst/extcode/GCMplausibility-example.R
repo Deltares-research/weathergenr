@@ -2,10 +2,11 @@
 # Load GCM projections
 gcm_data <- readr::read_csv("./inst/extdata/annual_change_scalar_stats_summary_mean.csv")
 gcm_data <- gcm_data %>% filter(horizon %in% "near") %>% na.omit()
-gcm_data <- gcm_data %>% select(scenario, model, x = prcp, y = tavg)
+#gcm_data <- gcm_data %>% select(scenario, model, x = prcp, y = tavg)
 
 # Load stress test results
 str_data <- readr::read_csv("./inst/extdata/Qstats.csv")
+#str_data2 <- str_data %>% rename(x = prcp, y = tavg)
 
 # Run function
 gcm_plausibility <- GCMplausiblity(str.data = str_data,
