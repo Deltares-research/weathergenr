@@ -28,8 +28,6 @@
 #' @param num.cores Integer specifying the number of CPU cores to use for parallel processing. If `NULL`, all available cores minus one are used.
 #' @param dry.spell.change A numeric vector of length 12 specifying monthly adjustment factors for dry spell lengths (e.g., `1` = no change, `>1` = longer spells). Defaults to `rep(1, 12)`.
 #' @param wet.spell.change A numeric vector of length 12 specifying monthly adjustment factors for wet spell lengths (e.g., `1` = no change, `>1` = longer spells). Defaults to `rep(1, 12)`.
-#' @param save.rdata Logical; if `TRUE`, saves intermediate R objects to disk in `.RData` format for debugging or reuse.
-
 #'
 #' @return a list object with two elements
 #'  \item{resampled}{data frame of the sampled dates for each synthetic trace}

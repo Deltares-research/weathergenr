@@ -15,3 +15,4 @@ Wet <- Dry <- wet <- dry <- id_variable1 <- id_variable2 <- 0
 rlz <- id1 <- id2 <- variable1 <- variable2 <- type <- Observed <- Stochastic <- 0
 wet_th <- Simulated <- 0
 x <- y <- z <- 0
+metric <- baseline <- low <- high <- month <- 0

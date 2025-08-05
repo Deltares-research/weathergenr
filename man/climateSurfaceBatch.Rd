@@ -8,8 +8,8 @@ climateSurfaceBatch(
   save.dir = NULL,
   str.data = NULL,
   gcm.data = NULL,
-  gcm.legend = TRUE,
   gcm.future.period = "near",
+  gcm.legend = FALSE,
   metrics = NULL,
   locations = NULL,
   location.labels = NULL,
@@ -26,9 +26,9 @@ climateSurfaceBatch(
 
 \item{gcm.data}{Data frame. Downscaled GCM projections for plotting scenario points/ellipses (must include columns matching those in `climateSurface()`).}
 
-\item{gcm.legend}{Logical. If `TRUE`, include a legend for GCM scenarios in the plot.}
-
 \item{gcm.future.period}{Character or vector. Which GCM future horizons to include (e.g., "near", "far").}
+
+\item{gcm.legend}{Logical. If `TRUE`, include a legend for GCM scenarios in the plot.}
 
 \item{metrics}{Character vector. Names of performance metrics/statistics to plot (must match `statistic` column in `str.data`).}
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/gcmPlausibility.R
 \name{GCMplausiblity}
 \alias{GCMplausiblity}
-\title{Quantify Plausible Ranges of Impact Metrics Based on GCM Projections}
+\title{Quantify Plausible Ranges of Impact metrics Based on GCM Projections}
 \usage{
 GCMplausiblity(
   str.data = NULL,
@@ -28,13 +28,13 @@ plus `statistic` and location identifier. Typically produced by a climate stress
 
 \item{metric.labs}{Character vector. Labels for metrics (used in output; defaults to metric.list).}
 
-\item{location.list}{Character vector. Locations or system units to summarize (must match column in str.data/gcm.data).}
+\item{location.list}{Character vector. locations or system units to summarize (must match column in str.data/gcm.data).}
 }
 \value{
 A data frame (tibble) with the following columns:
-  - `Location`: Location name.
-  - `Metric`: Metric name.
-  - `Baseline`: Metric value at baseline (no climate change).
+  - `location`: location name.
+  - `metric`: metric name.
+  - `Baseline`: metric value at baseline (no climate change).
   - Additional columns for each probability level in `clevel.list` (e.g., "CL:50%", "CL:95%"), containing
     the plausible range ("min to max") of metric values within the GCM ellipse for each location and metric.
 }
@@ -60,7 +60,7 @@ str.data <- data.frame(
   tavg = rep(seq(-2, 6, 1), times = 9),
   z = runif(81, 70, 100),
   statistic = "reliability",
-  Location = "SiteA"
+  location = "SiteA"
 )
 gcm.data <- data.frame(
   prcp = rnorm(100, 0, 10),
