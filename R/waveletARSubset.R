@@ -41,6 +41,8 @@ waveletARSubset <- function(
       mean = 0.1, sd = 0.2, min = 0.2, max = 0.2,
       sig.thr = 0.5, nsig.thr = 1.5
     )) {
+
+
   # Input checks
   if (is.null(series.obs) || !is.numeric(series.obs)) stop("'series.obs' must be a numeric vector.")
   if (is.null(series.sim) || !is.numeric(series.sim)) stop("'series.sim' must be a numeric matrix.")
@@ -176,6 +178,7 @@ waveletARSubset <- function(
   if (isTRUE(save.plots)) {
 
     suppressWarnings({
+
       ### Global Wavelet Spectral Plot
       pl <- min(length(power.period), dim(power.sim)[1])
       plr <- 5 * ceiling(power.period[pl] / 5)
@@ -224,7 +227,7 @@ waveletARSubset <- function(
           size = 3, color = "white", fill = "black", shape = 21
         ) +
         scale_y_continuous(limits = c(-50, 50), breaks = seq(-50, 50, 25)) +
-        labs(x = "", y = "Change (%)", color = "", fill = "") +
+        labs(x = "", y = "Change (%)") +
         theme(
           axis.title.x = element_blank(),
           axis.text.x = element_blank(),
