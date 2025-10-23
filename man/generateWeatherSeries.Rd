@@ -74,8 +74,6 @@ generateWeatherSeries(
 \item{compute.parallel}{Logical; if `TRUE`, parallel processing is enabled for performance-intensive steps.}
 
 \item{num.cores}{Integer specifying the number of CPU cores to use for parallel processing. If `NULL`, all available cores minus one are used.}
-
-\item{save.rdata}{Logical; if `TRUE`, saves intermediate R objects to disk in `.RData` format for debugging or reuse.}
 }
 \value{
 a list object with two elements
