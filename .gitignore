@@ -20,6 +20,8 @@ vignettes/*.html
 /cache/
 /temp/
 
+/tests/tests_manual/
+
 man/.Rapp.history
 
 *-Ex.R

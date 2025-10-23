@@ -74,6 +74,7 @@ GCMplausiblity <- function(
 
   # Custom function for interpolation between grid cells
   gridInterpolate <- function(x, y, z = NULL, resolution = 100, ...) {
+
     # Interpolation for three-dimensional array
     if (is.null(z)) {
       z <- rep(0, length(x))
@@ -112,7 +113,7 @@ GCMplausiblity <- function(
 
     strDF_ini <- str.data %>%
       filter(statistic == plausDF$metric[x]) %>%
-      select(x = prcp, y = tavg, z = plausDF$location[x])
+      select(x = prcp, y = tavg, z)
 
     bindex <- which(strDF_ini$x == 0 & strDF_ini$y == 0)
     if (length(bindex) == 0) stop("No baseline point (x=0, y=0) found in str.data for metric ", plausDF$metric[x])

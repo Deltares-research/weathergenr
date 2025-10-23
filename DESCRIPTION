@@ -40,7 +40,7 @@ Suggests:
 Encoding: UTF-8
 Language: en-US
 LazyData: true
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://deltares.github.io/weathergenr/
 Config/testthat/edition: 3
 VignetteBuilder: quarto
