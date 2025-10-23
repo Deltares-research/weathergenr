@@ -63,6 +63,11 @@ evaluateWegen <- function(
     show.title = TRUE,
     save.plots = TRUE) {
 
+  # Create output directory if doesn't exist
+  if (!dir.exists(output.path)) {
+    dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
+  }
+
   # ----- Helper Functions -----------------------------------------------------
   gg_multipanel_export <- function(p, p.name, show.title = TRUE, save.plots = TRUE,
                                    p.title = NULL, p.subtitle = NULL, output.path) {
