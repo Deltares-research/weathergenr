@@ -556,7 +556,7 @@ evaluateWegen <- function(
     theme_wgplots +
     facet_wrap(~variable, scales = "free", ncol = 2, nrow = 2) +
     geom_line(aes(group = rlz, color = rlz), alpha = 0.8) +
-    geom_line(data = hist_stats_season_aavg2, color = "black", group = 1, size = 1.25) +
+    geom_line(data = hist_stats_season_aavg2, color = "black", group = 1, linewidth = 1.25) +
     scale_x_discrete(labels = substr(month.name, 1, 1)) +
     labs(x = "", y = "")
 
