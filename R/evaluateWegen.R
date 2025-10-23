@@ -137,7 +137,7 @@ evaluateWegen <- function(
   if (is.null(variable.units)) variable.units <- rep("", length(variables))
   options(dplyr.summarise.inform = FALSE, tidyverse.quiet = TRUE)
   nsgrids <- length(daily.sim[[1]])
-  logger::log_info("Comparison accross {nsgrids} grid cells")
+  logger::log_info("[Evaluation] Comparison accross {nsgrids} grid cells")
   stat_level <- c("mean", "sd", "skewness")
   stat_label <- c("mean", "standard dev.", "skewness")
 
@@ -221,7 +221,7 @@ evaluateWegen <- function(
 
   # ----- Simulated Climate Stats ----------------------------------------------
 
-  logger::log_info("Calculating synthetic trace statistics")
+  logger::log_info("[Evaluation] Calculating synthetic trace statistics")
 
   sim_stats_season <- vector("list", realization.num)
   sim_stats_mon_aavg <- vector("list", realization.num)
@@ -301,7 +301,7 @@ evaluateWegen <- function(
 
   # ----- Merge Results --------------------------------------------------------
 
-  logger::log_info("Merging statistics from observed and simulated series")
+  logger::log_info("[Evaluation] Merging statistics from observed and simulated series")
 
   var_combs <- apply(combn(variables, 2), 2, paste, collapse = ":")
   id_combs <- apply(combn(1:nsgrids, 2), 2, paste, collapse = ":")
@@ -327,7 +327,7 @@ evaluateWegen <- function(
     mutate(stat = factor(stat, levels = c("Dry", "Wet")))
 
   # ----- Plot Results ---------------------------------------------------------
-  logger::log_info("Preparing comparison plots")
+  logger::log_info("[Evaluation] Preparing comparison plots")
 
   # 1) Daily mean statistics for all variables
   dummy_gg <- generate_symmetric_dummy_points(
@@ -596,7 +596,6 @@ evaluateWegen <- function(
     ggsave(file.path(output.path, paste0("annual_precip.png")), height = 4, width = 8)
   }
 
-  logger::log_info("Evaluation completed!")
+  logger::log_info("[Done] Evaluation completed. See outputs: `", output.path, "`")
 
-  plots
 }
