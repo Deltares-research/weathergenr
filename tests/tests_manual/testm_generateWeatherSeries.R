@@ -52,7 +52,7 @@ stochastic_weather <- generateWeatherSeries(
   month.start = 1,
   realization.num = realization_num,
   warm.variable = "precip",
-  warm.signif.level = 0.90,
+  warm.signif.level = 0.70,
   warm.sample.num = 20000,
   warm.subset.criteria = warm.subset.criteria,
   knn.sample.num = 100,
@@ -63,7 +63,6 @@ stochastic_weather <- generateWeatherSeries(
   output.path = output_path,
   compute.parallel = FALSE,
   num.cores = NULL,
-  save.rdata = FALSE,
   seed = 143434)
 
 day_order <- sapply(1:realization_num,
