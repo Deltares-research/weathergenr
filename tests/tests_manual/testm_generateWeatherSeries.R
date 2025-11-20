@@ -27,7 +27,7 @@ sim.year.start = 2020
 month.start = 1
 realization.num = realization_num
 warm.variable = "precip"
-warm.signif.level = 0.90
+warm.signif.level = 0.95
 warm.sample.num = 20000
 warm.subset.criteria = warm.subset.criteria
 knn.sample.num = 100
@@ -52,7 +52,7 @@ stochastic_weather <- generateWeatherSeries(
   month.start = 1,
   realization.num = realization_num,
   warm.variable = "precip",
-  warm.signif.level = 0.70,
+  warm.signif.level = warm.signif.level,
   warm.sample.num = 20000,
   warm.subset.criteria = warm.subset.criteria,
   knn.sample.num = 100,
