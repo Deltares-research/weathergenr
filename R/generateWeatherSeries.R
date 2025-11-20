@@ -169,7 +169,7 @@ generateWeatherSeries <- function(
     signif.level = warm.signif.level, plot = TRUE, output.path = output.path)
 
   # if there is low-frequency signal
-  if (!is.na(warm_power$signif_periods)) {
+  if (any(!is.na(warm_power$signif_periods))) {
 
     logger::log_info("[WARM] Significant low-frequency components detected: {length(warm_power$COMPS)-1}")
     logger::log_info("[WARM] Detected periodiocity (years): {paste(warm_power$signif_periods, collapse=", ")}")
