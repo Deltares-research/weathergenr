@@ -158,7 +158,6 @@ generateWeatherSeries <- function(
            filter(wyear >= sim.year.start + 1 & wyear <= sim_year_end)
 
 
-
   # ::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
   #####  Wavelet analysis on observed annual series
@@ -168,38 +167,32 @@ generateWeatherSeries <- function(
   warm_power <- waveletAnalysis(variable = warm_variable,
     signif.level = warm.signif.level, plot = TRUE, output.path = output.path)
 
+
   # if there is low-frequency signal
   if (any(!is.na(warm_power$signif_periods))) {
 
     logger::log_info("[WARM] Significant low-frequency components detected: {length(warm_power$COMPS)-1}")
-    logger::log_info("[WARM] Detected periodiocity (years): {paste(warm_power$signif_periods, collapse=", ")}")
-    logger::log_info("[WARM] Generating {format(warm.sample.num, big.mark=", ")} annual traces")
-
-    sim_annual <- waveletARIMA(
-      wavelet.components = tibble(comp = warm_variable),
-      sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
+    logger::log_info("[WARM] Detected periodiocity (years): {paste(warm_power$signif_periods, collapse = ', ')}")
 
     # if there is no low frequency signal (INTEGRATE THIS!!!!)
   } else {
 
+    # Set low-frequency signal criteria to null
     logger::log_info("[WARM] No low-frequency signals detected")
-    logger::log_info("[WARM] Generating {format(warm.sample.num, big.mark=", ")} annual traces")
-
-    sim_annual <- waveletARIMA(
-      wavelet.components = tibble(comp = warm_variable),
-      sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
+    warm.subset.criteria$sig.thr <- NULL
+    warm.subset.criteria$nsig.thr <- NULL
 
   }
+
+  # Annual time-series simulation
+  logger::log_info("[WARM] Generating {format(warm.sample.num, big.mark=", ")} annual traces")
+  sim_annual <- waveletARIMA(
+    wavelet.components = tibble(comp = warm_variable),
+    sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
 
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x) {
     waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS})
-
-  # Warm results subsetting
-  if (is.na(warm_power$signif_periods)) {
-    warm.subset.criteria$sig.thr <- NULL
-    warm.subset.criteria$nsig.thr <- NULL
-  }
 
   sim_annual_sub <- waveletARSubset(
       series.obs = warm_variable,
