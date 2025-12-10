@@ -2,29 +2,28 @@
 % Please edit documentation in R/make_noleap_dates.R
 \name{make_noleap_dates}
 \alias{make_noleap_dates}
-\title{Generate 365-Day Yearly Date Sequence (No Leap Days)}
+\title{Generate a no-leap (365-day) daily date sequence}
 \usage{
-make_noleap_dates(start_year, n_years)
+make_noleap_dates(start_date, n_dates)
 }
 \arguments{
-\item{start_year}{Integer. The starting year of the date sequence (e.g., 2000).}
+\item{start_date}{Date or character coercible to Date.
+The first date of the sequence. If the date is February 29, it is mapped to
+February 28 because the no-leap template does not include Feb 29.}
 
-\item{n_years}{Integer. The number of years to generate (e.g., 10).}
+\item{n_dates}{Integer. Total number of dates to generate.}
 }
 \value{
-A vector of `Date` objects, length `365 * n_years`, with each year containing exactly 365 days (no Feb 29).
+A vector of class \code{Date} with length \code{n_dates}, following
+  a no-leap (365-day) calendar.
 }
 \description{
-Generates a sequence of daily dates for a specified number of years, always omitting February 29 (leap days).
-This utility is especially useful for stochastic weather generators and synthetic climate simulations where every year
-must have exactly 365 days, regardless of actual leap years in the calendar.
+Constructs a continuous sequence of dates starting from a given start date,
+using a no-leap calendar (i.e., February 29 removed). The function repeats a
+365-day month-day template and increments the year every 365 days.
 }
 \examples{
-# Generate 2 synthetic years starting from 2000, with no leap days
-dates <- make_noleap_dates(2000, 2)
-head(dates)
-tail(dates)
-any(format(dates, "\%m-\%d") == "02-29") # should be FALSE
-length(dates) # should be 730 (2 years * 365)
+make_noleap_dates("1980-01-01", 365)
+make_noleap_dates(as.Date("1995-02-28"), 1000)
 
 }

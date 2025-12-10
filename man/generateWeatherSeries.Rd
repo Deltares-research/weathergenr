@@ -8,8 +8,7 @@ generateWeatherSeries(
   weather.data = NULL,
   weather.grid = NULL,
   weather.date = NULL,
-  variable.names = NULL,
-  variable.labels = NULL,
+  variables = NULL,
   sim.year.num = NULL,
   sim.year.start = 2020,
   month.start = 1,
@@ -37,9 +36,7 @@ generateWeatherSeries(
 
 \item{weather.date}{A vector of `Date` objects corresponding to the daily time series in `weather.data`. The same date vector should apply to all grid cells.}
 
-\item{variable.names}{A character vector of names of weather variables to be included in the simulation (e.g., `c("precip", "temp")`).}
-
-\item{variable.labels}{Optional character vector of human-readable labels corresponding to `variable.names`. Defaults to `variable.names` if not provided.}
+\item{variables}{A character vector of names of weather variables to be included in the simulation (e.g., `c("precip", "temp")`).}
 
 \item{sim.year.num}{Integer specifying the total number of years to generate in each synthetic weather realization.}
 

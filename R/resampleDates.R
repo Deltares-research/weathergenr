@@ -100,7 +100,7 @@ resampleDates <- function(
   # -- Month order for water years
   month_list <- if (month.start == 1) 1:12 else c(month.start:12, 1:(month.start - 1))
 
-  # -- Set observed date vectores
+  # -- Set observed date vectors
   dates_obs <- dates.d$date
   months_obs <- dates.d$month
   wyears_obs <- dates.d$wyear

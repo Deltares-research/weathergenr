@@ -1,31 +1,29 @@
 
+
 # Libraries
 library(devtools)
 library(weathergenr)
 library(dplyr)
 library(tidyr)
+library(microbenchmark)
 
-
+# Test using default ntoum data (Liberia)
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-ncdata <- readNetcdf(ncfile)
+ncdata <- read_netcdf(ncfile)
 
-
-# For ntoum data
-#signif.level = 0.9 - no signal, 0.8 = 1 signal, 0.6 = multiple
 
 
 #### Define all variables in advance for testing
 weather.data <- ncdata$data
 weather.grid <- ncdata$grid
 weather.date <- ncdata$date
-variable.names <- c("precip", "temp", "temp_min", "temp_max")
-variable.labels <- NULL
+variables <- c("precip", "temp", "temp_min", "temp_max")
 sim.year.num <- 20
 sim.year.start <- 2020
 month.start <- 1
-realization.num <- 5
+realization.num <- 3
 warm.variable <- "precip"
-warm.signif.level <- 0.95
+warm.signif.level <- 0.90
 warm.sample.num <- 20000
 warm.subset.criteria <- list(mean = 0.05, sd = 0.05, min = 0.05, max = 0.05, sig.thr = 0.8, nsig.thr = 1.5)
 knn.sample.num <- 100
@@ -33,11 +31,10 @@ mc.wet.quantile <- 0.2
 mc.extreme.quantile <- 0.8
 dry.spell.change <- rep(1, 12)
 wet.spell.change <- rep(1, 12)
-output.path <- "C:/TEMP/"
+output.path <- "C:/TEMP/1205_ntoum_m1/"
 seed <- 1512
 compute.parallel<- FALSE
 num.cores <- NULL
-
 
 
 ################################################################################
@@ -46,8 +43,7 @@ stochastic_weather <- generateWeatherSeries(
   weather.data = weather.data,
   weather.grid = weather.grid,
   weather.date = weather.date,
-  variable.names = variable.names,
-  variable.labels = variable.labels,
+  variables = variables,
   sim.year.num = sim.year.num,
   sim.year.start = sim.year.start,
   month.start = month.start,
@@ -66,14 +62,24 @@ stochastic_weather <- generateWeatherSeries(
   num.cores = num.cores,
   seed = seed)
 
-day_order <- sapply(1:realization_num,
+day_order <- sapply(1:realization.num,
                     function(n) match(stochastic_weather$resampled[[n]], ncdata$date))
 
+
+sim_date_complete_years <- tibble(date = stochastic_weather$dates) %>%
+  mutate(year = as.integer(format(date, "%Y"))) %>%
+  group_by(year) %>%
+  filter(n() >= 365) %>%
+  ungroup()
+
+sim_date_complete_years_idx <- which(stochastic_weather$dates %in% sim_date_complete_years$date)
+
 rlz_sample <- list()
-for (n in 1:realization_num) {
+for (n in 1:realization.num) {
   rlz_sample[[n]] <- lapply(ncdata$data[ncdata$grid$id], function(x) x[day_order[,n],] %>%
                               select(precip,  temp, temp_min, temp_max) %>%
-                              mutate(date = stochastic_weather$dates, .before = 1))
+                              mutate(date = stochastic_weather$dates, .before = 1) %>%
+                              slice(sim_date_complete_years_idx))
 }
 
 obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) x %>%
@@ -82,11 +88,11 @@ obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) x %>%
 
 out <- evaluateWegen(daily.sim = rlz_sample,
                      daily.obs = obs_sample,
-                     output.path = output_path,
+                     output.path = output.path,
                      save.plots = TRUE,
                      variables = variables,
-                     variable.labels = variable_labels,
+                     variable.labels = variable.labels,
                      variable.units = NULL,
-                     realization.num = realization_num,
+                     realization.num = realization.num,
                      wet.quantile = mc.wet.quantile,
                      extreme.quantile = mc.extreme.quantile)

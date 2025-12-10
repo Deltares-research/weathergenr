@@ -45,9 +45,11 @@ waveletAnalysis <- function(variable,
     stop("signif.level must be between 0 and 1.")
   }
 
+  ##############################################################################
+
   #### Wavelet decomposition helper function
-  extract_wavelet_components <- function(wave, signif.periods, scale, dj = 0.25, dt = 1, Cdelta = 0.776,  w0_0 = pi^(-1 / 4),
-                                         variable_sd) {
+  extract_wavelet_components <- function(wave, signif.periods, scale, dj = 0.25, dt = 1,
+        Cdelta = 0.776,  w0_0 = pi^(-1 / 4), variable_sd) {
 
     num_periods <- length(signif.periods)
     n <- ncol(wave)
@@ -77,12 +79,6 @@ waveletAnalysis <- function(variable,
     return(comps_tb)
   }
 
-  ##############################################################################
-
-
-  # ---- Wavelet Analysis ----
-  # Perform wavelet decomposition and calculate power spectrum)
-
   # Helper: Morlet wavelet (Fourier domain)
   waveletf <- function(k, s) {
     nn <- length(k)
@@ -103,7 +99,13 @@ waveletAnalysis <- function(variable,
     c(fourier_factor, coi, dofmin)
   }
 
-  # Standardize and zero-pad the time series
+  ##############################################################################
+
+
+  # ---- Wavelet Analysis ----
+  # Perform wavelet decomposition and calculate power spectrum)
+
+  # # Standardize and zero-pad the time series
   variable_org <- variable
   variance1 <- stats::var(variable_org)
   n1 <- length(variable_org)
@@ -205,18 +207,23 @@ waveletAnalysis <- function(variable,
         POWER = POWER,
         GWS = GWS,
         GWS_signif = GWS_signif,
-        coi =  coi,
-        sigm =  sigm)
+        coi = coi,
+        sigm = sigm)
 
       ggsave(file.path(output.path, "warm_hist_analysis.png"),
              width = 8, height = 6)
     }
 
+    # --- Remove signif periods that are > 1/2 of the time-series length
+
+
+    signif_periods_final <- signif_periods[which(period[signif_periods] < floor(n1/2))]
+
     return(list(
       GWS = GWS,
       GWS_signif = GWS_signif,
       GWS_period = period,
-      signif_periods = signif_periods,
+      signif_periods = signif_periods_final,
       COMPS = COMPS))
 
   }
