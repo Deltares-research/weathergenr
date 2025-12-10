@@ -64,9 +64,7 @@ evaluateWegen <- function(
     save.plots = TRUE) {
 
   # Create output directory if doesn't exist
-  if (!dir.exists(output.path)) {
-    dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
-  }
+  if (!dir.exists(output.path)) {dir.create(output.path, recursive = TRUE, showWarnings = FALSE)}
 
   # ----- Helper Functions -----------------------------------------------------
   gg_multipanel_export <- function(p, p.name, show.title = TRUE, save.plots = TRUE,
@@ -87,6 +85,7 @@ evaluateWegen <- function(
   }
 
   stat_funs <- list(mean = mean, sd = stats::sd, skewness = e1071::skewness)
+
   compute_grouped_stats <- function(df, variables = NULL, group_vars, stat_funs = NULL, values_to = "value") {
     stopifnot(is.data.frame(df))
     stopifnot(all(group_vars %in% names(df)))
@@ -129,6 +128,68 @@ evaluateWegen <- function(
       select(all_of(facet_var), Observed, Simulated)
   }
 
+  add_date_parts <- function(df) {
+    df %>%
+      mutate(
+        year = as.integer(format(date, "%Y")),
+        mon  = as.integer(format(date, "%m")),
+        day  = as.integer(format(date, "%d"))
+      )
+  }
+
+  compute_ts_stats <- function(data, variables, mc_thresholds) {
+
+    his_year_num <- nrow(data[[1]]) / 365
+    his_i <- lapply(data, "[", c("date", variables)) %>% bind_rows(.id = "id") %>% mutate(id = as.integer(id))
+    his <- his_i %>% add_date_parts() %>% select(id, year, mon, day, all_of(variables))
+
+    his_stats_season <- compute_grouped_stats(his, variables, c("id", "mon"), values_to = "value")
+    his_stats_mon_aavg <- compute_grouped_stats(his, variables, c("year", "mon"), values_to = "value")
+    his_stats_annual_aavg <- compute_grouped_stats(his, variables, c("year"), values_to = "value") %>% mutate(year = year - min(year) + 1)
+    his_stats_season_aavg <- compute_grouped_stats(his, variables, c("mon"), values_to = "value")
+
+    his_wetdry <- his %>%
+      left_join(mc_thresholds, by = "mon") %>%
+      group_by(id, mon) %>%
+      summarize(
+        Wet_days = sum(precip >= wet_th)/his_year_num,
+        Dry_days = sum(precip <  wet_th)/his_year_num,
+        Dry_spells = averageSpellLength(precip, threshold = wet_th, below = TRUE),
+        Wet_spells = averageSpellLength(precip, threshold = wet_th, below = FALSE),
+        .groups = "drop") %>%
+      pivot_longer(
+        cols = c(Wet_days, Dry_days, Dry_spells, Wet_spells),
+        names_to = "stat_full", values_to = "value") %>%
+      separate(stat_full, into = c("stat", "type"), sep = "_") %>%
+      mutate(variable = "precip", .after = mon)
+
+    # Prepare correlation matrix
+    mat <- his_i %>%
+      pivot_longer(cols = -c(id, date), names_to = "variable", values_to = "value") %>%
+      unite(id_variable, id, variable, sep = ":") %>%
+      pivot_wider(names_from = id_variable, values_from = value) %>%
+      select(-date) %>% as.matrix()
+
+    # Correlation matrix
+    cmat <- cor(mat, use = "pairwise.complete.obs")
+    tri <- upper.tri(cmat, diag = FALSE)
+    i <- row(cmat)[tri]
+    j <- col(cmat)[tri]
+
+    # Correlation data-table
+    his_allcor <- tibble(id_variable1 = colnames(cmat)[i], id_variable2 = colnames(cmat)[j],
+                         value = cmat[tri]) %>%
+      separate(id_variable1, c("id1", "variable1"), sep = ":") %>%
+      separate(id_variable2, c("id2", "variable2"), sep = ":")
+
+    return(list(
+      stats_season = his_stats_season,
+      stats_mon_aavg = his_stats_mon_aavg,
+      stats_annual_aavg = his_stats_annual_aavg,
+      stats_season_aavg = his_stats_season_aavg,
+      wetdry = his_wetdry,
+      cor = his_allcor))
+  }
 
   # ----- Input Checks & Setup -------------------------------------------------
 
@@ -149,155 +210,56 @@ evaluateWegen <- function(
   plot_cols <- setNames(c("blue3", "gray40"), c("Observed", "Simulated"))
   plots <- list()
 
-
   # ----- Observed Climate Stats -----------------------------------------------
 
   logger::log_info("[Evaluate] Calculating historical trace statistics")
 
-  hist_year_num <- nrow(daily.obs[[1]]) / 365
-  hist_daily_tidy <- lapply(daily.obs, "[", c("date", variables)) %>%
-    bind_rows(.id = "id") %>%
-    mutate(
-      year = as.numeric(format(date, "%Y")),
-      mon = as.numeric(format(date, "%m")),
-      day = as.numeric(format(date, "%d")),
-      id = as.numeric(id)
-    ) %>%
-    select(id, year, mon, day, all_of(variables))
+  his_i <- lapply(daily.obs, "[", c("date", variables)) %>% bind_rows(.id = "id") %>% mutate(id = as.integer(id))
+  his <- his_i %>% add_date_parts() %>% select(id, year, mon, day, all_of(variables))
 
-  hist_stats_season <- compute_grouped_stats(hist_daily_tidy, variables, c("id", "mon"), values_to = "Observed")
-  hist_stats_mon_aavg <- compute_grouped_stats(hist_daily_tidy, variables, c("year", "mon"), values_to = "Observed")
-  hist_stats_annual_aavg <- compute_grouped_stats(hist_daily_tidy, variables, c("year"), values_to = "Observed") %>%
-    mutate(year = year - min(year) + 1)
-  hist_stats_season_aavg <- compute_grouped_stats(hist_daily_tidy, variables, c("mon"), values_to = "Observed")
-
-  mc_thresholds <- hist_daily_tidy %>%
+  mc_thresholds <- his %>%
     group_by(year, mon, day) %>%
     summarize(precip = mean(precip), .groups = "drop") %>%
     group_by(mon) %>%
     summarize(
       wet_th = stats::quantile(precip, wet.quantile, names = FALSE),
       extreme_th = stats::quantile(precip, extreme.quantile, names = FALSE),
-      .groups = "drop"
-    )
+      .groups = "drop")
 
-  dfx <- hist_daily_tidy %>%
-    left_join(mc_thresholds, by = "mon") %>%
-    group_by(id, mon)
+  wetq_ini <- his %>%
+    group_by(year, mon, day) %>%
+    summarize(precip = mean(precip), .groups = "drop")
 
-  hist_wetdry_days <- dfx %>%
-    summarize(
-      Wet = length(which(precip >= wet_th)) / hist_year_num,
-      Dry = length(which(precip < wet_th)) / hist_year_num,
-      .groups = "drop"
-    ) %>%
-    pivot_longer(cols = Wet:Dry, names_to = "stat", values_to = "Observed") %>%
-    mutate(variable = "precip", .after = mon)
+  wetq <- stats::quantile(wetq_ini$precip, wet.quantile, names = FALSE)
+  mc_thresholds$wet_th <- wetq
 
-  hist_wetdry_spells <- dfx %>%
-    summarize(
-      dry = averageSpellLength(precip, threshold = wet_th, below = TRUE),
-      wet = averageSpellLength(precip, threshold = wet_th, below = FALSE),
-      .groups = "drop"
-    ) %>%
-    group_by(id, mon) %>%
-    summarize(Dry = mean(dry), Wet = mean(wet), .groups = "drop") %>%
-    pivot_longer(cols = Dry:Wet, names_to = "stat", values_to = "Observed") %>%
-    mutate(variable = "precip", .after = mon)
+  his_res <- compute_ts_stats(data = daily.obs, variables = variables, mc_thresholds = mc_thresholds)
 
-  hist_allcor_ini <- hist_daily_tidy %>%
-    pivot_longer(cols = -c(id, year, mon, day), names_to = "variable", values_to = "value") %>%
-    unite(id_variable, id, variable, sep = ":") %>%
-    pivot_wider(names_from = id_variable, values_from = value) %>%
-    select(-year, -mon, -day) %>%
-    cor(use = "pairwise.complete.obs") %>%
-    as_tibble()
-
-  hist_allcor <- hist_allcor_ini %>%
-    mutate(id_variable1 = colnames(hist_allcor_ini), .before = 1) %>%
-    pivot_longer(cols = -id_variable1, names_to = "id_variable2", values_to = "Observed") %>%
-    separate(id_variable1, c("id1", "variable1"), sep = ":") %>%
-    separate(id_variable2, c("id2", "variable2"), sep = ":")
+  his_stats_season <- his_res$stats_season %>% rename(Observed = value)
+  his_stats_mon_aavg  <- his_res$stats_mon_aavg %>% rename(Observed = value)
+  his_stats_annual_aavg <- his_res$stats_annual_aavg %>% rename(Observed = value)
+  his_stats_season_aavg <- his_res$stats_season_aavg %>% rename(Observed = value)
+  his_wetdry <- his_res$wetdry %>% rename(Observed = value)
+  his_allcor <- his_res$cor %>% rename(Observed = value)
 
   # ----- Simulated Climate Stats ----------------------------------------------
 
   logger::log_info("[Evaluate] Calculating synthetic trace statistics")
 
-  sim_stats_season <- vector("list", realization.num)
-  sim_stats_mon_aavg <- vector("list", realization.num)
-  sim_stats_annual_aavg <- vector("list", realization.num)
-  sim_allcor <- vector("list", realization.num)
-  sim_wetdry_days <- vector("list", realization.num)
-  sim_wetdry_spells <- vector("list", realization.num)
-  sim_year_num <- nrow(daily.sim[[1]][[1]]) / 365
+  sim_res <- lapply(1:realization.num, function(x)
+    compute_ts_stats(data = daily.sim[[x]], variables = variables, mc_thresholds = mc_thresholds))
 
-  sim_date_tbl <- daily.sim[[1]][[1]] %>%
-    select(date) %>%
-    mutate(
-      year = as.numeric(format(date, "%Y")),
-      mon = as.numeric(format(date, "%m")),
-      day = as.numeric(format(date, "%d"))
-    )
+  sim_stats_season <- lapply(sim_res, `[[`, "stats_season")
+  sim_stats_mon_aavg <- lapply(sim_res, `[[`, "stats_mon_aavg")
+  sim_stats_annual_aavg <- lapply(sim_res, `[[`, "stats_annual_aavg")
+  sim_allcor <- lapply(sim_res, `[[`, "cor")
+  sim_wetdry <- lapply(sim_res, `[[`, "wetdry")
 
-  # Loop over each realization and calculate statistics
-  for (n in 1:realization.num) {
-
-    sim_daily_tidy <- lapply(daily.sim[[n]], "[", c("date", variables)) %>%
-      bind_rows(.id = "id") %>%
-      left_join(sim_date_tbl, by = "date") %>%
-      select(id, year, mon, day, all_of(variables))
-
-    sim_stats_season[[n]] <- compute_grouped_stats(sim_daily_tidy, variables, c("id", "mon"), values_to = "Simulated")
-    sim_stats_mon_aavg[[n]] <- compute_grouped_stats(sim_daily_tidy, variables, c("year", "mon"), values_to = "Simulated")
-    sim_stats_annual_aavg[[n]] <- compute_grouped_stats(sim_daily_tidy, variables, c("year"), values_to = "Simulated") %>%
-      mutate(year = year - min(year) + 1)
-
-    sim_allcor_ini <- sim_daily_tidy %>%
-      pivot_longer(cols = all_of(variables), names_to = "variable", values_to = "value") %>%
-      unite(id_variable, c("id", "variable"), sep = ":") %>%
-      pivot_wider(names_from = id_variable, values_from = value) %>%
-      select(-year, -mon, -day) %>%
-      cor(use = "pairwise.complete.obs") %>%
-      as_tibble()
-
-    sim_allcor[[n]] <- sim_allcor_ini %>%
-      mutate(id_variable1 = colnames(sim_allcor_ini), .before = 1) %>%
-      pivot_longer(-id_variable1, names_to = "id_variable2", values_to = "Simulated") %>%
-      separate(id_variable1, c("id1", "variable1"), sep = ":") %>%
-      separate(id_variable2, c("id2", "variable2"), sep = ":")
-
-    dfx2 <- sim_daily_tidy %>%
-      left_join(mc_thresholds, by = "mon") %>%
-      group_by(id, mon)
-
-    sim_wetdry_days[[n]] <- dfx2 %>%
-      summarize(
-        Wet = length(which(precip >= wet_th)) / sim_year_num,
-        Dry = length(which(precip < wet_th)) / sim_year_num,
-        .groups = "drop"
-      ) %>%
-      pivot_longer(cols = Wet:Dry, names_to = "stat", values_to = "value") %>%
-      mutate(variable = "precip") %>%
-      select(id, mon, variable, stat, Simulated = value)
-
-    sim_wetdry_spells[[n]] <- dfx2 %>%
-      summarize(
-        Dry = averageSpellLength(precip, threshold = wet_th, below = TRUE),
-        Wet = averageSpellLength(precip, threshold = wet_th, below = FALSE),
-        .groups = "drop"
-      ) %>%
-      group_by(id, mon) %>%
-      summarize(Dry = mean(Dry), Wet = mean(Wet), .groups = "drop") %>%
-      pivot_longer(cols = Dry:Wet, names_to = "stat", values_to = "Simulated") %>%
-      mutate(variable = "precip", .before = stat)
-  }
-
-  sim_stats_season <- bind_rows(sim_stats_season, .id = "rlz") %>% mutate(id = as.numeric(id))
-  sim_stats_mon_aavg <- bind_rows(sim_stats_mon_aavg, .id = "rlz")
-  sim_stats_annual_aavg <- bind_rows(sim_stats_annual_aavg, .id = "rlz") %>% mutate(year = year - min(year) + 1)
-  sim_allcor <- bind_rows(sim_allcor, .id = "rlz")
-  sim_wetdry_days <- bind_rows(sim_wetdry_days, .id = "rlz") %>% mutate(id = as.numeric(id))
-  sim_wetdry_spells <- bind_rows(sim_wetdry_spells, .id = "rlz") %>% mutate(id = as.numeric(id))
+  sim_stats_season <- bind_rows(sim_stats_season, .id = "rlz") %>% mutate(id = as.numeric(id)) %>% rename(Simulated = value)
+  sim_stats_mon_aavg <- bind_rows(sim_stats_mon_aavg, .id = "rlz") %>% rename(Simulated = value)
+  sim_stats_annual_aavg <- bind_rows(sim_stats_annual_aavg, .id = "rlz") %>% mutate(year = year - min(year) + 1) %>% rename(Simulated = value)
+  sim_allcor <- bind_rows(sim_allcor, .id = "rlz") %>% rename(Simulated = value)
+  sim_wetdry <- bind_rows(sim_wetdry, .id = "rlz") %>% mutate(id = as.numeric(id)) %>% rename(Simulated = value)
 
   # ----- Merge Results --------------------------------------------------------
 
@@ -305,25 +267,27 @@ evaluateWegen <- function(
 
   var_combs <- apply(combn(variables, 2), 2, paste, collapse = ":")
   id_combs <- apply(combn(1:nsgrids, 2), 2, paste, collapse = ":")
+
   daily_stats_season <- sim_stats_season %>%
-    left_join(hist_stats_season, by = c("id", "mon", "variable", "stat")) %>%
+    left_join(his_stats_season, by = c("id", "mon", "variable", "stat")) %>%
     mutate(variable = factor(variable), stat = factor(stat, levels = names(stat_funs)))
+
   stats_allcor <- sim_allcor %>%
-    left_join(hist_allcor, by = c("id1", "variable1", "id2", "variable2"))
+    left_join(his_allcor, by = c("id1", "variable1", "id2", "variable2"))
+
   stats_intersite_cor <- stats_allcor %>%
     filter(variable1 == variable2, id1 != id2) %>%
     unite(id, c("id1", "id2"), sep = ":") %>%
     filter(id %in% id_combs)
+
   stats_cross_cor <- stats_allcor %>%
     filter(id1 == id2, variable1 != variable2) %>%
     unite(id, c("id1", "id2"), sep = ":") %>%
     unite(variable, c("variable1", "variable2"), sep = ":") %>%
     filter(variable %in% var_combs)
-  stats_wetdry_days <- sim_wetdry_days %>%
-    left_join(hist_wetdry_days, by = c("id", "mon", "variable", "stat")) %>%
-    mutate(stat = factor(stat, levels = c("Dry", "Wet")))
-  stats_wetdry_spells <- sim_wetdry_spells %>%
-    left_join(hist_wetdry_spells, by = c("id", "mon", "variable", "stat")) %>%
+
+  stats_wetdry <- sim_wetdry %>%
+    left_join(his_wetdry, by = c("id", "mon", "variable", "stat", "type")) %>%
     mutate(stat = factor(stat, levels = c("Dry", "Wet")))
 
   # ----- Plot Results ---------------------------------------------------------
@@ -342,13 +306,11 @@ evaluateWegen <- function(
     geom_point(data = dummy_gg, aes(x = Observed, y = Simulated), color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange", fun.max = max, fun.min = min,
-      alpha = alpha_val, linewidth = 1.5
-    ) +
+      alpha = alpha_val, linewidth = 1.5) +
     stat_summary(fun = "median", geom = "point", alpha = alpha_val, size = 2) +
     geom_abline(color = "blue") +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = 2, nrow = 2)
-
 
   plots[[1]] <- gg_multipanel_export(p = p,
                                      p.name = "daily_mean.png",
@@ -386,6 +348,8 @@ evaluateWegen <- function(
                                      output.path = output.path)
 
   # 3) Wet and dry spell statistics
+  stats_wetdry_spells <- stats_wetdry %>% filter(type == "spells")
+
   dummy_gg <- stats_wetdry_spells %>%
     group_by(stat) %>%
     summarize(
@@ -415,6 +379,7 @@ evaluateWegen <- function(
                                      output.path = output.path)
 
   # 4) Average number of wet and dry days
+  stats_wetdry_days <- stats_wetdry %>% filter(type == "days")
   dummy_gg <- stats_wetdry_days %>%
     group_by(stat) %>%
     summarize(
@@ -504,9 +469,9 @@ evaluateWegen <- function(
       mutate(type = "Simulated") %>%
       rename(value = Simulated)
 
-    dat2 <- hist_stats_mon_aavg %>%
+    dat2 <- his_stats_mon_aavg %>%
       mutate(rlz = "0", .before = year) %>%
-      filter(variable == variables[v] & !is.nan(value)) %>%
+      filter(variable == variables[v] & !is.nan(Observed)) %>%
       mutate(type = "Observed") %>%
       rename(value = Observed)
 
@@ -546,7 +511,7 @@ evaluateWegen <- function(
     summarize(value = mean(Simulated)) %>%
     mutate(type = "Simulated")
 
-  hist_stats_season_aavg2 <- hist_stats_season %>%
+  his_stats_season_aavg2 <- his_stats_season %>%
     group_by(mon, variable) %>%
     filter(stat == "mean") %>%
     summarize(value = mean(Observed)) %>%
@@ -556,9 +521,10 @@ evaluateWegen <- function(
     theme_wgplots +
     facet_wrap(~variable, scales = "free", ncol = 2, nrow = 2) +
     geom_line(aes(group = rlz, color = rlz), alpha = 0.8) +
-    geom_line(data = hist_stats_season_aavg2, color = "black", group = 1, linewidth = 1.25) +
+    geom_line(data = his_stats_season_aavg2, color = "black", group = 1, linewidth = 1.25) +
     scale_x_discrete(labels = substr(month.name, 1, 1)) +
-    labs(x = "", y = "")
+    labs(x = "", y = "") +
+    guides(color = "none")
 
   plots[[length(plots)+1]] <- gg_multipanel_export(p = p,
                                                    p.name = "monthly_cycle.png",
@@ -571,7 +537,7 @@ evaluateWegen <- function(
   sim_annual_aavg_precip <- sim_stats_annual_aavg %>%
     filter(stat == "mean") %>%
     filter(variable == "precip")
-  hist_annual_aavg_precip <- hist_stats_annual_aavg %>%
+  his_annual_aavg_precip <- his_stats_annual_aavg %>%
     filter(stat == "mean") %>%
     filter(variable == "precip")
 
@@ -580,10 +546,10 @@ evaluateWegen <- function(
     geom_line(aes(y = Simulated, group = rlz), color = "gray30", alpha = 0.4) +
     geom_point(aes(y = Simulated, group = rlz), size = 0.5, color = "gray30", alpha = 0.3) +
     geom_line(aes(y = Observed),
-              data = hist_annual_aavg_precip, color = "blue", group = 1) +
+              data = his_annual_aavg_precip, color = "blue", group = 1) +
     geom_point(aes(y = Observed),
                size = 0.5, alpha = 0.3,
-               data = hist_annual_aavg_precip, color = "blue", group = 1
+               data = his_annual_aavg_precip, color = "blue", group = 1
     ) +
     labs(x = "serial year", y = "mm/day")
 
