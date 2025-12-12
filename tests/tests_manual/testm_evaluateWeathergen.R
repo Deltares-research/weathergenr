@@ -16,8 +16,8 @@ save.plots <- TRUE
 variables <- variables
 variable.labels = variables
 variable.units <- NULL
-realization.num <- rlz_num
-wet.quantile <- 0.3 #mc.wet.quantile
+realization.num <- realization.num
+wet.quantile <- mc.wet.quantile
 extreme.quantile <- mc.extreme.quantile
 
 timez <- Sys.time()
