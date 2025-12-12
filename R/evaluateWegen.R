@@ -63,8 +63,13 @@ evaluateWegen <- function(
     show.title = TRUE,
     save.plots = TRUE) {
 
-  # Create output directory if doesn't exist
-  if (!dir.exists(output.path)) {dir.create(output.path, recursive = TRUE, showWarnings = FALSE)}
+
+  # Output directory
+  if (!is.null(output.path) && !dir.exists(output.path)) {
+    dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
+  }
+  if (is.null(output.path)) save.plots <- FALSE
+
 
   # ----- Helper Functions -----------------------------------------------------
   gg_multipanel_export <- function(p, p.name, show.title = TRUE, save.plots = TRUE,
@@ -123,37 +128,24 @@ evaluateWegen <- function(
       tidyr::expand_grid(lim = c("min", "max")) %>%
       mutate(
         Observed = ifelse(lim == "min", minlim, maxlim),
-        Simulated = ifelse(lim == "min", minlim, maxlim)
-      ) %>%
+        Simulated = ifelse(lim == "min", minlim, maxlim)) %>%
       select(all_of(facet_var), Observed, Simulated)
-  }
-
-  add_date_parts <- function(df) {
-    df %>%
-      mutate(
-        year = as.integer(format(date, "%Y")),
-        mon  = as.integer(format(date, "%m")),
-        day  = as.integer(format(date, "%d"))
-      )
   }
 
   compute_ts_stats <- function(data, variables, mc_thresholds) {
 
-    his_year_num <- nrow(data[[1]]) / 365
-    his_i <- lapply(data, "[", c("date", variables)) %>% bind_rows(.id = "id") %>% mutate(id = as.integer(id))
-    his <- his_i %>% add_date_parts() %>% select(id, year, mon, day, all_of(variables))
+    year_num <- length(unique(format(data$date, "%Y")))
+    stats_season <- compute_grouped_stats(data, variables, c("id", "mon"), values_to = "value")
+    stats_mon_aavg <- compute_grouped_stats(data, variables, c("year", "mon"), values_to = "value")
+    stats_annual_aavg <- compute_grouped_stats(data, variables, c("year"), values_to = "value") %>% mutate(year = year - min(year) + 1)
+    stats_season_aavg <- compute_grouped_stats(data, variables, c("mon"), values_to = "value")
 
-    his_stats_season <- compute_grouped_stats(his, variables, c("id", "mon"), values_to = "value")
-    his_stats_mon_aavg <- compute_grouped_stats(his, variables, c("year", "mon"), values_to = "value")
-    his_stats_annual_aavg <- compute_grouped_stats(his, variables, c("year"), values_to = "value") %>% mutate(year = year - min(year) + 1)
-    his_stats_season_aavg <- compute_grouped_stats(his, variables, c("mon"), values_to = "value")
-
-    his_wetdry <- his %>%
-      left_join(mc_thresholds, by = "mon") %>%
+    wetdry <- data %>%
+      left_join(mc_thresholds, by = c("id", "mon")) %>%
       group_by(id, mon) %>%
       summarize(
-        Wet_days = sum(precip >= wet_th)/his_year_num,
-        Dry_days = sum(precip <  wet_th)/his_year_num,
+        Wet_days = sum(precip >= wet_th)/year_num,
+        Dry_days = sum(precip <  wet_th)/year_num,
         Dry_spells = averageSpellLength(precip, threshold = wet_th, below = TRUE),
         Wet_spells = averageSpellLength(precip, threshold = wet_th, below = FALSE),
         .groups = "drop") %>%
@@ -164,7 +156,7 @@ evaluateWegen <- function(
       mutate(variable = "precip", .after = mon)
 
     # Prepare correlation matrix
-    mat <- his_i %>%
+    mat <- data %>% select(-year, -mon, -day) %>%
       pivot_longer(cols = -c(id, date), names_to = "variable", values_to = "value") %>%
       unite(id_variable, id, variable, sep = ":") %>%
       pivot_wider(names_from = id_variable, values_from = value) %>%
@@ -177,18 +169,19 @@ evaluateWegen <- function(
     j <- col(cmat)[tri]
 
     # Correlation data-table
-    his_allcor <- tibble(id_variable1 = colnames(cmat)[i], id_variable2 = colnames(cmat)[j],
-                         value = cmat[tri]) %>%
+    allcor <- tibble(id_variable1 = colnames(cmat)[i], id_variable2 = colnames(cmat)[j],
+                     value = cmat[tri]) %>%
       separate(id_variable1, c("id1", "variable1"), sep = ":") %>%
-      separate(id_variable2, c("id2", "variable2"), sep = ":")
+      separate(id_variable2, c("id2", "variable2"), sep = ":") %>%
+      arrange(id1, variable1, id2, variable2)
 
     return(list(
-      stats_season = his_stats_season,
-      stats_mon_aavg = his_stats_mon_aavg,
-      stats_annual_aavg = his_stats_annual_aavg,
-      stats_season_aavg = his_stats_season_aavg,
-      wetdry = his_wetdry,
-      cor = his_allcor))
+      stats_season = stats_season,
+      stats_mon_aavg = stats_mon_aavg,
+      stats_annual_aavg = stats_annual_aavg,
+      stats_season_aavg = stats_season_aavg,
+      wetdry = wetdry,
+      cor = allcor))
   }
 
   # ----- Input Checks & Setup -------------------------------------------------
@@ -214,27 +207,31 @@ evaluateWegen <- function(
 
   logger::log_info("[Evaluate] Calculating historical trace statistics")
 
-  his_i <- lapply(daily.obs, "[", c("date", variables)) %>% bind_rows(.id = "id") %>% mutate(id = as.integer(id))
-  his <- his_i %>% add_date_parts() %>% select(id, year, mon, day, all_of(variables))
+  # Leap day adjustment (only if present)
+  his_date <- daily.obs[[1]]$date
+  leap_idx <- leap_day_indices(his_date)
+  if (!is.null(leap_idx)) his_date <- his_date[-leap_idx]
+  his_datemat <- tibble(date = his_date,
+    year = as.integer(format(date, "%Y")),
+    mon = as.integer(format(date, "%m")),
+    day   = as.integer(format(date, "%d")))
+
+  # Multivariate list of daily climate data
+  his <- lapply(seq_len(nsgrids), function(i) {
+    daily.obs[[i]][-leap_idx, variables, drop = FALSE] %>%
+    bind_cols(his_datemat, .) }) %>%
+    bind_rows(.id = "id") %>% mutate(id = as.integer(id))
 
   mc_thresholds <- his %>%
-    group_by(year, mon, day) %>%
-    summarize(precip = mean(precip), .groups = "drop") %>%
-    group_by(mon) %>%
+    group_by(id, mon) %>%
     summarize(
-      wet_th = rep(0.3, 12), #stats::quantile(precip, wet.quantile, names = FALSE),
-      extreme_th = stats::quantile(precip, extreme.quantile, names = FALSE),
-      .groups = "drop")
+      wet_th = stats::quantile(precip, wet.quantile, names = FALSE, na.rm = TRUE),
+      extreme_th = stats::quantile(precip, extreme.quantile, names = FALSE, na.rm = TRUE),
+      .groups = "drop"
+    )
 
-  wetq_ini <- his %>%
-    group_by(year, mon, day) %>%
-    summarize(precip = mean(precip), .groups = "drop")
 
-  wetq <- stats::quantile(wetq_ini$precip, wet.quantile, names = FALSE)
-  mc_thresholds$wet_th <- 0.3 #wetq
-
-  his_res <- compute_ts_stats(data = daily.obs, variables = variables, mc_thresholds = mc_thresholds)
-
+  his_res <- compute_ts_stats(data = his, variables = variables, mc_thresholds = mc_thresholds)
   his_stats_season <- his_res$stats_season %>% rename(Observed = value)
   his_stats_mon_aavg  <- his_res$stats_mon_aavg %>% rename(Observed = value)
   his_stats_annual_aavg <- his_res$stats_annual_aavg %>% rename(Observed = value)
@@ -246,8 +243,21 @@ evaluateWegen <- function(
 
   logger::log_info("[Evaluate] Calculating synthetic trace statistics")
 
+
+
+  sim_datemat <- tibble(date = daily.sim[[1]][[1]]$date,
+                        year = as.integer(format(date, "%Y")),
+                        mon = as.integer(format(date, "%m")),
+                        day   = as.integer(format(date, "%d")))
+
+
+  sim  <- lapply(1:realization.num, function(i) { daily.sim[[i]] %>%
+      bind_rows(.id = "id") %>% mutate(id = as.integer(id)) %>%
+      left_join(sim_datemat, by = "date") })
+
+
   sim_res <- lapply(1:realization.num, function(x)
-    compute_ts_stats(data = daily.sim[[x]], variables = variables, mc_thresholds = mc_thresholds))
+    compute_ts_stats(data = sim[[x]], variables = variables, mc_thresholds = mc_thresholds))
 
   sim_stats_season <- lapply(sim_res, `[[`, "stats_season")
   sim_stats_mon_aavg <- lapply(sim_res, `[[`, "stats_mon_aavg")
@@ -275,12 +285,12 @@ evaluateWegen <- function(
   stats_allcor <- sim_allcor %>%
     left_join(his_allcor, by = c("id1", "variable1", "id2", "variable2"))
 
-  stats_intersite_cor <- stats_allcor %>%
+  stats_crosscor <- stats_allcor %>%
     filter(variable1 == variable2, id1 != id2) %>%
     unite(id, c("id1", "id2"), sep = ":") %>%
     filter(id %in% id_combs)
 
-  stats_cross_cor <- stats_allcor %>%
+  stats_intercor <- stats_allcor %>%
     filter(id1 == id2, variable1 != variable2) %>%
     unite(id, c("id1", "id2"), sep = ":") %>%
     unite(variable, c("variable1", "variable2"), sep = ":") %>%
@@ -312,7 +322,7 @@ evaluateWegen <- function(
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = 2, nrow = 2)
 
-  plots[[1]] <- gg_multipanel_export(p = p,
+  plots[["daily_mean"]] <- gg_multipanel_export(p = p,
                                      p.name = "daily_mean.png",
                                      p.title = "Daily means for all grid cell and months",
                                      p.subtitle = pl_sub,
@@ -325,9 +335,7 @@ evaluateWegen <- function(
     df = filter(daily_stats_season, stat == "sd"),
     facet_var = "variable", x_col = "Observed", y_col = "Simulated")
 
-  plot_name <- "daily_sd.png"
-
-  p <- ggplot(
+  p  <- ggplot(
     filter(daily_stats_season, stat == "sd"),
     aes(x = Observed, y = Simulated)) +
     theme_wgplots +
@@ -340,7 +348,7 @@ evaluateWegen <- function(
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(variable ~ ., scales = "free", ncol = 2, nrow = 2)
 
-  plots[[2]] <- gg_multipanel_export(p = p,
+  plots[["daily_sd"]] <- gg_multipanel_export(p = p,
                                      p.name = "daily_sd.png",
                                      p.title = "Daily standard deviations for all grid cell and months",
                                      p.subtitle = pl_sub,
@@ -355,7 +363,7 @@ evaluateWegen <- function(
     summarize(
       minval = min(Simulated, Observed) * 1,
       maxval = max(Simulated, Observed) * 1) %>%
-    pivot_longer(cols = minval:maxval, names_to = "type", values_to = "value") %>%
+    pivot_longer(cols = c(minval, maxval), names_to = "type", values_to = "value") %>%
     select(stat, Observed = value, Simulated = value)
 
   p <- ggplot(stats_wetdry_spells, aes(x = Observed, y = Simulated)) +
@@ -371,7 +379,7 @@ evaluateWegen <- function(
     xlab("Observed") +
     ylab("Simulated")
 
-  plots[[3]] <- gg_multipanel_export(p = p,
+  plots[["spell_length"]] <- gg_multipanel_export(p = p,
                                      p.name = "spell_length.png",
                                      p.title = "Average dry and wet spell length per month, across all grid cells",
                                      p.subtitle = pl_sub,
@@ -386,7 +394,7 @@ evaluateWegen <- function(
       minval = min(Simulated, Observed) * 1,
       maxval = max(Simulated, Observed) * 1
     ) %>%
-    pivot_longer(cols = minval:maxval, names_to = "type", values_to = "value") %>%
+    pivot_longer(cols = c(minval, maxval), names_to = "type", values_to = "value") %>%
     select(stat, Observed = value, Simulated = value)
 
   p <- ggplot(stats_wetdry_days, aes(x = Observed, y = Simulated)) +
@@ -402,19 +410,19 @@ evaluateWegen <- function(
     xlab("Observed") +
     ylab("Simulated")
 
-  plots[[4]] <- gg_multipanel_export(p = p,
+  plots[["wetdry_days_count"]] <- gg_multipanel_export(p = p,
                                      p.name = "wetdry_days_count.png",
                                      p.title = "Average number of dry and wet days per month accross all grid cells",
                                      p.subtitle = pl_sub,
                                      save.plots = save.plots,
                                      output.path = output.path)
-
-  # 5) INTERGRID CORRELATIONS
+  #
+  # 5) CROSS-GRID CORRELATIONS
   dummy_gg <- generate_symmetric_dummy_points(
-    df = stats_intersite_cor,
+    df = stats_crosscor,
     facet_var = "variable1", x_col = "Observed", y_col = "Simulated")
 
-  p <- ggplot(stats_intersite_cor, aes(x = Observed, y = Simulated)) +
+  p <- ggplot(stats_crosscor, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
     geom_point(data = dummy_gg, color = "blue", alpha = 0) +
@@ -427,21 +435,21 @@ evaluateWegen <- function(
     xlab("Observed") +
     ylab("Simulated")
 
-  plots[[5]] <- gg_multipanel_export(p = p,
-                                     p.name = "intergrid_correlations.png",
-                                     p.title = "Inter-grid correlations",
+  plots[["crossgrid"]] <- gg_multipanel_export(p = p,
+                                     p.name = "crossgrid_correlations.png",
+                                     p.title = "Cross-grid correlations",
                                      p.subtitle = paste0(pl_sub, "\nCorrelations are calculated over daily series"),
                                      save.plots = save.plots,
                                      output.path = output.path)
 
 
 
-  # 6) CROSS-GRID CORRELATIONS
+  # 6) INTER-GRID CORRELATIONS
   dummy_gg <- generate_symmetric_dummy_points(
-    df = stats_cross_cor,
+    df = stats_intercor,
     facet_var = "variable", x_col = "Observed", y_col = "Simulated")
 
-  p <- ggplot(stats_cross_cor, aes(x = Observed, y = Simulated)) +
+  p <- ggplot(stats_intercor, aes(x = Observed, y = Simulated)) +
     theme_wgplots +
     geom_abline(color = "blue") +
     geom_point(data = dummy_gg, color = "blue", alpha = 0) +
@@ -454,9 +462,9 @@ evaluateWegen <- function(
     xlab("Observed") +
     ylab("Simulated")
 
-  plots[[6]] <- gg_multipanel_export(p = p,
-                                     p.name = "crossgrid_correlations.png",
-                                     p.title = "Cross-grid correlations",
+  plots[["intergrid"]] <- gg_multipanel_export(p = p,
+                                     p.name = "intergrid_correlations.png",
+                                     p.title = "Inter-grid correlations",
                                      p.subtitle = paste0(pl_sub, "\nCorrelations are calculated over daily series"),
                                      save.plots = save.plots,
                                      output.path = output.path)
@@ -495,7 +503,7 @@ evaluateWegen <- function(
       ) +
       scale_x_discrete(labels = substr(month.name, 1, 1))
 
-    plots[[5+v]] <- gg_multipanel_export(p = p,
+    plots[[paste0("annual_pattern_", variables[v])]] <- gg_multipanel_export(p = p,
                                          p.name = paste0("annual_pattern_", variables[v], ".png"),
                                          p.title = paste0("Monthly patterns for ", variable.labels[v]),
                                          p.subtitle = paste0(pl_sub, "\nResults are averaged accross all grid cells."),
@@ -526,7 +534,7 @@ evaluateWegen <- function(
     labs(x = "", y = "") +
     guides(color = "none")
 
-  plots[[length(plots)+1]] <- gg_multipanel_export(p = p,
+  plots[["monthly_cycle"]] <- gg_multipanel_export(p = p,
                                                    p.name = "monthly_cycle.png",
                                                    p.title = paste0("Annual cycles of variables"),
                                                    p.subtitle =  paste0(pl_sub, "\nResults are averaged accross each month"),
@@ -541,7 +549,7 @@ evaluateWegen <- function(
     filter(stat == "mean") %>%
     filter(variable == "precip")
 
-  plots[[length(plots)+1]] <- ggplot(sim_annual_aavg_precip, aes(x = year)) +
+  plots[["annual_precip"]] <- ggplot(sim_annual_aavg_precip, aes(x = year)) +
     theme_wgplots +
     geom_line(aes(y = Simulated, group = rlz), color = "gray30", alpha = 0.4) +
     geom_point(aes(y = Simulated, group = rlz), size = 0.5, color = "gray30", alpha = 0.3) +
@@ -554,7 +562,7 @@ evaluateWegen <- function(
     labs(x = "serial year", y = "mm/day")
 
   if (show.title) {
-    plots[[length(plots)]] <- plots[[length(plots)]] +
+    plots[["annual_precip"]]  <- plots[["annual_precip"]]  +
       labs(title = paste0("Annual mean precipitation"))
   }
 
@@ -564,4 +572,5 @@ evaluateWegen <- function(
 
   logger::log_info("[Done] Evaluation completed. See outputs: `", output.path, "`")
 
+  return(plots)
 }

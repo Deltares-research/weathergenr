@@ -11,7 +11,10 @@ knn_sample(
   n = 1,
   prob = FALSE,
   weights = NULL,
-  seed = NULL
+  seed = NULL,
+  sampling = c("rank", "distance"),
+  bandwidth = NULL,
+  epsilon = 1e-08
 )
 }
 \arguments{

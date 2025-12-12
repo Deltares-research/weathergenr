@@ -120,10 +120,11 @@ resampleDates <- function(
 
   rn_all <- runif(sim_length)
 
-  k_annual <- max(
-    round(sqrt(length(ANNUAL_PRCP))),
-    round(length(ANNUAL_PRCP) * 0.5)
-  )
+  k_annual <- ceiling(sqrt(length(ANNUAL_PRCP)))
+  #k_annual <- max(
+  #  round(sqrt(length(ANNUAL_PRCP))),
+  #  round(length(ANNUAL_PRCP) * 0.5)
+  #)
 
   for (y in seq_len(ymax)) {
 
@@ -343,6 +344,7 @@ resampleDates <- function(
         candidates = cbind(prcp_today_anom, temp_today_anom),
         target     = c(cur_sim_prcp_anom, cur_sim_temp_anom),
         k          = k_day,
+        #sampling = "distance",
         n          = 1,
         prob       = TRUE,
         weights    = weights,
