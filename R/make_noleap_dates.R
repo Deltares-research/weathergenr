@@ -19,33 +19,34 @@
 #' @export
 make_noleap_dates <- function(start_date, n_dates) {
 
-  # Convert input
   start_date <- as.Date(start_date)
 
-  # Build a no-leap-year template (e.g., 2001) and remove Feb 29
-  template <- seq.Date(as.Date("2001-01-01"), as.Date("2001-12-31"), by = "day")
-  template <- template[format(template, "%m-%d") != "02-29"]
+  # Build no-leap template of 365 day-of-year ??? MM-DD
+  tpl <- seq.Date(as.Date("2001-01-01"), as.Date("2001-12-31"), by = "day")
+  tpl <- tpl[format(tpl, "%m-%d") != "02-29"]
+  md <- format(tpl, "%m-%d")               # vector of length 365
 
-  # Extract MM-DD pattern
-  md <- format(template, "%m-%d")
-
-  # Identify the month-day of the start date
+  # Identify start MD (normalize Feb 29 ??? Feb 28)
   start_md <- format(start_date, "%m-%d")
-
-  # Normalize Feb 29 ??? Feb 28
   if (start_md == "02-29") start_md <- "02-28"
 
-  # Starting index in the no-leap template
-  start_idx <- match(start_md, md)
+  start_doy <- match(start_md, md)         # synthetic DOY
 
-  # Build repeating no-leap month-day sequence
-  cycle_idx <- ((start_idx - 1 + 0:(n_dates - 1)) %% length(md)) + 1
-  md_seq <- md[cycle_idx]
+  # Synthetic DOY sequence
+  seq_doy <- ((start_doy - 1 + seq_len(n_dates) - 1) %% 365) + 1
 
-  # Compute year increments (1 year per 365 days)
-  years_passed <- (0:(n_dates - 1)) %/% length(md)
-  years_final <- as.integer(format(start_date, "%Y")) + years_passed
+  # Detect where DOY wraps from 365 ??? 1
+  wraps <- c(FALSE, seq_doy[-1] < seq_doy[-length(seq_doy)])
 
-  # Construct final Date vector
-  as.Date(paste0(years_final, "-", md_seq))
+  # Cumulative year increments
+  year_inc <- cumsum(wraps)
+
+  # Base year
+  years <- as.integer(format(start_date, "%Y")) + year_inc
+
+  # Construct dates
+  out <- as.Date(paste0(years, "-", md[seq_doy]), format = "%Y-%m-%d")
+
+  out
 }
+
