@@ -222,7 +222,7 @@ evaluateWegen <- function(
     summarize(precip = mean(precip), .groups = "drop") %>%
     group_by(mon) %>%
     summarize(
-      wet_th = stats::quantile(precip, wet.quantile, names = FALSE),
+      wet_th = rep(0.3, 12), #stats::quantile(precip, wet.quantile, names = FALSE),
       extreme_th = stats::quantile(precip, extreme.quantile, names = FALSE),
       .groups = "drop")
 
@@ -231,7 +231,7 @@ evaluateWegen <- function(
     summarize(precip = mean(precip), .groups = "drop")
 
   wetq <- stats::quantile(wetq_ini$precip, wet.quantile, names = FALSE)
-  mc_thresholds$wet_th <- wetq
+  mc_thresholds$wet_th <- 0.3 #wetq
 
   his_res <- compute_ts_stats(data = daily.obs, variables = variables, mc_thresholds = mc_thresholds)
 

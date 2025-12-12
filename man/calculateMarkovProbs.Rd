@@ -2,13 +2,15 @@
 % Please edit documentation in R/calculate_markov_probs.R
 \name{calculateMarkovProbs}
 \alias{calculateMarkovProbs}
-\title{Calculate Monthly Markov Transition Probabilities (Vectorized)}
+\title{Calculate Monthly Markov Transition Probabilities for a 3-State Chain}
 \usage{
 calculateMarkovProbs(
   PRCP_LAG0,
   PRCP_LAG1,
   MONTH_LAG0,
   MONTH_LAG1,
+  YEAR_LAG0 = NULL,
+  YEAR_LAG1 = NULL,
   wet_threshold,
   extreme_threshold,
   month_list,
@@ -22,53 +24,99 @@ calculateMarkovProbs(
 )
 }
 \arguments{
-\item{PRCP_LAG0}{Numeric vector, lag 0 (current day) precipitation for all days.}
+\item{PRCP_LAG0}{Numeric vector. Precipitation at lag 0 (current day)
+for observed transitions.}
 
-\item{PRCP_LAG1}{Numeric vector, lag 1 (previous day) precipitation for all days.}
+\item{PRCP_LAG1}{Numeric vector. Precipitation at lag 1 (previous day)
+for observed transitions.}
 
-\item{MONTH_LAG0}{Integer vector, month (1-12) for lag 0 (current day) for all days.}
+\item{MONTH_LAG0}{Integer vector (1-12). Calendar month corresponding
+to `PRCP_LAG0`.}
 
-\item{MONTH_LAG1}{Integer vector, month (1-12) for lag 1 (previous day) for all days.}
+\item{MONTH_LAG1}{Integer vector (1-12). Calendar month corresponding
+to `PRCP_LAG1`.}
 
-\item{wet_threshold}{Numeric vector of length 12, monthly thresholds separating dry/wet.}
+\item{YEAR_LAG0}{Optional integer vector. Year or water-year
+corresponding to `PRCP_LAG0`. Used to enforce same-year lag filtering.}
 
-\item{extreme_threshold}{Numeric vector of length 12, monthly thresholds for "very wet" state.}
+\item{YEAR_LAG1}{Optional integer vector. Year or water-year
+corresponding to `PRCP_LAG1`. Used to enforce same-year lag filtering.}
 
-\item{month_list}{Integer vector of length 12, mapping simulation months to calendar months.}
+\item{wet_threshold}{Numeric vector of length 12. Monthly precipitation
+thresholds separating dry and wet states, aligned to `month_list`.}
 
-\item{MONTH_SIM}{Integer vector, simulation months for each simulated day.}
+\item{extreme_threshold}{Numeric vector of length 12. Monthly
+precipitation thresholds separating wet and very wet states, aligned
+to `month_list`.}
 
-\item{WATER_YEAR_SIM}{Integer vector, simulation water year for each simulated day.}
+\item{month_list}{Integer vector of length 12. Defines the simulated
+year ordering of months (for example 1:12 for calendar year, or
+c(10:12, 1:9) for an October-start water year).}
 
-\item{y}{Integer, current simulated year index.}
+\item{MONTH_SIM}{Integer vector. Simulation calendar months for each
+simulated day.}
 
-\item{START_YEAR_SIM}{Integer, simulation's starting year.}
+\item{WATER_YEAR_SIM}{Integer vector. Simulation year (calendar or
+water year, depending on regime) for each simulated day.}
 
-\item{dry.spell.change}{Numeric vector of length 12, adjustment factors for dry spell persistence.}
+\item{y}{Integer. Index of the current simulated year (1-based).}
 
-\item{wet.spell.change}{Numeric vector of length 12, adjustment factors for wet spell persistence.}
+\item{START_YEAR_SIM}{Integer. Starting year of the simulation.
+Interpreted as a calendar year or water year depending on regime.}
 
-\item{SIM_LENGTH}{Integer, length of the simulation time series.}
+\item{dry.spell.change}{Numeric vector of length 12. Monthly adjustment
+factors controlling dry-spell persistence.}
+
+\item{wet.spell.change}{Numeric vector of length 12. Monthly adjustment
+factors controlling wet-spell persistence.}
+
+\item{SIM_LENGTH}{Integer. Total number of simulated days. Determines
+the length of the returned probability vectors.}
 }
 \value{
-A list with nine elements, each a numeric vector of length `SIM_LENGTH`:
-  \item{p00_final}{P(dry???dry)}
-  \item{p01_final}{P(dry???wet)}
-  \item{p02_final}{P(dry???very wet)}
-  \item{p10_final}{P(wet???dry)}
-  \item{p11_final}{P(wet???wet)}
-  \item{p12_final}{P(wet???very wet)}
-  \item{p20_final}{P(very wet???dry)}
-  \item{p21_final}{P(very wet???wet)}
-  \item{p22_final}{P(very wet???very wet)}
+A named list of nine numeric vectors, each of length `SIM_LENGTH`:
+\itemize{
+  \item p00_final: P(dry to dry)
+  \item p01_final: P(dry to wet)
+  \item p02_final: P(dry to very wet)
+  \item p10_final: P(wet to dry)
+  \item p11_final: P(wet to wet)
+  \item p12_final: P(wet to very wet)
+  \item p20_final: P(very wet to dry)
+  \item p21_final: P(very wet to wet)
+  \item p22_final: P(very wet to very wet)
+}
 }
 \description{
-Computes the monthly transition probabilities for a three-state Markov chain (dry, wet, very wet),
-using daily lagged precipitation data and monthly thresholds. This function is fully vectorized for efficiency
-and is designed for use within daily stochastic weather generators.
+Computes month-specific transition probabilities for a three-state
+precipitation occurrence Markov chain (dry, wet, very wet) using
+lagged daily precipitation and month-dependent thresholds.
+
+The function supports both calendar-year and water-year simulations.
+The regime is inferred automatically from `month_list`:
+if `month_list[1] == 1`, calendar-year logic is used; otherwise,
+water-year logic is assumed.
+
+Transition probabilities are estimated from observed lag-1 to lag-0
+precipitation pairs, optionally filtered to enforce same-year lags
+(recommended for calendar-year mode). Probabilities are then adjusted
+for dry- and wet-spell persistence and assigned to the appropriate
+simulated days of the target simulation year.
 }
 \details{
-The function computes monthly state transition probabilities for a 3-state weather occurrence Markov chain,
-with states defined by precipitation thresholds (dry, wet, very wet). Probabilities are adjusted
-for spell persistence via user-supplied adjustment vectors.
+States are defined as:
+\describe{
+  \item{Dry}{Precipitation less than or equal to the monthly wet threshold}
+  \item{Wet}{Precipitation greater than the wet threshold and less than
+             or equal to the extreme threshold}
+  \item{Very wet}{Precipitation greater than the extreme threshold}
+}
+
+If `YEAR_LAG0` and `YEAR_LAG1` are provided, transitions are filtered to
+same-year pairs. If they are not provided and calendar-year mode is
+active, a weaker month-based guard is applied to avoid December-January
+cross-year contamination.
+
+The estimated probabilities are assigned to all simulated days that fall
+within the target simulation year and corresponding month.
 }

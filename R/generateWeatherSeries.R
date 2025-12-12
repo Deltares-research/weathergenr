@@ -65,6 +65,22 @@ generateWeatherSeries <- function(
 ) {
 
 
+  start_time <- Sys.time()
+
+  # Directory checks
+  dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
+
+  # ------------------------------------------------------------
+  # Basic checks
+  # ------------------------------------------------------------
+  stopifnot(is.list(weather.data))
+  stopifnot(is.data.frame(weather.grid))
+  stopifnot(length(weather.date) == nrow(weather.data[[1]]))
+  stopifnot(month.start %in% 1:12)
+  stopifnot(is.list(weather.data), is.data.frame(weather.grid))
+
+  water.year <- (month.start != 1)
+
   # -- Seed handling
   if (!is.null(seed)) {
     old_seed <- .Random.seed
@@ -77,13 +93,6 @@ generateWeatherSeries <- function(
     set.seed(seed)
   }
 
-  start_time <- Sys.time()
-
-  # Directory checks
-  dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
-
-  # Validation checks
-  stopifnot(is.list(weather.data), is.data.frame(weather.grid))
 
   # Number of grids  WE WONT NEED THIS IN THE FUTURE
   ngrids <- length(weather.data)
@@ -103,61 +112,124 @@ generateWeatherSeries <- function(
   logger::log_info("[Initialize] Historical period: {weather.date[1]} to {weather.date[length(weather.date)]}")
   logger::log_info("[Initialize] Total number of grids: {ngrids}")
 
+
+
   # Leap day adjustment (only if present)
   leap_idx <- leap_day_indices(weather.date)
-  if (!is.null(leap_idx)) weather.date <- weather.date[-leap_idx]
+  if (is.null(leap_idx)) {
+    his_date <- weather.date
+  } else {his_date <- weather.date[-leap_idx]}
 
   # Date indices
-  his_yr <- as.integer(format(weather.date, "%Y"))
-  his_mon <- as.integer(format(weather.date, "%m"))
-  his_day <- as.integer(format(weather.date, "%d"))
-  his_wyear <- getWaterYear(weather.date, month.start)
+  his_yr <- as.integer(format(his_date, "%Y"))
+  his_mon <- as.integer(format(his_date, "%m"))
+  his_day <- as.integer(format(his_date, "%d"))
+  his_wyear <- getWaterYear(his_date, month.start)
 
-  year_start <- ifelse(month.start == 1, his_yr[1], his_yr[1]+1)
+  year_start <- ifelse(month.start == 1, his_yr[1], his_yr[1] + 1)
   year_end <- his_yr[length(his_yr)]
 
-  # Define vector based!!!!
-  dates_d <- tibble(dateo = weather.date, year = his_yr, wyear = his_wyear,
-    month = his_mon, day = his_day) %>%
-    dplyr::filter(wyear >= year_start & wyear <= year_end) %>%
-    mutate(date = as.Date(sprintf("%04d-%02d-%02d", wyear, month, day)))
 
-  # Track the index positions to be kept in the data
+  ############# HISTORICAL DATES
+  dates_d <- tibble(
+    dateo = his_date,
+    year  = his_yr,
+    wyear = his_wyear,
+    month = his_mon,
+    day   = his_day
+  )
+
+  year_start <- min(his_wyear)
+  year_end   <- max(his_wyear)
+
+  dates_d <- dates_d |>
+    dplyr::filter(wyear >= year_start & wyear <= year_end) |>
+    dplyr::mutate(
+      date = if (month.start == 1) {
+        dateo
+      } else {
+        as.Date(sprintf("%04d-%02d-%02d", wyear, month, day))
+      }
+    )
+
+  stopifnot(all(!is.na(dates_d$date)))
+
+
+
+  # Define vector based!!!!
+  # dates_d <- tibble(dateo = his_date,
+  #       year = his_yr,
+  #       wyear = his_wyear,
+  #       month = his_mon,
+  #       day = his_day) %>%
+  #   dplyr::filter(wyear >= year_start & wyear <= year_end) %>%
+  #   mutate(date = as.Date(sprintf("%04d-%02d-%02d", wyear, month, day)))
+
+  # Track the index positions to be kept in the weather data
   wyear_idx <- match(dates_d$dateo, weather.date)
 
   # Multivariate list of daily climate data
   climate_d <- lapply(seq_len(ngrids), function(i) {
     df <- weather.data[[i]][wyear_idx, variables, drop = FALSE]
-    df$year <- dates_d$wyear
+    df$wyear <- dates_d$wyear
     df
   })
-
   climate_d_aavg <- Reduce(`+`, climate_d) / ngrids
 
   # Multivariate list of annual climate data
   climate_a <- lapply(1:ngrids, function(i) {
     climate_d[[i]] %>%
-      group_by(year) %>%
-      summarize(across({{variables}}, mean)) %>%
-      ungroup() %>%
-      suppressMessages()
-  })
-
-  # Area-averaged annual weather series
+      group_by(wyear) %>%
+      summarize(across({{variables}}, mean), .groups = "drop")})
   climate_a_aavg <- Reduce(`+`, climate_a) / ngrids
 
-  # Simulated dates
-  if (is.null(sim.year.num)) sim.year.num <- length(unique(dates_d$wyear))
-  sim_year_end <- sim.year.start + sim.year.num
-  sim_date_start <- as.Date(paste(sim.year.start, month.start, "01", sep = "-"))
 
-  # Date table for simulated values
-  sim_dates_d <- tibble(date = make_noleap_dates(sim_date_start, (sim.year.num + 1)*365)) %>%
-    mutate(year = as.numeric(format(date, "%Y")),
-           wyear = getWaterYear(date, month.start),
-           month = as.numeric(format(date, "%m")),
-           day = as.numeric(format(date, "%d")))  %>%
-           filter(wyear >= sim.year.start + 1 & wyear <= sim_year_end)
+  # ------------------------------------------------------------
+  # Simulated dates (CRITICAL FIX)
+  # ------------------------------------------------------------
+  if (is.null(sim.year.num)) sim.year.num <- length(unique(dates_d$wyear))
+
+  sim_year_end <- sim.year.start + sim.year.num
+  sim_date_start <- as.Date(sprintf("%04d-%02d-01", sim.year.start, month.start))
+  sim_date_end   <- as.Date(sprintf("%04d-%02d-01", sim_year_end, month.start)) - 1
+
+  sim_date_ini <- seq.Date(sim_date_start, sim_date_end, by = "day")
+  sim_date_ini <- sim_date_ini[format(sim_date_ini, "%m-%d") != "02-29"]
+
+  sim_dates_d <- tibble(
+    dateo = sim_date_ini,
+    year  = as.integer(format(sim_date_ini, "%Y")),
+    wyear = getWaterYear(sim_date_ini, month.start),
+    month = as.integer(format(sim_date_ini, "%m")),
+    day   = as.integer(format(sim_date_ini, "%d"))
+  ) |>
+    dplyr::mutate(
+      date = if (month.start == 1) {
+        dateo
+      } else {
+        as.Date(sprintf("%04d-%02d-%02d", wyear, month, day))
+      }
+    )
+
+  stopifnot(all(!is.na(sim_dates_d$date)))
+
+
+  # # Simulated dates
+  # if (is.null(sim.year.num)) sim.year.num <- length(unique(dates_d$wyear))
+  # sim_year_end <- sim.year.start + sim.year.num
+  # sim_date_start <- as.Date(paste(sim.year.start, month.start, "01", sep = "-"))
+  # sim_date_end <- as.Date(paste(sim_year_end, month.start, "01", sep = "-")) - 1
+  # sim_date_ini <- seq.Date(sim_date_start, sim_date_end, by = "day")
+  #
+  # # Date table for simulated values
+  # sim_dates_d <- tibble(dateo = sim_date_ini[-leap_day_indices(sim_date_ini)]) %>%
+  #   mutate(year = as.integer(format(dateo, "%Y")),
+  #          wyear = getWaterYear(dateo, month.start),
+  #          month = as.integer(format(dateo, "%m")),
+  #          day = as.integer(format(dateo, "%d")))  %>%
+  #   mutate(date = as.Date(sprintf("%04d-%02d-%02d", wyear, month, day)))
+
+
 
   # ::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
@@ -232,6 +304,7 @@ generateWeatherSeries <- function(
 
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
 
+
     resampleDates(
       PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],  #based on wy
       ANNUAL_PRCP = warm_variable, # based on wy
@@ -245,7 +318,7 @@ generateWeatherSeries <- function(
       knn.annual.sample.num = knn.sample.num,
       dry.spell.change = dry.spell.change,
       wet.spell.change = wet.spell.change,
-      YEAR_D = his_yr,
+      #YEAR_D = dates_d$wyear, #his_yr,
       month.start = month.start,
       wet.quantile = mc.wet.quantile,
       extreme.quantile = mc.extreme.quantile,
@@ -259,9 +332,12 @@ generateWeatherSeries <- function(
   # Prepare the results data frame
   resampled_dates <- as_tibble(matrix(0, nrow = nrow(sim_dates_d), ncol = realization.num),
         .name_repair = ~ paste0("rlz_", 1:realization.num))
+
   for (x in 1:ncol(resampled_dates)) {
     resampled_dates[, x] <- dates_d$dateo[match(resampled_ini[[x]], dates_d$date)]
   }
+
+  #sum(as.numeric(resampled_ini[[1]] - resampled_dates$rlz_1))
 
   # Take this outside of the function!!!!
   utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)

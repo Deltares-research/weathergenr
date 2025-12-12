@@ -1,4 +1,6 @@
 
+#load("./ntoum_m1.Rdata")
+
 
 # Libraries
 library(devtools)
@@ -12,27 +14,31 @@ ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
 ncdata <- read_netcdf(ncfile)
 
 
-
 #### Define all variables in advance for testing
+month.start <- 1
+
+
+mc.wet.quantile <- 0.1
+
 weather.data <- ncdata$data
 weather.grid <- ncdata$grid
 weather.date <- ncdata$date
 variables <- c("precip", "temp", "temp_min", "temp_max")
+variable.labels <- variables
 sim.year.num <- 20
 sim.year.start <- 2020
-month.start <- 1
 realization.num <- 3
 warm.variable <- "precip"
 warm.signif.level <- 0.90
-warm.sample.num <- 20000
+warm.sample.num <- 10000
 warm.subset.criteria <- list(mean = 0.05, sd = 0.05, min = 0.05, max = 0.05, sig.thr = 0.8, nsig.thr = 1.5)
 knn.sample.num <- 100
-mc.wet.quantile <- 0.2
+
 mc.extreme.quantile <- 0.8
 dry.spell.change <- rep(1, 12)
 wet.spell.change <- rep(1, 12)
-output.path <- "C:/TEMP/1205_ntoum_m1/"
-seed <- 1512
+output.path <- paste0("C:/TEMP/", month.start, "/")
+seed <- 1242
 compute.parallel<- FALSE
 num.cores <- NULL
 
@@ -63,7 +69,7 @@ stochastic_weather <- generateWeatherSeries(
   seed = seed)
 
 day_order <- sapply(1:realization.num,
-                    function(n) match(stochastic_weather$resampled[[n]], ncdata$date))
+     function(n) match(stochastic_weather$resampled[[n]], ncdata$date))
 
 
 sim_date_complete_years <- tibble(date = stochastic_weather$dates) %>%
@@ -91,7 +97,7 @@ out <- evaluateWegen(daily.sim = rlz_sample,
                      output.path = output.path,
                      save.plots = TRUE,
                      variables = variables,
-                     variable.labels = variable.labels,
+                     variable.labels = variables,
                      variable.units = NULL,
                      realization.num = realization.num,
                      wet.quantile = mc.wet.quantile,
