@@ -18,18 +18,15 @@ output_path <- paste0("C:/TEMP/", month.start, "/")
 #ncfile <- paste0(case_path, "data/meteo/extract_historical.nc")
 #ncdata <- read_netcdf(ncfile)
 
-case_path <- "C:/Users/taner/WS/SpongeWorks/"
-nc_eops <- paste0(case_path, "data/meteo/eobs_v31_1950_2024_allvars_clean.nc")
-nc_file <- nc_eops
-ncdata <- read_netcdf(nc_file, variables = c("precip", "temp", "tn", "tx"),
-                      var_rename = c(tn = "temp_min", tx = "temp_max"))
-
-
-
+#case_path <- "C:/Users/taner/WS/SpongeWorks/"
+#nc_eops <- paste0(case_path, "data/meteo/eobs_v31_1950_2024_allvars_clean.nc")
+#nc_file <- nc_eops
+#ncdata <- read_netcdf(nc_file, variables = c("precip", "temp", "tn", "tx"),
+#                      var_rename = c(tn = "temp_min", tx = "temp_max"))
 
 # Test using default ntoum data (Liberia)
-#ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-#ncdata <- read_netcdf(ncfile)
+ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+ncdata <- read_netcdf(ncfile)
 
 
 #### Define all variables in advance for testing
@@ -39,15 +36,14 @@ weather.grid <- ncdata$grid
 weather.date <- ncdata$date
 variables <- c("precip", "temp", "temp_min", "temp_max")
 variable.labels <- variables
-sim.year.num <- 75
+sim.year.num <- 20
 sim.year.start <- 2020
-realization.num <- 5
+realization.num <- 3
 warm.variable <- "precip"
 warm.signif.level <- 0.90
 warm.sample.num <- 10000
 warm.subset.criteria <- list(mean = 0.05, sd = 0.05, min = 0.05, max = 0.05, sig.thr = 0.8, nsig.thr = 1.5)
 knn.sample.num <- 100
-
 mc.extreme.quantile <- 0.8
 dry.spell.change <- rep(1, 12)
 wet.spell.change <- rep(1, 12)

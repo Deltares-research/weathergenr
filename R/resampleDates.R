@@ -45,7 +45,10 @@
 #' @param wet.spell.change Numeric vector of length 12. Monthly adjustment
 #'   factors controlling wet spell persistence in the Markov chain.
 #' @param seed Optional integer. Base random seed for reproducibility.
-#'
+#' @param alpha Numeric. Base smoothing strength for monthly Markov transition
+#'   probabilities. Actual smoothing is applied automatically as
+#'   alpha / sqrt(N_m), where N_m is the number of observed transitions
+#'   in each month.
 #' @details
 #' For each simulated year, a subset of observed water years is selected
 #' using annual KNN matching against `PRCP_FINAL_ANNUAL_SIM`. Daily weather
@@ -87,10 +90,13 @@ resampleDates <- function(
     extreme.quantile = 0.8,
     dry.spell.change = rep(1, 12),
     wet.spell.change = rep(1, 12),
+    alpha = 1.0,
     seed = NULL
 ) {
 
-  if (!month.start %in% 1:12) stop("month.start must be in 1:12")
+  if (!month.start %in% 1:12)
+    stop("month.start must be in 1:12")
+
   water.year <- (month.start != 1)
 
   if (!is.null(seed)) {
@@ -99,56 +105,56 @@ resampleDates <- function(
     set.seed(seed + k1)
   }
 
-  month_list <- if (month.start == 1) 1:12 else c(month.start:12, 1:(month.start - 1))
-
+  ## -------------------------------------------------
+  ## Observed date components
+  ## -------------------------------------------------
   dates_obs  <- dates.d$date
   months_obs <- dates.d$month
   days_obs   <- dates.d$day
   wyears_obs <- dates.d$wyear
 
-  water_years_obs <- dates.d$wyear[dates.d$month == month.start & dates.d$day == 1]
-
+  ## Simulation calendar
   sim_length <- nrow(sim.dates.d)
   months_sim <- sim.dates.d$month
   days_sim   <- sim.dates.d$day
   wyears_sim <- sim.dates.d$wyear
 
-  sim_prcp <- numeric(sim_length)
-  sim_temp <- numeric(sim_length)
-  sim_occ  <- integer(sim_length)
+  ## Output
   sim_date <- as.Date(rep(NA, sim_length))
+  sim_occ  <- integer(sim_length)
 
+  ## Random numbers for Markov transitions
   rn_all <- runif(sim_length)
 
-  k_annual <- ceiling(sqrt(length(ANNUAL_PRCP)))
-  #k_annual <- max(
-  #  round(sqrt(length(ANNUAL_PRCP))),
-  #  round(length(ANNUAL_PRCP) * 0.5)
-  #)
+  ## Month ordering
+  month_list <- if (month.start == 1)
+    1:12 else c(month.start:12, 1:(month.start - 1))
 
+  ## Water-year anchors
+  water_years_obs <- wyears_obs[months_obs == month.start & days_obs == 1]
+  ## Pre-split observed indices by year (once)
+  idx_by_year <- split(seq_along(wyears_obs), wyears_obs)
+  ## Annual KNN size
+  k_annual <- ceiling(sqrt(length(ANNUAL_PRCP)))
+
+  ## -------------------------------------------------
+  ## YEAR LOOP
+  ## -------------------------------------------------
   for (y in seq_len(ymax)) {
 
-    # -------------------------------------------------
-    # Set the simulated index for the first day of year y
-    # -------------------------------------------------
     year_start_idx <- (y - 1L) * 365L + 1L
     if (year_start_idx > sim_length) break
 
-    # -------------------------------------------------
-    # Annual KNN: select observed years
-    # -------------------------------------------------
+    ## ---- Annual KNN year selection ----
     year_sample_idx <- knn_sample(
       candidates = ANNUAL_PRCP,
-      target     = PRCP_FINAL_ANNUAL_SIM[y],
-      k          = k_annual,
-      n          = knn.annual.sample.num,
-      prob       = TRUE,
-      seed       = seed + k1 * y
-    )
+      target = PRCP_FINAL_ANNUAL_SIM[y],
+      k = k_annual,
+      n = knn.annual.sample.num,
+      prob = TRUE,
+      seed = seed + k1 * y)
 
     cur_years <- water_years_obs[year_sample_idx]
-
-    idx_by_year <- split(seq_along(wyears_obs), wyears_obs)
     obs_idx <- unlist(idx_by_year[as.character(cur_years)], use.names = FALSE)
     obs_idx <- obs_idx[!is.na(obs_idx)]
 
@@ -159,36 +165,76 @@ resampleDates <- function(
     day_y   <- days_obs[obs_idx]
     wyear_y <- wyears_obs[obs_idx]
 
-    # Month-day lookup (subset-specific)
-    monthday_key_y <- paste(month_y, day_y, sep = ".")
-    lookup_day_idx_y <- split(seq_along(monthday_key_y), monthday_key_y)
+    ## ---- Month-day lookup using integer keys ----
+    key_y <- month_y * 32L + day_y
+    lookup_day_idx_y <- split(seq_along(key_y), key_y)
+    idx_by_month_y   <- split(seq_along(month_y), month_y)
 
-    # Monthly statistics
-    mean_mon_PRCP <- tapply(prcp_y, month_y, mean)
-    mean_mon_TEMP <- tapply(temp_y, month_y, mean)
-    sd_mon_PRCP   <- tapply(prcp_y, month_y, sd)
-    sd_mon_TEMP   <- tapply(temp_y, month_y, sd)
+    ## ---- monthly thresholds ----
+    wet_thresh     <- numeric(length(month_list))
+    extreme_thresh <- numeric(length(month_list))
 
-    mean_mon_PRCP[is.na(mean_mon_PRCP)] <- mean(prcp_y)
-    mean_mon_TEMP[is.na(mean_mon_TEMP)] <- mean(temp_y)
-    sd_mon_PRCP[is.na(sd_mon_PRCP) | sd_mon_PRCP == 0] <- sd(prcp_y)
-    sd_mon_TEMP[is.na(sd_mon_TEMP) | sd_mon_TEMP == 0] <- sd(temp_y)
+    for (i in seq_along(month_list)) {
+      m <- month_list[i]
+      v <- prcp_y[month_y == m]
 
-    # Thresholds aligned to month_list
-    wet_thresh <- sapply(month_list, function(m) {
-      vals <- prcp_y[month_y == m]
-      if (!length(vals)) NA_real_ else quantile(vals, wet.quantile, names = FALSE)
-    })
-    extreme_thresh <- sapply(month_list, function(m) {
-      vals <- prcp_y[month_y == m & prcp_y > 0]
-      if (!length(vals)) NA_real_ else quantile(vals, extreme.quantile, names = FALSE)
-    })
+      wet_thresh[i] <-
+        if (length(v)) quantile(v, wet.quantile)
+      else quantile(prcp_y, wet.quantile)
 
-    wet_thresh[is.na(wet_thresh)] <- quantile(prcp_y, wet.quantile)
-    extreme_thresh[is.na(extreme_thresh)] <- quantile(prcp_y[prcp_y > 0], extreme.quantile)
+      vp <- v[v > 0]
+      extreme_thresh[i] <-
+        if (length(vp)) quantile(vp, extreme.quantile)
+      else quantile(prcp_y[prcp_y > 0], extreme.quantile)
+    }
 
-    # Markov probabilities (assumed fixed separately)
-    probs <- calculateMarkovProbs(
+    # compute occurrence state ONCE
+    m_idx <- match(month_y, month_list)
+    if (anyNA(m_idx))
+      stop("Month mismatch in state computation")
+
+    state_y <- integer(length(prcp_y))
+    state_y[prcp_y <= wet_thresh[m_idx]] <- 0L
+    state_y[prcp_y > wet_thresh[m_idx] & prcp_y <= extreme_thresh[m_idx]] <- 1L
+    state_y[prcp_y > extreme_thresh[m_idx]] <- 2L
+
+    state_lag1 <- state_y[-length(state_y)]
+    state_lag0 <- state_y[-1]
+
+
+    # ## ---- Monthly stats ----
+    # mean_mon_PRCP <- tapply(prcp_y, month_y, mean)
+    # mean_mon_TEMP <- tapply(temp_y, month_y, mean)
+    # sd_mon_PRCP   <- tapply(prcp_y, month_y, sd)
+    # sd_mon_TEMP   <- tapply(temp_y, month_y, sd)
+    #
+    # mean_mon_PRCP[is.na(mean_mon_PRCP)] <- mean(prcp_y)
+    # mean_mon_TEMP[is.na(mean_mon_TEMP)] <- mean(temp_y)
+    # sd_mon_PRCP[is.na(sd_mon_PRCP) | sd_mon_PRCP == 0] <- sd(prcp_y)
+    # sd_mon_TEMP[is.na(sd_mon_TEMP) | sd_mon_TEMP == 0] <- sd(temp_y)
+
+    # ## ---- Monthly thresholds ----
+    # wet_thresh <- numeric(length(month_list))
+    # extreme_thresh <- numeric(length(month_list))
+    #
+    # for (i in seq_along(month_list)) {
+    #   m <- month_list[i]
+    #   v <- prcp_y[month_y == m]
+    #   wet_thresh[i] <- if (length(v)) quantile(v, wet.quantile) else quantile(prcp_y, wet.quantile)
+    #   vpos <- v[v > 0]
+    #   extreme_thresh[i] <- if (length(vpos)) quantile(vpos, extreme.quantile)
+    #   else quantile(prcp_y[prcp_y > 0], extreme.quantile)
+    # }
+
+    # ## Precompute precipitation occurrence states
+    # state_y <- integer(length(prcp_y))
+    # state_y[prcp_y <= wet_thresh[match(month_y, month_list)]] <- 0L
+    # state_y[prcp_y > wet_thresh[match(month_y, month_list)] & prcp_y <= extreme_thresh[match(month_y, month_list)]] <- 1L
+    # state_y[prcp_y > extreme_thresh[match(month_y, month_list)]] <- 2L
+
+
+    ## ---- Markov probabilities ----
+    probs <- monthly_markov_probs(
       PRCP_LAG0 = prcp_y[-1],
       PRCP_LAG1 = prcp_y[-length(prcp_y)],
       MONTH_LAG0 = month_y[-1],
@@ -204,107 +250,108 @@ resampleDates <- function(
       START_YEAR_SIM = START_YEAR_SIM,
       dry.spell.change = dry.spell.change,
       wet.spell.change = wet.spell.change,
-      SIM_LENGTH = sim_length
+      SIM_LENGTH = sim_length,
+      alpha = alpha
     )
 
-    # -------------------------------------------------
-    # FIRST DAY OF THIS SIM YEAR (critical)
-    # Use the simulated calendar for that index
-    # -------------------------------------------------
-    first_month <- months_sim[year_start_idx]
-    first_day   <- days_sim[year_start_idx]
+    ## -------------------------------------------------
+    ## FIRST DAY
+    ## -------------------------------------------------
 
-    key0 <- paste(first_month, first_day, sep = ".")
-    cand0 <- lookup_day_idx_y[[key0]]
-    if (!length(cand0)) cand0 <- which(month_y == first_month)
-
-    if (!length(cand0)) cand0 <- seq_along(prcp_y)
+    key0 <- months_sim[year_start_idx] * 32L + days_sim[year_start_idx]
+    cand0 <- lookup_day_idx_y[[as.character(key0)]]
+    if (!length(cand0))
+      cand0 <- idx_by_month_y[[as.character(months_sim[year_start_idx])]]
+    if (!length(cand0))
+      cand0 <- seq_along(prcp_y)
 
     i0 <- sample(cand0, 1)
-    sim_prcp[year_start_idx] <- prcp_y[i0]
-    sim_temp[year_start_idx] <- temp_y[i0]
-    sim_occ[year_start_idx]  <- 0L
+    prev_prcp <- prcp_y[i0]
+    prev_temp <- temp_y[i0]
+    prev_occ  <- state_y[i0]
+
+    sim_occ[year_start_idx]  <- prev_occ
     sim_date[year_start_idx] <- date_y[i0]
 
-    # -------------------------------------------------
-    # DAILY LOOP: remaining 364 days of this year
-    # -------------------------------------------------
+    off7  <- -3:3
+    off61 <- -30:30
     sim_idx <- year_start_idx
 
+    ## -------------------------------------------------
+    ## DAILY LOOP
+    ## -------------------------------------------------
     for (j in 2:365) {
 
       sim_idx <- sim_idx + 1L
       if (sim_idx > sim_length) break
       prev_idx <- sim_idx - 1L
 
-      sim_occ[sim_idx] <- markov_next_state(
-        sim_occ[prev_idx],
-        rn_all[prev_idx],
-        prev_idx,
-        probs$p00_final,
-        probs$p01_final,
-        probs$p10_final,
-        probs$p11_final,
-        probs$p20_final,
-        probs$p21_final
-      )
+      next_occ <- markov_next_state(
+        prev_state = prev_occ,
+        rn = rn_all[prev_idx],
+        idx = prev_idx,
+        p00 = probs$p00_final,
+        p01 = probs$p01_final,
+        p10 = probs$p10_final,
+        p11 = probs$p11_final,
+        p20 = probs$p20_final,
+        p21 = probs$p21_final)
 
-      cur_month <- months_sim[sim_idx]
-      cur_day   <- days_sim[sim_idx]
-      m_idx <- match(cur_month, month_list)
-      if (is.na(m_idx)) m_idx <- 1L
+      sim_occ[sim_idx] <- next_occ
 
-      key <- paste(cur_month, cur_day, sep = ".")
-      obs_candidates <- lookup_day_idx_y[[key]]
-      if (!length(obs_candidates)) obs_candidates <- which(month_y == cur_month)
+
+      key <- months_sim[sim_idx] * 32L + days_sim[sim_idx]
+      obs_candidates <- lookup_day_idx_y[[as.character(key)]]
+      if (!length(obs_candidates))
+        obs_candidates <- idx_by_month_y[[as.character(months_sim[sim_idx])]]
 
       if (!length(obs_candidates)) {
-        sim_prcp[sim_idx] <- sim_prcp[prev_idx]
-        sim_temp[sim_idx] <- sim_temp[prev_idx]
         sim_date[sim_idx] <- sim_date[prev_idx]
+        prev_occ <- next_occ
         next
       }
 
-      obs_idx_window <- unique(as.vector(outer(obs_candidates, -3:3, "+")))
+      # cur_month <- months_sim[sim_idx]
+      # cur_day   <- days_sim[sim_idx]
+      # m_idx <- match(cur_month, month_list)
+      # if (is.na(m_idx)) m_idx <- 1L
+      #
+      # key <- cur_month * 32L + cur_day
+      # obs_candidates <- lookup_day_idx_y[[as.character(key)]]
+      # if (!length(obs_candidates)) obs_candidates <- idx_by_month_y[[as.character(cur_month)]]
+      #
+      # if (!length(obs_candidates)) {
+      #   sim_date[sim_idx] <- sim_date[prev_idx]
+      #   next
+      # }
+
+      obs_idx_window <- unique(rep(obs_candidates, each = length(off7)) + off7)
       obs_idx_window <- obs_idx_window[obs_idx_window > 0 & (obs_idx_window + 1) <= length(prcp_y)]
 
       if (!length(obs_idx_window)) {
         i <- sample(obs_candidates, 1)
-        sim_prcp[sim_idx] <- prcp_y[i]
-        sim_temp[sim_idx] <- temp_y[i]
+        prev_prcp <- prcp_y[i]
+        prev_temp <- temp_y[i]
+        prev_occ  <- next_occ
         sim_date[sim_idx] <- date_y[i]
         next
       }
 
-      state_idx <- get_state_indices(
-        sim_occ[prev_idx],
-        sim_occ[sim_idx],
-        prcp_y,
-        obs_idx_window,
-        wet_thresh[m_idx],
-        extreme_thresh[m_idx]
-      )
+      state_idx <- which(state_y[obs_idx_window] == sim_occ[prev_idx] &
+                         state_y[obs_idx_window + 1] == sim_occ[sim_idx])
 
       if (!length(state_idx)) {
-        obs_idx_window <- unique(as.vector(outer(obs_candidates, -30:30, "+")))
+        obs_idx_window <- unique(rep(obs_candidates, each = length(off61)) + off61)
         obs_idx_window <- obs_idx_window[obs_idx_window > 0 & (obs_idx_window + 1) <= length(prcp_y)]
-
-        state_idx <- get_state_indices(
-          sim_occ[prev_idx],
-          sim_occ[sim_idx],
-          prcp_y,
-          obs_idx_window,
-          wet_thresh[m_idx],
-          extreme_thresh[m_idx]
-        )
+        state_idx <- which(state_y[obs_idx_window]  == sim_occ[prev_idx] &
+                           state_y[obs_idx_window + 1] == sim_occ[sim_idx])
       }
 
       if (!length(state_idx)) {
-        fb <- which(month_y == cur_month & (seq_along(prcp_y) + 1) <= length(prcp_y))
-        if (!length(fb)) fb <- which((seq_along(prcp_y) + 1) <= length(prcp_y))
-        i <- sample(fb, 1)
-        sim_prcp[sim_idx] <- prcp_y[i]
-        sim_temp[sim_idx] <- temp_y[i]
+        i <- sample(obs_candidates, 1)
+        prev_prcp <- prcp_y[i]
+        prev_temp <- temp_y[i]
+        prev_occ  <- next_occ
         sim_date[sim_idx] <- date_y[i]
         next
       }
@@ -312,59 +359,25 @@ resampleDates <- function(
       possible_days <- obs_idx_window[state_idx]
 
       if (!water.year) {
-        possible_days <- possible_days[wyear_y[possible_days] == wyear_y[possible_days + 1]]
+        ok <- wyear_y[possible_days] == wyear_y[possible_days + 1]
+        possible_days <- possible_days[ok]
       }
 
       if (!length(possible_days)) {
-        fb <- which(month_y == cur_month & (seq_along(prcp_y) + 1) <= length(prcp_y))
-        if (!length(fb)) fb <- which((seq_along(prcp_y) + 1) <= length(prcp_y))
-        i <- sample(fb, 1)
-        sim_prcp[sim_idx] <- prcp_y[i]
-        sim_temp[sim_idx] <- temp_y[i]
+        i <- sample(obs_candidates, 1)
+        prev_prcp <- prcp_y[i]
+        prev_temp <- temp_y[i]
+        prev_occ  <- next_occ
         sim_date[sim_idx] <- date_y[i]
         next
       }
 
-      k_day <- max(1L, round(sqrt(length(possible_days))))
-
       next_days <- possible_days + 1L
-      prcp_tomorrow <- prcp_y[next_days]
-      temp_tomorrow <- temp_y[next_days]
-      date_tomorrow <- date_y[next_days]
-
-      cur_sim_prcp_anom <- sim_prcp[prev_idx] - mean_mon_PRCP[cur_month]
-      cur_sim_temp_anom <- sim_temp[prev_idx] - mean_mon_TEMP[cur_month]
-
-      prcp_today_anom <- prcp_y[possible_days] - mean_mon_PRCP[cur_month]
-      temp_today_anom <- temp_y[possible_days] - mean_mon_TEMP[cur_month]
-
-      weights <- c(100 / sd_mon_PRCP[cur_month], 10 / sd_mon_TEMP[cur_month])
-
-      res <- knn_sample(
-        candidates = cbind(prcp_today_anom, temp_today_anom),
-        target     = c(cur_sim_prcp_anom, cur_sim_temp_anom),
-        k          = k_day,
-        #sampling = "distance",
-        n          = 1,
-        prob       = TRUE,
-        weights    = weights,
-        seed       = seed + k1 * sim_idx
-      )
-
-      idx <- get_result_index(res, prcp_tomorrow)
-      if (is.na(idx) || idx < 1L || idx > length(prcp_tomorrow)) {
-        idx <- sample(seq_along(prcp_tomorrow), 1)
-      }
-
-      sim_prcp[sim_idx] <- prcp_tomorrow[idx]
-      sim_temp[sim_idx] <- temp_tomorrow[idx]
-      sim_date[sim_idx] <- date_tomorrow[idx]
+      sim_date[sim_idx] <- date_y[next_days[sample.int(length(next_days), 1)]]
+      prev_occ <- next_occ
     }
   }
 
   class(sim_date) <- "Date"
   sim_date
 }
-
-
-

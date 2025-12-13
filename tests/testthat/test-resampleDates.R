@@ -202,3 +202,224 @@ test_that("first simulated day matches simulated month/day", {
     format(sim_dates[1], "%m-%d")
   )
 })
+
+test_that("resampleDates runs end-to-end and is reproducible", {
+
+  set.seed(123)
+
+  ## -----------------------------
+  ## Minimal synthetic observed data
+  ## -----------------------------
+
+  n_years_obs <- 5
+  days_per_year <- 365
+  n_days_obs <- n_years_obs * days_per_year
+
+  dates_obs <- seq.Date(
+    from = as.Date("2000-01-01"),
+    by = "day",
+    length.out = n_days_obs
+  )
+
+  dates.d <- data.frame(
+    date  = dates_obs,
+    year  = rep(2000:(2000 + n_years_obs - 1), each = days_per_year),
+    month = as.integer(format(dates_obs, "%m")),
+    day   = as.integer(format(dates_obs, "%d")),
+    wyear = rep(2000:(2000 + n_years_obs - 1), each = days_per_year)
+  )
+
+  ## Observed weather
+  PRCP <- rgamma(n_days_obs, shape = 2, scale = 2)
+  TEMP <- rnorm(n_days_obs, mean = 15, sd = 5)
+
+  ## Annual observed precipitation
+  ANNUAL_PRCP <- tapply(PRCP, dates.d$wyear, sum)
+
+  ## -----------------------------
+  ## Simulation setup
+  ## -----------------------------
+
+  ymax <- 2
+  sim_days <- ymax * days_per_year
+
+  sim_dates <- seq.Date(
+    from = as.Date("2010-01-01"),
+    by = "day",
+    length.out = sim_days
+  )
+
+  sim.dates.d <- data.frame(
+    month = as.integer(format(sim_dates, "%m")),
+    day   = as.integer(format(sim_dates, "%d")),
+    wyear = rep(2010:(2010 + ymax - 1), each = days_per_year)
+  )
+
+  ## Synthetic annual totals (target)
+  PRCP_FINAL_ANNUAL_SIM <- rep(mean(ANNUAL_PRCP), ymax)
+
+  ## -----------------------------
+  ## Run resampleDates twice
+  ## -----------------------------
+
+  out1 <- resampleDates(
+    PRCP_FINAL_ANNUAL_SIM = PRCP_FINAL_ANNUAL_SIM,
+    ANNUAL_PRCP = ANNUAL_PRCP,
+    PRCP = PRCP,
+    TEMP = TEMP,
+    START_YEAR_SIM = 2010,
+    k1 = 1,
+    ymax = ymax,
+    dates.d = dates.d,
+    sim.dates.d = sim.dates.d,
+    month.start = 1,
+    knn.annual.sample.num = 3,
+    wet.quantile = 0.2,
+    extreme.quantile = 0.8,
+    dry.spell.change = rep(1, 12),
+    wet.spell.change = rep(1, 12),
+    alpha = 1,
+    seed = 42
+  )
+
+  out2 <- resampleDates(
+    PRCP_FINAL_ANNUAL_SIM = PRCP_FINAL_ANNUAL_SIM,
+    ANNUAL_PRCP = ANNUAL_PRCP,
+    PRCP = PRCP,
+    TEMP = TEMP,
+    START_YEAR_SIM = 2010,
+    k1 = 1,
+    ymax = ymax,
+    dates.d = dates.d,
+    sim.dates.d = sim.dates.d,
+    month.start = 1,
+    knn.annual.sample.num = 3,
+    wet.quantile = 0.2,
+    extreme.quantile = 0.8,
+    dry.spell.change = rep(1, 12),
+    wet.spell.change = rep(1, 12),
+    alpha = 1,
+    seed = 42
+  )
+
+  ## -----------------------------
+  ## Assertions
+  ## -----------------------------
+
+  # Correct length
+  expect_length(out1, sim_days)
+
+  # Class
+  expect_s3_class(out1, "Date")
+
+  # No missing values
+  expect_false(anyNA(out1))
+
+  # All dates must come from observed record
+  expect_true(all(out1 %in% dates.d$date))
+
+  # Reproducibility
+  expect_identical(out1, out2)
+
+  # Non-degenerate behavior:
+  # should not return the same date repeated
+  expect_gt(length(unique(out1)), 50)
+})
+
+test_that("resampleDates performance does not regress", {
+
+  skip_on_cran()
+  skip_if(Sys.getenv("CI") == "true")  # optional but recommended
+
+  set.seed(123)
+
+  ## -----------------------------
+  ## Moderate but realistic setup
+  ## -----------------------------
+
+  n_years_obs <- 10
+  days_per_year <- 365
+  n_days_obs <- n_years_obs * days_per_year
+
+  dates_obs <- seq.Date(
+    from = as.Date("1990-01-01"),
+    by = "day",
+    length.out = n_days_obs
+  )
+
+  dates.d <- data.frame(
+    date  = dates_obs,
+    year  = rep(1990:(1990 + n_years_obs - 1), each = days_per_year),
+    month = as.integer(format(dates_obs, "%m")),
+    day   = as.integer(format(dates_obs, "%d")),
+    wyear = rep(1990:(1990 + n_years_obs - 1), each = days_per_year)
+  )
+
+  PRCP <- rgamma(n_days_obs, shape = 2, scale = 2)
+  TEMP <- rnorm(n_days_obs, mean = 15, sd = 5)
+
+  ANNUAL_PRCP <- tapply(PRCP, dates.d$wyear, sum)
+
+  ymax <- 3
+  sim_days <- ymax * days_per_year
+
+  sim_dates <- seq.Date(
+    from = as.Date("2010-01-01"),
+    by = "day",
+    length.out = sim_days
+  )
+
+  sim.dates.d <- data.frame(
+    month = as.integer(format(sim_dates, "%m")),
+    day   = as.integer(format(sim_dates, "%d")),
+    wyear = rep(2010:(2010 + ymax - 1), each = days_per_year)
+  )
+
+  PRCP_FINAL_ANNUAL_SIM <- rep(mean(ANNUAL_PRCP), ymax)
+
+  ## -----------------------------
+  ## Warm-up (important)
+  ## -----------------------------
+
+  resampleDates(
+    PRCP_FINAL_ANNUAL_SIM,
+    ANNUAL_PRCP,
+    PRCP,
+    TEMP,
+    START_YEAR_SIM = 2010,
+    k1 = 1,
+    ymax = ymax,
+    dates.d,
+    sim.dates.d,
+    seed = 1
+  )
+
+  ## -----------------------------
+  ## Timed run
+  ## -----------------------------
+
+  t0 <- proc.time()[["elapsed"]]
+
+  resampleDates(
+    PRCP_FINAL_ANNUAL_SIM,
+    ANNUAL_PRCP,
+    PRCP,
+    TEMP,
+    START_YEAR_SIM = 2010,
+    k1 = 1,
+    ymax = ymax,
+    dates.d,
+    sim.dates.d,
+    seed = 1
+  )
+
+  elapsed <- proc.time()[["elapsed"]] - t0
+
+  ## -----------------------------
+  ## Performance assertion
+  ## -----------------------------
+
+  # Generous upper bound (adjust if needed)
+  # Should run well below this on normal machines
+  expect_lt(elapsed, 2.0)
+})
