@@ -80,17 +80,30 @@ knn_sample <- function(
   # -------------------------------------------------
   # Weighted Euclidean distances
   # -------------------------------------------------
-  diffs <- candidates - matrix(target, nrow(candidates), p, byrow = TRUE)
-  weighted_sq_diffs <- diffs^2 * rep(weights, each = nrow(candidates))
-  dists <- sqrt(rowSums(weighted_sq_diffs))
+  #diffs <- candidates - matrix(target, nrow(candidates), p, byrow = TRUE)
+  #weighted_sq_diffs <- diffs^2 * rep(weights, each = nrow(candidates))
+  #dists <- sqrt(rowSums(weighted_sq_diffs))
+
+  nc <- nrow(candidates)
+  d2 <- numeric(nc)
+
+  for (j in seq_len(p)) {
+    dj <- candidates[, j] - target[j]
+    d2 <- d2 + weights[j] * dj * dj
+  }
+
+  dists <- sqrt(d2)
 
   # -------------------------------------------------
   # k nearest neighbors
   # -------------------------------------------------
+
+  n_cand <- length(dists)
+  k_eff  <- min(k, n_cand)
+
   ord <- order(dists)
-  nn_indices <- ord[seq_len(min(k, length(ord)))]
+  nn_indices <- ord[seq_len(k_eff)]
   nn_dists   <- dists[nn_indices]
-  k_eff      <- length(nn_indices)
 
   # -------------------------------------------------
   # Sampling probabilities
@@ -109,6 +122,7 @@ knn_sample <- function(
 
     # Distance-based probabilities
     if (is.null(bandwidth)) {
+
       # Automatic bandwidth: median NN distance (robust)
       bandwidth <- stats::median(nn_dists, na.rm = TRUE)
     }

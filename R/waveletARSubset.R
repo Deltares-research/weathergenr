@@ -166,7 +166,7 @@ waveletARSubset <- function(
   sub_sample <- sample(sub_clim, min(sample.num, length(sub_clim)))
 
   if (length(sub_sample) < sample.num) {
-    message(cat("Not enough traces meeting criteria. Bypassing power constraint"))
+    logger::log_info("\n[WARM] Not enough traces meeting criteria. Bypassing power constraint")
 
     # Select intersection of filtered
     sub_clim <- Reduce(base::intersect, list(sub_mean, sub_sd))

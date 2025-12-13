@@ -20,6 +20,7 @@ resampleDates(
   extreme.quantile = 0.8,
   dry.spell.change = rep(1, 12),
   wet.spell.change = rep(1, 12),
+  alpha = 1,
   seed = NULL
 )
 }
@@ -69,6 +70,11 @@ factors controlling dry spell persistence in the Markov chain.}
 
 \item{wet.spell.change}{Numeric vector of length 12. Monthly adjustment
 factors controlling wet spell persistence in the Markov chain.}
+
+\item{alpha}{Numeric. Base smoothing strength for monthly Markov transition
+probabilities. Actual smoothing is applied automatically as
+alpha / sqrt(N_m), where N_m is the number of observed transitions
+in each month.}
 
 \item{seed}{Optional integer. Base random seed for reproducibility.}
 }

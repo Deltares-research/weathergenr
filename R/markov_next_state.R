@@ -42,17 +42,55 @@
 #'
 #' @export
 markov_next_state <- function(prev_state, rn, idx, p00, p01, p10, p11, p20, p21) {
-  if (prev_state == 0) {
-    pp1 <- p00[idx]
-    pp2 <- p00[idx] + p01[idx]
-  } else if (prev_state == 1) {
-    pp1 <- p10[idx]
-    pp2 <- p10[idx] + p11[idx]
-  } else {
-    pp1 <- p20[idx]
-    pp2 <- p20[idx] + p21[idx]
+
+  # Clamp random number
+  if (!is.finite(rn)) rn <- 0
+  if (rn < 0) rn <- 0
+  if (rn > 1) rn <- 1
+
+  # Validate prev_state
+  if (!(prev_state %in% c(0L, 1L, 2L))) {
+    prev_state <- 0L
   }
-  if (is.na(pp1)) pp1 <- 0
-  if (is.na(pp2)) pp2 <- 0
-  if (rn < pp1) 0 else if (rn < pp2) 1 else 2
+
+  # Clamp idx to valid range
+  n <- length(p00)
+  if (idx < 1L) idx <- 1L
+  if (idx > n)  idx <- n
+
+  # Select row probabilities
+  if (prev_state == 0L) {
+    a <- p00[idx]
+    b <- p01[idx]
+  } else if (prev_state == 1L) {
+    a <- p10[idx]
+    b <- p11[idx]
+  } else {
+    a <- p20[idx]
+    b <- p21[idx]
+  }
+
+  # NA -> 0
+  if (!is.finite(a)) a <- 0
+  if (!is.finite(b)) b <- 0
+
+  # Clamp negatives
+  if (a < 0) a <- 0
+  if (b < 0) b <- 0
+
+  # Enforce stochastic validity
+  s <- a + b
+  if (s > 1) {
+    a <- a / s
+    b <- b / s
+  }
+
+  # Draw next state
+  if (rn < a) {
+    0L
+  } else if (rn < (a + b)) {
+    1L
+  } else {
+    2L
+  }
 }
