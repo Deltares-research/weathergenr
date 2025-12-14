@@ -236,7 +236,7 @@ generateWeatherSeries <- function(
 
   # Date indices
   his_yr <- as.integer(format(his_date, "%Y"))
-  his_wyear <- getWaterYear(his_date, month.start)
+  his_wyear <- get_water_year(his_date, month.start)
 
   # Prepare date vector
   dates_d <- tibble(dateo = his_date, year = his_yr, wyear = his_wyear,
@@ -292,7 +292,7 @@ generateWeatherSeries <- function(
   sim_dates_d <- tibble(
     dateo = sim_date_ini,
     year  = as.integer(format(sim_date_ini, "%Y")),
-    wyear = getWaterYear(sim_date_ini, month.start),
+    wyear = get_water_year(sim_date_ini, month.start),
     month = as.integer(format(sim_date_ini, "%m")),
     day   = as.integer(format(sim_date_ini, "%d"))
   ) |>
@@ -380,7 +380,7 @@ generateWeatherSeries <- function(
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
 
 
-    resampleDates(
+    resample_weather_dates(
       PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],  #based on wy
       ANNUAL_PRCP = warm_variable, # based on wy
       PRCP = climate_d_aavg$precip, # based on wy

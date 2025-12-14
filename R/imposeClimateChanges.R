@@ -123,7 +123,7 @@ imposeClimateChanges <- function(
     if (isTRUE(calculate.pet)) {
       climate.data[[x]]$pet <- with(
         climate.data[[x]],
-        hargreavesPET(
+        pet_hargreaves(
           months = month_ind,
           temp = temp,
           tdiff = temp_max - temp_min,
@@ -144,52 +144,4 @@ imposeClimateChanges <- function(
   return(climate.data)
 }
 
-# # Set number of cores for parallel computing
-# if(compute.parallel == TRUE) {
-#
-#   if(is.null(num.cores)) num.cores <- parallel::detectCores()-1
-#   cl <- parallel::makeCluster(num.cores)
-#   doParallel::registerDoParallel(cl)
-#   `%d%` <- foreach::`%dopar%`
-#
-# } else {
-#
-#   `%d%` <- foreach::`%do%`
-# }
 
-##############################################################################
-##############################################################################
-
-# precip <- foreach::foreach(x=seq_len(ngrids)) %d% {
-#
-#     weathergenr::quantileMapping(
-#           value = climate.data[[x]]$precip,
-#           mon.ts = month_ind,
-#           year.ts = year_ind,
-#           mean.change = precip_meanf,
-#           var.change = precip_varf,
-#           fit.method = fit.method)
-# }
-#
-# if(compute.parallel == TRUE) parallel::stopCluster(cl)
-#
-# for (x in 1:ngrids) {
-#
-#   # Perturb temp, temp_min, and temp_max by delta factors
-#   climate.data[[x]]$precip <- precip[[x]]
-#   climate.data[[x]]$temp   <- climate.data[[x]]$temp + tempf2
-#   climate.data[[x]]$temp_min <- climate.data[[x]]$temp_min + tempf2
-#   climate.data[[x]]$temp_max <- climate.data[[x]]$temp_max + tempf2
-#
-#   if(isTRUE(calculate.pet)) {
-#     climate.data[[x]]$pet <- with(climate.data[[x]], hargreavesPet(
-#         months = month_ind, temp = temp, tdiff = temp_max - temp_min,
-#         lat = climate.grid$y[x]))
-#   }
-#
-# }
-#
-# # Replace possible infinite/NA values with zero
-# climate.data <- lapply(1:length(climate.data), function(y)
-#       do.call(tibble::tibble, lapply(climate.data[[y]],
-#         function(x) replace(x, is.infinite(x) | is.na(x), 0))))
