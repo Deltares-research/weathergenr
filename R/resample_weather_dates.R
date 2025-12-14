@@ -74,7 +74,7 @@
 #' resampled observed dates corresponding to each simulated day.
 #'
 #' @export
-resampleDates <- function(
+resample_weather_dates <- function(
     PRCP_FINAL_ANNUAL_SIM,
     ANNUAL_PRCP,
     PRCP,
@@ -175,6 +175,7 @@ resampleDates <- function(
     extreme_thresh <- numeric(length(month_list))
 
     for (i in seq_along(month_list)) {
+
       m <- month_list[i]
       v <- prcp_y[month_y == m]
 
@@ -186,6 +187,7 @@ resampleDates <- function(
       extreme_thresh[i] <-
         if (length(vp)) quantile(vp, extreme.quantile)
       else quantile(prcp_y[prcp_y > 0], extreme.quantile)
+
     }
 
     # compute occurrence state ONCE
@@ -200,38 +202,6 @@ resampleDates <- function(
 
     state_lag1 <- state_y[-length(state_y)]
     state_lag0 <- state_y[-1]
-
-
-    # ## ---- Monthly stats ----
-    # mean_mon_PRCP <- tapply(prcp_y, month_y, mean)
-    # mean_mon_TEMP <- tapply(temp_y, month_y, mean)
-    # sd_mon_PRCP   <- tapply(prcp_y, month_y, sd)
-    # sd_mon_TEMP   <- tapply(temp_y, month_y, sd)
-    #
-    # mean_mon_PRCP[is.na(mean_mon_PRCP)] <- mean(prcp_y)
-    # mean_mon_TEMP[is.na(mean_mon_TEMP)] <- mean(temp_y)
-    # sd_mon_PRCP[is.na(sd_mon_PRCP) | sd_mon_PRCP == 0] <- sd(prcp_y)
-    # sd_mon_TEMP[is.na(sd_mon_TEMP) | sd_mon_TEMP == 0] <- sd(temp_y)
-
-    # ## ---- Monthly thresholds ----
-    # wet_thresh <- numeric(length(month_list))
-    # extreme_thresh <- numeric(length(month_list))
-    #
-    # for (i in seq_along(month_list)) {
-    #   m <- month_list[i]
-    #   v <- prcp_y[month_y == m]
-    #   wet_thresh[i] <- if (length(v)) quantile(v, wet.quantile) else quantile(prcp_y, wet.quantile)
-    #   vpos <- v[v > 0]
-    #   extreme_thresh[i] <- if (length(vpos)) quantile(vpos, extreme.quantile)
-    #   else quantile(prcp_y[prcp_y > 0], extreme.quantile)
-    # }
-
-    # ## Precompute precipitation occurrence states
-    # state_y <- integer(length(prcp_y))
-    # state_y[prcp_y <= wet_thresh[match(month_y, month_list)]] <- 0L
-    # state_y[prcp_y > wet_thresh[match(month_y, month_list)] & prcp_y <= extreme_thresh[match(month_y, month_list)]] <- 1L
-    # state_y[prcp_y > extreme_thresh[match(month_y, month_list)]] <- 2L
-
 
     ## ---- Markov probabilities ----
     probs <- monthly_markov_probs(
@@ -251,8 +221,7 @@ resampleDates <- function(
       dry.spell.change = dry.spell.change,
       wet.spell.change = wet.spell.change,
       SIM_LENGTH = sim_length,
-      alpha = alpha
-    )
+      alpha = alpha)
 
     ## -------------------------------------------------
     ## FIRST DAY

@@ -8,9 +8,9 @@ var <- c(
 )
 
 testthat::test_that("Check avg dry spells (precip < 2 mm)", {
-  testthat::expect_equal(averageSpellLength(x = var, threshold = 2, below = TRUE), 1.5)
+  testthat::expect_equal(mean_spell_length(x = var, threshold = 2, below = TRUE), 1.5)
 })
 
 testthat::test_that("Check avg wet spells (precip > 4 mm)", {
-  testthat::expect_equal(averageSpellLength(x = var, threshold = 2, below = FALSE), 4.8)
+  testthat::expect_equal(mean_spell_length(x = var, threshold = 2, below = FALSE), 4.8)
 })

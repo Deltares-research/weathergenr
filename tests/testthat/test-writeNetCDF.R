@@ -5,7 +5,7 @@ testthat::test_that("Check if write_netcdf works correctly", {
 
   # Read file
   ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-  ncdata <- readNetcdf(
+  ncdata <- read_netcdf(
     nc.file = ncfile, leap.days = FALSE, omit.empty = TRUE,
     spatial.ref = "spatial_ref", signif.digits = signif_digits
   )
@@ -31,7 +31,7 @@ testthat::test_that("Check if write_netcdf works correctly", {
   )
 
   ncfile2 <- paste0(output_path, file_prefix, "_", file_suffix, ".nc")
-  ncdata2 <- readNetcdf(
+  ncdata2 <- read_netcdf(
     nc.file = ncfile2, leap.days = FALSE,
     signif.digits = signif_digits
   )

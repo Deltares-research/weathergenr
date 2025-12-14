@@ -143,7 +143,7 @@
 #   expect_equal(format(dates[1], "%m-%d"), "10-01")
 #   expect_equal(length(dates), 3 * 365)
 #
-#   wyears <- getWaterYear(dates, month.start = 10)
+#   wyears <- get_water_year(dates, month.start = 10)
 #   expect_true(all(table(wyears) == 365))
 # })
 #

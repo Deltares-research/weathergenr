@@ -1,4 +1,4 @@
-test_that("resampleDates returns a Date vector of correct length", {
+test_that("resample_weather_dates returns a Date vector of correct length", {
 
   set.seed(123)
 
@@ -26,7 +26,7 @@ test_that("resampleDates returns a Date vector of correct length", {
     wyear = as.integer(format(sim_dates, "%Y"))
   )
 
-  out <- resampleDates(
+  out <- resample_weather_dates(
     PRCP_FINAL_ANNUAL_SIM = c(100),
     ANNUAL_PRCP = c(100, 100),
     PRCP = PRCP,
@@ -74,7 +74,7 @@ test_that("calendar-year mode forbids cross-year transitions", {
     wyear = as.integer(format(sim_dates, "%Y"))
   )
 
-  out <- resampleDates(
+  out <- resample_weather_dates(
     PRCP_FINAL_ANNUAL_SIM = c(100),
     ANNUAL_PRCP = c(100, 100),
     PRCP = PRCP,
@@ -133,7 +133,7 @@ test_that("water-year mode allows Dec to Jan transitions", {
                    2021, 2021)
   )
 
-  out <- resampleDates(
+  out <- resample_weather_dates(
     PRCP_FINAL_ANNUAL_SIM = c(100),
     ANNUAL_PRCP = c(100, 100),
     PRCP = PRCP,
@@ -183,7 +183,7 @@ test_that("first simulated day matches simulated month/day", {
     wyear = 2020
   )
 
-  out <- resampleDates(
+  out <- resample_weather_dates(
     PRCP_FINAL_ANNUAL_SIM = c(50),
     ANNUAL_PRCP = c(50),
     PRCP = PRCP,
@@ -203,7 +203,7 @@ test_that("first simulated day matches simulated month/day", {
   )
 })
 
-test_that("resampleDates runs end-to-end and is reproducible", {
+test_that("resample_weather_dates runs end-to-end and is reproducible", {
 
   set.seed(123)
 
@@ -259,10 +259,10 @@ test_that("resampleDates runs end-to-end and is reproducible", {
   PRCP_FINAL_ANNUAL_SIM <- rep(mean(ANNUAL_PRCP), ymax)
 
   ## -----------------------------
-  ## Run resampleDates twice
+  ## Run resample_weather_dates twice
   ## -----------------------------
 
-  out1 <- resampleDates(
+  out1 <- resample_weather_dates(
     PRCP_FINAL_ANNUAL_SIM = PRCP_FINAL_ANNUAL_SIM,
     ANNUAL_PRCP = ANNUAL_PRCP,
     PRCP = PRCP,
@@ -282,7 +282,7 @@ test_that("resampleDates runs end-to-end and is reproducible", {
     seed = 42
   )
 
-  out2 <- resampleDates(
+  out2 <- resample_weather_dates(
     PRCP_FINAL_ANNUAL_SIM = PRCP_FINAL_ANNUAL_SIM,
     ANNUAL_PRCP = ANNUAL_PRCP,
     PRCP = PRCP,
@@ -326,7 +326,7 @@ test_that("resampleDates runs end-to-end and is reproducible", {
   expect_gt(length(unique(out1)), 50)
 })
 
-test_that("resampleDates performance does not regress", {
+test_that("resample_weather_dates performance does not regress", {
 
   skip_on_cran()
   skip_if(Sys.getenv("CI") == "true")  # optional but recommended
@@ -381,7 +381,7 @@ test_that("resampleDates performance does not regress", {
   ## Warm-up (important)
   ## -----------------------------
 
-  resampleDates(
+  resample_weather_dates(
     PRCP_FINAL_ANNUAL_SIM,
     ANNUAL_PRCP,
     PRCP,
@@ -400,7 +400,7 @@ test_that("resampleDates performance does not regress", {
 
   t0 <- proc.time()[["elapsed"]]
 
-  resampleDates(
+  resample_weather_dates(
     PRCP_FINAL_ANNUAL_SIM,
     ANNUAL_PRCP,
     PRCP,

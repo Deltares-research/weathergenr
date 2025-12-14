@@ -13,21 +13,21 @@
 #' #' @examples
 #' # Water year starting in October (common in US hydrology)
 #' dates <- as.Date(c("2022-09-30", "2022-10-01", "2023-06-15"))
-#' getWaterYear(dates, water.year.first.month = 10)
+#' get_water_year(dates, water.year.first.month = 10)
 #' # [1] 2022 2023 2023
 #'
 #' # Water year starting in June (e.g., for monsoon-driven systems)
 #' dates <- as.Date(c("2023-05-31", "2023-06-01", "2023-12-01"))
-#' getWaterYear(dates, water.year.first.month = 6)
+#' get_water_year(dates, water.year.first.month = 6)
 #' # [1] 2023 2024 2024
 #'
 #' # Default: calendar year (Jan-Dec)
 #' dates <- as.Date(c("2024-01-01", "2024-12-31"))
-#' getWaterYear(dates)
+#' get_water_year(dates)
 #' # [1] 2024 2024
 #'
 #' @export
-getWaterYear <- function(date, water.year.first.month = 1) {
+get_water_year <- function(date, water.year.first.month = 1) {
   # Input validation
   if (!inherits(date, "Date")) {
     stop("'date' must be of class Date")

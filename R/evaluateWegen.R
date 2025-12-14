@@ -146,8 +146,8 @@ evaluateWegen <- function(
       summarize(
         Wet_days = sum(precip >= wet_th)/year_num,
         Dry_days = sum(precip <  wet_th)/year_num,
-        Dry_spells = averageSpellLength(precip, threshold = wet_th, below = TRUE),
-        Wet_spells = averageSpellLength(precip, threshold = wet_th, below = FALSE),
+        Dry_spells = mean_spell_length(precip, threshold = wet_th, below = TRUE),
+        Wet_spells = mean_spell_length(precip, threshold = wet_th, below = FALSE),
         .groups = "drop") %>%
       pivot_longer(
         cols = c(Wet_days, Dry_days, Dry_spells, Wet_spells),
