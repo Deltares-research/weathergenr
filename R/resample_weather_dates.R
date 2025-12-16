@@ -223,6 +223,10 @@ resample_weather_dates <- function(
       SIM_LENGTH = sim_length,
       alpha = alpha)
 
+    off7  <- -3:3
+    off61 <- -30:30
+    sim_idx <- year_start_idx
+
     ## -------------------------------------------------
     ## FIRST DAY
     ## -------------------------------------------------
@@ -241,10 +245,6 @@ resample_weather_dates <- function(
 
     sim_occ[year_start_idx]  <- prev_occ
     sim_date[year_start_idx] <- date_y[i0]
-
-    off7  <- -3:3
-    off61 <- -30:30
-    sim_idx <- year_start_idx
 
     ## -------------------------------------------------
     ## DAILY LOOP

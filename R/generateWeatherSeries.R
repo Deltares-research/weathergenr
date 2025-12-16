@@ -312,9 +312,18 @@ generateWeatherSeries <- function(
   warm_variable <- climate_a_aavg %>% pull({{warm.variable}})
 
   # power spectra analysis of historical series
-  warm_power <- waveletAnalysis(variable = warm_variable,
-    signif.level = warm.signif.level, plot = TRUE, output.path = output.path)
+  warm_power <- weathergenr::wavelet_spectral_analysis(variable = warm_variable,
+    signif.level = warm.signif.level, period.lower.limit = 2, detrend = TRUE)
 
+  p <- weathergenr::plot_wavelet_spectra(variable = warm_variable,
+            variable.year = climate_a_aavg$wyear, period = warm_power$GWS_period,
+            POWER = warm_power$power , GWS = warm_power$GWS,
+            GWS_signif = warm_power$GWS_signif,
+            coi = warm_power$coi, sigm = warm_power$sigm)
+
+
+  ggplot2::ggsave(file.path(output.path, "global_wavelet_power_spectrum.png"), p,
+                  width = 10, height = 4)
 
   # if there is low-frequency signal
   if (any(!is.na(warm_power$signif_periods))) {
@@ -333,16 +342,15 @@ generateWeatherSeries <- function(
   }
 
   # Annual time-series simulation
-  logger::log_info("[WARM] Generating {format(warm.sample.num, big.mark=", ")} annual traces")
-  sim_annual <- waveletARIMA(
+  sim_annual <- wavelet_arima(
     wavelet.components = tibble(comp = warm_variable),
     sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
 
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x) {
-    waveletAnalysis(sim_annual[, x], signif.level = warm.signif.level)$GWS})
+    wavelet_spectral_analysis(sim_annual[, x], signif.level = warm.signif.level)$GWS})
 
-  sim_annual_sub <- waveletARSubset(
+  sim_annual_sub <- filter_warm_simulations(
       series.obs = warm_variable,
       series.sim = sim_annual,
       power.obs = warm_power$GWS,
@@ -378,7 +386,6 @@ generateWeatherSeries <- function(
   }
 
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
-
 
     resample_weather_dates(
       PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],  #based on wy
@@ -424,3 +431,6 @@ generateWeatherSeries <- function(
   # Only return resampled_dates!
   return(list(resampled = resampled_dates, dates = sim_dates_d$date))
 }
+
+
+

@@ -238,28 +238,28 @@ monthly_markov_probs <- function(
     p_vwt <- p_vwt / sum(p_vwt)
 
     ## -------------------------------------------------
-    ## SPELL ADJUSTMENTS (NEW, STOCHASTICALLY VALID)
+    ## SPELL ADJUSTMENTS
     ## -------------------------------------------------
-    ds <- dry.spell.change[m]; if (!is.finite(ds) || ds <= 0) ds <- 1
-    ws <- wet.spell.change[m]; if (!is.finite(ws) || ws <= 0) ws <- 1
-
-    # Dry row
-    p_dry <- normalize_probs(
-      c(p_dry[1], p_dry[2] / ds, p_dry[3] / ds),
-      fallback = c(1, 0, 0)
-    )
-
-    # Wet row
-    p_wet <- normalize_probs(
-      c(p_wet[1] / ws, p_wet[2], p_wet[3]),
-      fallback = c(0, 1, 0)
-    )
-
-    # Very wet row (safety)
-    p_vwt <- normalize_probs(
-      p_vwt,
-      fallback = c(0, 0, 1)
-    )
+    # ds <- dry.spell.change[m]; if (!is.finite(ds) || ds <= 0) ds <- 1
+    # ws <- wet.spell.change[m]; if (!is.finite(ws) || ws <= 0) ws <- 1
+    #
+    # # Dry row
+    # p_dry <- normalize_probs(
+    #   c(p_dry[1], p_dry[2] / ds, p_dry[3] / ds),
+    #   fallback = c(1, 0, 0)
+    # )
+    #
+    # # Wet row
+    # p_wet <- normalize_probs(
+    #   c(p_wet[1] / ws, p_wet[2], p_wet[3]),
+    #   fallback = c(0, 1, 0)
+    # )
+    #
+    # # Very wet row (safety)
+    # p_vwt <- normalize_probs(
+    #   p_vwt,
+    #   fallback = c(0, 0, 1)
+    # )
 
     ## ---- assign ----
     p00_final[r] <- p_dry[1]; p01_final[r] <- p_dry[2]; p02_final[r] <- p_dry[3]

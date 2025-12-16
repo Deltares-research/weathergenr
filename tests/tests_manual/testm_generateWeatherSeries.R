@@ -40,7 +40,7 @@ sim.year.num <- 20
 sim.year.start <- 2020
 realization.num <- 3
 warm.variable <- "precip"
-warm.signif.level <- 0.90
+warm.signif.level <- 0.80
 warm.sample.num <- 10000
 warm.subset.criteria <- list(mean = 0.05, sd = 0.05, min = 0.05, max = 0.05, sig.thr = 0.8, nsig.thr = 1.5)
 knn.sample.num <- 100
@@ -103,7 +103,7 @@ obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) x %>%
                        dplyr::mutate(date = ncdata$date, .before = 1))
 
 
-out <- evaluateWegen(daily.sim = rlz_sample,
+out <- evaluate_weather_generator(daily.sim = rlz_sample,
                      daily.obs = obs_sample,
                      output.path = output_path,
                      save.plots = TRUE,
