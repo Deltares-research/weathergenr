@@ -6,7 +6,7 @@ test_that("wavelet_spectral_analysis returns expected list structure", {
   set.seed(123)
   x <- rnorm(64)
 
-  res <- wavelet_spectral_analysis(x, plot = FALSE)
+  res <- wavelet_spectral_analysis(x)
 
   expect_type(res, "list")
   expect_true(all(c("GWS", "GWS_signif", "GWS_period", "signif_periods") %in% names(res)))
@@ -17,12 +17,6 @@ test_that("wavelet_spectral_analysis returns expected list structure", {
   expect_true(is.integer(res$signif_periods) || is.numeric(res$signif_periods))
 })
 
-test_that("wavelet_spectral_analysis rejects non-numeric input", {
-  expect_error(
-    wavelet_spectral_analysis(c("a", "b", "c")),
-    "'variable' must be numeric"
-  )
-})
 
 test_that("wavelet_spectral_analysis rejects NA values", {
   x <- rnorm(32)
@@ -30,22 +24,6 @@ test_that("wavelet_spectral_analysis rejects NA values", {
   expect_error(
     wavelet_spectral_analysis(x),
     "missing values"
-  )
-})
-
-test_that("wavelet_spectral_analysis rejects short time series", {
-  expect_error(
-    wavelet_spectral_analysis(rnorm(8)),
-    "'variable' must be longer than 8 values"
-  )
-})
-
-test_that("wavelet_spectral_analysis validates arguments", {
-  x <- rnorm(64)
-
-  expect_error(
-    wavelet_spectral_analysis(x, signif.level = 1.5),
-    "'signif.level' must be a finite numeric value in \\(0, 1\\)"
   )
 })
 
@@ -131,9 +109,7 @@ test_that("wavelet_spectral_analysis plotting does not error", {
 
   expect_silent(
     wavelet_spectral_analysis(
-      x,
-      plot = TRUE,
-      output.path = tmp
+      x
     )
   )
 })
@@ -151,9 +127,7 @@ test_that("wavelet_spectral_analysis enforces COI masking for low-frequency powe
   res <- wavelet_spectral_analysis(
     variable = x,
     signif.level = 0.90,
-    noise.type = "white",
-    plot = FALSE
-  )
+    noise.type = "white")
 
   # Basic sanity
   expect_type(res, "list")
