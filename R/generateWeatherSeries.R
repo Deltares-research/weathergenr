@@ -350,6 +350,8 @@ generateWeatherSeries <- function(
   sim_power <- sapply(1:warm.sample.num, function(x) {
     wavelet_spectral_analysis(sim_annual[, x], signif.level = warm.signif.level)$GWS})
 
+  logger::log_info("[WARM] Subset bounds: {paste(names(warm.subset.criteria), unlist(warm.subset.criteria), sep = '=', collapse = ', ')}")
+
   sim_annual_sub <- filter_warm_simulations(
       series.obs = warm_variable,
       series.sim = sim_annual,
@@ -364,10 +366,6 @@ generateWeatherSeries <- function(
       save.plots = TRUE,
       save.series = FALSE
     )
-
-  logger::log_info("[WARM] Subset bounds: {paste(names(warm.subset.criteria), unlist(warm.subset.criteria), sep = '=', collapse = ', ')}")
-  logger::log_info("[WARM] {ncol(sim_annual_sub$subsetted)} traces meet criteria")
-  logger::log_info("[WARM] Sampling {ncol(sim_annual_sub$sampled)} traces for daily simulation")
 
   # ::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
@@ -425,7 +423,7 @@ generateWeatherSeries <- function(
   utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
   utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
 
-  logger::log_info("[Output] Results saved to: `", output.path, "`")
+  logger::log_info("[Done] Results saved to: `", output.path, "`")
   logger::log_info("[Done] Simulation complete. Elapsed time: {Sys.time() - start_time} secs")
 
   # Only return resampled_dates!

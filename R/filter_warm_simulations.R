@@ -453,7 +453,7 @@ filter_warm_simulations <- function(series.obs = NULL,
       power_obs_plot <- power.obs[seq_len(pl)]
 
       # Plot 1: All matching realizations
-      p1 <- plot_global_wavelet_spectrum(
+      p <- plot_global_wavelet_spectrum(
             power.period = power_period_plot,
             power.signif = power_signif_plot,
             power.obs = power_obs_plot,
@@ -461,32 +461,20 @@ filter_warm_simulations <- function(series.obs = NULL,
             scale_x_continuous(breaks = seq(5, plr, 5),
               limits = c(0, plr), expand = c(0, 0))
 
-      ggsave(
-        file.path(output.path, paste0(plot.prefix, "_spectral_matching.png")),
-        plot = p1,
-        width = 8,
-        height = 6
-      )
+      ggsave(file.path(output.path, paste0(plot.prefix, "_spectral_matching.png")),
+        plot = p, width = 8, height = 6)
 
       # Plot 2: Sampled realizations only
-      p2 <- waveletPlot(
-        power.period = power_period_plot,
+      p <- plot_global_wavelet_spectrum(power.period = power_period_plot,
         power.signif = power_signif_plot,
         power.obs = power_obs_plot,
-        power.sim = power.sim[seq_len(pl), sub_sample, drop = FALSE]
-      ) +
-        scale_x_continuous(
-          breaks = seq(5, plr, 5),
+        power.sim = power.sim[seq_len(pl), sub_sample, drop = FALSE]) +
+        scale_x_continuous(breaks = seq(5, plr, 5),
           limits = c(0, plr),
-          expand = c(0, 0)
-        )
+          expand = c(0, 0))
 
-      ggsave(
-        file.path(output.path, paste0(plot.prefix, "_spectral_sampled.png")),
-        plot = p2,
-        width = 8,
-        height = 6
-      )
+      ggsave(file.path(output.path, paste0(plot.prefix, "_spectral_sampled.png")),
+        plot = p, width = 8, height = 6)
 
       # Plot 3: Statistics violin plots
       par_labels <- c(mean = "Mean", sd = "StDev", min = "Minimum", max = "Maximum")
