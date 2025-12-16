@@ -251,29 +251,29 @@ filter_warm_simulations <- function(series.obs = NULL,
   # Compute relative differences (vectorized)
   epsilon <- 1e-10
 
-  rel_diff_mean <- ifelse(
-    abs(obs_mean) < epsilon,
-    0,
+  rel_diff_mean <- if (abs(obs_mean) < epsilon) {
+    rep(0, n_realizations)
+  } else {
     (sim_means - obs_mean) / obs_mean
-  )
+  }
 
-  rel_diff_sd <- ifelse(
-    abs(obs_sd) < epsilon,
-    0,
+  rel_diff_sd <- if (abs(obs_sd) < epsilon) {
+    rep(0, n_realizations)
+  } else {
     (sim_sds - obs_sd) / obs_sd
-  )
+  }
 
-  rel_diff_min <- ifelse(
-    abs(obs_min) < epsilon,
-    0,
+  rel_diff_min <- if (abs(obs_min) < epsilon) {
+    rep(0, n_realizations)
+  } else {
     (sim_mins - obs_min) / obs_min
-  )
+  }
 
-  rel_diff_max <- ifelse(
-    abs(obs_max) < epsilon,
-    0,
+  rel_diff_max <- if (abs(obs_max) < epsilon) {
+    rep(0, n_realizations)
+  } else {
     (sim_maxs - obs_max) / obs_max
-  )
+  }
 
   # ===========================================================================
   # Fast Period Identification
@@ -342,8 +342,7 @@ filter_warm_simulations <- function(series.obs = NULL,
     has_signal <- colSums(power_sim_sig > matrix(
       power_signif_sig,
       nrow = length(periods_sig),
-      ncol = n_realizations
-    )) > 0
+      ncol = n_realizations)) > 0
 
     # Condition 2: All significant periods within bounds
     lower_bound <- power_obs_sig * bounds$sig.thr
@@ -352,14 +351,12 @@ filter_warm_simulations <- function(series.obs = NULL,
     within_lower <- power_sim_sig > matrix(
       lower_bound,
       nrow = length(periods_sig),
-      ncol = n_realizations
-    )
+      ncol = n_realizations)
 
     within_upper <- power_sim_sig < matrix(
       upper_bound,
       nrow = length(periods_sig),
-      ncol = n_realizations
-    )
+      ncol = n_realizations)
 
     within_bounds <- colSums(within_lower & within_upper) == length(periods_sig)
 
@@ -371,8 +368,7 @@ filter_warm_simulations <- function(series.obs = NULL,
       nonsig_threshold <- matrix(
         power_signif_nonsig * bounds$nsig.thr,
         nrow = length(periods_nonsig),
-        ncol = n_realizations
-      )
+        ncol = n_realizations)
 
       nonsig_ok <- colSums(power_sim_nonsig < nonsig_threshold) == length(periods_nonsig)
     } else {

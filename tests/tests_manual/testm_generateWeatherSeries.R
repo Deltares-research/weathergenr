@@ -48,7 +48,7 @@ mc.extreme.quantile <- 0.8
 dry.spell.change <- rep(1, 12)
 wet.spell.change <- rep(1, 12)
 output.path <- output_path
-seed <- 1242
+seed <- 1000
 compute.parallel<- FALSE
 num.cores <- NULL
 
@@ -113,5 +113,3 @@ out <- evaluate_weather_generator(daily.sim = rlz_sample,
                      realization.num = realization.num,
                      wet.quantile = mc.wet.quantile,
                      extreme.quantile = mc.extreme.quantile)
-
-
