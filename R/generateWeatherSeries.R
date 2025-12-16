@@ -187,7 +187,7 @@ generateWeatherSeries <- function(
   dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
 
   # ------------------------------------------------------------
-  # Basic checks
+  # Checks
   # ------------------------------------------------------------
   stopifnot(is.list(weather.data))
   stopifnot(is.data.frame(weather.grid))
@@ -195,38 +195,65 @@ generateWeatherSeries <- function(
   stopifnot(month.start %in% 1:12)
   stopifnot(is.list(weather.data), is.data.frame(weather.grid))
 
-  # Set water-year switch
-  water.year <- (month.start != 1)
+  stopifnot(
+    "variables must be non-empty" = length(variables) > 0,
+    "variables must exist in weather.data" = all(variables %in% names(weather.data[[1]])),
+    "dry.spell.change must have length 12" = length(dry.spell.change) == 12,
+    "wet.spell.change must have length 12" = length(wet.spell.change) == 12,
+    "mc.wet.quantile must be in (0,1)" = mc.wet.quantile > 0 && mc.wet.quantile < 1,
+    "mc.extreme.quantile must be in (0,1)" = mc.extreme.quantile > 0 && mc.extreme.quantile < 1,
+    "mc.extreme.quantile > mc.wet.quantile" = mc.extreme.quantile > mc.wet.quantile,
+    "warm.variable must be in variables" = warm.variable %in% variables,
+    "weather.grid must have required columns" = all(c("id", "xind", "yind", "x", "y") %in% names(weather.grid))
+  )
 
-  # -- Seed handling
-  if (!is.null(seed)) {
-    old_seed <- .Random.seed
-    on.exit(
-      {
-        .Random.seed <<- old_seed
-      },
-      add = TRUE
-    )
-    set.seed(seed)
+  # Check data consistency
+  if (length(unique(sapply(weather.data, nrow))) != 1) {
+    stop("All grid cells must have the same number of observations")
   }
 
-  # Number of grids  WE WONT NEED THIS IN THE FUTURE
-  ngrids <- length(weather.data)
+  # Validate warm.subset.criteria
+  required_criteria <- c("mean", "sd", "min", "max", "sig.thr", "nsig.thr")
+  if (!all(required_criteria %in% names(warm.subset.criteria))) {
+    stop("warm.subset.criteria must contain: ", paste(required_criteria, collapse = ", "))
+  }
 
+  # SET RNG seeds
+  if (!is.null(seed)) set.seed(seed)
+  warm_seed <- sample.int(.Machine$integer.max, 1)
+  wavelet_seed <- sample.int(.Machine$integer.max, 1)
+  daily_seed <- sample.int(.Machine$integer.max, 1)
+
+
+  # PARALELL COMPUTING SETUP :::::::::::::::::::::::::::::::::::::::::::::::::::
   if (compute.parallel) {
 
     if (is.null(num.cores)) num.cores <- parallel::detectCores() - 1
+
+      cl <- parallel::makeCluster(num.cores)
+      doParallel::registerDoParallel(cl)
+
+      # Set RNG stream for reproducibility
+      if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
+
+      on.exit(parallel::stopCluster(cl), add = TRUE)
+
       logger::log_info("\n[Initialize] Starting in parallel mode:")
       logger::log_info("[Initialize] Number of cores: {num.cores}")
+
     } else {
+
       logger::log_info("\n[Initialize] Starting in sequential mode")
   }
+
+  # Number of grids
+  n_grids <- length(weather.data)
 
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
   logger::log_info("[Initialize] Randomization seed: {seed}")
   logger::log_info("[Initialize] Climate variables: {paste(variables, collapse = ', ')}")
   logger::log_info("[Initialize] Historical period: {weather.date[1]} to {weather.date[length(weather.date)]}")
-  logger::log_info("[Initialize] Total number of grids: {ngrids}")
+  logger::log_info("[Initialize] Total number of grids: {n_grids}")
 
   # Leap day adjustment (only if present)
   leap_idx <- leap_day_indices(weather.date)
@@ -262,23 +289,31 @@ generateWeatherSeries <- function(
   wyear_idx <- match(dates_d$dateo, weather.date)
 
   # Multivariate list of daily climate data
-  climate_d <- lapply(seq_len(ngrids), function(i) {
+  climate_d <- lapply(seq_len(n_grids), function(i) {
     df <- weather.data[[i]][wyear_idx, variables, drop = FALSE]
     df$wyear <- dates_d$wyear
     df
   })
-  climate_d_aavg <- Reduce(`+`, climate_d) / ngrids
 
-  # Multivariate list of annual climate data
-  climate_a <- lapply(1:ngrids, function(i) {
-    climate_d[[i]] %>%
-      group_by(wyear) %>%
-      summarize(across({{variables}}, mean), .groups = "drop")})
-  climate_a_aavg <- Reduce(`+`, climate_a) / ngrids
+  # DAILY CLIMATE DATA - Area Average
+  climate_d_aavg <- weather.data[[1]][wyear_idx, variables, drop = FALSE]
 
+  # Accumulate remaining grids (if any)
+  if (n_grids > 1) {
+    for (i in 2:n_grids) {
+      climate_d_aavg <- climate_d_aavg + weather.data[[i]][wyear_idx, variables, drop = FALSE]
+    }
+    climate_d_aavg <- climate_d_aavg / n_grids
+  }
+  climate_d_aavg$wyear <- dates_d$wyear
+
+  # ANNUAL CLIMATE DATA - Area Average
+  climate_a_aavg <- climate_d_aavg %>%
+    group_by(wyear) %>%
+    summarize(across(all_of(variables), mean), .groups = "drop")
 
   # ------------------------------------------------------------
-  # Simulated dates (CRITICAL FIX)
+  # Simulated dates
   # ------------------------------------------------------------
   if (is.null(sim.year.num)) sim.year.num <- length(unique(dates_d$wyear))
 
@@ -322,8 +357,12 @@ generateWeatherSeries <- function(
             coi = warm_power$coi, sigm = warm_power$sigm)
 
 
-  ggplot2::ggsave(file.path(output.path, "global_wavelet_power_spectrum.png"), p,
-                  width = 10, height = 4)
+  tryCatch({
+    ggplot2::ggsave(file.path(output.path, "global_wavelet_power_spectrum.png"), p,
+                    width = 10, height = 4)
+  }, error = function(e) {
+    logger::log_warn("Failed to save wavelet spectrum plot: {e$message}")
+  })
 
   # if there is low-frequency signal
   if (any(!is.na(warm_power$signif_periods))) {
@@ -344,11 +383,41 @@ generateWeatherSeries <- function(
   # Annual time-series simulation
   sim_annual <- wavelet_arima(
     wavelet.components = tibble(comp = warm_variable),
-    sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = seed)
+    sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = warm_seed)
 
   # wavelet analysis on simulated series
   sim_power <- sapply(1:warm.sample.num, function(x) {
     wavelet_spectral_analysis(sim_annual[, x], signif.level = warm.signif.level)$GWS})
+
+
+  # WAVELET POWER ANALYSIS
+  # ========================================
+  logger::log_info("[WARM] Computing wavelet power spectra for {warm.sample.num} simulations")
+
+  #if (compute.parallel && warm.sample.num > 20000) {
+
+#    logger::log_info("[WARM] Using parallel computation for wavelet analysis")
+
+ #   parallel::clusterExport(cl,
+  #                          varlist = c("sim_annual", "warm.signif.level"),
+  #                          envir = environment())
+  #  parallel::clusterEvalQ(cl, library(weathergenr))
+
+   # sim_power <- foreach::foreach(
+   #   x = 1:warm.sample.num,
+   #   .combine = cbind,
+   #   .packages = "weathergenr"
+  #  ) %dopar% {
+  #    wavelet_spectral_analysis(sim_annual[, x],
+   #                             signif.level = warm.signif.level)$GWS
+  #  }
+
+  #} else {
+  #  sim_power <- sapply(1:warm.sample.num, function(x) {
+  #    wavelet_spectral_analysis(sim_annual[, x],
+  #                              signif.level = warm.signif.level)$GWS
+  #  })
+  #}
 
   logger::log_info("[WARM] Subset bounds: {paste(names(warm.subset.criteria), unlist(warm.subset.criteria), sep = '=', collapse = ', ')}")
 
@@ -362,22 +431,15 @@ generateWeatherSeries <- function(
       sample.num = realization.num,
       output.path = output.path,
       bounds = warm.subset.criteria,
-      seed = seed,
+      seed = warm_seed,
       save.plots = TRUE,
-      save.series = FALSE
-    )
+      save.series = FALSE)
 
   # ::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
 
   logger::log_info("[KNN] Starting daily weather simulation using KNN + Markov Chain scheme")
 
   if (compute.parallel) {
-
-    cl <- parallel::makeCluster(num.cores)
-    doParallel::registerDoParallel(cl)
-
-    if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = seed)
-
     `%d%` <- foreach::`%dopar%`
   } else {
     `%d%` <- foreach::`%do%`
@@ -386,10 +448,10 @@ generateWeatherSeries <- function(
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
 
     resample_weather_dates(
-      PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],  #based on wy
-      ANNUAL_PRCP = warm_variable, # based on wy
-      PRCP = climate_d_aavg$precip, # based on wy
-      TEMP = climate_d_aavg$temp, # based on wy
+      PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],
+      ANNUAL_PRCP = warm_variable,
+      PRCP = climate_d_aavg$precip,
+      TEMP = climate_d_aavg$temp,
       START_YEAR_SIM = sim.year.start,
       k1 = n,
       ymax = sim.year.num,
@@ -398,16 +460,12 @@ generateWeatherSeries <- function(
       knn.annual.sample.num = knn.sample.num,
       dry.spell.change = dry.spell.change,
       wet.spell.change = wet.spell.change,
-      #YEAR_D = dates_d$wyear, #his_yr,
       month.start = month.start,
       wet.quantile = mc.wet.quantile,
       extreme.quantile = mc.extreme.quantile,
-      seed = seed + n
+      seed = daily_seed  + n
     )
   }
-
-  if (compute.parallel) parallel::stopCluster(cl)
-
 
   # Prepare the results data frame
   resampled_dates <- as_tibble(matrix(0, nrow = nrow(sim_dates_d), ncol = realization.num),
@@ -417,11 +475,29 @@ generateWeatherSeries <- function(
     resampled_dates[, x] <- dates_d$dateo[match(resampled_ini[[x]], dates_d$date)]
   }
 
-  #sum(as.numeric(resampled_ini[[1]] - resampled_dates$rlz_1))
+  # Write results to CSV
+  tryCatch({
+    utils::write.csv(sim_dates_d$date,
+                     file.path(output.path, "sim_dates.csv"),
+                     row.names = FALSE)
+    TRUE
+  }, error = function(e) {
+    logger::log_error("Failed to write sim_dates.csv: {e$message}")
+    FALSE
+  })
 
-  # Take this outside of the function!!!!
-  utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
-  utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
+  tryCatch({
+    utils::write.csv(resampled_dates,
+                     file.path(output.path, "resampled_dates.csv"),
+                     row.names = FALSE)
+    TRUE
+  }, error = function(e) {
+    logger::log_error("Failed to write resampled_dates.csv: {e$message}")
+    FALSE
+  })
+
+  #utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
+  #utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
 
   logger::log_info("[Done] Results saved to: `", output.path, "`")
   logger::log_info("[Done] Simulation complete. Elapsed time: {Sys.time() - start_time} secs")
