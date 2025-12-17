@@ -13,7 +13,7 @@
 #' number of observed transitions per month.
 #'
 #' The function supports both calendar-year and water-year simulations.
-#' The regime is inferred from month_list: if month_list[1] == 1,
+#' The regime is inferred from month.list: if month.list[1] == 1,
 #' calendar-year logic is used; otherwise, water-year logic is assumed.
 #'
 #' Optional spell-persistence modifiers are applied to dry and wet states to
@@ -25,37 +25,37 @@
 #' days that fall within the target simulation year and corresponding calendar
 #' month.
 #'
-#' @param PRCP_LAG0 Numeric vector. Observed daily precipitation at lag 0
+#' @param precip.lag0 Numeric vector. Observed daily precipitation at lag 0
 #'   (current day) used to estimate state transitions.
-#' @param PRCP_LAG1 Numeric vector. Observed daily precipitation at lag 1
+#' @param precip.lag1 Numeric vector. Observed daily precipitation at lag 1
 #'   (previous day) used to estimate state transitions.
-#' @param MONTH_LAG0 Integer vector (1-12). Calendar month corresponding to
-#'   PRCP_LAG0.
-#' @param MONTH_LAG1 Integer vector (1-12). Calendar month corresponding to
-#'   PRCP_LAG1.
-#' @param YEAR_LAG0 Optional integer vector. Calendar year or water year
-#'   corresponding to PRCP_LAG0. If provided together with YEAR_LAG1,
+#' @param month.lag0 Integer vector (1-12). Calendar month corresponding to
+#'   precip.lag0.
+#' @param month.lag1 Integer vector (1-12). Calendar month corresponding to
+#'   precip.lag1.
+#' @param year.lag0 Optional integer vector. Calendar year or water year
+#'   corresponding to precip.lag0. If provided together with year.lag1,
 #'   transitions are restricted to same-year pairs.
-#' @param YEAR_LAG1 Optional integer vector. Calendar year or water year
-#'   corresponding to PRCP_LAG1.
-#' @param wet_threshold Numeric vector of length 12. Monthly precipitation
-#'   thresholds separating dry and wet states, aligned to month_list.
-#' @param extreme_threshold Numeric vector of length 12. Monthly precipitation
-#'   thresholds separating wet and very wet states, aligned to month_list.
-#' @param month_list Integer vector of length 12 defining the simulated ordering
+#' @param year.lag1 Optional integer vector. Calendar year or water year
+#'   corresponding to precip.lag1.
+#' @param wet.threshold Numeric vector of length 12. Monthly precipitation
+#'   thresholds separating dry and wet states, aligned to month.list.
+#' @param extreme.threshold Numeric vector of length 12. Monthly precipitation
+#'   thresholds separating wet and very wet states, aligned to month.list.
+#' @param month.list Integer vector of length 12 defining the simulated ordering
 #'   of months (for example 1:12 for calendar years or c(10:12, 1:9) for
 #'   October-start water years).
-#' @param MONTH_SIM Integer vector. Calendar month for each simulated day.
-#' @param WATER_YEAR_SIM Integer vector. Simulation year (calendar or water year,
+#' @param sim.months Integer vector. Calendar month for each simulated day.
+#' @param sim.water.years Integer vector. Simulation year (calendar or water year,
 #'   depending on regime) for each simulated day.
-#' @param y Integer. Index of the current simulated year (1-based).
-#' @param START_YEAR_SIM Integer. First year of the simulation, interpreted as a
+#' @param year.idx Integer. Index of the current simulated year (1-based).
+#' @param sim.start.year Integer. First year of the simulation, interpreted as a
 #'   calendar year or water year depending on the simulation regime.
 #' @param dry.spell.change Numeric vector of length 12. Monthly multiplicative
 #'   factors controlling dry-state persistence.
 #' @param wet.spell.change Numeric vector of length 12. Monthly multiplicative
 #'   factors controlling wet-state persistence.
-#' @param SIM_LENGTH Integer. Total number of simulated days. Determines the
+#' @param sim.length Integer. Total number of simulated days. Determines the
 #'   length of the returned probability vectors.
 #' @param alpha Numeric. Base smoothing strength for transition-probability
 #'   estimation. The effective smoothing applied in each month is
@@ -63,7 +63,7 @@
 #'   in that month.
 #'
 #' @return
-#' A named list of nine numeric vectors, each of length SIM_LENGTH,
+#' A named list of nine numeric vectors, each of length sim.length,
 #' representing time-varying transition probabilities:
 #' \itemize{
 #'   \item p00_final: P(dry to dry)
@@ -92,22 +92,22 @@
 #' @export
 
 monthly_markov_probs <- function(
-    PRCP_LAG0,
-    PRCP_LAG1,
-    MONTH_LAG0,
-    MONTH_LAG1,
-    YEAR_LAG0 = NULL,
-    YEAR_LAG1 = NULL,
-    wet_threshold,
-    extreme_threshold,
-    month_list,
-    MONTH_SIM,
-    WATER_YEAR_SIM,
-    y,
-    START_YEAR_SIM,
+    precip.lag0,
+    precip.lag1,
+    month.lag0,
+    month.lag1,
+    year.lag0 = NULL,
+    year.lag1 = NULL,
+    wet.threshold,
+    extreme.threshold,
+    month.list,
+    sim.months,
+    sim.water.years,
+    year.idx,
+    sim.start.year,
     dry.spell.change,
     wet.spell.change,
-    SIM_LENGTH,
+    sim.length,
     alpha = 1.0
 ) {
 
@@ -130,48 +130,48 @@ monthly_markov_probs <- function(
     }
   }
 
-  water.year <- (month_list[1] != 1)
-  target_year <- if (water.year) (START_YEAR_SIM + y) else (START_YEAR_SIM + y - 1)
+  water.year <- (month.list[1] != 1)
+  target_year <- if (water.year) (sim.start.year + year.idx) else (sim.start.year + year.idx - 1)
 
   # Check if spell adjustments should be applied
   use_spell_adjust <- any(abs(dry.spell.change - 1) > 1e-10) ||
     any(abs(wet.spell.change - 1) > 1e-10)
 
   # Strong lag guard
-  if (!is.null(YEAR_LAG0) && !is.null(YEAR_LAG1)) {
+  if (!is.null(year.lag0) && !is.null(year.lag1)) {
 
-    keep <- YEAR_LAG0 == YEAR_LAG1
-    PRCP_LAG0  <- PRCP_LAG0[keep]
-    PRCP_LAG1  <- PRCP_LAG1[keep]
-    MONTH_LAG0 <- MONTH_LAG0[keep]
-    MONTH_LAG1 <- MONTH_LAG1[keep]
+    keep <- year.lag0 == year.lag1
+    precip.lag0  <- precip.lag0[keep]
+    precip.lag1  <- precip.lag1[keep]
+    month.lag0 <- month.lag0[keep]
+    month.lag1 <- month.lag1[keep]
 
   } else if (!water.year) {
 
-    keep <- MONTH_LAG0 >= MONTH_LAG1
-    PRCP_LAG0  <- PRCP_LAG0[keep]
-    PRCP_LAG1  <- PRCP_LAG1[keep]
-    MONTH_LAG0 <- MONTH_LAG0[keep]
-    MONTH_LAG1 <- MONTH_LAG1[keep]
+    keep <- month.lag0 >= month.lag1
+    precip.lag0  <- precip.lag0[keep]
+    precip.lag1  <- precip.lag1[keep]
+    month.lag0 <- month.lag0[keep]
+    month.lag1 <- month.lag1[keep]
   }
 
   # Vectorized state classification
 
   # Map each observation to month index
-  idx_lag1 <- match(MONTH_LAG1, month_list)
-  idx_lag0 <- match(MONTH_LAG0, month_list)
+  idx_lag1 <- match(month.lag1, month.list)
+  idx_lag0 <- match(month.lag0, month.list)
 
   # Get thresholds for each observation
-  wet_thr_lag1 <- wet_threshold[idx_lag1]
-  ext_thr_lag1 <- extreme_threshold[idx_lag1]
-  wet_thr_lag0 <- wet_threshold[idx_lag0]
-  ext_thr_lag0 <- extreme_threshold[idx_lag0]
+  wet_thr_lag1 <- wet.threshold[idx_lag1]
+  ext_thr_lag1 <- extreme.threshold[idx_lag1]
+  wet_thr_lag0 <- wet.threshold[idx_lag0]
+  ext_thr_lag0 <- extreme.threshold[idx_lag0]
 
   # Handle non-finite thresholds (fallback to global)
   if (any(!is.finite(wet_thr_lag1)) || any(!is.finite(ext_thr_lag1))) {
-    global_wet <- quantile(PRCP_LAG1, 0.2, na.rm = TRUE)
-    pos <- PRCP_LAG1[PRCP_LAG1 > 0]
-    global_ext <- quantile(if(length(pos)) pos else PRCP_LAG1, 0.8, na.rm = TRUE)
+    global_wet <- quantile(precip.lag1, 0.2, na.rm = TRUE)
+    pos <- precip.lag1[precip.lag1 > 0]
+    global_ext <- quantile(if(length(pos)) pos else precip.lag1, 0.8, na.rm = TRUE)
 
     wet_thr_lag1[!is.finite(wet_thr_lag1)] <- global_wet
     ext_thr_lag1[!is.finite(ext_thr_lag1)] <- global_ext
@@ -180,29 +180,29 @@ monthly_markov_probs <- function(
   }
 
   # Classify states (vectorized - single pass)
-  state_lag1 <- ifelse(PRCP_LAG1 <= wet_thr_lag1, 0L,
-                       ifelse(PRCP_LAG1 <= ext_thr_lag1, 1L, 2L))
+  state_lag1 <- ifelse(precip.lag1 <= wet_thr_lag1, 0L,
+                       ifelse(precip.lag1 <= ext_thr_lag1, 1L, 2L))
 
-  state_lag0 <- ifelse(PRCP_LAG0 <= wet_thr_lag0, 0L,
-                       ifelse(PRCP_LAG0 <= ext_thr_lag0, 1L, 2L))
+  state_lag0 <- ifelse(precip.lag0 <= wet_thr_lag0, 0L,
+                       ifelse(precip.lag0 <= ext_thr_lag0, 1L, 2L))
 
   ## -------------------------------------------------
   ## Output containers
   ## -------------------------------------------------
-  p00_final <- p01_final <- p02_final <- rep(NA_real_, SIM_LENGTH)
-  p10_final <- p11_final <- p12_final <- rep(NA_real_, SIM_LENGTH)
-  p20_final <- p21_final <- p22_final <- rep(NA_real_, SIM_LENGTH)
+  p00_final <- p01_final <- p02_final <- rep(NA_real_, sim.length)
+  p10_final <- p11_final <- p12_final <- rep(NA_real_, sim.length)
+  p20_final <- p21_final <- p22_final <- rep(NA_real_, sim.length)
 
   ## -------------------------------------------------
   ## Month loop
   ## -------------------------------------------------
-  for (m in seq_along(month_list)) {
+  for (m in seq_along(month.list)) {
 
-    mm <- month_list[m]
-    r <- which(MONTH_SIM == mm & WATER_YEAR_SIM == target_year)
+    mm <- month.list[m]
+    r <- which(sim.months == mm & sim.water.years == target_year)
     if (!length(r)) next
 
-    x <- which(MONTH_LAG1 == mm)
+    x <- which(month.lag1 == mm)
     N_m <- length(x)
     alpha_m <- if (N_m > 0L) alpha / sqrt(N_m) else alpha
 

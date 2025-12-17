@@ -22,31 +22,59 @@ knn_sample(
 
 \item{target}{Numeric vector. The target vector for comparison.}
 
-\item{k}{Integer. Number of nearest neighbors to consider (\eqn{k \leq} number of candidates).}
+\item{k}{Integer. Number of nearest neighbors to consider (k <= number of candidates).}
 
 \item{n}{Integer. Number of samples to draw (default = 1).}
 
-\item{prob}{Logical. If \code{TRUE}, sampling probabilities decrease with neighbor rank; if \code{FALSE}, sampling is uniform (default).}
+\item{prob}{Logical. If TRUE, sampling probabilities favor closer neighbors;
+if FALSE (default), sampling is uniform among k nearest neighbors.}
 
-\item{weights}{Optional numeric vector of length equal to \code{ncol(candidates)}. Feature weights for distance calculation.}
+\item{weights}{Optional numeric vector of length equal to ncol(candidates).
+Feature weights for distance calculation. Default is equal weights.}
 
-\item{seed}{Optional integer. If provided, sets random seed for reproducible sampling.}
+\item{seed}{Optional integer. If provided, sets random seed for reproducible
+sampling. The seed state is restored on exit.}
+
+\item{sampling}{Character. Sampling method when prob = TRUE. Either "rank"
+(default, probability decreases with neighbor rank: 1, 1/2, 1/3, ...) or
+"distance" (probability based on Gaussian kernel of distances).
+Ignored when prob = FALSE.}
+
+\item{bandwidth}{Numeric. Bandwidth parameter for distance-based sampling
+kernel. If NULL (default), uses median nearest neighbor distance.
+Only used when sampling = "distance" and prob = TRUE.}
+
+\item{epsilon}{Numeric. Small constant added to distance-based probabilities
+to prevent zero probabilities (default = 1e-8). Only used when
+sampling = "distance" and prob = TRUE.}
 }
 \value{
-Integer vector of length \code{n}, giving indices of sampled candidates (rows of \code{candidates}).
+Integer vector of length \code{n}, giving indices of sampled candidates
+(rows of \code{candidates}).
 }
 \description{
-Given a set of candidate vectors and a target vector, selects indices of the \code{k} nearest candidates
-(using weighted Euclidean distance) to the target, then samples \code{n} indices from these neighbors,
-either uniformly or with rank-based probabilities favoring closer neighbors. Optionally, a random seed can be set
-for reproducibility.
+Given a set of candidate vectors and a target vector, selects indices of the
+\code{k} nearest candidates (using weighted Euclidean distance) to the target,
+then samples \code{n} indices from these neighbors, either uniformly or with
+rank-based or distance-based probabilities. Optionally, a random seed can be
+set for reproducibility.
 }
 \details{
-The function computes the weighted Euclidean distance between each candidate and the target. The \code{k}
-nearest neighbors (smallest distances) are identified. If \code{prob = TRUE}, the closest neighbor has the highest
-probability (\code{1}), the second-closest half that, and so on (probabilities sum to 1). If \code{prob = FALSE},
-all \code{k} neighbors are sampled with equal probability. Sampling is with replacement.
-If \code{seed} is set, the random seed will be temporarily changed and restored on exit.
+The function computes the weighted Euclidean distance between each candidate
+and the target. The \code{k} nearest neighbors (smallest distances) are
+identified.
+
+Sampling modes:
+\describe{
+  \item{prob = FALSE}{All k neighbors sampled with equal probability (uniform)}
+  \item{prob = TRUE, sampling = "rank"}{Probability = 1/rank, normalized.
+        Closest neighbor has highest probability.}
+  \item{prob = TRUE, sampling = "distance"}{Probability based on Gaussian
+        kernel: exp(-distance^2 / (2 * bandwidth^2))}
+}
+
+Sampling is with replacement. If \code{seed} is set, the random seed will be
+temporarily changed and restored on exit.
 }
 \examples{
 set.seed(42)
@@ -56,10 +84,13 @@ target <- c(0, 0)
 # Sample 1 index from 5 nearest neighbors, uniform probability
 knn_sample(candidates, target, k = 5, n = 1)
 
-# Sample 3 indices from 5 nearest neighbors, rank-weighted probability, with seed
+# Sample 3 indices from 5 nearest neighbors, rank-weighted probability
 knn_sample(candidates, target, k = 5, n = 3, prob = TRUE, seed = 123)
 
-# Using feature weights
+# Using feature weights (weight first dimension more heavily)
 knn_sample(candidates, target, k = 5, n = 2, weights = c(2, 1), seed = 10)
 
+# Distance-based sampling with custom bandwidth
+knn_sample(candidates, target, k = 10, n = 5, prob = TRUE,
+           sampling = "distance", bandwidth = 1.5)
 }

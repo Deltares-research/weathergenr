@@ -71,7 +71,7 @@
 #' resampled observed dates corresponding to each simulated day.
 #'
 #' @export
-resampleDates <- function(
+resample_weather_dates <- function(
     PRCP_FINAL_ANNUAL_SIM,
     ANNUAL_PRCP,
     PRCP,

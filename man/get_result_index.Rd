@@ -4,37 +4,37 @@
 \alias{get_result_index}
 \title{Safely Get or Sample an Index from a Vector}
 \usage{
-get_result_index(RESULT, PRCP_TOMORROW)
+get_result_index(result, precip.tomorrow)
 }
 \arguments{
-\item{RESULT}{Integer. Proposed index for retrieving an element from `PRCP_TOMORROW`.}
+\item{result}{Integer. Proposed index for retrieving an element from `precip.tomorrow`.}
 
-\item{PRCP_TOMORROW}{Numeric vector. A set of candidate precipitation values (e.g., for the next day).}
+\item{precip.tomorrow}{Numeric vector. A set of candidate precipitation values (e.g., for the next day).}
 }
 \value{
-Integer. A valid index from `PRCP_TOMORROW`, or `NA_integer_` if `PRCP_TOMORROW` is empty.
+Integer. A valid index from `precip.tomorrow`, or `NA_integer_` if `precip.tomorrow` is empty.
 }
 \description{
-Returns a valid index from `PRCP_TOMORROW` based on the provided `RESULT`.
-If `RESULT` is missing, out of bounds, or invalid, a random index is sampled instead.
-If `PRCP_TOMORROW` is empty, `NA_integer_` is returned.
+Returns a valid index from `precip.tomorrow` based on the provided `result`.
+If `result` is missing, out of bounds, or invalid, a random index is sampled instead.
+If `precip.tomorrow` is empty, `NA_integer_` is returned.
 }
 \details{
 This function is useful in stochastic weather generation workflows where fallback
 behavior is needed when a computed index is not valid.
 }
 \examples{
-PRCP_TOMORROW <- c(0, 5, 10, 20)
+precip.tomorrow <- c(0, 5, 10, 20)
 
 # Valid index
-get_result_index(2, PRCP_TOMORROW) # returns 2
+get_result_index(2, precip.tomorrow) # returns 2
 
 # Invalid index: falls back to sampling
 set.seed(1)
-get_result_index(10, PRCP_TOMORROW) # randomly returns a valid index
+get_result_index(10, precip.tomorrow) # randomly returns a valid index
 
 # NA index: falls back to sampling
-get_result_index(NA, PRCP_TOMORROW)
+get_result_index(NA, precip.tomorrow)
 
 # Empty vector: returns NA
 get_result_index(1, numeric(0))
