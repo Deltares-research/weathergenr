@@ -30,17 +30,17 @@ ncdata <- read_netcdf(ncfile)
 
 
 #### Define all variables in advance for testing
-mc.wet.quantile <- 0.1
+mc.wet.quantile <- 0.20
 weather.data <- ncdata$data
 weather.grid <- ncdata$grid
 weather.date <- ncdata$date
 variables <- c("precip", "temp", "temp_min", "temp_max")
 variable.labels <- variables
-sim.year.num <- 20
+sim.year.num <- 30
 sim.year.start <- 2020
 realization.num <- 3
 warm.variable <- "precip"
-warm.signif.level <- 0.80
+warm.signif.level <- 0.90
 warm.sample.num <- 20000
 warm.subset.criteria <- list(mean = 0.05, sd = 0.05, min = 0.05, max = 0.05, sig.thr = 0.8, nsig.thr = 1.5)
 knn.sample.num <- 100

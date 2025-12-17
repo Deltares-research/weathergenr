@@ -447,7 +447,7 @@ generateWeatherSeries <- function(
 
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
 
-    resampleDates(
+    resample_weather_dates(
       PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],
       ANNUAL_PRCP = warm_variable,
       PRCP = climate_d_aavg$precip,

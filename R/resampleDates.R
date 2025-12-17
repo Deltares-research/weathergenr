@@ -185,22 +185,22 @@ resampleDates <- function(
 
     # Markov probabilities (assumed fixed separately)
     probs <- monthly_markov_probs(
-      PRCP_LAG0 = prcp_y[-1],
-      PRCP_LAG1 = prcp_y[-length(prcp_y)],
-      MONTH_LAG0 = month_y[-1],
-      MONTH_LAG1 = month_y[-length(prcp_y)],
-      YEAR_LAG0  = wyear_y[-1],
-      YEAR_LAG1  = wyear_y[-length(wyear_y)],
-      wet_threshold = wet_thresh,
-      extreme_threshold = extreme_thresh,
-      month_list = month_list,
-      MONTH_SIM = months_sim,
-      WATER_YEAR_SIM = wyears_sim,
-      y = y,
-      START_YEAR_SIM = START_YEAR_SIM,
+      precip.lag0 = prcp_y[-1],
+      precip.lag1 = prcp_y[-length(prcp_y)],
+      month.lag0 = month_y[-1],
+      month.lag1 = month_y[-length(prcp_y)],
+      year.lag0  = wyear_y[-1],
+      year.lag1  = wyear_y[-length(wyear_y)],
+      year.idx = y,
+      wet.threshold = wet_thresh,
+      extreme.threshold = extreme_thresh,
+      month.list = month_list,
+      sim.months = months_sim,
+      sim.water.years = wyears_sim,
+      sim.start.year = START_YEAR_SIM,
+      sim.length = sim_length,
       dry.spell.change = dry.spell.change,
       wet.spell.change = wet.spell.change,
-      SIM_LENGTH = sim_length,
       alpha = 1
     )
 
@@ -243,6 +243,7 @@ resampleDates <- function(
 
       sim_idx <- sim_idx + 1L
       if (sim_idx > sim_length) break
+
       prev_idx <- sim_idx - 1L
 
       sim_occ[sim_idx] <- markov_next_state(
@@ -267,9 +268,11 @@ resampleDates <- function(
       if (!length(obs_candidates)) obs_candidates <- which(month_y == cur_month)
 
       if (!length(obs_candidates)) {
+
         sim_prcp[sim_idx] <- sim_prcp[prev_idx]
         sim_temp[sim_idx] <- sim_temp[prev_idx]
         sim_date[sim_idx] <- sim_date[prev_idx]
+
         next
       }
 
@@ -277,43 +280,47 @@ resampleDates <- function(
       obs_idx_window <- obs_idx_window[obs_idx_window > 0 & (obs_idx_window + 1) <= length(prcp_y)]
 
       if (!length(obs_idx_window)) {
+
         i <- sample(obs_candidates, 1)
         sim_prcp[sim_idx] <- prcp_y[i]
         sim_temp[sim_idx] <- temp_y[i]
         sim_date[sim_idx] <- date_y[i]
+
         next
       }
 
       state_idx <- get_state_indices(
-        sim_occ[prev_idx],
-        sim_occ[sim_idx],
-        prcp_y,
-        obs_idx_window,
-        wet_thresh[m_idx],
-        extreme_thresh[m_idx]
-      )
+        from.state = sim_occ[prev_idx],
+        to.state = sim_occ[sim_idx],
+        prcp = prcp_y,
+        candidate.idx = obs_idx_window,
+        wet.thr = wet_thresh[m_idx],
+        extreme.thr = extreme_thresh[m_idx])
 
       if (!length(state_idx)) {
+
         obs_idx_window <- unique(as.vector(outer(obs_candidates, -30:30, "+")))
         obs_idx_window <- obs_idx_window[obs_idx_window > 0 & (obs_idx_window + 1) <= length(prcp_y)]
 
         state_idx <- get_state_indices(
-          sim_occ[prev_idx],
-          sim_occ[sim_idx],
-          prcp_y,
-          obs_idx_window,
-          wet_thresh[m_idx],
-          extreme_thresh[m_idx]
-        )
+          from.state = sim_occ[prev_idx],
+          to.state = sim_occ[sim_idx],
+          prcp = prcp_y,
+          candidate.idx = obs_idx_window,
+          wet.thr = wet_thresh[m_idx],
+          extreme.thr = extreme_thresh[m_idx])
       }
 
       if (!length(state_idx)) {
+
         fb <- which(month_y == cur_month & (seq_along(prcp_y) + 1) <= length(prcp_y))
+
         if (!length(fb)) fb <- which((seq_along(prcp_y) + 1) <= length(prcp_y))
         i <- sample(fb, 1)
         sim_prcp[sim_idx] <- prcp_y[i]
         sim_temp[sim_idx] <- temp_y[i]
         sim_date[sim_idx] <- date_y[i]
+
         next
       }
 
@@ -350,16 +357,15 @@ resampleDates <- function(
 
       res <- knn_sample(
         candidates = cbind(prcp_today_anom, temp_today_anom),
-        target     = c(cur_sim_prcp_anom, cur_sim_temp_anom),
-        k          = k_day,
+        target = c(cur_sim_prcp_anom, cur_sim_temp_anom),
+        k = k_day,
         #sampling = "distance",
-        n          = 1,
-        prob       = TRUE,
-        weights    = weights,
-        seed       = seed + k1 * sim_idx
-      )
+        n = 1,
+        prob = TRUE,
+        weights = weights,
+        seed = seed + k1 * sim_idx)
 
-      idx <- get_result_index(res, prcp_tomorrow)
+      idx <- get_result_index(result = res, precip.tomorrow = prcp_tomorrow)
       if (is.na(idx) || idx < 1L || idx > length(prcp_tomorrow)) {
         idx <- sample(seq_along(prcp_tomorrow), 1)
       }

@@ -5,63 +5,63 @@
 \title{Estimate Monthly Occurrence-State Markov Transition Probabilities}
 \usage{
 monthly_markov_probs(
-  PRCP_LAG0,
-  PRCP_LAG1,
-  MONTH_LAG0,
-  MONTH_LAG1,
-  YEAR_LAG0 = NULL,
-  YEAR_LAG1 = NULL,
-  wet_threshold,
-  extreme_threshold,
-  month_list,
-  MONTH_SIM,
-  WATER_YEAR_SIM,
-  y,
-  START_YEAR_SIM,
+  precip.lag0,
+  precip.lag1,
+  month.lag0,
+  month.lag1,
+  year.lag0 = NULL,
+  year.lag1 = NULL,
+  wet.threshold,
+  extreme.threshold,
+  month.list,
+  sim.months,
+  sim.water.years,
+  year.idx,
+  sim.start.year,
   dry.spell.change,
   wet.spell.change,
-  SIM_LENGTH,
+  sim.length,
   alpha = 1
 )
 }
 \arguments{
-\item{PRCP_LAG0}{Numeric vector. Observed daily precipitation at lag 0
+\item{precip.lag0}{Numeric vector. Observed daily precipitation at lag 0
 (current day) used to estimate state transitions.}
 
-\item{PRCP_LAG1}{Numeric vector. Observed daily precipitation at lag 1
+\item{precip.lag1}{Numeric vector. Observed daily precipitation at lag 1
 (previous day) used to estimate state transitions.}
 
-\item{MONTH_LAG0}{Integer vector (1-12). Calendar month corresponding to
-PRCP_LAG0.}
+\item{month.lag0}{Integer vector (1-12). Calendar month corresponding to
+precip.lag0.}
 
-\item{MONTH_LAG1}{Integer vector (1-12). Calendar month corresponding to
-PRCP_LAG1.}
+\item{month.lag1}{Integer vector (1-12). Calendar month corresponding to
+precip.lag1.}
 
-\item{YEAR_LAG0}{Optional integer vector. Calendar year or water year
-corresponding to PRCP_LAG0. If provided together with YEAR_LAG1,
+\item{year.lag0}{Optional integer vector. Calendar year or water year
+corresponding to precip.lag0. If provided together with year.lag1,
 transitions are restricted to same-year pairs.}
 
-\item{YEAR_LAG1}{Optional integer vector. Calendar year or water year
-corresponding to PRCP_LAG1.}
+\item{year.lag1}{Optional integer vector. Calendar year or water year
+corresponding to precip.lag1.}
 
-\item{wet_threshold}{Numeric vector of length 12. Monthly precipitation
-thresholds separating dry and wet states, aligned to month_list.}
+\item{wet.threshold}{Numeric vector of length 12. Monthly precipitation
+thresholds separating dry and wet states, aligned to month.list.}
 
-\item{extreme_threshold}{Numeric vector of length 12. Monthly precipitation
-thresholds separating wet and very wet states, aligned to month_list.}
+\item{extreme.threshold}{Numeric vector of length 12. Monthly precipitation
+thresholds separating wet and very wet states, aligned to month.list.}
 
-\item{month_list}{Integer vector of length 12 defining the simulated ordering
+\item{month.list}{Integer vector of length 12 defining the simulated ordering
 of months (for example 1:12 for calendar years or c(10:12, 1:9) for
 October-start water years).}
 
-\item{MONTH_SIM}{Integer vector. Calendar month for each simulated day.}
+\item{sim.months}{Integer vector. Calendar month for each simulated day.}
 
-\item{WATER_YEAR_SIM}{Integer vector. Simulation year (calendar or water year,
+\item{sim.water.years}{Integer vector. Simulation year (calendar or water year,
 depending on regime) for each simulated day.}
 
-\item{y}{Integer. Index of the current simulated year (1-based).}
+\item{year.idx}{Integer. Index of the current simulated year (1-based).}
 
-\item{START_YEAR_SIM}{Integer. First year of the simulation, interpreted as a
+\item{sim.start.year}{Integer. First year of the simulation, interpreted as a
 calendar year or water year depending on the simulation regime.}
 
 \item{dry.spell.change}{Numeric vector of length 12. Monthly multiplicative
@@ -70,7 +70,7 @@ factors controlling dry-state persistence.}
 \item{wet.spell.change}{Numeric vector of length 12. Monthly multiplicative
 factors controlling wet-state persistence.}
 
-\item{SIM_LENGTH}{Integer. Total number of simulated days. Determines the
+\item{sim.length}{Integer. Total number of simulated days. Determines the
 length of the returned probability vectors.}
 
 \item{alpha}{Numeric. Base smoothing strength for transition-probability
@@ -79,7 +79,7 @@ alpha / sqrt(N_m), where N_m is the number of observed transitions
 in that month.}
 }
 \value{
-A named list of nine numeric vectors, each of length SIM_LENGTH,
+A named list of nine numeric vectors, each of length sim.length,
 representing time-varying transition probabilities:
 \itemize{
   \item p00_final: P(dry to dry)
@@ -106,7 +106,7 @@ with the effective smoothing strength decreasing automatically with the
 number of observed transitions per month.
 
 The function supports both calendar-year and water-year simulations.
-The regime is inferred from month_list: if month_list[1] == 1,
+The regime is inferred from month.list: if month.list[1] == 1,
 calendar-year logic is used; otherwise, water-year logic is assumed.
 
 Optional spell-persistence modifiers are applied to dry and wet states to

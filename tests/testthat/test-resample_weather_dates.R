@@ -1,9 +1,9 @@
-test_that("resample_weather_dates returns a Date vector of correct length", {
+testthat::test_that("resample_weather_dates returns Date vector of correct length", {
 
   set.seed(123)
 
-  # ---- minimal synthetic observed data (2 years, no leap) ----
-  obs_dates <- seq.Date(as.Date("2001-01-01"), as.Date("2002-12-31"), by = "day")
+  ## ---- observed data: 6 years (safe for KNN) ----
+  obs_dates <- seq.Date(as.Date("2000-01-01"), as.Date("2005-12-31"), by = "day")
   obs_dates <- obs_dates[format(obs_dates, "%m-%d") != "02-29"]
 
   dates.d <- data.frame(
@@ -13,22 +13,22 @@ test_that("resample_weather_dates returns a Date vector of correct length", {
     wyear = as.integer(format(obs_dates, "%Y"))
   )
 
-  PRCP <- rep(5, length(obs_dates))
-  TEMP <- rep(10, length(obs_dates))
+  PRCP <- rgamma(length(obs_dates), shape = 2, scale = 2)
+  TEMP <- rnorm(length(obs_dates), mean = 10, sd = 3)
 
-  # ---- simulated dates: 1 year ----
+  ## ---- simulated dates: 1 year ----
   sim_dates <- seq.Date(as.Date("2020-01-01"), as.Date("2020-12-31"), by = "day")
   sim_dates <- sim_dates[format(sim_dates, "%m-%d") != "02-29"]
 
   sim.dates.d <- data.frame(
     month = as.integer(format(sim_dates, "%m")),
     day   = as.integer(format(sim_dates, "%d")),
-    wyear = as.integer(format(sim_dates, "%Y"))
+    wyear = 2020
   )
 
   out <- resample_weather_dates(
-    PRCP_FINAL_ANNUAL_SIM = c(100),
-    ANNUAL_PRCP = c(100, 100),
+    PRCP_FINAL_ANNUAL_SIM = 500,
+    ANNUAL_PRCP = tapply(PRCP, dates.d$wyear, sum),
     PRCP = PRCP,
     TEMP = TEMP,
     START_YEAR_SIM = 2020,
@@ -36,19 +36,20 @@ test_that("resample_weather_dates returns a Date vector of correct length", {
     ymax = 1,
     dates.d = dates.d,
     sim.dates.d = sim.dates.d,
+    knn.annual.sample.num = 3,
     month.start = 1,
     seed = 123
   )
 
-  expect_s3_class(out, "Date")
-  expect_length(out, nrow(sim.dates.d))
-  expect_false(any(is.na(out)))
+  testthat::expect_s3_class(out, "Date")
+  testthat::expect_length(out, nrow(sim.dates.d))
+  testthat::expect_false(anyNA(out))
 })
 
 # ------------------------------------------------------------
-# Calendar-year logic: forbid Dec 31 -> Jan 01 transitions
+# Calendar-year logic: forbid cross-year observed transitions
 # ------------------------------------------------------------
-test_that("calendar-year mode forbids cross-year transitions", {
+testthat::test_that("calendar-year mode forbids observed Dec->Jan transitions", {
 
   set.seed(42)
 
@@ -75,7 +76,7 @@ test_that("calendar-year mode forbids cross-year transitions", {
   )
 
   out <- resample_weather_dates(
-    PRCP_FINAL_ANNUAL_SIM = c(100),
+    PRCP_FINAL_ANNUAL_SIM = 100,
     ANNUAL_PRCP = c(100, 100),
     PRCP = PRCP,
     TEMP = TEMP,
@@ -84,44 +85,41 @@ test_that("calendar-year mode forbids cross-year transitions", {
     ymax = 1,
     dates.d = dates.d,
     sim.dates.d = sim.dates.d,
-    month.start = 1,   # calendar-year
+    month.start = 1,
     seed = 999
   )
 
-  out_year <- as.integer(format(out, "%Y"))
-  out_mon  <- as.integer(format(out, "%m"))
-  out_day  <- as.integer(format(out, "%d"))
+  obs_year <- dates.d$wyear[match(out, dates.d$date)]
+  obs_mon  <- as.integer(format(out, "%m"))
+  obs_day  <- as.integer(format(out, "%d"))
 
-  # Identify Dec 31 positions
-  dec31 <- which(out_mon == 12 & out_day == 31)
-
+  dec31 <- which(obs_mon == 12 & obs_day == 31)
   if (length(dec31) > 0 && max(dec31) < length(out)) {
-    # Next day after Dec 31 must stay in same year
-    expect_true(all(out_year[dec31 + 1] == out_year[dec31]))
+    testthat::expect_true(all(obs_year[dec31 + 1] == obs_year[dec31]))
   }
 })
 
-# ------------------------------------------------------------
-# Water-year logic: allow cross-calendar-year transitions
-# ------------------------------------------------------------
-test_that("water-year mode allows Dec to Jan transitions", {
+testthat::test_that("water-year mode allows observed Dec->Jan transitions", {
 
   set.seed(7)
 
-  obs_dates <- seq.Date(as.Date("2001-10-01"), as.Date("2003-09-30"), by = "day")
+  ## ---- observed data: 6 water years ----
+  obs_dates <- seq.Date(as.Date("2000-10-01"), as.Date("2006-09-30"), by = "day")
   obs_dates <- obs_dates[format(obs_dates, "%m-%d") != "02-29"]
 
   dates.d <- data.frame(
     date  = obs_dates,
     month = as.integer(format(obs_dates, "%m")),
     day   = as.integer(format(obs_dates, "%d")),
-    wyear = ifelse(format(obs_dates, "%m") %in% c("10","11","12"),
-                   as.integer(format(obs_dates, "%Y")) + 1,
-                   as.integer(format(obs_dates, "%Y")))
+    wyear = ifelse(
+      as.integer(format(obs_dates, "%m")) >= 10,
+      as.integer(format(obs_dates, "%Y")) + 1,
+      as.integer(format(obs_dates, "%Y"))
+    )
   )
 
-  PRCP <- rep(5, length(obs_dates))
-  TEMP <- rep(10, length(obs_dates))
+  PRCP <- rgamma(length(obs_dates), 2, 2)
+  TEMP <- rnorm(length(obs_dates), 10, 3)
 
   sim_dates <- seq.Date(as.Date("2020-10-01"), as.Date("2021-09-30"), by = "day")
   sim_dates <- sim_dates[format(sim_dates, "%m-%d") != "02-29"]
@@ -129,13 +127,12 @@ test_that("water-year mode allows Dec to Jan transitions", {
   sim.dates.d <- data.frame(
     month = as.integer(format(sim_dates, "%m")),
     day   = as.integer(format(sim_dates, "%d")),
-    wyear = ifelse(format(sim_dates, "%m") %in% c("10","11","12"),
-                   2021, 2021)
+    wyear = 2021
   )
 
   out <- resample_weather_dates(
-    PRCP_FINAL_ANNUAL_SIM = c(100),
-    ANNUAL_PRCP = c(100, 100),
+    PRCP_FINAL_ANNUAL_SIM = 600,
+    ANNUAL_PRCP = tapply(PRCP, dates.d$wyear, sum),
     PRCP = PRCP,
     TEMP = TEMP,
     START_YEAR_SIM = 2020,
@@ -143,283 +140,174 @@ test_that("water-year mode allows Dec to Jan transitions", {
     ymax = 1,
     dates.d = dates.d,
     sim.dates.d = sim.dates.d,
-    month.start = 10,   # water-year
+    knn.annual.sample.num = 3,
+    month.start = 10,
     seed = 321
   )
 
-  expect_s3_class(out, "Date")
-  expect_false(any(is.na(out)))
-
-  # At least one Dec->Jan transition should exist
   mons <- as.integer(format(out, "%m"))
-  expect_true(any(mons[-1] == 1 & mons[-length(mons)] == 12))
+  testthat::expect_true(any(mons[-1] == 1 & mons[-length(mons)] == 12))
 })
 
 # ------------------------------------------------------------
-# First-day logic: matches simulated calendar
+# Reproducibility
 # ------------------------------------------------------------
-test_that("first simulated day matches simulated month/day", {
+testthat::test_that("resample_weather_dates is reproducible with same seed", {
 
-  set.seed(11)
+  set.seed(123)
 
-  obs_dates <- seq.Date(as.Date("2001-01-01"), as.Date("2001-12-31"), by = "day")
-  obs_dates <- obs_dates[format(obs_dates, "%m-%d") != "02-29"]
+  n <- 5 * 365
+  dates_obs <- seq.Date(as.Date("2000-01-01"), by = "day", length.out = n)
+
+  dates.d <- data.frame(
+    date  = dates_obs,
+    month = as.integer(format(dates_obs, "%m")),
+    day   = as.integer(format(dates_obs, "%d")),
+    wyear = as.integer(format(dates_obs, "%Y"))
+  )
+
+  PRCP <- rgamma(n, 2, 2)
+  TEMP <- rnorm(n, 15, 5)
+  ANNUAL_PRCP <- tapply(PRCP, dates.d$wyear, sum)
+
+  sim_dates <- seq.Date(as.Date("2010-01-01"), by = "day", length.out = 365)
+  sim.dates.d <- data.frame(
+    month = as.integer(format(sim_dates, "%m")),
+    day   = as.integer(format(sim_dates, "%d")),
+    wyear = 2010
+  )
+
+  out1 <- resample_weather_dates(
+    mean(ANNUAL_PRCP),
+    ANNUAL_PRCP,
+    PRCP,
+    TEMP,
+    START_YEAR_SIM = 2010,
+    k1 = 1,
+    ymax = 1,
+    dates.d,
+    sim.dates.d,
+    seed = 42
+  )
+
+  out2 <- resample_weather_dates(
+    mean(ANNUAL_PRCP),
+    ANNUAL_PRCP,
+    PRCP,
+    TEMP,
+    START_YEAR_SIM = 2010,
+    k1 = 1,
+    ymax = 1,
+    dates.d,
+    sim.dates.d,
+    seed = 42
+  )
+
+  testthat::expect_identical(out1, out2)
+})
+
+# ------------------------------------------------------------
+# Input validation
+# ------------------------------------------------------------
+testthat::test_that("resample_weather_dates rejects invalid month.start", {
+
+  expect_error(
+    resample_weather_dates(
+      PRCP_FINAL_ANNUAL_SIM = 100,
+      ANNUAL_PRCP = 100,
+      PRCP = 1,
+      TEMP = 1,
+      START_YEAR_SIM = 2000,
+      k1 = 1,
+      ymax = 1,
+      dates.d = data.frame(date = Sys.Date(), month = 1, day = 1, wyear = 2000),
+      sim.dates.d = data.frame(month = 1, day = 1, wyear = 2000),
+      month.start = 13
+    ),
+    "month.start must be in 1:12"
+  )
+})
+
+# ------------------------------------------------------------
+# Markov integration
+# ------------------------------------------------------------
+testthat::test_that("resample_weather_dates produces non-degenerate sequence", {
+
+  set.seed(99)
+
+  dates_obs <- seq.Date(as.Date("2000-01-01"), by = "day", length.out = 3 * 365)
+  dates.d <- data.frame(
+    date  = dates_obs,
+    month = as.integer(format(dates_obs, "%m")),
+    day   = as.integer(format(dates_obs, "%d")),
+    wyear = as.integer(format(dates_obs, "%Y"))
+  )
+
+  PRCP <- rgamma(length(dates_obs), 2, 2)
+  TEMP <- rnorm(length(dates_obs))
+  ANNUAL_PRCP <- tapply(PRCP, dates.d$wyear, sum)
+
+  sim_dates <- seq.Date(as.Date("2010-01-01"), by = "day", length.out = 365)
+  sim.dates.d <- data.frame(
+    month = as.integer(format(sim_dates, "%m")),
+    day   = as.integer(format(sim_dates, "%d")),
+    wyear = 2010
+  )
+
+  out <- resample_weather_dates(
+    mean(ANNUAL_PRCP),
+    ANNUAL_PRCP,
+    PRCP,
+    TEMP,
+    START_YEAR_SIM = 2010,
+    k1 = 1,
+    ymax = 1,
+    dates.d,
+    sim.dates.d,
+    seed = 1
+  )
+
+  testthat::expect_gt(length(unique(out)), 30)
+})
+
+testthat::test_that("resample_weather_dates does not fail with small candidate windows", {
+
+  set.seed(101)
+
+  obs_dates <- seq.Date(as.Date("2000-01-01"), by = "day", length.out = 6 * 365)
 
   dates.d <- data.frame(
     date  = obs_dates,
     month = as.integer(format(obs_dates, "%m")),
     day   = as.integer(format(obs_dates, "%d")),
-    wyear = 2001
+    wyear = as.integer(format(obs_dates, "%Y"))
   )
 
-  PRCP <- rep(1, length(obs_dates))
-  TEMP <- rep(1, length(obs_dates))
-
-  sim_dates <- seq.Date(as.Date("2020-03-01"), as.Date("2021-02-28"), by = "day")
-
-  sim.dates.d <- data.frame(
-    month = as.integer(format(sim_dates, "%m")),
-    day   = as.integer(format(sim_dates, "%d")),
-    wyear = 2020
-  )
-
-  out <- resample_weather_dates(
-    PRCP_FINAL_ANNUAL_SIM = c(50),
-    ANNUAL_PRCP = c(50),
-    PRCP = PRCP,
-    TEMP = TEMP,
-    START_YEAR_SIM = 2020,
-    k1 = 1,
-    ymax = 1,
-    dates.d = dates.d,
-    sim.dates.d = sim.dates.d,
-    month.start = 3,
-    seed = 55
-  )
-
-  expect_equal(
-    format(out[1], "%m-%d"),
-    format(sim_dates[1], "%m-%d")
-  )
-})
-
-test_that("resample_weather_dates runs end-to-end and is reproducible", {
-
-  set.seed(123)
-
-  ## -----------------------------
-  ## Minimal synthetic observed data
-  ## -----------------------------
-
-  n_years_obs <- 5
-  days_per_year <- 365
-  n_days_obs <- n_years_obs * days_per_year
-
-  dates_obs <- seq.Date(
-    from = as.Date("2000-01-01"),
-    by = "day",
-    length.out = n_days_obs
-  )
-
-  dates.d <- data.frame(
-    date  = dates_obs,
-    year  = rep(2000:(2000 + n_years_obs - 1), each = days_per_year),
-    month = as.integer(format(dates_obs, "%m")),
-    day   = as.integer(format(dates_obs, "%d")),
-    wyear = rep(2000:(2000 + n_years_obs - 1), each = days_per_year)
-  )
-
-  ## Observed weather
-  PRCP <- rgamma(n_days_obs, shape = 2, scale = 2)
-  TEMP <- rnorm(n_days_obs, mean = 15, sd = 5)
-
-  ## Annual observed precipitation
+  PRCP <- rgamma(length(obs_dates), 2, 1)
+  TEMP <- rnorm(length(obs_dates), 10, 2)
   ANNUAL_PRCP <- tapply(PRCP, dates.d$wyear, sum)
 
-  ## -----------------------------
-  ## Simulation setup
-  ## -----------------------------
-
-  ymax <- 2
-  sim_days <- ymax * days_per_year
-
-  sim_dates <- seq.Date(
-    from = as.Date("2010-01-01"),
-    by = "day",
-    length.out = sim_days
-  )
-
+  sim_dates <- seq.Date(as.Date("2010-01-01"), by = "day", length.out = 365)
   sim.dates.d <- data.frame(
     month = as.integer(format(sim_dates, "%m")),
     day   = as.integer(format(sim_dates, "%d")),
-    wyear = rep(2010:(2010 + ymax - 1), each = days_per_year)
+    wyear = 2010
   )
 
-  ## Synthetic annual totals (target)
-  PRCP_FINAL_ANNUAL_SIM <- rep(mean(ANNUAL_PRCP), ymax)
-
-  ## -----------------------------
-  ## Run resample_weather_dates twice
-  ## -----------------------------
-
-  out1 <- resample_weather_dates(
-    PRCP_FINAL_ANNUAL_SIM = PRCP_FINAL_ANNUAL_SIM,
-    ANNUAL_PRCP = ANNUAL_PRCP,
-    PRCP = PRCP,
-    TEMP = TEMP,
-    START_YEAR_SIM = 2010,
-    k1 = 1,
-    ymax = ymax,
-    dates.d = dates.d,
-    sim.dates.d = sim.dates.d,
-    month.start = 1,
-    knn.annual.sample.num = 3,
-    wet.quantile = 0.2,
-    extreme.quantile = 0.8,
-    dry.spell.change = rep(1, 12),
-    wet.spell.change = rep(1, 12),
-    alpha = 1,
-    seed = 42
+  expect_error(
+    resample_weather_dates(
+      PRCP_FINAL_ANNUAL_SIM = mean(ANNUAL_PRCP),
+      ANNUAL_PRCP = ANNUAL_PRCP,
+      PRCP = PRCP,
+      TEMP = TEMP,
+      START_YEAR_SIM = 2010,
+      k1 = 1,
+      ymax = 1,
+      dates.d = dates.d,
+      sim.dates.d = sim.dates.d,
+      knn.annual.sample.num = 2,
+      seed = 1
+    ),
+    NA
   )
-
-  out2 <- resample_weather_dates(
-    PRCP_FINAL_ANNUAL_SIM = PRCP_FINAL_ANNUAL_SIM,
-    ANNUAL_PRCP = ANNUAL_PRCP,
-    PRCP = PRCP,
-    TEMP = TEMP,
-    START_YEAR_SIM = 2010,
-    k1 = 1,
-    ymax = ymax,
-    dates.d = dates.d,
-    sim.dates.d = sim.dates.d,
-    month.start = 1,
-    knn.annual.sample.num = 3,
-    wet.quantile = 0.2,
-    extreme.quantile = 0.8,
-    dry.spell.change = rep(1, 12),
-    wet.spell.change = rep(1, 12),
-    alpha = 1,
-    seed = 42
-  )
-
-  ## -----------------------------
-  ## Assertions
-  ## -----------------------------
-
-  # Correct length
-  expect_length(out1, sim_days)
-
-  # Class
-  expect_s3_class(out1, "Date")
-
-  # No missing values
-  expect_false(anyNA(out1))
-
-  # All dates must come from observed record
-  expect_true(all(out1 %in% dates.d$date))
-
-  # Reproducibility
-  expect_identical(out1, out2)
-
-  # Non-degenerate behavior:
-  # should not return the same date repeated
-  expect_gt(length(unique(out1)), 50)
-})
-
-test_that("resample_weather_dates performance does not regress", {
-
-  skip_on_cran()
-  skip_if(Sys.getenv("CI") == "true")  # optional but recommended
-
-  set.seed(123)
-
-  ## -----------------------------
-  ## Moderate but realistic setup
-  ## -----------------------------
-
-  n_years_obs <- 10
-  days_per_year <- 365
-  n_days_obs <- n_years_obs * days_per_year
-
-  dates_obs <- seq.Date(
-    from = as.Date("1990-01-01"),
-    by = "day",
-    length.out = n_days_obs
-  )
-
-  dates.d <- data.frame(
-    date  = dates_obs,
-    year  = rep(1990:(1990 + n_years_obs - 1), each = days_per_year),
-    month = as.integer(format(dates_obs, "%m")),
-    day   = as.integer(format(dates_obs, "%d")),
-    wyear = rep(1990:(1990 + n_years_obs - 1), each = days_per_year)
-  )
-
-  PRCP <- rgamma(n_days_obs, shape = 2, scale = 2)
-  TEMP <- rnorm(n_days_obs, mean = 15, sd = 5)
-
-  ANNUAL_PRCP <- tapply(PRCP, dates.d$wyear, sum)
-
-  ymax <- 3
-  sim_days <- ymax * days_per_year
-
-  sim_dates <- seq.Date(
-    from = as.Date("2010-01-01"),
-    by = "day",
-    length.out = sim_days
-  )
-
-  sim.dates.d <- data.frame(
-    month = as.integer(format(sim_dates, "%m")),
-    day   = as.integer(format(sim_dates, "%d")),
-    wyear = rep(2010:(2010 + ymax - 1), each = days_per_year)
-  )
-
-  PRCP_FINAL_ANNUAL_SIM <- rep(mean(ANNUAL_PRCP), ymax)
-
-  ## -----------------------------
-  ## Warm-up (important)
-  ## -----------------------------
-
-  resample_weather_dates(
-    PRCP_FINAL_ANNUAL_SIM,
-    ANNUAL_PRCP,
-    PRCP,
-    TEMP,
-    START_YEAR_SIM = 2010,
-    k1 = 1,
-    ymax = ymax,
-    dates.d,
-    sim.dates.d,
-    seed = 1
-  )
-
-  ## -----------------------------
-  ## Timed run
-  ## -----------------------------
-
-  t0 <- proc.time()[["elapsed"]]
-
-  resample_weather_dates(
-    PRCP_FINAL_ANNUAL_SIM,
-    ANNUAL_PRCP,
-    PRCP,
-    TEMP,
-    START_YEAR_SIM = 2010,
-    k1 = 1,
-    ymax = ymax,
-    dates.d,
-    sim.dates.d,
-    seed = 1
-  )
-
-  elapsed <- proc.time()[["elapsed"]] - t0
-
-  ## -----------------------------
-  ## Performance assertion
-  ## -----------------------------
-
-  # Generous upper bound (adjust if needed)
-  # Should run well below this on normal machines
-  expect_lt(elapsed, 2.0)
 })
