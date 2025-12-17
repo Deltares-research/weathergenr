@@ -156,27 +156,27 @@
 #' @importFrom dplyr mutate
 
 generateWeatherSeries <- function(
-    weather.data = NULL, #!!!
+    weather.data = NULL,
     weather.grid = NULL,
-    weather.date = NULL, #!
-    variables = NULL, #
+    weather.date = NULL,
+    variables = NULL,
     sim.year.num = NULL,
-    sim.year.start = 2020, #
+    sim.year.start = 2020,
     month.start = 1, #
-    realization.num = 5, #
-    warm.variable = "precip", #!
-    warm.signif.level = 0.90,  #
-    warm.sample.num = 5000,    #
-    warm.subset.criteria = list(mean = 0.1, sd = 0.2, min = 0.3,   #
-       max = 0.3, sig.thr = 0.5, nsig.thr = 1.5),
-    knn.sample.num = 120, #
-    mc.wet.quantile = 0.3, #
-    mc.extreme.quantile = 0.8, #
-    dry.spell.change = rep(1, 12), #
-    wet.spell.change = rep(1, 12), #
-    output.path = tempdir(), #
-    seed = NULL, #
-    compute.parallel = FALSE, #
+    realization.num = 5,
+    warm.variable = "precip",
+    warm.signif.level = 0.90,
+    warm.sample.num = 5000,
+    warm.subset.criteria = list(mean = 0.1, sd = 0.1, min = 0.1,
+       max = 0.1, sig.thr = 0.8, nsig.thr = 1.5),
+    knn.sample.num = 120,
+    mc.wet.quantile = 0.3,
+    mc.extreme.quantile = 0.8,
+    dry.spell.change = rep(1, 12),
+    wet.spell.change = rep(1, 12),
+    output.path = tempdir(),
+    seed = NULL,
+    compute.parallel = FALSE,
     num.cores = NULL
 ) {
 
@@ -447,7 +447,7 @@ generateWeatherSeries <- function(
 
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
 
-    resample_weather_dates(
+    resampleDates(
       PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],
       ANNUAL_PRCP = warm_variable,
       PRCP = climate_d_aavg$precip,

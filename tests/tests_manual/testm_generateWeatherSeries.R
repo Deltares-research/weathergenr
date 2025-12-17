@@ -10,13 +10,13 @@ library(microbenchmark)
 
 
 # Read-in forcing data & geometry
-month.start <- 1
+month.start <- 11
 output_path <- paste0("C:/TEMP/", month.start, "/")
 
 
-#case_path <- "C:/Users/taner/WS/SpongeWorks/"
-#ncfile <- paste0(case_path, "data/meteo/extract_historical.nc")
-#ncdata <- read_netcdf(ncfile)
+case_path <- "C:/Users/taner/WS/SpongeWorks/"
+ncfile <- paste0(case_path, "data/meteo/extract_historical.nc")
+ncdata <- read_netcdf(ncfile)
 
 #case_path <- "C:/Users/taner/WS/SpongeWorks/"
 #nc_eops <- paste0(case_path, "data/meteo/eobs_v31_1950_2024_allvars_clean.nc")
@@ -25,8 +25,8 @@ output_path <- paste0("C:/TEMP/", month.start, "/")
 #                      var_rename = c(tn = "temp_min", tx = "temp_max"))
 
 # Test using default ntoum data (Liberia)
-ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-ncdata <- read_netcdf(ncfile)
+#ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+#ncdata <- read_netcdf(ncfile)
 
 
 #### Define all variables in advance for testing
@@ -41,7 +41,7 @@ sim.year.start <- 2020
 realization.num <- 3
 warm.variable <- "precip"
 warm.signif.level <- 0.80
-warm.sample.num <- 10000
+warm.sample.num <- 20000
 warm.subset.criteria <- list(mean = 0.05, sd = 0.05, min = 0.05, max = 0.05, sig.thr = 0.8, nsig.thr = 1.5)
 knn.sample.num <- 100
 mc.extreme.quantile <- 0.8

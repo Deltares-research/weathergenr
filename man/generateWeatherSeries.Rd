@@ -16,7 +16,7 @@ generateWeatherSeries(
   warm.variable = "precip",
   warm.signif.level = 0.9,
   warm.sample.num = 5000,
-  warm.subset.criteria = list(mean = 0.1, sd = 0.2, min = 0.3, max = 0.3, sig.thr = 0.5,
+  warm.subset.criteria = list(mean = 0.1, sd = 0.1, min = 0.1, max = 0.1, sig.thr = 0.8,
     nsig.thr = 1.5),
   knn.sample.num = 120,
   mc.wet.quantile = 0.3,
