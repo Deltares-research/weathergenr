@@ -130,22 +130,24 @@ monthly_markov_probs <- function(
     }
   }
 
-
-  K <- 3L
   water.year <- (month_list[1] != 1)
-
   target_year <- if (water.year) (START_YEAR_SIM + y) else (START_YEAR_SIM + y - 1)
 
-  ## -------------------------------------------------
-  ## Strong lag guard
-  ## -------------------------------------------------
+  # Check if spell adjustments should be applied
+  use_spell_adjust <- any(abs(dry.spell.change - 1) > 1e-10) ||
+    any(abs(wet.spell.change - 1) > 1e-10)
+
+  # Strong lag guard
   if (!is.null(YEAR_LAG0) && !is.null(YEAR_LAG1)) {
+
     keep <- YEAR_LAG0 == YEAR_LAG1
     PRCP_LAG0  <- PRCP_LAG0[keep]
     PRCP_LAG1  <- PRCP_LAG1[keep]
     MONTH_LAG0 <- MONTH_LAG0[keep]
     MONTH_LAG1 <- MONTH_LAG1[keep]
+
   } else if (!water.year) {
+
     keep <- MONTH_LAG0 >= MONTH_LAG1
     PRCP_LAG0  <- PRCP_LAG0[keep]
     PRCP_LAG1  <- PRCP_LAG1[keep]
@@ -153,37 +155,36 @@ monthly_markov_probs <- function(
     MONTH_LAG1 <- MONTH_LAG1[keep]
   }
 
-  ## -------------------------------------------------
-  ## Precompute states ONCE
-  ## -------------------------------------------------
-  state_lag1 <- integer(length(PRCP_LAG1))
-  state_lag0 <- integer(length(PRCP_LAG0))
+  # Vectorized state classification
 
-  for (m in seq_along(month_list)) {
-    mm <- month_list[m]
-    wet_thr <- wet_threshold[m]
-    ext_thr <- extreme_threshold[m]
+  # Map each observation to month index
+  idx_lag1 <- match(MONTH_LAG1, month_list)
+  idx_lag0 <- match(MONTH_LAG0, month_list)
 
-    if (!is.finite(wet_thr)) wet_thr <- quantile(PRCP_LAG1, 0.2, na.rm = TRUE)
-    if (!is.finite(ext_thr)) {
-      pos <- PRCP_LAG1[PRCP_LAG1 > 0]
-      if (!length(pos)) pos <- PRCP_LAG1
-      ext_thr <- quantile(pos, 0.8, na.rm = TRUE)
-    }
+  # Get thresholds for each observation
+  wet_thr_lag1 <- wet_threshold[idx_lag1]
+  ext_thr_lag1 <- extreme_threshold[idx_lag1]
+  wet_thr_lag0 <- wet_threshold[idx_lag0]
+  ext_thr_lag0 <- extreme_threshold[idx_lag0]
 
-    i1 <- which(MONTH_LAG1 == mm)
-    i0 <- which(MONTH_LAG0 == mm)
+  # Handle non-finite thresholds (fallback to global)
+  if (any(!is.finite(wet_thr_lag1)) || any(!is.finite(ext_thr_lag1))) {
+    global_wet <- quantile(PRCP_LAG1, 0.2, na.rm = TRUE)
+    pos <- PRCP_LAG1[PRCP_LAG1 > 0]
+    global_ext <- quantile(if(length(pos)) pos else PRCP_LAG1, 0.8, na.rm = TRUE)
 
-    state_lag1[i1] <- ifelse(
-      PRCP_LAG1[i1] <= wet_thr, 0L,
-      ifelse(PRCP_LAG1[i1] <= ext_thr, 1L, 2L)
-    )
-
-    state_lag0[i0] <- ifelse(
-      PRCP_LAG0[i0] <= wet_thr, 0L,
-      ifelse(PRCP_LAG0[i0] <= ext_thr, 1L, 2L)
-    )
+    wet_thr_lag1[!is.finite(wet_thr_lag1)] <- global_wet
+    ext_thr_lag1[!is.finite(ext_thr_lag1)] <- global_ext
+    wet_thr_lag0[!is.finite(wet_thr_lag0)] <- global_wet
+    ext_thr_lag0[!is.finite(ext_thr_lag0)] <- global_ext
   }
+
+  # Classify states (vectorized - single pass)
+  state_lag1 <- ifelse(PRCP_LAG1 <= wet_thr_lag1, 0L,
+                       ifelse(PRCP_LAG1 <= ext_thr_lag1, 1L, 2L))
+
+  state_lag0 <- ifelse(PRCP_LAG0 <= wet_thr_lag0, 0L,
+                       ifelse(PRCP_LAG0 <= ext_thr_lag0, 1L, 2L))
 
   ## -------------------------------------------------
   ## Output containers
@@ -215,7 +216,7 @@ monthly_markov_probs <- function(
     s1 <- state_lag1[x]
     s0 <- state_lag0[x]
 
-    ## ---- raw counts ----
+    ## ---- Raw transition counts ----
     n00 <- sum(s1 == 0 & s0 == 0)
     n01 <- sum(s1 == 0 & s0 == 1)
     n02 <- sum(s1 == 0 & s0 == 2)
@@ -228,7 +229,7 @@ monthly_markov_probs <- function(
     n21 <- sum(s1 == 2 & s0 == 1)
     n22 <- sum(s1 == 2 & s0 == 2)
 
-    ## ---- Dirichlet smoothing ----
+    ## ---- Dirichlet smoothing (applied BEFORE spell adjustment) ----
     p_dry <- c(n00, n01, n02) + alpha_m
     p_wet <- c(n10, n11, n12) + alpha_m
     p_vwt <- c(n20, n21, n22) + alpha_m
@@ -238,30 +239,40 @@ monthly_markov_probs <- function(
     p_vwt <- p_vwt / sum(p_vwt)
 
     ## -------------------------------------------------
-    ## SPELL ADJUSTMENTS
+    ## SPELL ADJUSTMENTS (conditional on user input)
     ## -------------------------------------------------
-    # ds <- dry.spell.change[m]; if (!is.finite(ds) || ds <= 0) ds <- 1
-    # ws <- wet.spell.change[m]; if (!is.finite(ws) || ws <= 0) ws <- 1
-    #
-    # # Dry row
-    # p_dry <- normalize_probs(
-    #   c(p_dry[1], p_dry[2] / ds, p_dry[3] / ds),
-    #   fallback = c(1, 0, 0)
-    # )
-    #
-    # # Wet row
-    # p_wet <- normalize_probs(
-    #   c(p_wet[1] / ws, p_wet[2], p_wet[3]),
-    #   fallback = c(0, 1, 0)
-    # )
-    #
-    # # Very wet row (safety)
-    # p_vwt <- normalize_probs(
-    #   p_vwt,
-    #   fallback = c(0, 0, 1)
-    # )
+    if (use_spell_adjust) {
+      ds <- dry.spell.change[m]
+      ws <- wet.spell.change[m]
 
-    ## ---- assign ----
+      # Validate factors for this month
+      if (!is.finite(ds) || ds <= 0) ds <- 1
+      if (!is.finite(ws) || ws <= 0) ws <- 1
+
+      # Apply dry spell adjustment only if factor differs from 1
+      if (abs(ds - 1) > 1e-10) {
+        # Reduce transitions away from dry state
+        p_dry <- normalize_probs(
+          c(p_dry[1], p_dry[2] / ds, p_dry[3] / ds),
+          fallback = c(1, 0, 0)
+        )
+      }
+
+      # Apply wet spell adjustment only if factor differs from 1
+      if (abs(ws - 1) > 1e-10) {
+        # Reduce transition to dry state from wet
+        p_wet <- normalize_probs(
+          c(p_wet[1] / ws, p_wet[2], p_wet[3]),
+          fallback = c(0, 1, 0)
+        )
+      }
+
+      # Very wet row: no adjustment applied (already normalized)
+    }
+
+    ## ---- Assign probabilities to output vectors ----
+    # CRITICAL: This must be OUTSIDE the spell adjustment if block
+    # so probabilities are assigned whether or not adjustments are applied
     p00_final[r] <- p_dry[1]; p01_final[r] <- p_dry[2]; p02_final[r] <- p_dry[3]
     p10_final[r] <- p_wet[1]; p11_final[r] <- p_wet[2]; p12_final[r] <- p_wet[3]
     p20_final[r] <- p_vwt[1]; p21_final[r] <- p_vwt[2]; p22_final[r] <- p_vwt[3]
@@ -273,5 +284,4 @@ monthly_markov_probs <- function(
     p20_final = p20_final, p21_final = p21_final, p22_final = p22_final
   )
 }
-
 
