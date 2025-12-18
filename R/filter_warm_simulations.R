@@ -135,9 +135,8 @@ filter_warm_simulations <- function(series.obs = NULL,
                                     output.path = NULL,
                                     padding = TRUE,
                                     bounds = list(
-                                      mean = 0.1, sd = 0.2, min = 0.2, max = 0.2,
-                                      sig.thr = 0.5, nsig.thr = 1.5
-                                    ),
+                                      mean = 0.1, sd = 0.1, min = 0.2, max = 0.2,
+                                      sig.thr = 0.8, nsig.thr = 1.5),
                                     plot.prefix = "warm",
                                     series.units = "mm/year",
                                     series.conversion = 365) {
