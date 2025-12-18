@@ -10,13 +10,13 @@ library(microbenchmark)
 
 
 # Read-in forcing data & geometry
-month.start <- 11
-output_path <- paste0("C:/TEMP/", month.start, "/")
+month.start <- 1
+output_path <- paste0("C:/TEMP/ntoum/", month.start, "/")
 
 
-case_path <- "C:/Users/taner/WS/SpongeWorks/"
-ncfile <- paste0(case_path, "data/meteo/extract_historical.nc")
-ncdata <- read_netcdf(ncfile)
+#case_path <- "C:/Users/taner/WS/SpongeWorks/"
+#ncfile <- paste0(case_path, "data/meteo/extract_historical.nc")
+#ncdata <- read_netcdf(ncfile)
 
 #case_path <- "C:/Users/taner/WS/SpongeWorks/"
 #nc_eops <- paste0(case_path, "data/meteo/eobs_v31_1950_2024_allvars_clean.nc")
@@ -25,8 +25,8 @@ ncdata <- read_netcdf(ncfile)
 #                      var_rename = c(tn = "temp_min", tx = "temp_max"))
 
 # Test using default ntoum data (Liberia)
-#ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-#ncdata <- read_netcdf(ncfile)
+ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+ncdata <- read_netcdf(ncfile)
 
 
 #### Define all variables in advance for testing
@@ -36,7 +36,7 @@ weather.grid <- ncdata$grid
 weather.date <- ncdata$date
 variables <- c("precip", "temp", "temp_min", "temp_max")
 variable.labels <- variables
-sim.year.num <- 30
+sim.year.num <- 20
 sim.year.start <- 2020
 realization.num <- 3
 warm.variable <- "precip"
@@ -49,7 +49,7 @@ dry.spell.change <- rep(1, 12)
 wet.spell.change <- rep(1, 12)
 output.path <- output_path
 seed <- 1000
-compute.parallel<- FALSE
+compute.parallel <- TRUE
 num.cores <- NULL
 
 
@@ -74,7 +74,7 @@ stochastic_weather <- generateWeatherSeries(
   dry.spell.change = dry.spell.change,
   wet.spell.change = wet.spell.change,
   output.path = output.path,
-  compute.parallel = FALSE,
+  compute.parallel = compute.parallel,
   num.cores = num.cores,
   seed = seed)
 

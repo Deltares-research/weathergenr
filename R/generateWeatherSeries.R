@@ -386,40 +386,38 @@ generateWeatherSeries <- function(
     sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = warm_seed)
 
   # wavelet analysis on simulated series
-  sim_power <- sapply(1:warm.sample.num, function(x) {
-    wavelet_spectral_analysis(sim_annual[, x], signif.level = warm.signif.level)$GWS})
+  #sim_power <- sapply(1:warm.sample.num, function(x) {
+  #  wavelet_spectral_analysis(sim_annual[, x], signif.level = warm.signif.level)$GWS})
 
 
   # WAVELET POWER ANALYSIS
   # ========================================
   logger::log_info("[WARM] Computing wavelet power spectra for {warm.sample.num} simulations")
 
-  #if (compute.parallel && warm.sample.num > 20000) {
+  if (compute.parallel && warm.sample.num > 20000) {
 
-#    logger::log_info("[WARM] Using parallel computation for wavelet analysis")
+    logger::log_info("[WARM] Using parallel computation for wavelet analysis")
 
- #   parallel::clusterExport(cl,
-  #                          varlist = c("sim_annual", "warm.signif.level"),
-  #                          envir = environment())
-  #  parallel::clusterEvalQ(cl, library(weathergenr))
+     parallel::clusterExport(cl,
+                            varlist = c("sim_annual", "warm.signif.level"),
+                            envir = environment())
+    parallel::clusterEvalQ(cl, library(weathergenr))
 
-   # sim_power <- foreach::foreach(
-   #   x = 1:warm.sample.num,
-   #   .combine = cbind,
-   #   .packages = "weathergenr"
-  #  ) %dopar% {
-  #    wavelet_spectral_analysis(sim_annual[, x],
-   #                             signif.level = warm.signif.level)$GWS
-  #  }
+    sim_power <- foreach::foreach(
+      x = 1:warm.sample.num,
+      .combine = cbind,
+      .packages = "weathergenr"
+    ) %dopar% {
+      wavelet_spectral_analysis(sim_annual[, x],
+                               signif.level = warm.signif.level)$GWS
+    }
 
-  #} else {
-  #  sim_power <- sapply(1:warm.sample.num, function(x) {
-  #    wavelet_spectral_analysis(sim_annual[, x],
-  #                              signif.level = warm.signif.level)$GWS
-  #  })
-  #}
-
-  logger::log_info("[WARM] Subset bounds: {paste(names(warm.subset.criteria), unlist(warm.subset.criteria), sep = '=', collapse = ', ')}")
+  } else {
+    sim_power <- sapply(1:warm.sample.num, function(x) {
+      wavelet_spectral_analysis(sim_annual[, x],
+                                signif.level = warm.signif.level)$GWS
+    })
+  }
 
   sim_annual_sub <- filter_warm_simulations(
       series.obs = warm_variable,

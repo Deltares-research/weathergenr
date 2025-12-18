@@ -90,23 +90,29 @@ resample_weather_dates <- function(
     seed = NULL
 ) {
 
+  # Checks and controls
   if (!month.start %in% 1:12) stop("month.start must be in 1:12")
-  water.year <- (month.start != 1)
 
-  if (!is.null(seed)) {
+  # SET RNG
+  base_seed <- if (is.null(seed)) NULL else seed + k1
+
+  if (!is.null(base_seed)) {
     old_seed <- .Random.seed
     on.exit({ .Random.seed <<- old_seed }, add = TRUE)
-    set.seed(seed + k1)
+    set.seed(base_seed)
   }
 
+  # SET Date logic and parameters
+  water.year <- (month.start != 1)
   month_list <- if (month.start == 1) 1:12 else c(month.start:12, 1:(month.start - 1))
+  month_to_idx <- integer(12)
+  month_to_idx[month_list] <- seq_along(month_list)
 
   dates_obs  <- dates.d$date
   months_obs <- dates.d$month
   days_obs   <- dates.d$day
   wyears_obs <- dates.d$wyear
-
-  water_years_obs <- dates.d$wyear[dates.d$month == month.start & dates.d$day == 1]
+  water_years_obs <- sort(unique(dates.d$wyear))
 
   sim_length <- nrow(sim.dates.d)
   months_sim <- sim.dates.d$month
@@ -117,10 +123,27 @@ resample_weather_dates <- function(
   sim_temp <- numeric(sim_length)
   sim_occ  <- integer(sim_length)
   sim_date <- as.Date(rep(NA, sim_length))
+  sim_obs_idx <- integer(sim_length)
+
+  # Weights used in daily KNN sampling
+  knnw_prcp <- 100
+  knnw_temp <- 10
+
+  #Constants
+  offsets7  <- -3:3
+  offsets61 <- -30:30
 
   rn_all <- runif(sim_length)
-
   k_annual <- ceiling(sqrt(length(ANNUAL_PRCP)))
+
+  ##### HELPER FUNCTIONS
+
+  # Expand the date window with a given offset value
+  expand_indices <- function(idx, offsets, max_len) {
+    out <- idx[rep(seq_along(idx), each = length(offsets))] +
+      rep(offsets, times = length(idx))
+    out[out > 0 & (out + 1L) <= max_len]
+  }
 
   for (y in seq_len(ymax)) {
 
@@ -135,12 +158,11 @@ resample_weather_dates <- function(
     # -------------------------------------------------
     year_sample_idx <- knn_sample(
       candidates = ANNUAL_PRCP,
-      target     = PRCP_FINAL_ANNUAL_SIM[y],
-      k          = k_annual,
-      n          = knn.annual.sample.num,
-      prob       = TRUE,
-      seed       = seed + k1 * y
-    )
+      target = PRCP_FINAL_ANNUAL_SIM[y],
+      k = k_annual,
+      n = knn.annual.sample.num,
+      prob = TRUE,
+      seed = if (is.null(base_seed)) NULL else base_seed + y)
 
     cur_years <- water_years_obs[year_sample_idx]
 
@@ -159,16 +181,32 @@ resample_weather_dates <- function(
     monthday_key_y <- paste(month_y, day_y, sep = ".")
     lookup_day_idx_y <- split(seq_along(monthday_key_y), monthday_key_y)
 
-    # Monthly statistics
+    # Monthly means
     mean_mon_PRCP <- tapply(prcp_y, month_y, mean)
     mean_mon_TEMP <- tapply(temp_y, month_y, mean)
+    mean_mon_PRCP[is.na(mean_mon_PRCP)] <- mean(prcp_y)
+    mean_mon_TEMP[is.na(mean_mon_TEMP)] <- mean(temp_y)
+
+    # Monthly standard deviations
     sd_mon_PRCP   <- tapply(prcp_y, month_y, sd)
     sd_mon_TEMP   <- tapply(temp_y, month_y, sd)
 
-    mean_mon_PRCP[is.na(mean_mon_PRCP)] <- mean(prcp_y)
-    mean_mon_TEMP[is.na(mean_mon_TEMP)] <- mean(temp_y)
-    sd_mon_PRCP[is.na(sd_mon_PRCP) | sd_mon_PRCP == 0] <- sd(prcp_y)
-    sd_mon_TEMP[is.na(sd_mon_TEMP) | sd_mon_TEMP == 0] <- sd(temp_y)
+    # Force full 12-month coverage
+    sd_mon_PRCP <- sd_mon_PRCP[as.character(1:12)]
+    sd_mon_TEMP <- sd_mon_TEMP[as.character(1:12)]
+
+    # Global fallback
+    sd_mon_PRCP[is.na(sd_mon_PRCP)] <- sd(prcp_y)
+    sd_mon_TEMP[is.na(sd_mon_TEMP)] <- sd(temp_y)
+
+    # Apply SD floor (numerical consistency)
+    sd_floor_prcp <- 0.1
+    sd_floor_temp <- 0.1
+    sd_mon_PRCP <- pmax(sd_mon_PRCP, sd_floor_prcp)
+    sd_mon_TEMP <- pmax(sd_mon_TEMP, sd_floor_temp)
+
+    knn_weights_by_month <- lapply(seq_along(month_list), function(i) {
+      c(knnw_prcp / sd_mon_PRCP[month_list[i]], knnw_temp / sd_mon_TEMP[month_list[i]])})
 
     # Thresholds aligned to month_list
     wet_thresh <- sapply(month_list, function(m) {
@@ -201,8 +239,7 @@ resample_weather_dates <- function(
       sim.length = sim_length,
       dry.spell.change = dry.spell.change,
       wet.spell.change = wet.spell.change,
-      alpha = 1
-    )
+      alpha = 1.0)
 
     # -------------------------------------------------
     # FIRST DAY OF THIS SIM YEAR (critical)
@@ -219,11 +256,21 @@ resample_weather_dates <- function(
     if (!length(cand0)) cand0 <- which(month_y == first_month)
     if (!length(cand0)) cand0 <- seq_along(prcp_y)
 
-    # Sample first day values
-    i0 <- sample(cand0, 1)
+    # Calendar-year safeguard: forbid observed Dec->Jan cross-year transitions
+    if (!water.year && y > 1L) {
+
+      prev_obs_year <- wyear_y[ sim_obs_idx[year_start_idx - 1L] ]
+      cand0 <- cand0[wyear_y[cand0] == prev_obs_year]
+
+      if (!length(cand0)) cand0 <- which(wyear_y == prev_obs_year & month_y == first_month)
+    }
+
+    i0 <- sample(cand0, 1L)
     sim_prcp[year_start_idx] <- prcp_y[i0]
     sim_temp[year_start_idx] <- temp_y[i0]
     sim_date[year_start_idx] <- date_y[i0]
+    sim_obs_idx[year_start_idx] <- i0
+
 
     # Set first day's markov state
     if (sim_prcp[year_start_idx] <= wet_thresh[first_month_idx]) {
@@ -260,7 +307,8 @@ resample_weather_dates <- function(
 
       cur_month <- months_sim[sim_idx]
       cur_day   <- days_sim[sim_idx]
-      m_idx <- match(cur_month, month_list)
+      m_idx <- month_to_idx[cur_month]
+
       if (is.na(m_idx)) m_idx <- 1L
 
       key <- paste(cur_month, cur_day, sep = ".")
@@ -276,8 +324,7 @@ resample_weather_dates <- function(
         next
       }
 
-      obs_idx_window <- unique(as.vector(outer(obs_candidates, -3:3, "+")))
-      obs_idx_window <- obs_idx_window[obs_idx_window > 0 & (obs_idx_window + 1) <= length(prcp_y)]
+      obs_idx_window <- expand_indices(obs_candidates, offsets7, length(prcp_y))
 
       if (!length(obs_idx_window)) {
 
@@ -285,6 +332,7 @@ resample_weather_dates <- function(
         sim_prcp[sim_idx] <- prcp_y[i]
         sim_temp[sim_idx] <- temp_y[i]
         sim_date[sim_idx] <- date_y[i]
+        sim_obs_idx[sim_idx] <- i
 
         next
       }
@@ -299,8 +347,7 @@ resample_weather_dates <- function(
 
       if (!length(state_idx)) {
 
-        obs_idx_window <- unique(as.vector(outer(obs_candidates, -30:30, "+")))
-        obs_idx_window <- obs_idx_window[obs_idx_window > 0 & (obs_idx_window + 1) <= length(prcp_y)]
+        obs_idx_window <- expand_indices(obs_candidates, offsets61, length(prcp_y))
 
         state_idx <- get_state_indices(
           from.state = sim_occ[prev_idx],
@@ -313,13 +360,20 @@ resample_weather_dates <- function(
 
       if (!length(state_idx)) {
 
-        fb <- which(month_y == cur_month & (seq_along(prcp_y) + 1) <= length(prcp_y))
+        fb <- which(month_y == cur_month & (seq_along(prcp_y) + 1L) <= length(prcp_y))
+        if (!water.year) {fb <- fb[wyear_y[fb] == wyear_y[fb + 1L]]}
+        if (!length(fb)) {
+          fb <- which((seq_along(prcp_y) + 1L) <= length(prcp_y))
+          if (!water.year) {
+            fb <- fb[wyear_y[fb] == wyear_y[fb + 1L]]
+          }
+        }
 
-        if (!length(fb)) fb <- which((seq_along(prcp_y) + 1) <= length(prcp_y))
-        i <- sample(fb, 1)
+        i <- sample(fb, 1L)
         sim_prcp[sim_idx] <- prcp_y[i]
         sim_temp[sim_idx] <- temp_y[i]
         sim_date[sim_idx] <- date_y[i]
+        sim_obs_idx[sim_idx] <- i
 
         next
       }
@@ -331,16 +385,24 @@ resample_weather_dates <- function(
       }
 
       if (!length(possible_days)) {
-        fb <- which(month_y == cur_month & (seq_along(prcp_y) + 1) <= length(prcp_y))
-        if (!length(fb)) fb <- which((seq_along(prcp_y) + 1) <= length(prcp_y))
-        i <- sample(fb, 1)
+
+        fb <- which(month_y == cur_month & (seq_along(prcp_y) + 1L) <= length(prcp_y))
+        if (!water.year) {fb <- fb[wyear_y[fb] == wyear_y[fb + 1L]]}
+        if (!length(fb)) {
+          fb <- which((seq_along(prcp_y) + 1L) <= length(prcp_y))
+          if (!water.year) {
+            fb <- fb[wyear_y[fb] == wyear_y[fb + 1L]]
+          }
+        }
+
+        i <- sample(fb, 1L)
         sim_prcp[sim_idx] <- prcp_y[i]
         sim_temp[sim_idx] <- temp_y[i]
         sim_date[sim_idx] <- date_y[i]
+        sim_obs_idx[sim_idx] <- i
+
         next
       }
-
-      k_day <- max(1L, round(sqrt(length(possible_days))))
 
       next_days <- possible_days + 1L
       prcp_tomorrow <- prcp_y[next_days]
@@ -353,7 +415,10 @@ resample_weather_dates <- function(
       prcp_today_anom <- prcp_y[possible_days] - mean_mon_PRCP[cur_month]
       temp_today_anom <- temp_y[possible_days] - mean_mon_TEMP[cur_month]
 
-      weights <- c(100 / sd_mon_PRCP[cur_month], 10 / sd_mon_TEMP[cur_month])
+      # Distance in standardized anomaly space with precipitation-weighted metric
+      # KNN window-sizing parameter
+      k_day <- max(1L, round(sqrt(length(possible_days))))
+      k_day <- min(k_day, length(possible_days))
 
       res <- knn_sample(
         candidates = cbind(prcp_today_anom, temp_today_anom),
@@ -362,17 +427,34 @@ resample_weather_dates <- function(
         #sampling = "distance",
         n = 1,
         prob = TRUE,
-        weights = weights,
-        seed = seed + k1 * sim_idx)
+        weights = knn_weights_by_month[[m_idx]],
+        seed = if (is.null(base_seed)) NULL else base_seed + sim_idx)
 
       idx <- get_result_index(result = res, precip.tomorrow = prcp_tomorrow)
+
+      # Enforce calendar-year constraint AFTER KNN
+      if (!water.year) {
+
+        prev_obs_year <- wyear_y[ sim_obs_idx[prev_idx] ]
+        valid <- which(wyear_y[next_days] == prev_obs_year)
+
+        if (length(valid)) idx <- idx[idx %in% valid]
+
+        # fallback if KNN choice invalid
+        if (!length(idx)) idx <- sample(valid, 1L)
+
+      }
+
+      # Final safety
       if (is.na(idx) || idx < 1L || idx > length(prcp_tomorrow)) {
-        idx <- sample(seq_along(prcp_tomorrow), 1)
+        idx <- sample(seq_along(prcp_tomorrow), 1L)
       }
 
       sim_prcp[sim_idx] <- prcp_tomorrow[idx]
       sim_temp[sim_idx] <- temp_tomorrow[idx]
       sim_date[sim_idx] <- date_tomorrow[idx]
+      sim_obs_idx[sim_idx] <- next_days[idx]
+
     }
   }
 

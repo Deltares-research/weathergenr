@@ -194,7 +194,7 @@ apply_climate_perturbations <- function(
   # ==========================================================================
 
   if (transient.temp.change) {
-    # Gradual change: ramp from 0 to 2×factor to achieve mean = factor
+    # Gradual change: ramp from 0 to 2x factor to achieve mean = factor
     # Example: factor = 2 DegC to ramp 0 to 4 DegC to mean = 2 DegC
     # This ensures equivalent mean impact to step change
     temp_change_matrix <- sapply(1:12, function(m) {
@@ -275,7 +275,7 @@ apply_climate_perturbations <- function(
     message(
       "Precipitation: ",
       ifelse(transient.precip.change, "transient", "step"),
-      " change (mean = ", round(mean(change.factor.precip.mean), 3), "×)"
+      " change (mean = ", round(mean(change.factor.precip.mean), 3), ")"
     )
   }
 
