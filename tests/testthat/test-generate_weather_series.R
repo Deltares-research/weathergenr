@@ -25,13 +25,13 @@
 # }
 #
 #
-# test_that("generateWeatherSeries returns correct structure with long data", {
+# test_that("generate_weather_series returns correct structure with long data", {
 #
 #   set.seed(123)
 #
 #   d <- make_long_weather_data()
 #
-#   out <- generateWeatherSeries(
+#   out <- generate_weather_series(
 #     weather.data = d$weather.data,
 #     weather.grid = d$weather.grid,
 #     weather.date = d$dates,
@@ -62,7 +62,7 @@
 #
 #   d <- make_long_weather_data()
 #
-#   out <- generateWeatherSeries(
+#   out <- generate_weather_series(
 #     weather.data = d$weather.data,
 #     weather.grid = d$weather.grid,
 #     weather.date = d$dates,
@@ -93,7 +93,7 @@
 #
 #   d <- make_long_weather_data()
 #
-#   out <- generateWeatherSeries(
+#   out <- generate_weather_series(
 #     weather.data = d$weather.data,
 #     weather.grid = d$weather.grid,
 #     weather.date = d$dates,
@@ -123,7 +123,7 @@
 #
 #   d <- make_long_weather_data()
 #
-#   out <- generateWeatherSeries(
+#   out <- generate_weather_series(
 #     weather.data = d$weather.data,
 #     weather.grid = d$weather.grid,
 #     weather.date = d$dates,
@@ -153,7 +153,7 @@
 #
 #   d <- make_long_weather_data()
 #
-#   out <- generateWeatherSeries(
+#   out <- generate_weather_series(
 #     weather.data = d$weather.data,
 #     weather.grid = d$weather.grid,
 #     weather.date = d$dates,
