@@ -55,7 +55,7 @@ num.cores <- NULL
 
 ################################################################################
 
-stochastic_weather <- generateWeatherSeries(
+stochastic_weather <- generate_weather_series(
   weather.data = weather.data,
   weather.grid = weather.grid,
   weather.date = weather.date,

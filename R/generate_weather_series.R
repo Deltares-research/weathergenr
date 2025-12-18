@@ -143,9 +143,8 @@
 #'
 #' @references
 #' Steinschneider, S., Brown, C., & Lall, U. (2013).
-#' Climate-informed water supply planning using wavelet-based stochastic
-#' streamflow generators. \emph{Water Resources Research}.
-#'
+#' A semiparametric multivariate, multisite weather generator with low-frequency
+#' variability for use in climate risk assessments streamflow generators. \emph{Water Resources Research}.
 #' @export
 #'
 #' @import ggplot2
@@ -155,7 +154,7 @@
 #' @import logger
 #' @importFrom dplyr mutate
 
-generateWeatherSeries <- function(
+generate_weather_series <- function(
     weather.data = NULL,
     weather.grid = NULL,
     weather.date = NULL,
