@@ -196,6 +196,12 @@ filter_warm_simulations <- function(series.obs = NULL,
     stop("'output.path' must be specified when save.series = TRUE.", call. = FALSE)
   }
 
+  logger::log_info("[WARM] Filter criteria:")
+  logger::log_info("[WARM] - Mean: {bounds$mean * 100}%")
+  logger::log_info("[WARM] - Standard Deviation: {bounds$sd * 100}%")
+  logger::log_info("[WARM] - Annual minima: {bounds$min * 100}%")
+  logger::log_info("[WARM] - Annual maxima: {bounds$max * 100}%")
+
   # ===========================================================================
   # Setup
   # ===========================================================================
@@ -389,29 +395,44 @@ filter_warm_simulations <- function(series.obs = NULL,
   # Sampling with Fallback
   # ===========================================================================
 
+  relaxation_level <- "none"
+
+  # 1. Full filter (stats + power)
+  sub_clim <- which(rowSums(filter_passed) == ncol(filter_passed))
+
+  # 2. Drop power filter
   if (length(sub_clim) == 0) {
-    warning(
-      "No realizations passed all filters. ",
-      "Relaxing power spectrum constraint.",
-      call. = FALSE
-    )
-
+    warning("No realizations passed all filters. Dropping power constraint.", call. = FALSE)
+    relaxation_level <- "no_power"
     sub_clim <- which(rowSums(filter_passed[, 1:4, drop = FALSE]) == 4)
-
-    if (length(sub_clim) == 0) {
-      stop(
-        "No realizations passed even relaxed filters. ",
-        "Consider loosening 'bounds' criteria.",
-        call. = FALSE
-      )
-    }
   }
 
-  # Sample with different seed offset
-  if (!is.null(seed)) {
-    set.seed(seed + 999)
+  # 3. Drop most restrictive stat filter (SD first)
+  if (length(sub_clim) == 0) {
+    warning("No realizations after power relaxation. Dropping SD constraint.", call. = FALSE)
+    relaxation_level <- "no_power_no_sd"
+    sub_clim <- which(
+      filter_passed[, "mean"] &
+        filter_passed[, "min"] &
+        filter_passed[, "max"]
+    )
   }
 
+  # 4. Drop min/max (keep mean only)
+  if (length(sub_clim) == 0) {
+    warning("Dropping min/max constraints. Retaining mean only.", call. = FALSE)
+    relaxation_level <- "mean_only"
+    sub_clim <- which(filter_passed[, "mean"])
+  }
+
+  # 5. Absolute fallback: closest by mean deviation
+  if (length(sub_clim) == 0) {
+    warning("No filters satisfied. Selecting closest realizations by mean deviation.", call. = FALSE)
+    relaxation_level <- "closest_mean"
+    sub_clim <- order(abs(rel_diff_mean))[seq_len(min(sample.num, n_realizations))]
+  }
+
+  # Final sampling
   n_sampled <- min(sample.num, length(sub_clim))
   sub_sample <- sample(sub_clim, n_sampled)
 
@@ -423,13 +444,14 @@ filter_warm_simulations <- function(series.obs = NULL,
     filter = colnames(filter_passed),
     n_passed = colSums(filter_passed),
     pct_passed = colSums(filter_passed) / n_realizations * 100,
+    relaxation_level = relaxation_level,
     stringsAsFactors = FALSE
   )
 
   logger::log_info("[WARM] Filtering summary:")
-  logger::log_info("[WARM]   Total realizations: {n_realizations}")
-  logger::log_info("[WARM]   Passed all filters: {length(sub_clim)} ({round(length(sub_clim)/n_realizations*100, 1)}%)")
-  logger::log_info("[WARM]   Sampled for output: {n_sampled}")
+  logger::log_info("[WARM] - Total realizations: {n_realizations}")
+  logger::log_info("[WARM] - Passed all filters: {length(sub_clim)} ({round(length(sub_clim)/n_realizations*100, 1)}%)")
+  logger::log_info("[WARM] - Sampled for output: {n_sampled}")
 
   # ===========================================================================
   # Conditional Plotting
@@ -587,12 +609,3 @@ filter_warm_simulations <- function(series.obs = NULL,
     filter_summary = filter_summary
   ))
 }
-
-
-# ===========================================================================
-# Backwards Compatibility Alias
-# ===========================================================================
-
-#' @rdname filter_warm_simulations
-#' @export
-waveletARSubset <- filter_warm_simulations

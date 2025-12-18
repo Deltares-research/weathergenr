@@ -2,30 +2,9 @@
 % Please edit documentation in R/filter_warm_simulations.R
 \name{filter_warm_simulations}
 \alias{filter_warm_simulations}
-\alias{waveletARSubset}
 \title{Filter and Sample WARM Simulations by Statistical and Spectral Criteria}
 \usage{
 filter_warm_simulations(
-  series.obs = NULL,
-  series.sim = NULL,
-  power.obs = NULL,
-  power.sim = NULL,
-  power.period = NULL,
-  power.signif = NULL,
-  sample.num = 5,
-  seed = NULL,
-  save.plots = TRUE,
-  save.series = TRUE,
-  output.path = NULL,
-  padding = TRUE,
-  bounds = list(mean = 0.1, sd = 0.2, min = 0.2, max = 0.2, sig.thr = 0.5, nsig.thr =
-    1.5),
-  plot.prefix = "warm",
-  series.units = "mm/year",
-  series.conversion = 365
-)
-
-waveletARSubset(
   series.obs = NULL,
   series.sim = NULL,
   power.obs = NULL,

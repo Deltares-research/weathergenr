@@ -118,8 +118,16 @@ resampleDates <- function(
   sim_occ  <- integer(sim_length)
   sim_date <- as.Date(rep(NA, sim_length))
 
-  rn_all <- runif(sim_length)
+  # Logical check
+  if (sim_length < ymax * 365L) {
+    stop("sim.dates.d must contain at least 365 days per simulated year")
+  }
 
+  #Constants
+  offsets7  <- -3:3
+  offsets61 <- -30:30
+
+  rn_all <- runif(sim_length)
   k_annual <- ceiling(sqrt(length(ANNUAL_PRCP)))
 
   for (y in seq_len(ymax)) {
@@ -340,7 +348,7 @@ resampleDates <- function(
         next
       }
 
-      k_day <- max(1L, round(sqrt(length(possible_days))))
+
 
       next_days <- possible_days + 1L
       prcp_tomorrow <- prcp_y[next_days]
@@ -354,6 +362,10 @@ resampleDates <- function(
       temp_today_anom <- temp_y[possible_days] - mean_mon_TEMP[cur_month]
 
       weights <- c(100 / sd_mon_PRCP[cur_month], 10 / sd_mon_TEMP[cur_month])
+
+      # KNN window-sizing parameter
+      k_day <- max(1L, round(sqrt(length(possible_days))))
+      k_day <- min(k_day, length(possible_days))
 
       res <- knn_sample(
         candidates = cbind(prcp_today_anom, temp_today_anom),

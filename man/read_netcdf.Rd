@@ -15,36 +15,42 @@ read_netcdf(
 )
 }
 \arguments{
-\item{nc.file}{Path to the NetCDF file.}
+\item{nc.file}{Character. Path to the NetCDF file.}
 
 \item{variables}{Character vector of variable names to load. If \code{NULL},
-all variables except \code{spatial.ref} are loaded.}
+all variables except \code{spatial.ref} are loaded. Default is \code{NULL}.}
 
 \item{var_rename}{Named character vector giving new names for a subset of the
-loaded variables, e.g. \code{c(precip = "prcp", temp = "T")}. Names must
-be a subset of \code{variables} (or of all variables if \code{variables=NULL}).}
+loaded variables, e.g. \code{c(precip = "prcp", temp = "T")}. Old names must
+be a subset of \code{variables} (or of all variables if \code{variables=NULL}).
+Default is \code{NULL}.}
 
-\item{leap.days}{Logical; whether the data include leap days. If \code{FALSE},
-a no-leap daily calendar is constructed by removing Feb 29. Default \code{TRUE}.}
+\item{leap.days}{Logical. Whether the data include leap days. If \code{FALSE},
+Feb 29 is removed from the date vector. Default is \code{TRUE}.}
 
-\item{omit.empty}{Logical; if \code{TRUE}, drop grid cells where all values
-are NA for all variables and times. Default \code{TRUE}.}
+\item{omit.empty}{Logical. If \code{TRUE}, drop grid cells where all values
+are NA for all variables and all time steps. Default is \code{TRUE}.}
 
-\item{spatial.ref}{Name of the spatial reference variable in the NetCDF file
-(used to get x/y dimension names). Default \code{"spatial_ref"}.}
+\item{spatial.ref}{Character. Name of the spatial reference variable in the
+NetCDF file (used to get x/y dimension names). Default is \code{"spatial_ref"}.}
 
-\item{signif.digits}{Optional integer; if not \code{NULL}, values are rounded
-to this number of significant digits.}
+\item{signif.digits}{Integer. If not \code{NULL}, values are rounded
+to this number of significant digits. Default is \code{NULL}.}
 }
 \value{
-A list with components:
+A list with five components:
 \describe{
-  \item{data}{List of tibbles; one tibble per grid cell (rows = time, columns = variables).}
-  \item{grid}{Tibble with columns \code{id, xind, yind, x, y}.}
-  \item{date}{Vector of \code{Date} objects.}
-  \item{dimensions}{Named list of dimension vectors (e.g. x, y, time).}
-  \item{attributes}{List of variable attributes, spatial reference attributes,
-        and global attributes. Variable names reflect any renaming.}
+  \item{data}{List of tibbles, one per grid cell. Each tibble has rows
+        representing time steps and columns representing variables.}
+  \item{grid}{Tibble with columns \code{id, xind, yind, x, y} describing
+        the spatial grid cells.}
+  \item{date}{Vector of \code{Date} objects with length equal to the number
+        of time steps.}
+  \item{dimensions}{Named list of dimension vectors (e.g., x, y, time) as
+        extracted from the NetCDF file.}
+  \item{attributes}{Named list containing variable attributes (one element
+        per variable using final renamed names), spatial reference attributes,
+        and global attributes.}
 }
 }
 \description{
@@ -60,10 +66,34 @@ returns:
 
 Variable behaviour:
 \itemize{
-  \item \code{variables = NULL} ??? load all data variables (except \code{spatial.ref}).
-  \item \code{variables = c("var1","var2")} ??? load only these variables.
-  \item \code{var_rename = c(old1 = "new1", old2 = "new2")} ??? rename a subset
+  \item \code{variables = NULL} -> load all data variables (except \code{spatial.ref}).
+  \item \code{variables = c("var1","var2")} -> load only these variables.
+  \item \code{var_rename = c(old1 = "new1", old2 = "new2")} -> rename a subset
         of the loaded variables in the output (columns, attributes, dimnames).
         All names in \code{var_rename} must be among the selected variables.
 }
+}
+\examples{
+\dontrun{
+# Load all variables from a NetCDF file
+weather_data <- read_netcdf("climate_data.nc")
+
+# Load only specific variables and rename them
+weather_data <- read_netcdf(
+  nc.file = "climate_data.nc",
+  variables = c("precipitation", "temperature"),
+  var_rename = c(precipitation = "prcp", temperature = "temp")
+)
+
+# Load without leap days
+weather_data <- read_netcdf("climate_data.nc", leap.days = FALSE)
+
+# Round values and keep only non-empty cells
+weather_data <- read_netcdf(
+  nc.file = "climate_data.nc",
+  signif.digits = 4,
+  omit.empty = TRUE
+)
+}
+
 }
