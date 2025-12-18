@@ -41,7 +41,7 @@ Use readNetcdf() to extract meteorological data from NetCDF files. It wraps seve
 
 ```{r ncfile}
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-ncdata <- readNetcdf(ncfile)
+ncdata <- read_netcdf(ncfile)
 ```
 
 Inspect the structure:
@@ -70,7 +70,7 @@ head(ncdata$date)
 
 # :gear: Generate Stochastic Weather Realizations
 
-We use generateWeatherSeries() to simulate new weather sequences from historical record using a coupled a Wavelet Autoregressive Model (WARM) with a a Markov Chain and KNN resampling scheme (See: [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528)
+We use generate_weather_series() to simulate new weather sequences from historical record using a coupled a Wavelet Autoregressive Model (WARM) with a a Markov Chain and KNN resampling scheme (See: [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528)
 
 Define output path, variables, and simulation parameters. **realization_num** parameters sets how many stochastic replicates will be generated.
 
@@ -84,13 +84,14 @@ realization_num <- 3
 Call the generator:
 
 ```{r run_wegen, results='hide'}
-set.seed(123)
-stochastic_weather <- generateWeatherSeries(
+
+seed <- 123
+
+stochastic_weather <- generate_weather_series(
   weather.data = ncdata$data,
   weather.grid = ncdata$grid,
   weather.date = ncdata$date,
-  variable.names = variables,
-  variable.labels = variables,
+  variables = variables,
   sim.year.num = 20,
   sim.year.start = 2020,
   month.start = 1,
@@ -98,15 +99,15 @@ stochastic_weather <- generateWeatherSeries(
   warm.variable = "precip",
   warm.signif.level = 0.90,
   warm.sample.num = 10000,
-  warm.subset.criteria = NULL,
+  warm.subset.criteria = list(mean = NULL, sd = NULL, min = NULL, max = NULL,
+      sig.thr = NULL, nsig.thr = NULL),
   knn.sample.num = 100,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
-  output.path = "C:/Users/taner/Workspace/TEMPOUT/1/",
-  seed = 123,
+  output.path = output_path,
+  seed = seed,
   compute.parallel = FALSE,
-  num.cores = NULL,
-  save.rdata = FALSE
+  num.cores = NULL
 )
 ```
 
@@ -141,7 +142,7 @@ obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) {
     dplyr::mutate(date = ncdata$date, .before = 1)
 })
 
-out <- evaluateWegen(
+out <- evaluate_weather_generator(
   daily.sim = rlz_sample,
   daily.obs = obs_sample,
   output.path = NULL,
