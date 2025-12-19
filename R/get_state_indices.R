@@ -1,4 +1,4 @@
-#' Get Indices for a Specific Occurrence State Transition (OPTIMIZED)
+#' Get Indices for a Specific Occurrence State Transition
 #'
 #' Returns the indices in a precipitation time series (prcp) where a specified
 #' state transition occurs, based on wet/dry/extreme day thresholds.

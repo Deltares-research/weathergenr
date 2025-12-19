@@ -9,13 +9,13 @@ evaluate_weather_generator(
   daily.obs = NULL,
   variables = NULL,
   variable.labels = NULL,
-  variable.units = NULL,
   realization.num = NULL,
   wet.quantile = 0.2,
   extreme.quantile = 0.8,
   output.path = NULL,
   save.plots = TRUE,
-  show.title = TRUE
+  show.title = TRUE,
+  max.grids = 25
 )
 }
 \arguments{
@@ -30,9 +30,6 @@ Must include "precip" for wet/dry spell analysis.}
 
 \item{variable.labels}{Optional character vector of variable labels for plots.
 Defaults to `variables` if `NULL`.}
-
-\item{variable.units}{Optional character vector of variable units. Defaults to
-empty strings if `NULL`.}
 
 \item{realization.num}{Integer. Number of synthetic realizations in `daily.sim`.}
 

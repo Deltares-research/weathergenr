@@ -88,9 +88,9 @@ plot_global_wavelet_spectrum <- function(
 
   if (!is.null(power.sim)) {
     power.sim <- as.matrix(power.sim)
-    if (nrow(power.sim) != n_period) {
+    if (nrow(power.sim) > n_period) {
       stop(
-        "Rows of power.sim must equal length of power.period.",
+        "Rows of power.sim cannot exceed length of power.period.",
         call. = FALSE
       )
     }
@@ -99,53 +99,41 @@ plot_global_wavelet_spectrum <- function(
   # -------------------------------------------------------------------------
   # Construct plotting data
   # -------------------------------------------------------------------------
-  if (is.null(power.sim)) {
 
-    df <- tibble(
-      period = power.period,
-      signif = power.signif,
-      obs    = power.obs
-    )
+  df <- tibble(
+    period = power.period,
+    signif = power.signif,
+    obs    = power.obs)
 
-    p <- ggplot(df, aes(x = period)) +
-      geom_line(aes(y = signif),
-                color = "red", linetype = "dashed", linewidth = 0.6) +
-      geom_line(aes(y = obs),
-                color = "blue", linewidth = 0.6)
+  # Base plot with observed spectrum and significance threshold
+  p <- ggplot(data = df, mapping = aes(x = period)) +
+    theme_light(base_size = 11) +
+    geom_line(aes(y = signif), color = "red", linetype = "dashed", linewidth = 0.6) +
+    geom_line(aes(y = obs), color = "blue", linewidth = 0.6) +
+    labs(x = "Period (years)", y = expression(paste("Power (", mm^2, ")")))
 
-  } else {
+  # Add simulation envelope if provided
+  if (!is.null(power.sim)) {
 
-    sim_mean <- rowMeans(power.sim, na.rm = TRUE)
-    sim_min  <- apply(power.sim, 1, min, na.rm = TRUE)
-    sim_max  <- apply(power.sim, 1, max, na.rm = TRUE)
+    sim_length <- nrow(power.sim)
 
-    df <- tibble(
-      period = power.period,
-      signif = power.signif,
-      obs    = power.obs,
-      sim_lo = sim_min,
-      sim_hi = sim_max,
-      sim_mu = sim_mean
-    )
+    # Create data frame only for periods with simulation data
+    df2 <- tibble(
+      period = power.period[1:sim_length],
+      signif = power.signif[1:sim_length],
+      sim_lo = sapply(seq_len(sim_length), function(x) quantile(power.sim[x, ], 0.10, na.rm = TRUE)),
+      sim_hi = sapply(seq_len(sim_length), function(x) quantile(power.sim[x, ], 0.90, na.rm = TRUE)),
+      sim_mu = rowMeans(power.sim, na.rm = TRUE))
 
-    p <- ggplot(df, aes(x = period)) +
-      geom_ribbon(aes(ymin = sim_lo, ymax = sim_hi),
+    # Add simulation ribbon and mean line
+    p <- p +
+      geom_ribbon(aes(x = period, ymin = sim_lo, ymax = sim_hi), data = df2,
                   fill = "grey60", alpha = 0.25) +
-      geom_line(aes(y = signif),
-                color = "red", linetype = "dashed", linewidth = 0.6) +
-      geom_line(aes(y = sim_mu),
+      geom_line(aes(x = period, y = sim_mu), data = df2,
                 color = "black", linewidth = 0.6) +
-      geom_line(aes(y = obs),
-                color = "blue", linewidth = 0.6)
+      scale_y_continuous(expand = c(0, 0)) +
+      scale_x_continuous(expand = c(0, 0))
   }
 
-  # -------------------------------------------------------------------------
-  # Common styling
-  # -------------------------------------------------------------------------
-  p +
-    theme_light(base_size = 11) +
-    labs(
-      x = "Period (years)",
-      y = expression(paste("Power (", mm^2, ")"))
-    )
+  p
 }

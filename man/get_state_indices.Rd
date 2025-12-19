@@ -2,7 +2,7 @@
 % Please edit documentation in R/get_state_indices.R
 \name{get_state_indices}
 \alias{get_state_indices}
-\title{Get Indices for a Specific Occurrence State Transition (OPTIMIZED)}
+\title{Get Indices for a Specific Occurrence State Transition}
 \usage{
 get_state_indices(
   from.state,

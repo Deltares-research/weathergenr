@@ -7,7 +7,7 @@
 process_observed_data(
   daily.obs,
   variables,
-  ngrids,
+  n_grids,
   wet.quantile,
   extreme.quantile
 )

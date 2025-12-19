@@ -4,7 +4,7 @@
 \alias{prepare_plot_data}
 \title{Prepare data for plotting}
 \usage{
-prepare_plot_data(obs.results, sim.results, variables, ngrids)
+prepare_plot_data(obs.results, sim.results, variables, n_grids)
 }
 \description{
 Prepare data for plotting
