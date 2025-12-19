@@ -13,8 +13,6 @@
 #'   Must include "precip" for wet/dry spell analysis.
 #' @param variable.labels Optional character vector of variable labels for plots.
 #'   Defaults to `variables` if `NULL`.
-#' @param variable.units Optional character vector of variable units. Defaults to
-#'   empty strings if `NULL`.
 #' @param realization.num Integer. Number of synthetic realizations in `daily.sim`.
 #' @param wet.quantile Numeric between 0 and 1. Quantile threshold for wet days
 #'   (default = 0.2).
@@ -74,17 +72,21 @@ evaluate_weather_generator <- function(
     daily.obs = NULL,
     variables = NULL,
     variable.labels = NULL,
-    variable.units = NULL,
     realization.num = NULL,
     wet.quantile = 0.2,
     extreme.quantile = 0.8,
     output.path = NULL,
     save.plots = TRUE,
-    show.title = TRUE) {
+    show.title = TRUE,
+    max.grids = 25) {
 
   # ============================================================================
   # INPUT VALIDATION
   # ============================================================================
+
+  if (!is.numeric(max.grids) || length(max.grids) != 1 || max.grids < 1) {
+    stop("'max.grids' must be a positive integer")
+  }
 
   validate_inputs(
     daily.sim = daily.sim,
@@ -99,9 +101,18 @@ evaluate_weather_generator <- function(
   # SETUP
   # ============================================================================
 
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info(
+      paste0(
+        "[Assessment] Start | grids={length(daily.obs)} | ",
+        "realizations={realization.num} | ",
+        "variables={paste(variables, collapse = ',')} | ",
+        "wet.q={wet.quantile} | extreme.q={extreme.quantile}"
+      )
+    )
+  }
   # Set defaults
   if (is.null(variable.labels)) variable.labels <- variables
-  if (is.null(variable.units)) variable.units <- rep("", length(variables))
 
   # Output directory handling
   if (!is.null(output.path)) {
@@ -114,14 +125,6 @@ evaluate_weather_generator <- function(
 
   # Suppress dplyr messages
   options(dplyr.summarise.inform = FALSE, tidyverse.quiet = TRUE)
-
-  # Grid dimensions
-  ngrids <- length(daily.obs)
-
-  # Logging
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Evaluating {ngrids} grid cells with {realization.num} realizations")
-  }
 
   # Plot configuration
   plot.config <- list(
@@ -139,6 +142,40 @@ evaluate_weather_generator <- function(
   plots <- list()
 
   # ============================================================================
+  # GRID SUBSAMPLING TO CONTROL MEMORY USE
+  # ============================================================================
+
+  # Grid dimensions
+  n_grids <- length(daily.obs)
+  n_grids_org <- n_grids
+
+  if (n_grids > max.grids) {
+
+    sel.grids <- sort(sample(seq_len(n_grids), max.grids))
+
+    # Subset observed data
+    daily.obs <- daily.obs[sel.grids]
+
+    # Subset simulated data (each realization)
+    daily.sim <- lapply(daily.sim, function(rlz) {
+      rlz[sel.grids]
+    })
+
+    n_grids <- length(daily.obs)
+
+    if (requireNamespace("logger", quietly = TRUE)) {
+      logger::log_warn(
+        "[Assessment] Grid count reduced from {n_grids_org} to {n_grids} for memory control"
+      )
+    }
+  }
+
+  # Logging
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info("[Assessment] Evaluating {n_grids} grid cells with {realization.num} realizations")
+  }
+
+  # ============================================================================
   # PROCESS OBSERVED DATA
   # ============================================================================
 
@@ -149,7 +186,7 @@ evaluate_weather_generator <- function(
   obs.results <- process_observed_data(
     daily.obs = daily.obs,
     variables = variables,
-    ngrids = ngrids,
+    n_grids = n_grids,
     wet.quantile = wet.quantile,
     extreme.quantile = extreme.quantile
   )
@@ -181,7 +218,7 @@ evaluate_weather_generator <- function(
     obs.results = obs.results,
     sim.results = sim.results,
     variables = variables,
-    ngrids = ngrids
+    n_grids = n_grids
   )
 
   # ============================================================================
@@ -218,7 +255,7 @@ evaluate_weather_generator <- function(
     plots,
     class = c("weather_assessment", "list"),
     metadata = list(
-      ngrids = ngrids,
+      n_grids = n_grids,
       realization.num = realization.num,
       variables = variables,
       assessment.date = Sys.Date()
@@ -298,12 +335,12 @@ validate_inputs <- function(daily.sim, daily.obs, variables, realization.num,
 
 #' Process observed weather data
 #' @keywords internal
-process_observed_data <- function(daily.obs, variables, ngrids,
+process_observed_data <- function(daily.obs, variables, n_grids,
                                  wet.quantile, extreme.quantile) {
 
   # Extract dates and handle leap days
   his.date <- daily.obs[[1]]$date
-  leap.idx <- leap_day_indices(his.date)
+  leap.idx <- find_leap_days(his.date)
 
   if (!is.null(leap.idx)) {
     his.date <- his.date[-leap.idx]
@@ -318,7 +355,7 @@ process_observed_data <- function(daily.obs, variables, ngrids,
   )
 
   # Combine all grid cells
-  his <- lapply(seq_len(ngrids), function(i) {
+  his <- lapply(seq_len(n_grids), function(i) {
     df <- daily.obs[[i]][, variables, drop = FALSE]
     if (!is.null(leap.idx)) {
       df <- df[-leap.idx, , drop = FALSE]
@@ -572,7 +609,7 @@ compute_correlation_matrix <- function(data, variables) {
 
 #' Prepare data for plotting
 #' @keywords internal
-prepare_plot_data <- function(obs.results, sim.results, variables, ngrids) {
+prepare_plot_data <- function(obs.results, sim.results, variables, n_grids) {
 
   # Define statistical functions for reference
   stat.funs <- list(mean = mean, sd = stats::sd, skewness = e1071::skewness)
@@ -597,7 +634,7 @@ prepare_plot_data <- function(obs.results, sim.results, variables, ngrids) {
 
   # Cross-grid correlations (same variable, different grids)
   var.combs <- apply(utils::combn(variables, 2), 2, paste, collapse = ":")
-  id.combs <- apply(utils::combn(seq_len(ngrids), 2), 2, paste, collapse = ":")
+  id.combs <- apply(utils::combn(seq_len(n_grids), 2), 2, paste, collapse = ":")
 
   stats.crosscor <- stats.allcor %>%
     dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
