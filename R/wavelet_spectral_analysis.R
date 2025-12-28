@@ -115,16 +115,24 @@ wavelet_spectral_analysis <- function(variable,
   # --- Identify Significant Periods ---
   sig_periods <- which(GWS > GWS_signif & period > period.lower.limit)
 
+  # Will be populated only if return_recon_error = TRUE
+  out_recon_err <- NULL
+
   if (length(sig_periods) == 0) {
+
     signif_periods <- integer(0)
 
-    # Stable contract: COMPS always exists and has nrow == length(variable)
-    COMPS <- tibble::tibble(NOISE = variable_org)
+    # Stable contract: COMPS is always a numeric matrix with nrow == length(variable)
+    COMPS <- matrix(variable_org, ncol = 1)
+    colnames(COMPS) <- "NOISE"
 
     # Optional scalar closure diagnostics (trivially perfect)
-    if (return_recon_error) out_recon_err <- list(recon_max_abs = 0, recon_rmse = 0)
+    if (return_recon_error) {
+      out_recon_err <- list(recon_max_abs = 0, recon_rmse = 0)
+    }
 
   } else {
+
     sig_periods_grp <- split(sig_periods, cumsum(c(1, diff(sig_periods) != 1)))
 
     signif_periods <- as.integer(unlist(
@@ -132,8 +140,7 @@ wavelet_spectral_analysis <- function(variable,
       use.names = FALSE
     ))
 
-    # Priority-0 fix: no residual in helper; compute residual exactly once here
-    comps_tb <- extract_wavelet_components(
+    comps_mat <- extract_wavelet_components(
       wave = wave,
       signif_periods = signif_periods,
       scale = scale,
@@ -143,30 +150,30 @@ wavelet_spectral_analysis <- function(variable,
       variable_mean = 0,
       Cdelta = 0.776,
       w0_0 = pi^(-1/4),
-      include_residual = FALSE
-    )
+      include_residual = FALSE)
 
-    # Rename only component columns (no residual column exists here)
+    # Rename component columns
     period_labels <- round(period[signif_periods], 2)
     comp_names <- paste0("Period_", period_labels)
-    names(comps_tb) <- comp_names
+    colnames(comps_mat) <- comp_names
 
-    # Residual once
-    noise <- variable_org - rowSums(as.matrix(comps_tb))
-    COMPS <- cbind(comps_tb, NOISE = noise)
+    # Residual once (NOISE)
+    noise <- variable_org - rowSums(comps_mat)
 
-    # Optional closure diagnostic
-    out_recon_err <- NULL
+    COMPS <- cbind(comps_mat, NOISE = noise)
+    colnames(COMPS) <- c(comp_names, "NOISE")
+
+    # Optional scalar closure diagnostics (should be ~0)
     if (return_recon_error) {
-      recon_vec <- variable_org - rowSums(as.matrix(COMPS[, c(comp_names, "NOISE"), drop = FALSE]))
+      recon_vec <- variable_org - rowSums(COMPS)
       out_recon_err <- list(
         recon_max_abs = max(abs(recon_vec)),
         recon_rmse = sqrt(mean(recon_vec^2))
       )
     }
-
-
   }
+
+
 
   out <- list(
     GWS = GWS,
@@ -179,6 +186,8 @@ wavelet_spectral_analysis <- function(variable,
     sigm = sigm,
     COMPS = COMPS
   )
+
+  out$COMPS_names <- colnames(COMPS)
 
   if (return_recon_error) out$reconstruction_error <- out_recon_err
 
