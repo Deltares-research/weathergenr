@@ -11,8 +11,10 @@ extract_wavelet_components(
   dj = 0.25,
   dt = 1,
   variable_sd,
+  variable_mean = 0,
   Cdelta = 0.776,
-  w0_0 = pi^(-1/4)
+  w0_0 = pi^(-1/4),
+  include_residual = TRUE
 )
 }
 \arguments{
@@ -32,30 +34,49 @@ to reconstruct. Each index corresponds to a row in \code{wave}.}
 \item{variable_sd}{Numeric scalar. Standard deviation of the original time series
 before standardization. Used to restore original units.}
 
+\item{variable_mean}{Numeric scalar. Mean of the original time series
+before standardization (default = 0). Added back to noise component to ensure
+complete reconstruction: rowSums(output) = original_signal.}
+
 \item{Cdelta}{Numeric scalar. Reconstruction constant for Morlet wavelet
 (default = 0.776). Depends on wavelet type; see Torrence & Compo (1998) Table 2.}
 
-\item{w0_0}{Numeric scalar. Normalization constant \eqn{\psi_0(0) = \pi^{-1/4}}
+\item{w0_0}{Numeric scalar. Normalization constant psi_0(0) = pi^(-1/4)
 for Morlet wavelet (default = \code{pi^(-1/4)}).}
+
+\item{include_residual}{Logical. If TRUE (default), includes a "Noise" component
+representing the sum of all non-significant scales, ensuring complete
+signal decomposition where rowSums(output) equals the reconstructed signal.}
 }
 \value{
-A tibble with one column per significant period component.
-  Column names are \code{Component_1}, \code{Component_2}, etc.
+A tibble with columns:
+  \itemize{
+    \item \code{Component_1, Component_2, ...}: One column per significant period
+    \item \code{Noise}: (if include_residual = TRUE) Sum of all non-significant scales
+  }
   Number of rows equals the length of the original time series.
+  Property: \code{rowSums(output)} approximately equals the original signal.
 }
 \description{
 Reconstructs time series components from the wavelet transform for
-user-specified significant periods. Uses the inverse continuous wavelet
-transform formula to convert wavelet coefficients back to time domain.
+user-specified significant periods. Optionally includes a residual component
+representing all non-significant scales, ensuring complete signal decomposition.
 }
 \details{
 The reconstruction formula (Torrence & Compo 1998, Eq. 11) is:
-\deqn{x_n = \frac{\delta j \sqrt{\delta t}}{C_\delta \psi_0(0)}
-      \sum_{j=0}^{J} \frac{\text{Re}(W_n(s_j))}{\sqrt{s_j}}}
 
-Each component represents the contribution of a specific frequency band
-to the original time series. Components can be summed to approximate
-the original signal (within the limits of the selected periods).
+x_n = (delta_j * sqrt(delta_t)) / (C_delta * psi_0(0)) *
+      sum over j of Re(W_n(s_j)) / sqrt(s_j)
+
+This function performs a complete wavelet decomposition by:
+\enumerate{
+  \item Extracting each significant period as a separate component
+  \item Summing all remaining (non-significant) scales into a "Noise" component
+  \item Ensuring: original_signal = sum(significant_components) + Noise
+}
+
+This differs from partial reconstruction, which would only sum significant
+scales and lose information from non-significant scales.
 }
 \examples{
 \dontrun{
@@ -67,11 +88,21 @@ components <- extract_wavelet_components(
   dj = 0.25,
   dt = 1,
   variable_sd = sd(original_data),
-  Cdelta = 0.776
+  variable_mean = mean(original_data),
+  Cdelta = 0.776,
+  include_residual = TRUE
 )
 
-# Components sum to approximate original signal
+# Verify complete reconstruction
 reconstructed <- rowSums(components)
+plot(original_data)
+lines(reconstructed, col = "red")
+
+# Components include:
+# - Component_1: First significant period
+# - Component_2: Second significant period
+# - Component_3: Third significant period
+# - Noise: All non-significant scales combined + mean
 }
 
 }

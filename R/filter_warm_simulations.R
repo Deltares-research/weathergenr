@@ -329,7 +329,7 @@ filter_warm_simulations <- function(series.obs = NULL,
   }
 
   # ===========================================================================
-  # Vectorized Power Spectrum Filter
+  # Power Spectrum Filter
   # ===========================================================================
 
   if (!is.null(bounds$sig.thr) && length(periods_sig) > 0) {
@@ -385,7 +385,7 @@ filter_warm_simulations <- function(series.obs = NULL,
   }
 
   # ===========================================================================
-  # Fast Combined Filtering
+  # Combined Filtering
   # ===========================================================================
 
   sub_clim <- which(rowSums(filter_passed) == ncol(filter_passed))

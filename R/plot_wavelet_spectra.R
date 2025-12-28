@@ -44,12 +44,8 @@ plot_wavelet_spectra <- function(
   }
 
   # Global Wavelet Spectrum data
-  GWS_df <- data.frame(
-    period = period,
-    GWS = GWS,
-    GWS_signif = GWS_signif,
-    stringsAsFactors = FALSE
-  )
+  GWS_df <- data.frame(period = period, GWS = GWS, GWS_signif = GWS_signif,
+     stringsAsFactors = FALSE)
 
   # Prepare time axis
   time_year <- if(is.null(variable.year)) {
@@ -60,7 +56,7 @@ plot_wavelet_spectra <- function(
 
   # Transform power to log scale
   power_log2 <- log(POWER, base = 2)
-  power_log2_t <- t(power_log2)  # Now: time x periods
+  power_log2_t <- t(power_log2)
 
   # Create data frame for power spectrum - METHOD 1: Manual construction
   n_time <- nrow(power_log2_t)

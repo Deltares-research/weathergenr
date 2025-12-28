@@ -30,6 +30,8 @@ A list with:
   \item{GWS_signif}{Numeric vector: Significance threshold for GWS at each period}
   \item{GWS_period}{Numeric vector: Period (in time units) corresponding to each scale}
   \item{signif_periods}{Integer vector: Indices of periods with significant power, or NULL if none}
+  \item{wave}{Complex matrix: Wavelet transform coefficients (scales x time)}
+  \item{power}{Numeric matrix: Wavelet power spectrum (scales x time)}
   \item{COMPS}{Data frame: Reconstructed components for each significant period band,
     plus residual NOISE component. NULL if no significant periods found.}
 }
