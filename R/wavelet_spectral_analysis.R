@@ -86,6 +86,8 @@ wavelet_spectral_analysis <- function(variable,
   # Mask out power values outside the cone of influence before time-averaging.
   # Inside-COI condition: period[j] <= coi[t]
   coi_mask <- outer(period, coi, FUN = "<=")  # [n_scales x n_time] logical
+  n_coi <- rowSums(coi_mask)  # length = n_scales
+
 
   # Set outside-COI power to NA so rowMeans(..., na.rm=TRUE) ignores it
   POWER_coi <- POWER
@@ -124,16 +126,44 @@ wavelet_spectral_analysis <- function(variable,
   signif <- fft_theor * chisquare
   sigm <- sweep(POWER, 1, signif, FUN = "/")
 
-  dof <- n1 - scale
-  dof[dof < 1] <- 1
-  dof <- dofmin * sqrt(1 + (dof * dt / gamma_fac / scale)^2)
-  dof[dof < dofmin] <- dofmin
+  #dof <- n1 - scale
+  #dof[dof < 1] <- 1
+  #dof <- dofmin * sqrt(1 + (dof * dt / gamma_fac / scale)^2)
+  #dof[dof < dofmin] <- dofmin
+  #chisquare_GWS <- stats::qchisq(signif.level, dof) / dof
+  #GWS_signif <- as.numeric(fft_theor * variance1 * chisquare_GWS)
 
-  chisquare_GWS <- stats::qchisq(signif.level, dof) / dof
-  GWS_signif <- as.numeric(fft_theor * variance1 * chisquare_GWS)
+  # --- Effective DOF for COI-masked GWS (use n_coi instead of n1) ---
+
+  # Effective sample size per scale = number of in-COI time points used in the average
+  Neff <- as.numeric(n_coi)
+  Neff[Neff < 1] <- NA_real_  # scales with no in-COI support: undefined significance
+
+  # Keep your existing DOF shaping, but replace the time-length term with Neff
+  dof <- dofmin * sqrt(1 + (Neff * dt / gamma_fac / scale)^2)
+
+  # Enforce minimum dof and keep NA where Neff is NA
+  dof[is.finite(dof) & dof < dofmin] <- dofmin
+
+  chisquare_GWS <- rep(NA_real_, length(dof))
+  ok <- is.finite(dof) & dof > 0
+  chisquare_GWS[ok] <- stats::qchisq(signif.level, dof[ok]) / dof[ok]
+
+  GWS_signif <- rep(NA_real_, length(dof))
+  GWS_signif[ok] <- as.numeric(fft_theor[ok] * variance1 * chisquare_GWS[ok])
+
+
+  #### For plotting
+  dof_unmasked <- n1 - scale
+  dof_unmasked[dof_unmasked < 1] <- 1
+  dof_unmasked <- dofmin * sqrt(1 + (dof_unmasked * dt / gamma_fac / scale)^2)
+  dof_unmasked[dof_unmasked < dofmin] <- dofmin
+  chisq_unmasked <- stats::qchisq(signif.level, dof_unmasked) / dof_unmasked
+  GWS_signif_unmasked <- as.numeric(fft_theor * variance1 * chisq_unmasked)
+
 
   # --- Identify Significant Periods ---
-  sig_periods <- which(is.finite(GWS) & (GWS > GWS_signif) & (period > period.lower.limit))
+  sig_periods <- which(is.finite(GWS) & is.finite(GWS_signif) & (GWS > GWS_signif) & (period > period.lower.limit))
 
   # Will be populated only if return_recon_error = TRUE
   out_recon_err <- NULL
@@ -199,6 +229,7 @@ wavelet_spectral_analysis <- function(variable,
     GWS = GWS,
     gws_unmasked = GWS_unmasked,
     GWS_signif = GWS_signif,
+    gws_signif_unmasked = GWS_signif_unmasked,
     GWS_period = period,
     signif_periods = signif_periods,
     wave = wave,
@@ -222,8 +253,7 @@ wavelet_spectral_analysis <- function(variable,
       dof = dof,
       scale = scale,
       fourier_factor = fourier_factor,
-      n_coi = rowSums(coi_mask)  # number of time points inside COI per scale
-    )
+      n_coi = n_coi)
   }
 
   out
