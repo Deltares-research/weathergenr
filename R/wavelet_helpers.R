@@ -27,56 +27,33 @@
 #'
 #' @keywords internal
 #' @export
+# =========================
+# 1) morlet_wavelet(): REMOVE one-sided sqrt(2) factor
+# =========================
 morlet_wavelet <- function(k, s, k0 = 6) {
 
   # Basic validation
-  if (!is.numeric(k) || !is.numeric(s) || !is.numeric(k0)) {
-    stop("All inputs must be numeric")
-  }
+  if (!is.numeric(k) || !is.numeric(s) || !is.numeric(k0)) stop("All inputs must be numeric")
+  if (length(s) != 1 || s <= 0) stop("'s' must be a positive scalar")
+  if (length(k0) != 1 || k0 <= 0) stop("'k0' must be a positive scalar")
+  if (length(k) < 2) stop("'k' must have length >= 2")
 
-  if (length(s) != 1 || s <= 0) {
-    stop("'s' must be a positive scalar")
-  }
+  if (abs(k[1]) > 1e-10) stop("'k' must start at zero frequency (standard FFT ordering)")
+  if (k[2] <= 0) stop("'k[2]' must be positive (frequency spacing)")
+  if (any(!is.finite(k))) stop("'k' contains non-finite values (NA, NaN, or Inf)")
 
-  if (length(k0) != 1 || k0 <= 0) {
-    stop("'k0' must be a positive scalar")
-  }
-
-  if (length(k) < 2) {
-    stop("'k' must have length >= 2")
-  }
-
-  # Simple critical checks for FFT frequency vector
-  if (abs(k[1]) > 1e-10) {
-    stop("'k' must start at zero frequency (standard FFT ordering)")
-  }
-
-  if (k[2] <= 0) {
-    stop("'k[2]' must be positive (frequency spacing)")
-  }
-
-  # Check for non-finite values
-  if (any(!is.finite(k))) {
-    stop("'k' contains non-finite values (NA, NaN, or Inf)")
-  }
-
-  # Morlet wavelet computation
   nn <- length(k)
   z <- as.numeric(k > 0)
   expnt <- -((s * k - k0)^2 / 2) * z
 
-  # Normalization following TC98 Eq. 4
-  # Factor breakdown:
-  #   pi^(-1/4): standard Morlet normalization
-  #   sqrt(2 * s * dk): scale and frequency spacing
-  #   sqrt(n): FFT normalization
-  # NOTE: The sqrt(2) factor is critical for energy conservation
-  norm <- sqrt(2 * s * k[2]) * (pi^(-0.25)) * sqrt(nn)
+  # TC98 Eq. 4 normalization (TWO-SIDED / standard)
+  # NOTE: removed sqrt(2) one-sided factor
+  norm <- sqrt(s * k[2]) * (pi^(-0.25)) * sqrt(nn)
 
   daughter <- norm * exp(expnt) * z
-
-  return(daughter)
+  daughter
 }
+
 
 
 #' Compute Morlet Wavelet Parameters
@@ -233,6 +210,10 @@ morlet_parameters <- function(k0 = 6) {
 #' @importFrom tibble as_tibble
 #' @keywords internal
 #' @export
+# =========================
+# 2) extract_wavelet_components(): REMOVE Cdelta_effective = Cdelta * sqrt(2)
+#    Use TC98 Cdelta directly.
+# =========================
 extract_wavelet_components <- function(wave,
                                        signif_periods,
                                        scale,
@@ -244,49 +225,24 @@ extract_wavelet_components <- function(wave,
                                        w0_0 = pi^(-1/4),
                                        include_residual = TRUE) {
 
-  # --- Validation ---
   if (!is.matrix(wave) && !is.array(wave)) stop("'wave' must be a matrix or array")
-
-  if (!is.numeric(signif_periods) || length(signif_periods) == 0) {
-    stop("'signif_periods' must be a non-empty numeric vector")
-  }
-
-  if (!all(signif_periods == as.integer(signif_periods))) {
-    stop("'signif_periods' must contain integer indices")
-  }
-
-  if (any(signif_periods < 1) || any(signif_periods > nrow(wave))) {
-    stop("'signif_periods' indices must be between 1 and nrow(wave)")
-  }
-
+  if (!is.numeric(signif_periods) || length(signif_periods) == 0) stop("'signif_periods' must be a non-empty numeric vector")
+  if (!all(signif_periods == as.integer(signif_periods))) stop("'signif_periods' must contain integer indices")
+  if (any(signif_periods < 1) || any(signif_periods > nrow(wave))) stop("'signif_periods' indices must be between 1 and nrow(wave)")
   if (anyDuplicated(signif_periods)) {
     warning("'signif_periods' contains duplicate indices; duplicates will be removed")
     signif_periods <- unique(signif_periods)
   }
 
-  if (!is.numeric(scale) || length(scale) != nrow(wave)) {
-    stop("'scale' must be numeric with length equal to nrow(wave)")
-  }
-
+  if (!is.numeric(scale) || length(scale) != nrow(wave)) stop("'scale' must be numeric with length equal to nrow(wave)")
   if (!is.numeric(dj) || length(dj) != 1 || dj <= 0) stop("'dj' must be a positive scalar")
   if (!is.numeric(dt) || length(dt) != 1 || dt <= 0) stop("'dt' must be a positive scalar")
-
-  if (!is.numeric(variable_sd) || length(variable_sd) != 1 || variable_sd <= 0) {
-    stop("'variable_sd' must be a positive scalar")
-  }
-
-  if (!is.numeric(variable_mean) || length(variable_mean) != 1) {
-    stop("'variable_mean' must be a numeric scalar")
-  }
-
+  if (!is.numeric(variable_sd) || length(variable_sd) != 1 || variable_sd <= 0) stop("'variable_sd' must be a positive scalar")
+  if (!is.numeric(variable_mean) || length(variable_mean) != 1) stop("'variable_mean' must be a numeric scalar")
   if (!is.numeric(Cdelta) || length(Cdelta) != 1 || Cdelta <= 0) stop("'Cdelta' must be a positive scalar")
   if (!is.numeric(w0_0) || length(w0_0) != 1 || w0_0 <= 0) stop("'w0_0' must be a positive scalar")
+  if (!is.logical(include_residual) || length(include_residual) != 1) stop("'include_residual' must be a single logical value")
 
-  if (!is.logical(include_residual) || length(include_residual) != 1) {
-    stop("'include_residual' must be a single logical value")
-  }
-
-  # --- Setup ---
   num_periods <- length(signif_periods)
   n_time <- ncol(wave)
   n_scales <- nrow(wave)
@@ -294,21 +250,17 @@ extract_wavelet_components <- function(wave,
   n_components <- num_periods + (if (include_residual) 1L else 0L)
   COMPS <- matrix(0, nrow = n_time, ncol = n_components)
 
-  # --- Reconstruction (TC98 Eq. 11) ---
-  # One-sided convention compensation consistent with your morlet_wavelet() sqrt(2)
-  Cdelta_effective <- Cdelta * sqrt(2)
-  recon_fac <- variable_sd * (dj * sqrt(dt) / (Cdelta_effective * w0_0))
+  # TC98 Eq. 11 reconstruction factor (TWO-SIDED / standard)
+  recon_fac <- variable_sd * (dj * sqrt(dt) / (Cdelta * w0_0))
 
   inv_sqrt_scale <- 1 / sqrt(scale)
-  Ww_all <- Re(wave) * inv_sqrt_scale  # scales x time
+  Ww_all <- Re(wave) * inv_sqrt_scale
 
-  # Significant components (single scale indices)
   for (i in seq_len(num_periods)) {
     j <- signif_periods[i]
     COMPS[, i] <- recon_fac * Ww_all[j, ]
   }
 
-  # Optional residual (all non-significant scales)
   if (include_residual) {
     nonsig_idx <- setdiff(seq_len(n_scales), signif_periods)
 
@@ -319,17 +271,14 @@ extract_wavelet_components <- function(wave,
       warning("All scales are marked as significant; residual component will be zero.")
     }
 
-    # Put mean into residual only if you want full-signal reconstruction from helper alone
     COMPS[, num_periods + 1L] <- COMPS[, num_periods + 1L] + variable_mean
   }
 
-  # Names
   colnames(COMPS) <- c(
     paste0("Component_", seq_len(num_periods)),
     if (include_residual) "Noise" else NULL
   )
 
-  # Metadata
   attr(COMPS, "signif_periods") <- signif_periods
   attr(COMPS, "n_scales") <- n_scales
   attr(COMPS, "n_significant") <- num_periods
@@ -337,4 +286,5 @@ extract_wavelet_components <- function(wave,
 
   COMPS
 }
+
 
