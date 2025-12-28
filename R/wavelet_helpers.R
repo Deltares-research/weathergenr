@@ -244,19 +244,13 @@ extract_wavelet_components <- function(wave,
                                        w0_0 = pi^(-1/4),
                                        include_residual = TRUE) {
 
-  # ==========================================================================
-  # INPUT VALIDATION
-  # ==========================================================================
-
-  if (!is.matrix(wave) && !is.array(wave)) {
-    stop("'wave' must be a matrix or array")
-  }
+  # --- Validation ---
+  if (!is.matrix(wave) && !is.array(wave)) stop("'wave' must be a matrix or array")
 
   if (!is.numeric(signif_periods) || length(signif_periods) == 0) {
     stop("'signif_periods' must be a non-empty numeric vector")
   }
 
-  # Validate integer indices
   if (!all(signif_periods == as.integer(signif_periods))) {
     stop("'signif_periods' must contain integer indices")
   }
@@ -265,7 +259,6 @@ extract_wavelet_components <- function(wave,
     stop("'signif_periods' indices must be between 1 and nrow(wave)")
   }
 
-  # Check for duplicates
   if (anyDuplicated(signif_periods)) {
     warning("'signif_periods' contains duplicate indices; duplicates will be removed")
     signif_periods <- unique(signif_periods)
@@ -275,13 +268,8 @@ extract_wavelet_components <- function(wave,
     stop("'scale' must be numeric with length equal to nrow(wave)")
   }
 
-  if (!is.numeric(dj) || length(dj) != 1 || dj <= 0) {
-    stop("'dj' must be a positive scalar")
-  }
-
-  if (!is.numeric(dt) || length(dt) != 1 || dt <= 0) {
-    stop("'dt' must be a positive scalar")
-  }
+  if (!is.numeric(dj) || length(dj) != 1 || dj <= 0) stop("'dj' must be a positive scalar")
+  if (!is.numeric(dt) || length(dt) != 1 || dt <= 0) stop("'dt' must be a positive scalar")
 
   if (!is.numeric(variable_sd) || length(variable_sd) != 1 || variable_sd <= 0) {
     stop("'variable_sd' must be a positive scalar")
@@ -291,109 +279,62 @@ extract_wavelet_components <- function(wave,
     stop("'variable_mean' must be a numeric scalar")
   }
 
-  if (!is.numeric(Cdelta) || length(Cdelta) != 1 || Cdelta <= 0) {
-    stop("'Cdelta' must be a positive scalar")
-  }
-
-  if (!is.numeric(w0_0) || length(w0_0) != 1 || w0_0 <= 0) {
-    stop("'w0_0' must be a positive scalar")
-  }
+  if (!is.numeric(Cdelta) || length(Cdelta) != 1 || Cdelta <= 0) stop("'Cdelta' must be a positive scalar")
+  if (!is.numeric(w0_0) || length(w0_0) != 1 || w0_0 <= 0) stop("'w0_0' must be a positive scalar")
 
   if (!is.logical(include_residual) || length(include_residual) != 1) {
     stop("'include_residual' must be a single logical value")
   }
 
-  # ==========================================================================
-  # SETUP
-  # ==========================================================================
-
+  # --- Setup ---
   num_periods <- length(signif_periods)
   n_time <- ncol(wave)
   n_scales <- nrow(wave)
 
-  # Determine output dimensions
-  n_components <- num_periods + (if (include_residual) 1 else 0)
-
-  # Preallocate output matrix
+  n_components <- num_periods + (if (include_residual) 1L else 0L)
   COMPS <- matrix(0, nrow = n_time, ncol = n_components)
 
-  # ==========================================================================
-  # RECONSTRUCTION
-  # ==========================================================================
-
-  # Reconstruction factor (Torrence & Compo 1998, Eq. 11)
-  # NOTE: Cdelta is multiplied by sqrt(2) to compensate for the sqrt(2) factor
-  # added to the wavelet normalization for one-sided FFT energy conservation.
-  # Theoretical Cdelta for Morlet = 0.776 (TC98 Table 2)
-  # Effective Cdelta for one-sided transform = 0.776 * sqrt(2) ??? 1.098
+  # --- Reconstruction (TC98 Eq. 11) ---
+  # One-sided convention compensation consistent with your morlet_wavelet() sqrt(2)
   Cdelta_effective <- Cdelta * sqrt(2)
   recon_fac <- variable_sd * (dj * sqrt(dt) / (Cdelta_effective * w0_0))
 
-  # Precompute weighted coefficients for ALL scales (efficient)
-  # This applies the 1/sqrt(s_j) normalization once
   inv_sqrt_scale <- 1 / sqrt(scale)
-  Ww_all <- Re(wave) * inv_sqrt_scale  # Matrix: scales x time
+  Ww_all <- Re(wave) * inv_sqrt_scale  # scales x time
 
-  # ==========================================================================
-  # EXTRACT SIGNIFICANT PERIOD COMPONENTS
-  # ==========================================================================
-
+  # Significant components (single scale indices)
   for (i in seq_len(num_periods)) {
-    cur_period_idx <- signif_periods[i]
-
-    # Extract component for this scale
-    COMPS[, i] <- recon_fac * Ww_all[cur_period_idx, ]
+    j <- signif_periods[i]
+    COMPS[, i] <- recon_fac * Ww_all[j, ]
   }
 
-  # ==========================================================================
-  # COMPUTE RESIDUAL (NOISE) COMPONENT
-  # ==========================================================================
-
+  # Optional residual (all non-significant scales)
   if (include_residual) {
-    # Identify all non-significant scales
     nonsig_idx <- setdiff(seq_len(n_scales), signif_periods)
 
     if (length(nonsig_idx) > 0) {
-      # Sum all non-significant scales to create noise component
-      # This ensures: original = sum(significant) + noise
-      COMPS[, num_periods + 1] <- recon_fac * colSums(Ww_all[nonsig_idx, , drop = FALSE])
+      COMPS[, num_periods + 1L] <- recon_fac * colSums(Ww_all[nonsig_idx, , drop = FALSE])
     } else {
-      # All scales are significant - no residual
-      COMPS[, num_periods + 1] <- 0
-      warning(
-        "All scales are marked as significant; residual component will be zero. ",
-        "This may indicate overfitting."
-      )
+      COMPS[, num_periods + 1L] <- 0
+      warning("All scales are marked as significant; residual component will be zero.")
     }
 
-    # Add mean back to noise component (mean was removed during standardization)
-    COMPS[, num_periods + 1] <- COMPS[, num_periods + 1] + variable_mean
+    # Put mean into residual only if you want full-signal reconstruction from helper alone
+    COMPS[, num_periods + 1L] <- COMPS[, num_periods + 1L] + variable_mean
   }
 
-  # ==========================================================================
-  # FORMAT OUTPUT
-  # ==========================================================================
-
-  # Create descriptive column names
-  col_names <- c(
+  # Names
+  colnames(COMPS) <- c(
     paste0("Component_", seq_len(num_periods)),
     if (include_residual) "Noise" else NULL
   )
 
-  # Convert to tibble
-  comps_tb <- tibble::as_tibble(
-    COMPS,
-    .name_repair = ~ col_names
-  )
+  # Metadata
+  attr(COMPS, "signif_periods") <- signif_periods
+  attr(COMPS, "n_scales") <- n_scales
+  attr(COMPS, "n_significant") <- num_periods
+  attr(COMPS, "reconstruction_complete") <- include_residual
 
-  # ==========================================================================
-  # ADD METADATA ATTRIBUTES
-  # ==========================================================================
-
-  attr(comps_tb, "signif_periods") <- signif_periods
-  attr(comps_tb, "n_scales") <- n_scales
-  attr(comps_tb, "n_significant") <- num_periods
-  attr(comps_tb, "reconstruction_complete") <- include_residual
-
-  return(comps_tb)
+  COMPS
 }
+
