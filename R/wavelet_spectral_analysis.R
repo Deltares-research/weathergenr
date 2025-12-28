@@ -82,7 +82,40 @@ wavelet_spectral_analysis <- function(variable,
   wave <- wave[, 1:n1, drop = FALSE]
   POWER <- abs(wave)^2
 
-  # --- COI-masked power and significance (for plotting) ---
+  # --- COI mask (used by GWS + plotting masks) ---
+  coi_mask <- outer(period, coi, FUN = "<=")   # [n_scales x n_time]
+  n_coi <- rowSums(coi_mask)
+
+  # --- Significance Testing (pointwise) ---
+  empir <- c(2, 0.776, 2.32, 0.60)
+  dofmin <- empir[1]
+  gamma_fac <- empir[3]
+
+  if (noise.type == "white") {
+    lag1 <- 0
+  } else {
+    x <- variable_org
+    x <- x - mean(x)
+
+    lag1 <- tryCatch({
+      fit <- stats::ar(x, aic = FALSE, order.max = 1, method = "yw")
+      as.numeric(fit$ar[1])
+    }, error = function(e) {
+      stats::cor(x[-length(x)], x[-1])
+    })
+
+    if (!is.finite(lag1)) lag1 <- 0
+    lag1 <- max(min(lag1, 0.999), -0.999)
+  }
+
+  freq <- dt / period
+  fft_theor <- (1 - lag1^2) / (1 - 2 * lag1 * cos(freq * 2 * pi) + lag1^2)
+
+  chisquare <- stats::qchisq(signif.level, dofmin) / dofmin
+  signif <- fft_theor * chisquare
+  sigm <- sweep(POWER, 1, signif, FUN = "/")
+
+  # --- COI-masked power and pointwise significance (for plotting) ---
   power_coi <- POWER
   power_coi[!coi_mask] <- NA_real_
 
@@ -92,69 +125,12 @@ wavelet_spectral_analysis <- function(variable,
   power_signif_coi <- sigm_coi > 1
   power_signif_coi[is.na(sigm_coi)] <- FALSE
 
-
-  # --- COI-masked Global Wavelet Spectrum (GWS) + plotting version ---
-  coi_mask <- outer(period, coi, FUN = "<=")           # [n_scales x n_time] logical
-  n_coi <- rowSums(coi_mask)                           # length = n_scales
-
-  POWER_coi <- POWER
-  POWER_coi[!coi_mask] <- NA_real_
-
-  mean_power_coi <- rowMeans(POWER_coi, na.rm = TRUE)
+  # --- GWS (masked for inference + unmasked for plotting) ---
+  mean_power_coi <- rowMeans(power_coi, na.rm = TRUE)
   mean_power_coi[!is.finite(mean_power_coi)] <- NA_real_
 
   GWS_unmasked <- as.numeric(variance1 * rowMeans(POWER))
   GWS <- as.numeric(variance1 * mean_power_coi)
-
-  # --- Significance Testing ---
-  empir <- c(2, 0.776, 2.32, 0.60)
-  dofmin <- empir[1]
-  gamma_fac <- empir[3]
-
-
-  # if (noise.type == "white") {
-  #   lag1 <- 0
-  # } else {
-  #   lag1_raw <- stats::cor(variable_org[-n1], variable_org[-1])
-  #   bias_correction <- (1 + 2 * lag1_raw) / (n1 - 2)
-  #   lag1 <- lag1_raw - bias_correction
-  #   lag1 <- max(min(lag1, 0.999), -0.999)
-  # }
-
-  if (noise.type == "white") {
-    lag1 <- 0
-  } else {
-
-    x <- variable_org
-    x <- x - mean(x)  # remove mean for AR estimation stability
-
-    # Yule-Walker AR(1) estimate (standard, stable)
-    # ar() may fail for very short/degenerate inputs; catch and fall back
-    lag1 <- tryCatch({
-      fit <- stats::ar(x, aic = FALSE, order.max = 1, method = "yw")
-      as.numeric(fit$ar[1])
-    }, error = function(e) {
-      # Fallback: sample lag-1 autocorrelation (mean-removed)
-      stats::cor(x[-length(x)], x[-1])
-    })
-
-    # Guard rails
-    if (!is.finite(lag1)) lag1 <- 0
-    lag1 <- max(min(lag1, 0.999), -0.999)
-  }
-
-
-  freq <- dt / period
-  fft_theor <- (1 - lag1^2) / (1 - 2 * lag1 * cos(freq * 2 * pi) + lag1^2)
-
-  chisquare <- stats::qchisq(signif.level, dofmin) / dofmin
-  signif <- fft_theor * chisquare
-  sigm <- sweep(POWER, 1, signif, FUN = "/")
-
-  # --- COI-aware pointwise significance ratio (for plotting) ---
-  # Mask sigm outside COI to avoid edge artifacts being interpreted as significance.
-  sigm_coi <- sigm
-  sigm_coi[!coi_mask] <- NA_real_
 
   # --- Masked but uncorrected significance (COI mask only; plotting clarity) ---
   dof_masked_uncorrected <- dofmin * as.numeric(n_coi)
@@ -170,7 +146,7 @@ wavelet_spectral_analysis <- function(variable,
   GWS_signif_masked_uncorrected[ok_mu] <-
     as.numeric(fft_theor[ok_mu] * variance1 * chisq_masked_uncorrected[ok_mu])
 
-  # --- COI-consistent Neff based on wavelet decorrelation time (inference curve) ---
+  # --- COI-consistent Neff (decorrelation-adjusted; inference curve) ---
   Neff <- (as.numeric(n_coi) * dt) / (gamma_fac * scale)
   Neff[Neff < 1] <- NA_real_
   Neff[!is.finite(Neff)] <- NA_real_
@@ -213,9 +189,8 @@ wavelet_spectral_analysis <- function(variable,
   # --- Identify Significant Periods (use inference curves only) ---
   sig_periods <- which(
     is.finite(GWS) & is.finite(GWS_signif) &
-      (GWS > GWS_signif) & (period > period.lower.limit))
-
-  has_significance <- length(sig_periods) > 0
+      (GWS > GWS_signif) & (period > period.lower.limit)
+  )
 
   out_recon_err <- NULL
 
@@ -235,7 +210,8 @@ wavelet_spectral_analysis <- function(variable,
 
     signif_periods <- as.integer(unlist(
       lapply(sig_periods_grp, function(x) x[which.max(GWS[x])]),
-      use.names = FALSE))
+      use.names = FALSE
+    ))
 
     comps_mat <- extract_wavelet_components(
       wave = wave,
@@ -276,27 +252,34 @@ wavelet_spectral_analysis <- function(variable,
   out <- list(
     GWS = GWS,
     GWS_unmasked = GWS_unmasked,
+
     GWS_signif = GWS_signif,
     GWS_signif_masked_uncorrected = GWS_signif_masked_uncorrected,
+
     GWS_signif_unmasked = GWS_signif_unmasked,
     GWS_signif_unmasked_legacy = GWS_signif_unmasked_legacy,
+
     GWS_period = period,
     signif_periods = signif_periods,
+    signif_period_values = signif_period_values,
+
+    has_significance = has_significance,
+    significance_status = significance_status,
+
     wave = wave,
     power = POWER,
     power_coi = power_coi,
+    sigm = sigm,
+    sigm_coi = sigm_coi,
     power_signif_coi = power_signif_coi,
     coi = coi,
-    sigm = sigm,
+
     COMPS = COMPS,
     COMPS_names = colnames(COMPS),
+
     GWS_n_coi = n_coi,
     GWS_Neff = Neff,
-    GWS_Neff_unmasked = Neff_unmasked,
-    has_significance = has_significance,
-    significance_status = significance_status,
-    signif_period_values = signif_period_values,
-    sigm_coi = sigm_coi
+    GWS_Neff_unmasked = Neff_unmasked
   )
 
   if (return_recon_error) out$reconstruction_error <- out_recon_err
@@ -307,8 +290,8 @@ wavelet_spectral_analysis <- function(variable,
       variance = variance1,
       n_original = n1,
       n_padded = n,
-      dof = dof,                    # inference dof (masked + Neff)
-      dof_unmasked = dof_unmasked,  # plotting dof (unmasked + Neff)
+      dof = dof,
+      dof_unmasked = dof_unmasked,
       scale = scale,
       fourier_factor = fourier_factor,
       n_coi = n_coi,
