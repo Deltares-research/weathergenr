@@ -4,7 +4,14 @@ wavelet_spectral_analysis <- function(variable,
                                       period.lower.limit = 2,
                                       detrend = FALSE,
                                       return_diagnostics = TRUE,
-                                      return_recon_error = FALSE) {
+                                      return_recon_error = FALSE,
+                                      lag1_ci = FALSE,
+                                      lag1_ci_level = 0.95,
+                                      lag1_boot_n = 500,
+                                      seed = NULL,
+                                      warn_neff = TRUE,
+                                      neff_warn_min = 5,
+                                      neff_warn_frac = 0.60) {
 
   # --- Input Validation ---
   if (!is.numeric(variable)) stop("variable must be numeric")
@@ -28,6 +35,27 @@ wavelet_spectral_analysis <- function(variable,
 
   if (!is.logical(return_recon_error) || length(return_recon_error) != 1L) {
     stop("return_recon_error must be TRUE/FALSE")
+  }
+
+  if (!is.logical(lag1_ci) || length(lag1_ci) != 1L) stop("lag1_ci must be TRUE/FALSE")
+  if (!is.numeric(lag1_ci_level) || length(lag1_ci_level) != 1L ||
+      lag1_ci_level <= 0 || lag1_ci_level >= 1) {
+    stop("lag1_ci_level must be between 0 and 1")
+  }
+  if (!is.numeric(lag1_boot_n) || length(lag1_boot_n) != 1L || lag1_boot_n < 50) {
+    stop("lag1_boot_n must be >= 50")
+  }
+  if (!is.null(seed) && (!is.numeric(seed) || length(seed) != 1L)) {
+    stop("seed must be NULL or a single number")
+  }
+
+  if (!is.logical(warn_neff) || length(warn_neff) != 1L) stop("warn_neff must be TRUE/FALSE")
+  if (!is.numeric(neff_warn_min) || length(neff_warn_min) != 1L || neff_warn_min <= 0) {
+    stop("neff_warn_min must be > 0")
+  }
+  if (!is.numeric(neff_warn_frac) || length(neff_warn_frac) != 1L ||
+      neff_warn_frac <= 0 || neff_warn_frac >= 1) {
+    stop("neff_warn_frac must be between 0 and 1")
   }
 
   # --- Wavelet Transform Analysis ---
@@ -108,6 +136,40 @@ wavelet_spectral_analysis <- function(variable,
     lag1 <- max(min(lag1, 0.999), -0.999)
   }
 
+  # --- Optional lag1 uncertainty (diagnostic only) ---
+  lag1_ci_out <- NULL
+  if (lag1_ci && noise.type == "red") {
+
+    if (!is.null(seed)) set.seed(seed)
+
+    x0 <- variable_org - mean(variable_org)
+    sig_eps <- stats::sd(x0) * sqrt(max(1e-12, 1 - lag1^2))
+
+    phi_boot <- replicate(lag1_boot_n, {
+      xb <- as.numeric(stats::arima.sim(n = n1, model = list(ar = lag1), sd = sig_eps))
+      xb <- xb - mean(xb)
+
+      ph <- tryCatch({
+        fitb <- stats::ar(xb, aic = FALSE, order.max = 1, method = "yw")
+        as.numeric(fitb$ar[1])
+      }, error = function(e) {
+        stats::cor(xb[-length(xb)], xb[-1])
+      })
+
+      if (!is.finite(ph)) ph <- 0
+      max(min(ph, 0.999), -0.999)
+    })
+
+    alpha <- (1 - lag1_ci_level) / 2
+    lag1_ci_out <- list(
+      level = lag1_ci_level,
+      n_boot = lag1_boot_n,
+      lag1_hat = lag1,
+      lower = as.numeric(stats::quantile(phi_boot, probs = alpha, na.rm = TRUE)),
+      upper = as.numeric(stats::quantile(phi_boot, probs = 1 - alpha, na.rm = TRUE))
+    )
+  }
+
   freq <- dt / period
   fft_theor <- (1 - lag1^2) / (1 - 2 * lag1 * cos(freq * 2 * pi) + lag1^2)
 
@@ -150,6 +212,22 @@ wavelet_spectral_analysis <- function(variable,
   Neff <- (as.numeric(n_coi) * dt) / (gamma_fac * scale)
   Neff[Neff < 1] <- NA_real_
   Neff[!is.finite(Neff)] <- NA_real_
+
+  # --- Short-record / small-Neff warnings ---
+  if (warn_neff) {
+    ok_neff <- is.finite(Neff)
+    frac_small <- if (any(ok_neff)) mean(Neff[ok_neff] < neff_warn_min) else 1
+
+    if (!any(ok_neff) || frac_small >= neff_warn_frac) {
+      warning(
+        sprintf(
+          "Wavelet significance may be unreliable: %.0f%% of scales have Neff < %.2f (n=%d). Consider longer series or coarser scales/dj.",
+          100 * frac_small, neff_warn_min, n1
+        ),
+        call. = FALSE
+      )
+    }
+  }
 
   dof <- dofmin * Neff
   dof[is.finite(dof) & dof < dofmin] <- dofmin
@@ -287,6 +365,7 @@ wavelet_spectral_analysis <- function(variable,
   if (return_diagnostics) {
     out$diagnostics <- list(
       lag1 = lag1,
+      lag1_ci = lag1_ci_out,
       variance = variance1,
       n_original = n1,
       n_padded = n,
