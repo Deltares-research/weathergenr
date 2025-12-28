@@ -81,7 +81,27 @@ wavelet_spectral_analysis <- function(variable,
 
   wave <- wave[, 1:n1, drop = FALSE]
   POWER <- abs(wave)^2
-  GWS <- as.numeric(variance1 * rowMeans(POWER))
+
+  # --- COI-masked Global Wavelet Spectrum (GWS) ---
+  # Mask out power values outside the cone of influence before time-averaging.
+  # Inside-COI condition: period[j] <= coi[t]
+  coi_mask <- outer(period, coi, FUN = "<=")  # [n_scales x n_time] logical
+
+  # Set outside-COI power to NA so rowMeans(..., na.rm=TRUE) ignores it
+  POWER_coi <- POWER
+  POWER_coi[!coi_mask] <- NA_real_
+
+  # Mean power across time, using only inside-COI values
+  mean_power_coi <- rowMeans(POWER_coi, na.rm = TRUE)
+
+  # If a scale has zero inside-COI points, mean_power_coi becomes NaN; convert to NA
+  mean_power_coi[!is.finite(mean_power_coi)] <- NA_real_
+
+  # Scale back to original variance units (your existing convention)
+  GWS_unmasked <- as.numeric(variance1 * rowMeans(POWER))
+  GWS <- as.numeric(variance1 * mean_power_coi)
+
+  #GWS <- as.numeric(variance1 * rowMeans(POWER))
 
   # --- Significance Testing ---
   empir <- c(2, 0.776, 2.32, 0.60)
@@ -113,7 +133,7 @@ wavelet_spectral_analysis <- function(variable,
   GWS_signif <- as.numeric(fft_theor * variance1 * chisquare_GWS)
 
   # --- Identify Significant Periods ---
-  sig_periods <- which(GWS > GWS_signif & period > period.lower.limit)
+  sig_periods <- which(is.finite(GWS) & (GWS > GWS_signif) & (period > period.lower.limit))
 
   # Will be populated only if return_recon_error = TRUE
   out_recon_err <- NULL
@@ -177,6 +197,7 @@ wavelet_spectral_analysis <- function(variable,
 
   out <- list(
     GWS = GWS,
+    gws_unmasked = GWS_unmasked,
     GWS_signif = GWS_signif,
     GWS_period = period,
     signif_periods = signif_periods,
@@ -192,6 +213,7 @@ wavelet_spectral_analysis <- function(variable,
   if (return_recon_error) out$reconstruction_error <- out_recon_err
 
   if (return_diagnostics) {
+
     out$diagnostics <- list(
       lag1 = lag1,
       variance = variance1,
@@ -199,7 +221,8 @@ wavelet_spectral_analysis <- function(variable,
       n_padded = n,
       dof = dof,
       scale = scale,
-      fourier_factor = fourier_factor
+      fourier_factor = fourier_factor,
+      n_coi = rowSums(coi_mask)  # number of time points inside COI per scale
     )
   }
 
