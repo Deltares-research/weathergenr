@@ -82,6 +82,17 @@ wavelet_spectral_analysis <- function(variable,
   wave <- wave[, 1:n1, drop = FALSE]
   POWER <- abs(wave)^2
 
+  # --- COI-masked power and significance (for plotting) ---
+  power_coi <- POWER
+  power_coi[!coi_mask] <- NA_real_
+
+  sigm_coi <- sigm
+  sigm_coi[!coi_mask] <- NA_real_
+
+  power_signif_coi <- sigm_coi > 1
+  power_signif_coi[is.na(sigm_coi)] <- FALSE
+
+
   # --- COI-masked Global Wavelet Spectrum (GWS) + plotting version ---
   coi_mask <- outer(period, coi, FUN = "<=")           # [n_scales x n_time] logical
   n_coi <- rowSums(coi_mask)                           # length = n_scales
@@ -139,6 +150,11 @@ wavelet_spectral_analysis <- function(variable,
   chisquare <- stats::qchisq(signif.level, dofmin) / dofmin
   signif <- fft_theor * chisquare
   sigm <- sweep(POWER, 1, signif, FUN = "/")
+
+  # --- COI-aware pointwise significance ratio (for plotting) ---
+  # Mask sigm outside COI to avoid edge artifacts being interpreted as significance.
+  sigm_coi <- sigm
+  sigm_coi[!coi_mask] <- NA_real_
 
   # --- Masked but uncorrected significance (COI mask only; plotting clarity) ---
   dof_masked_uncorrected <- dofmin * as.numeric(n_coi)
@@ -268,6 +284,8 @@ wavelet_spectral_analysis <- function(variable,
     signif_periods = signif_periods,
     wave = wave,
     power = POWER,
+    power_coi = power_coi,
+    power_signif_coi = power_signif_coi,
     coi = coi,
     sigm = sigm,
     COMPS = COMPS,
@@ -277,7 +295,8 @@ wavelet_spectral_analysis <- function(variable,
     GWS_Neff_unmasked = Neff_unmasked,
     has_significance = has_significance,
     significance_status = significance_status,
-    signif_period_values = signif_period_values
+    signif_period_values = signif_period_values,
+    sigm_coi = sigm_coi
   )
 
   if (return_recon_error) out$reconstruction_error <- out_recon_err
