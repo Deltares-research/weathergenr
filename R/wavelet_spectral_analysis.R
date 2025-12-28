@@ -46,7 +46,7 @@ wavelet_spectral_analysis <- function(variable,
 
   variable_std <- (variable_org - mean(variable_org)) / sdx
 
-  # Zero-pad (unchanged; not part of Priority 0)
+  # Zero-pad
   base2 <- floor(log2(n1) + 0.4999)
   variable_pad <- c(variable_std, rep(0, (2^(base2 + 1) - n1)))
   n <- length(variable_pad)
@@ -82,42 +82,56 @@ wavelet_spectral_analysis <- function(variable,
   wave <- wave[, 1:n1, drop = FALSE]
   POWER <- abs(wave)^2
 
-  # --- COI-masked Global Wavelet Spectrum (GWS) ---
-  # Mask out power values outside the cone of influence before time-averaging.
-  # Inside-COI condition: period[j] <= coi[t]
-  coi_mask <- outer(period, coi, FUN = "<=")  # [n_scales x n_time] logical
-  n_coi <- rowSums(coi_mask)  # length = n_scales
+  # --- COI-masked Global Wavelet Spectrum (GWS) + plotting version ---
+  coi_mask <- outer(period, coi, FUN = "<=")           # [n_scales x n_time] logical
+  n_coi <- rowSums(coi_mask)                           # length = n_scales
 
-
-  # Set outside-COI power to NA so rowMeans(..., na.rm=TRUE) ignores it
   POWER_coi <- POWER
   POWER_coi[!coi_mask] <- NA_real_
 
-  # Mean power across time, using only inside-COI values
   mean_power_coi <- rowMeans(POWER_coi, na.rm = TRUE)
-
-  # If a scale has zero inside-COI points, mean_power_coi becomes NaN; convert to NA
   mean_power_coi[!is.finite(mean_power_coi)] <- NA_real_
 
-  # Scale back to original variance units (your existing convention)
   GWS_unmasked <- as.numeric(variance1 * rowMeans(POWER))
   GWS <- as.numeric(variance1 * mean_power_coi)
-
-  #GWS <- as.numeric(variance1 * rowMeans(POWER))
 
   # --- Significance Testing ---
   empir <- c(2, 0.776, 2.32, 0.60)
   dofmin <- empir[1]
   gamma_fac <- empir[3]
 
+
+  # if (noise.type == "white") {
+  #   lag1 <- 0
+  # } else {
+  #   lag1_raw <- stats::cor(variable_org[-n1], variable_org[-1])
+  #   bias_correction <- (1 + 2 * lag1_raw) / (n1 - 2)
+  #   lag1 <- lag1_raw - bias_correction
+  #   lag1 <- max(min(lag1, 0.999), -0.999)
+  # }
+
   if (noise.type == "white") {
     lag1 <- 0
   } else {
-    lag1_raw <- stats::cor(variable_org[-n1], variable_org[-1])
-    bias_correction <- (1 + 2 * lag1_raw) / (n1 - 2)
-    lag1 <- lag1_raw - bias_correction
+
+    x <- variable_org
+    x <- x - mean(x)  # remove mean for AR estimation stability
+
+    # Yule-Walker AR(1) estimate (standard, stable)
+    # ar() may fail for very short/degenerate inputs; catch and fall back
+    lag1 <- tryCatch({
+      fit <- stats::ar(x, aic = FALSE, order.max = 1, method = "yw")
+      as.numeric(fit$ar[1])
+    }, error = function(e) {
+      # Fallback: sample lag-1 autocorrelation (mean-removed)
+      stats::cor(x[-length(x)], x[-1])
+    })
+
+    # Guard rails
+    if (!is.finite(lag1)) lag1 <- 0
     lag1 <- max(min(lag1, 0.999), -0.999)
   }
+
 
   freq <- dt / period
   fft_theor <- (1 - lag1^2) / (1 - 2 * lag1 * cos(freq * 2 * pi) + lag1^2)
@@ -126,57 +140,75 @@ wavelet_spectral_analysis <- function(variable,
   signif <- fft_theor * chisquare
   sigm <- sweep(POWER, 1, signif, FUN = "/")
 
-  #dof <- n1 - scale
-  #dof[dof < 1] <- 1
-  #dof <- dofmin * sqrt(1 + (dof * dt / gamma_fac / scale)^2)
-  #dof[dof < dofmin] <- dofmin
-  #chisquare_GWS <- stats::qchisq(signif.level, dof) / dof
-  #GWS_signif <- as.numeric(fft_theor * variance1 * chisquare_GWS)
+  # --- Masked but uncorrected significance (COI mask only; plotting clarity) ---
+  dof_masked_uncorrected <- dofmin * as.numeric(n_coi)
+  dof_masked_uncorrected[is.finite(dof_masked_uncorrected) & dof_masked_uncorrected < dofmin] <- dofmin
+  dof_masked_uncorrected[!is.finite(dof_masked_uncorrected)] <- NA_real_
 
-  # --- Effective DOF for COI-masked GWS (use n_coi instead of n1) ---
+  chisq_masked_uncorrected <- rep(NA_real_, length(dof_masked_uncorrected))
+  ok_mu <- is.finite(dof_masked_uncorrected) & dof_masked_uncorrected > 0
+  chisq_masked_uncorrected[ok_mu] <-
+    stats::qchisq(signif.level, dof_masked_uncorrected[ok_mu]) / dof_masked_uncorrected[ok_mu]
 
-  # Effective sample size per scale = number of in-COI time points used in the average
-  Neff <- as.numeric(n_coi)
-  Neff[Neff < 1] <- NA_real_  # scales with no in-COI support: undefined significance
+  GWS_signif_masked_uncorrected <- rep(NA_real_, length(dof_masked_uncorrected))
+  GWS_signif_masked_uncorrected[ok_mu] <-
+    as.numeric(fft_theor[ok_mu] * variance1 * chisq_masked_uncorrected[ok_mu])
 
-  # Keep your existing DOF shaping, but replace the time-length term with Neff
-  dof <- dofmin * sqrt(1 + (Neff * dt / gamma_fac / scale)^2)
+  # --- COI-consistent Neff based on wavelet decorrelation time (inference curve) ---
+  Neff <- (as.numeric(n_coi) * dt) / (gamma_fac * scale)
+  Neff[Neff < 1] <- NA_real_
+  Neff[!is.finite(Neff)] <- NA_real_
 
-  # Enforce minimum dof and keep NA where Neff is NA
+  dof <- dofmin * Neff
   dof[is.finite(dof) & dof < dofmin] <- dofmin
 
-  chisquare_GWS <- rep(NA_real_, length(dof))
+  chisq <- rep(NA_real_, length(dof))
   ok <- is.finite(dof) & dof > 0
-  chisquare_GWS[ok] <- stats::qchisq(signif.level, dof[ok]) / dof[ok]
+  chisq[ok] <- stats::qchisq(signif.level, dof[ok]) / dof[ok]
 
   GWS_signif <- rep(NA_real_, length(dof))
-  GWS_signif[ok] <- as.numeric(fft_theor[ok] * variance1 * chisquare_GWS[ok])
+  GWS_signif[ok] <- as.numeric(fft_theor[ok] * variance1 * chisq[ok])
 
+  # --- UNMASKED GWS significance (plotting) ---
+  # Legacy curve (exact old behavior) kept ONLY for backward-comparison plots
+  dof_unmasked_legacy <- n1 - scale
+  dof_unmasked_legacy[dof_unmasked_legacy < 1] <- 1
+  dof_unmasked_legacy <- dofmin * sqrt(1 + (dof_unmasked_legacy * dt / gamma_fac / scale)^2)
+  dof_unmasked_legacy[dof_unmasked_legacy < dofmin] <- dofmin
 
-  #### For plotting
-  dof_unmasked <- n1 - scale
-  dof_unmasked[dof_unmasked < 1] <- 1
-  dof_unmasked <- dofmin * sqrt(1 + (dof_unmasked * dt / gamma_fac / scale)^2)
-  dof_unmasked[dof_unmasked < dofmin] <- dofmin
-  chisq_unmasked <- stats::qchisq(signif.level, dof_unmasked) / dof_unmasked
-  GWS_signif_unmasked <- as.numeric(fft_theor * variance1 * chisq_unmasked)
+  chisq_unmasked_legacy <- stats::qchisq(signif.level, dof_unmasked_legacy) / dof_unmasked_legacy
+  GWS_signif_unmasked_legacy <- as.numeric(fft_theor * variance1 * chisq_unmasked_legacy)
 
+  # Defensible unmasked curve: Neff based on wavelet decorrelation time over full record
+  Neff_unmasked <- (n1 * dt) / (gamma_fac * scale)
+  Neff_unmasked[Neff_unmasked < 1] <- NA_real_
+  Neff_unmasked[!is.finite(Neff_unmasked)] <- NA_real_
 
-  # --- Identify Significant Periods ---
-  sig_periods <- which(is.finite(GWS) & is.finite(GWS_signif) & (GWS > GWS_signif) & (period > period.lower.limit))
+  dof_unmasked <- dofmin * Neff_unmasked
+  dof_unmasked[is.finite(dof_unmasked) & dof_unmasked < dofmin] <- dofmin
 
-  # Will be populated only if return_recon_error = TRUE
+  chisq_unmasked <- rep(NA_real_, length(dof_unmasked))
+  ok_u <- is.finite(dof_unmasked) & dof_unmasked > 0
+  chisq_unmasked[ok_u] <- stats::qchisq(signif.level, dof_unmasked[ok_u]) / dof_unmasked[ok_u]
+
+  GWS_signif_unmasked <- rep(NA_real_, length(dof_unmasked))
+  GWS_signif_unmasked[ok_u] <- as.numeric(fft_theor[ok_u] * variance1 * chisq_unmasked[ok_u])
+
+  # --- Identify Significant Periods (use inference curves only) ---
+  sig_periods <- which(
+    is.finite(GWS) & is.finite(GWS_signif) &
+      (GWS > GWS_signif) & (period > period.lower.limit))
+
+  has_significance <- length(sig_periods) > 0
+
   out_recon_err <- NULL
 
   if (length(sig_periods) == 0) {
 
     signif_periods <- integer(0)
-
-    # Stable contract: COMPS is always a numeric matrix with nrow == length(variable)
     COMPS <- matrix(variable_org, ncol = 1)
     colnames(COMPS) <- "NOISE"
 
-    # Optional scalar closure diagnostics (trivially perfect)
     if (return_recon_error) {
       out_recon_err <- list(recon_max_abs = 0, recon_rmse = 0)
     }
@@ -187,8 +219,7 @@ wavelet_spectral_analysis <- function(variable,
 
     signif_periods <- as.integer(unlist(
       lapply(sig_periods_grp, function(x) x[which.max(GWS[x])]),
-      use.names = FALSE
-    ))
+      use.names = FALSE))
 
     comps_mat <- extract_wavelet_components(
       wave = wave,
@@ -200,20 +231,17 @@ wavelet_spectral_analysis <- function(variable,
       variable_mean = 0,
       Cdelta = 0.776,
       w0_0 = pi^(-1/4),
-      include_residual = FALSE)
+      include_residual = FALSE
+    )
 
-    # Rename component columns
     period_labels <- round(period[signif_periods], 2)
     comp_names <- paste0("Period_", period_labels)
     colnames(comps_mat) <- comp_names
 
-    # Residual once (NOISE)
     noise <- variable_org - rowSums(comps_mat)
-
     COMPS <- cbind(comps_mat, NOISE = noise)
     colnames(COMPS) <- c(comp_names, "NOISE")
 
-    # Optional scalar closure diagnostics (should be ~0)
     if (return_recon_error) {
       recon_vec <- variable_org - rowSums(COMPS)
       out_recon_err <- list(
@@ -223,37 +251,51 @@ wavelet_spectral_analysis <- function(variable,
     }
   }
 
-
+  # Explicit no-significance handling outputs
+  signif_periods <- as.integer(signif_periods)
+  has_significance <- length(signif_periods) > 0
+  significance_status <- if (has_significance) "significant_scales_found" else "no_significant_scales"
+  signif_period_values <- if (has_significance) period[signif_periods] else numeric(0)
 
   out <- list(
     GWS = GWS,
-    gws_unmasked = GWS_unmasked,
+    GWS_unmasked = GWS_unmasked,
     GWS_signif = GWS_signif,
-    gws_signif_unmasked = GWS_signif_unmasked,
+    GWS_signif_masked_uncorrected = GWS_signif_masked_uncorrected,
+    GWS_signif_unmasked = GWS_signif_unmasked,
+    GWS_signif_unmasked_legacy = GWS_signif_unmasked_legacy,
     GWS_period = period,
     signif_periods = signif_periods,
     wave = wave,
     power = POWER,
     coi = coi,
     sigm = sigm,
-    COMPS = COMPS
+    COMPS = COMPS,
+    COMPS_names = colnames(COMPS),
+    GWS_n_coi = n_coi,
+    GWS_Neff = Neff,
+    GWS_Neff_unmasked = Neff_unmasked,
+    has_significance = has_significance,
+    significance_status = significance_status,
+    signif_period_values = signif_period_values
   )
-
-  out$COMPS_names <- colnames(COMPS)
 
   if (return_recon_error) out$reconstruction_error <- out_recon_err
 
   if (return_diagnostics) {
-
     out$diagnostics <- list(
       lag1 = lag1,
       variance = variance1,
       n_original = n1,
       n_padded = n,
-      dof = dof,
+      dof = dof,                    # inference dof (masked + Neff)
+      dof_unmasked = dof_unmasked,  # plotting dof (unmasked + Neff)
       scale = scale,
       fourier_factor = fourier_factor,
-      n_coi = n_coi)
+      n_coi = n_coi,
+      GWS_Neff = Neff,
+      GWS_Neff_unmasked = Neff_unmasked
+    )
   }
 
   out
