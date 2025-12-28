@@ -29,7 +29,7 @@
 #' @export
 morlet_wavelet <- function(k, s, k0 = 6) {
 
-  # Input validation
+  # Basic validation
   if (!is.numeric(k) || !is.numeric(s) || !is.numeric(k0)) {
     stop("All inputs must be numeric")
   }
@@ -42,18 +42,37 @@ morlet_wavelet <- function(k, s, k0 = 6) {
     stop("'k0' must be a positive scalar")
   }
 
+  if (length(k) < 2) {
+    stop("'k' must have length >= 2")
+  }
+
+  # Simple critical checks for FFT frequency vector
+  if (abs(k[1]) > 1e-10) {
+    stop("'k' must start at zero frequency (standard FFT ordering)")
+  }
+
+  if (k[2] <= 0) {
+    stop("'k[2]' must be positive (frequency spacing)")
+  }
+
+  # Check for non-finite values
+  if (any(!is.finite(k))) {
+    stop("'k' contains non-finite values (NA, NaN, or Inf)")
+  }
+
+  # Morlet wavelet computation
   nn <- length(k)
-
-  # Only positive frequencies (one-sided spectrum)
   z <- as.numeric(k > 0)
-
-  # Exponential term: Gaussian envelope in frequency
   expnt <- -((s * k - k0)^2 / 2) * z
 
-  # Normalization factor (Torrence & Compo 1998, Eq. 4)
-  norm <- sqrt(s * k[2]) * (pi^(-0.25)) * sqrt(nn)
+  # Normalization following TC98 Eq. 4
+  # Factor breakdown:
+  #   pi^(-1/4): standard Morlet normalization
+  #   sqrt(2 * s * dk): scale and frequency spacing
+  #   sqrt(n): FFT normalization
+  # NOTE: The sqrt(2) factor is critical for energy conservation
+  norm <- sqrt(2 * s * k[2]) * (pi^(-0.25)) * sqrt(nn)
 
-  # Daughter wavelet in Fourier space
   daughter <- norm * exp(expnt) * z
 
   return(daughter)
@@ -131,8 +150,8 @@ morlet_parameters <- function(k0 = 6) {
 #'
 #' @description
 #' Reconstructs time series components from the wavelet transform for
-#' user-specified significant periods. Uses the inverse continuous wavelet
-#' transform formula to convert wavelet coefficients back to time domain.
+#' user-specified significant periods. Optionally includes a residual component
+#' representing all non-significant scales, ensuring complete signal decomposition.
 #'
 #' @param wave Complex matrix. Wavelet transform coefficients with dimensions
 #'   (scales x time). Output from continuous wavelet transform.
@@ -144,23 +163,40 @@ morlet_parameters <- function(k0 = 6) {
 #' @param dt Numeric scalar. Time step of the original series (default = 1).
 #' @param variable_sd Numeric scalar. Standard deviation of the original time series
 #'   before standardization. Used to restore original units.
+#' @param variable_mean Numeric scalar. Mean of the original time series
+#'   before standardization (default = 0). Added back to noise component to ensure
+#'   complete reconstruction: rowSums(output) = original_signal.
 #' @param Cdelta Numeric scalar. Reconstruction constant for Morlet wavelet
 #'   (default = 0.776). Depends on wavelet type; see Torrence & Compo (1998) Table 2.
-#' @param w0_0 Numeric scalar. Normalization constant \eqn{\psi_0(0) = \pi^{-1/4}}
+#' @param w0_0 Numeric scalar. Normalization constant psi_0(0) = pi^(-1/4)
 #'   for Morlet wavelet (default = \code{pi^(-1/4)}).
+#' @param include_residual Logical. If TRUE (default), includes a "Noise" component
+#'   representing the sum of all non-significant scales, ensuring complete
+#'   signal decomposition where rowSums(output) equals the reconstructed signal.
 #'
-#' @return A tibble with one column per significant period component.
-#'   Column names are \code{Component_1}, \code{Component_2}, etc.
+#' @return A tibble with columns:
+#'   \itemize{
+#'     \item \code{Component_1, Component_2, ...}: One column per significant period
+#'     \item \code{Noise}: (if include_residual = TRUE) Sum of all non-significant scales
+#'   }
 #'   Number of rows equals the length of the original time series.
+#'   Property: \code{rowSums(output)} approximately equals the original signal.
 #'
 #' @details
 #' The reconstruction formula (Torrence & Compo 1998, Eq. 11) is:
-#' \deqn{x_n = \frac{\delta j \sqrt{\delta t}}{C_\delta \psi_0(0)}
-#'       \sum_{j=0}^{J} \frac{\text{Re}(W_n(s_j))}{\sqrt{s_j}}}
 #'
-#' Each component represents the contribution of a specific frequency band
-#' to the original time series. Components can be summed to approximate
-#' the original signal (within the limits of the selected periods).
+#' x_n = (delta_j * sqrt(delta_t)) / (C_delta * psi_0(0)) *
+#'       sum over j of Re(W_n(s_j)) / sqrt(s_j)
+#'
+#' This function performs a complete wavelet decomposition by:
+#' \enumerate{
+#'   \item Extracting each significant period as a separate component
+#'   \item Summing all remaining (non-significant) scales into a "Noise" component
+#'   \item Ensuring: original_signal = sum(significant_components) + Noise
+#' }
+#'
+#' This differs from partial reconstruction, which would only sum significant
+#' scales and lose information from non-significant scales.
 #'
 #' @references
 #' Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
@@ -177,11 +213,21 @@ morlet_parameters <- function(k0 = 6) {
 #'   dj = 0.25,
 #'   dt = 1,
 #'   variable_sd = sd(original_data),
-#'   Cdelta = 0.776
+#'   variable_mean = mean(original_data),
+#'   Cdelta = 0.776,
+#'   include_residual = TRUE
 #' )
 #'
-#' # Components sum to approximate original signal
+#' # Verify complete reconstruction
 #' reconstructed <- rowSums(components)
+#' plot(original_data)
+#' lines(reconstructed, col = "red")
+#'
+#' # Components include:
+#' # - Component_1: First significant period
+#' # - Component_2: Second significant period
+#' # - Component_3: Third significant period
+#' # - Noise: All non-significant scales combined + mean
 #' }
 #'
 #' @importFrom tibble as_tibble
@@ -193,10 +239,15 @@ extract_wavelet_components <- function(wave,
                                        dj = 0.25,
                                        dt = 1,
                                        variable_sd,
+                                       variable_mean = 0,
                                        Cdelta = 0.776,
-                                       w0_0 = pi^(-1/4)) {
+                                       w0_0 = pi^(-1/4),
+                                       include_residual = TRUE) {
 
-  # Input validation
+  # ==========================================================================
+  # INPUT VALIDATION
+  # ==========================================================================
+
   if (!is.matrix(wave) && !is.array(wave)) {
     stop("'wave' must be a matrix or array")
   }
@@ -205,50 +256,144 @@ extract_wavelet_components <- function(wave,
     stop("'signif_periods' must be a non-empty numeric vector")
   }
 
+  # Validate integer indices
+  if (!all(signif_periods == as.integer(signif_periods))) {
+    stop("'signif_periods' must contain integer indices")
+  }
+
   if (any(signif_periods < 1) || any(signif_periods > nrow(wave))) {
     stop("'signif_periods' indices must be between 1 and nrow(wave)")
+  }
+
+  # Check for duplicates
+  if (anyDuplicated(signif_periods)) {
+    warning("'signif_periods' contains duplicate indices; duplicates will be removed")
+    signif_periods <- unique(signif_periods)
   }
 
   if (!is.numeric(scale) || length(scale) != nrow(wave)) {
     stop("'scale' must be numeric with length equal to nrow(wave)")
   }
 
-  if (dj <= 0 || dt <= 0 || variable_sd <= 0 || Cdelta <= 0 || w0_0 <= 0) {
-    stop("Parameters dj, dt, variable_sd, Cdelta, and w0_0 must be positive")
+  if (!is.numeric(dj) || length(dj) != 1 || dj <= 0) {
+    stop("'dj' must be a positive scalar")
   }
+
+  if (!is.numeric(dt) || length(dt) != 1 || dt <= 0) {
+    stop("'dt' must be a positive scalar")
+  }
+
+  if (!is.numeric(variable_sd) || length(variable_sd) != 1 || variable_sd <= 0) {
+    stop("'variable_sd' must be a positive scalar")
+  }
+
+  if (!is.numeric(variable_mean) || length(variable_mean) != 1) {
+    stop("'variable_mean' must be a numeric scalar")
+  }
+
+  if (!is.numeric(Cdelta) || length(Cdelta) != 1 || Cdelta <= 0) {
+    stop("'Cdelta' must be a positive scalar")
+  }
+
+  if (!is.numeric(w0_0) || length(w0_0) != 1 || w0_0 <= 0) {
+    stop("'w0_0' must be a positive scalar")
+  }
+
+  if (!is.logical(include_residual) || length(include_residual) != 1) {
+    stop("'include_residual' must be a single logical value")
+  }
+
+  # ==========================================================================
+  # SETUP
+  # ==========================================================================
 
   num_periods <- length(signif_periods)
-  n <- ncol(wave)
+  n_time <- ncol(wave)
+  n_scales <- nrow(wave)
 
-  # Preallocate component matrix
-  COMPS <- matrix(0, nrow = n, ncol = num_periods)
+  # Determine output dimensions
+  n_components <- num_periods + (if (include_residual) 1 else 0)
 
-  # Reconstruction factor (constant across all components)
-  # Torrence & Compo (1998), Eq. 11
-  recon_fac <- variable_sd * (dj * sqrt(dt) / (Cdelta * w0_0))
+  # Preallocate output matrix
+  COMPS <- matrix(0, nrow = n_time, ncol = n_components)
 
-  # Reconstruct each component
+  # ==========================================================================
+  # RECONSTRUCTION
+  # ==========================================================================
+
+  # Reconstruction factor (Torrence & Compo 1998, Eq. 11)
+  # NOTE: Cdelta is multiplied by sqrt(2) to compensate for the sqrt(2) factor
+  # added to the wavelet normalization for one-sided FFT energy conservation.
+  # Theoretical Cdelta for Morlet = 0.776 (TC98 Table 2)
+  # Effective Cdelta for one-sided transform = 0.776 * sqrt(2) ??? 1.098
+  Cdelta_effective <- Cdelta * sqrt(2)
+  recon_fac <- variable_sd * (dj * sqrt(dt) / (Cdelta_effective * w0_0))
+
+  # Precompute weighted coefficients for ALL scales (efficient)
+  # This applies the 1/sqrt(s_j) normalization once
+  inv_sqrt_scale <- 1 / sqrt(scale)
+  Ww_all <- Re(wave) * inv_sqrt_scale  # Matrix: scales x time
+
+  # ==========================================================================
+  # EXTRACT SIGNIFICANT PERIOD COMPONENTS
+  # ==========================================================================
+
   for (i in seq_len(num_periods)) {
-
-    # Get scale index for current significant period
     cur_period_idx <- signif_periods[i]
-    sj <- scale[cur_period_idx]
 
-    # Extract real part of wavelet coefficients at this scale
-    W <- Re(wave[cur_period_idx, , drop = FALSE])
-
-    # Apply reconstruction formula: normalize by scale and multiply by factor
-    W_scaled <- W / sqrt(sj)
-    component <- as.numeric(recon_fac * W_scaled)
-
-    COMPS[, i] <- component
+    # Extract component for this scale
+    COMPS[, i] <- recon_fac * Ww_all[cur_period_idx, ]
   }
 
-  # Convert to tibble with informative column names
+  # ==========================================================================
+  # COMPUTE RESIDUAL (NOISE) COMPONENT
+  # ==========================================================================
+
+  if (include_residual) {
+    # Identify all non-significant scales
+    nonsig_idx <- setdiff(seq_len(n_scales), signif_periods)
+
+    if (length(nonsig_idx) > 0) {
+      # Sum all non-significant scales to create noise component
+      # This ensures: original = sum(significant) + noise
+      COMPS[, num_periods + 1] <- recon_fac * colSums(Ww_all[nonsig_idx, , drop = FALSE])
+    } else {
+      # All scales are significant - no residual
+      COMPS[, num_periods + 1] <- 0
+      warning(
+        "All scales are marked as significant; residual component will be zero. ",
+        "This may indicate overfitting."
+      )
+    }
+
+    # Add mean back to noise component (mean was removed during standardization)
+    COMPS[, num_periods + 1] <- COMPS[, num_periods + 1] + variable_mean
+  }
+
+  # ==========================================================================
+  # FORMAT OUTPUT
+  # ==========================================================================
+
+  # Create descriptive column names
+  col_names <- c(
+    paste0("Component_", seq_len(num_periods)),
+    if (include_residual) "Noise" else NULL
+  )
+
+  # Convert to tibble
   comps_tb <- tibble::as_tibble(
     COMPS,
-    .name_repair = ~ paste0("Component_", seq_len(num_periods))
+    .name_repair = ~ col_names
   )
+
+  # ==========================================================================
+  # ADD METADATA ATTRIBUTES
+  # ==========================================================================
+
+  attr(comps_tb, "signif_periods") <- signif_periods
+  attr(comps_tb, "n_scales") <- n_scales
+  attr(comps_tb, "n_significant") <- num_periods
+  attr(comps_tb, "reconstruction_complete") <- include_residual
 
   return(comps_tb)
 }

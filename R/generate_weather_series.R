@@ -255,7 +255,7 @@ generate_weather_series <- function(
   logger::log_info("[Initialize] Total number of grids: {n_grids}")
 
   # Leap day adjustment (only if present)
-  leap_idx <- leap_day_indices(weather.date)
+  leap_idx <- find_leap_days(weather.date)
   if (is.null(leap_idx)) {
     his_date <- weather.date
   } else {his_date <- weather.date[-leap_idx]}
@@ -346,14 +346,18 @@ generate_weather_series <- function(
   warm_variable <- climate_a_aavg %>% pull({{warm.variable}})
 
   # power spectra analysis of historical series
-  warm_power <- weathergenr::wavelet_spectral_analysis(variable = warm_variable,
+  warm_power <- wavelet_spectral_analysis(variable = warm_variable,
     signif.level = warm.signif.level, period.lower.limit = 2, detrend = TRUE)
 
-  p <- weathergenr::plot_wavelet_spectra(variable = warm_variable,
-            variable.year = climate_a_aavg$wyear, period = warm_power$GWS_period,
-            POWER = warm_power$power , GWS = warm_power$GWS,
-            GWS_signif = warm_power$GWS_signif,
-            coi = warm_power$coi, sigm = warm_power$sigm)
+  p <- weathergenr::plot_wavelet_spectra(
+    variable = warm_variable,
+    variable.year = climate_a_aavg$wyear,
+    period = warm_power$GWS_period,
+    POWER = warm_power$power,
+    GWS = warm_power$GWS,
+    GWS_signif = warm_power$GWS_signif,
+    coi = warm_power$coi,
+    sigm = warm_power$sigm)
 
 
   tryCatch({
@@ -390,7 +394,6 @@ generate_weather_series <- function(
 
 
   # WAVELET POWER ANALYSIS
-  # ========================================
   logger::log_info("[WARM] Computing wavelet power spectra for {warm.sample.num} simulations")
 
   if (compute.parallel && warm.sample.num > 20000) {
@@ -412,24 +415,36 @@ generate_weather_series <- function(
     }
 
   } else {
+
     sim_power <- sapply(1:warm.sample.num, function(x) {
       wavelet_spectral_analysis(sim_annual[, x],
+                                period.lower.limit = 2,
                                 signif.level = warm.signif.level)$GWS
     })
+
   }
+
+  sim_power_pars <- wavelet_spectral_analysis(sim_annual[, 1],
+          period.lower.limit = 2, signif.level = warm.signif.level)
+
+  wavelet_spectral_analysis(warm_variable,
+                            period.lower.limit = 2, signif.level = warm.signif.level)$GWS_signif
+
+  plot_period <- if (length(setdiff(sim_power_pars$GWS_period, warm_power$GWS_period)) == 0)
+    warm_power$GWS_period else sim_power_pars$GWS_period
 
   sim_annual_sub <- filter_warm_simulations(
       series.obs = warm_variable,
       series.sim = sim_annual,
       power.obs = warm_power$GWS,
       power.sim = sim_power,
-      power.period = warm_power$GWS_period,
+      power.period = plot_period,
       power.signif = warm_power$GWS_signif,
       sample.num = realization.num,
       output.path = output.path,
       bounds = warm.subset.criteria,
       seed = warm_seed,
-      save.plots = TRUE,
+      save.plots = FALSE,
       save.series = FALSE)
 
   # ::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::

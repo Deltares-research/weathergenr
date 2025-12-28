@@ -21,6 +21,8 @@
 #'   \item{GWS_signif}{Numeric vector: Significance threshold for GWS at each period}
 #'   \item{GWS_period}{Numeric vector: Period (in time units) corresponding to each scale}
 #'   \item{signif_periods}{Integer vector: Indices of periods with significant power, or NULL if none}
+#'   \item{wave}{Complex matrix: Wavelet transform coefficients (scales x time)}
+#'   \item{power}{Numeric matrix: Wavelet power spectrum (scales x time)}
 #'   \item{COMPS}{Data frame: Reconstructed components for each significant period band,
 #'     plus residual NOISE component. NULL if no significant periods found.}
 #'
@@ -185,6 +187,7 @@ wavelet_spectral_analysis <- function(variable,
     ))
 
     variable_sd <- stats::sd(variable_org)
+    variable_mean <- mean(variable_org)
 
     COMPS <- extract_wavelet_components(
       wave = wave,
@@ -193,6 +196,7 @@ wavelet_spectral_analysis <- function(variable,
       dj = dj,
       dt = dt,
       variable_sd = variable_sd,
+      variable_mean = variable_mean,
       Cdelta = 0.776,
       w0_0 = pi^(-1/4)
     )
@@ -208,6 +212,7 @@ wavelet_spectral_analysis <- function(variable,
     GWS_signif = GWS_signif,
     GWS_period = period,
     signif_periods = signif_periods,
+    wave = wave,
     power = POWER,
     coi = coi,
     sigm = sigm,
