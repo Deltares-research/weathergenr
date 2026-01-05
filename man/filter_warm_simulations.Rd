@@ -2,162 +2,127 @@
 % Please edit documentation in R/filter_warm_simulations.R
 \name{filter_warm_simulations}
 \alias{filter_warm_simulations}
-\title{Filter and Sample WARM Simulations by Statistical and Spectral Criteria}
+\title{Filter and sample WARM simulations by distributional, tail-mass, and wavelet criteria}
 \usage{
 filter_warm_simulations(
   series.obs = NULL,
   series.sim = NULL,
-  power.obs = NULL,
-  power.sim = NULL,
-  power.period = NULL,
-  power.signif = NULL,
   sample.num = 5,
   seed = NULL,
-  save.plots = TRUE,
-  save.series = TRUE,
-  output.path = NULL,
   padding = TRUE,
-  bounds = list(mean = 0.1, sd = 0.1, min = 0.2, max = 0.2, sig.thr = 0.8, nsig.thr =
-    1.5),
-  plot.prefix = "warm",
-  series.units = "mm/year",
-  series.conversion = 365
+  bounds = list(),
+  wavelet.pars = list(signif.level = 0.8, noise.type = "red", period.lower.limit = 2,
+    detrend = TRUE),
+  make.plots = FALSE,
+  verbose = FALSE
 )
 }
 \arguments{
-\item{series.obs}{Numeric vector. Observed annual time series (length = years).}
+\item{series.obs}{Numeric vector. Observed annual series.}
 
-\item{series.sim}{Numeric matrix. Simulated time series from WARM
-(nrow = years, ncol = realizations).}
+\item{series.sim}{Numeric matrix. Simulated annual series, with years in rows and
+realizations in columns.}
 
-\item{power.obs}{Numeric vector. Observed global wavelet power spectrum.}
+\item{sample.num}{Integer scalar. Number of realizations to sample from the final
+candidate pool.}
 
-\item{power.sim}{Numeric matrix. Simulated global wavelet spectra
-(nrow = periods, ncol = realizations).}
+\item{seed}{Optional integer. Random seed for reproducible window sampling and
+candidate sampling.}
 
-\item{power.period}{Numeric vector. Periods (years) corresponding to power spectra.}
+\item{padding}{Logical scalar. If TRUE, pads the observed significant-period
+set by one index on each side when evaluating presence of observed-relevant signal.}
 
-\item{power.signif}{Numeric vector. Significance thresholds for power spectra
-at each period.}
-
-\item{sample.num}{Integer. Number of realizations to sample from filtered set
-for final output (default: 5).}
-
-\item{seed}{Integer or NULL. Random seed for reproducible sampling (default: NULL).}
-
-\item{save.plots}{Logical. Whether to save diagnostic plots to disk (default: TRUE).}
-
-\item{save.series}{Logical. Whether to write selected series to CSV files
-(default: TRUE).}
-
-\item{output.path}{Character. Directory path for saving plots and CSV files.
-Created if it doesn't exist.}
-
-\item{padding}{Logical. Whether to include adjacent periods (plus or minus 1) around
-significant periods in spectral filtering (default: TRUE).}
-
-\item{bounds}{Named list. Tolerance bounds for filtering criteria:
-\describe{
-  \item{mean}{Relative tolerance for mean (default: 0.1 = 10 percent)}
-  \item{sd}{Relative tolerance for standard deviation (default: 0.2 = 20 percent)}
-  \item{min}{Relative tolerance for minimum value (default: 0.2 = 20 percent)}
-  \item{max}{Relative tolerance for maximum value (default: 0.2 = 20 percent)}
-  \item{sig.thr}{Lower bound for significant period power as fraction of
-    observed power (default: 0.5 = 50 percent)}
-  \item{nsig.thr}{Upper bound for non-significant period power as multiple
-    of significance threshold (default: 1.5 = 150 percent)}
+\item{bounds}{Named list. Overrides defaults for filtering and relaxation parameters.
+Common entries include:
+\itemize{
+  \item mean, sd: relative-difference tolerances.
+  \item tail.low.p, tail.high.p: quantile probabilities for tail thresholds.
+  \item tail.tol.log: tolerance on |log(M_sim+eps)-log(M_obs+eps)|.
+  \item tail.eps: epsilon used inside the log transform.
+  \item sig.frac, wavelet.region.tol, wavelet.contrast.tol,
+        wavelet.require_presence, wavelet.presence.frac: wavelet filter controls.
+  \item relax.*: relaxation settings, including relax.max.iter.
 }}
 
-\item{plot.prefix}{Character. Prefix for plot filenames (default: "warm").}
+\item{wavelet.pars}{Named list passed to wavelet_spectral_analysis() for
+observed and simulated series. Expected entries:
+signif.level, noise.type, period.lower.limit, detrend.}
 
-\item{series.units}{Character. Units label for y-axis in time series plots
-(default: "mm/year").}
+\item{make.plots}{Logical scalar. If TRUE, returns diagnostic ggplot objects.}
 
-\item{series.conversion}{Numeric. Conversion factor for plotting. Use 365 to
-convert daily values to annual (default: 365). Set to 1 if data is already
-in annual units.}
+\item{verbose}{Logical scalar. If TRUE, prints iteration diagnostics using
+logger::log_info().}
 }
 \value{
-A list with four elements:
-  \describe{
-    \item{subsetted}{Numeric matrix containing all realizations that passed
-      all filtering criteria (ncol = number that passed)}
-    \item{sampled}{Numeric matrix of randomly sampled realizations from the
-      filtered set (ncol = sample.num or fewer if insufficient realizations passed)}
-    \item{n_filtered}{Integer. Number of realizations that passed all filters}
-    \item{filter_summary}{Data frame summarizing the number and percentage of
-      realizations passing each individual filter}
-  }
+A list with elements:
+\itemize{
+  \item subsetted: matrix of realizations in the final candidate pool
+    (original rows from series.sim).
+  \item sampled: matrix of sample.num sampled realizations
+    (original rows from series.sim).
+  \item filter_summary: data.frame with per-filter pass counts and percentages,
+    and the final relaxation level.
+  \item diagnostics: list containing length/window metadata, pool indices,
+    relaxation log, tail-mass details, wavelet diagnostics, and final parameters.
+  \item plots: NULL or a list of ggplot objects if make.plots=TRUE.
+}
 }
 \description{
-Filters synthetic time series generated by WARM (Wavelet Autoregressive Modeling)
-based on statistical moments (mean, standard deviation, min, max) and spectral
-properties (global wavelet power spectrum). Selects realizations that match
-observed data within specified tolerance bounds, then samples a subset for
-final output.
+Filters a matrix of simulated annual series (WARM realizations) against an observed
+annual series using fast distributional checks (mean, standard deviation),
+robust tail-shape checks based on lower/upper tail mass relative to observed
+quantile thresholds, and an observed-relevant wavelet (GWS) filter.
+
+The function applies a tiered relaxation strategy when too few candidates pass.
+If still insufficient after bounds$relax.max.iter iterations, it falls back
+to a deterministic selection of the sample.num realizations with the smallest
+absolute relative mean difference.
+
+If make.plots=TRUE, diagnostic plots are returned (time series overlay,
+relative-difference scatter facets, and wavelet GWS ribbon/lines).
 }
 \details{
-The function implements a multi-stage filtering process:
+\strong{Length harmonization:} If observed and simulated series have different
+lengths, the function uses n_use = min(length(series.obs), nrow(series.sim)).
+A random contiguous window of length n_use is selected from the observed
+series (if needed), and each realization receives an independently sampled window
+of length n_use (if needed).
 
-1. Statistical Filtering: Realizations are checked against tolerance bounds
-   for mean, standard deviation, minimum, and maximum values relative to observed data.
+\strong{Tail mass metrics:} Let t_L and t_H be observed quantile
+thresholds at tail.low.p and tail.high.p. Define lower-tail deficit
+mass and upper-tail excess mass (normalized by n_use * robust_scale(obs)),
+then compare simulations to observations using log-distance with epsilon
+tail.eps.
 
-2. Spectral Filtering: For periods identified as significant in observed data,
-   realizations must have:
-   (a) At least one significant period exceeding the significance threshold
-   (b) All significant periods within specified bounds of observed power
-   (c) Non-significant periods remaining below threshold
+\strong{Wavelet filter (observed-relevant GWS):} Significant observed periods are
+identified where observed GWS / signif > 1. These are grouped into contiguous
+regions. For each realization, regional integrated power and regional-to-background
+contrast are compared to observed within tolerances, requiring at least
+sig.frac of regions to pass. Optionally requires presence of signal.
 
-3. Fallback: If no realizations pass all filters, the power spectrum
-   constraint is relaxed and only statistical criteria are applied.
-
-4. Sampling: From the filtered set, a random sample of size sample.num
-   is drawn for final output.
-
-If save.plots = TRUE, four diagnostic plots are generated:
-- Spectral match for all filtered realizations
-- Spectral match for sampled realizations
-- Violin plots of statistical criteria with sampled realizations highlighted
-- Time series plot comparing observed data to sampled realizations
+\strong{Improvements in this version:}
+\itemize{
+  \item wavelet.presence.frac parameter now exposed (was hardcoded to signif.level)
+  \item GWS always cached for efficiency (was conditional on make.plots)
+  \item Simplified relaxation logic (removed complex tie-breaking)
+  \item Extracted helper functions for better modularity and testability
+}
 }
 \examples{
 \dontrun{
-# After generating WARM simulations
-filtered <- filter_warm_simulations(
-  series.obs = observed_annual,
-  series.sim = warm_output,
-  power.obs = wavelet_results$GWS,
-  power.sim = simulated_power_spectra,
-  power.period = wavelet_results$period,
-  power.signif = wavelet_results$GWS_signif,
-  sample.num = 10,
+out <- filter_warm_simulations(
+  series.obs = obs,
+  series.sim = sim_mat,
+  sample.num = 5,
   seed = 123,
-  output.path = "results/warm_filtering",
-  bounds = list(
-    mean = 0.1,    # +/- 10\% for mean
-    sd = 0.15,     # +/- 15\% for standard deviation
-    min = 0.2,     # +/- 20\% for minimum
-    max = 0.2,     # +/- 20\% for maximum
-    sig.thr = 0.5, # Significant periods >= 50\% of observed
-    nsig.thr = 1.5 # Non-significant periods <= 150\% of threshold
-  )
+  make.plots = TRUE,
+  verbose = TRUE
 )
-
-# Access results
-cat("Realizations passing filters:", filtered$n_filtered, "\n")
-print(filtered$filter_summary)
-
-# Use sampled realizations for further analysis
-selected_traces <- filtered$sampled
+out$filter_summary
+out$plots$wavelet_gws
 }
 
-}
-\references{
-Steinschneider, S. and Lall, U. (2015). A hierarchical Bayesian regional model
-for nonstationary precipitation extremes in Northern California conditioned on
-tropical moisture exports. \emph{Water Resources Research}, 51(3), 1472-1492.
 }
 \seealso{
-\code{\link{wavelet_arima}} for generating WARM simulations,
-\code{\link{wavelet_spectral_analysis}} for computing power spectra
+\code{\link{wavelet_spectral_analysis}}
 }

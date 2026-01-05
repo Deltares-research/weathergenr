@@ -1,3 +1,129 @@
+# ==============================================================================
+# Wavelet Utility Functions
+# ==============================================================================
+# This file contains utility functions for wavelet analysis and filtering.
+# New additions for filter_warm_simulations support:
+# - fill_nearest()
+# - extract_signif_curve()
+# - gws_regrid()
+# ==============================================================================
+
+#' Fill NA values with nearest non-NA value
+#'
+#' @description
+#' Forward and backward fills NA values in a vector using the nearest
+#' non-NA value. Useful for handling edge effects in interpolated data.
+#'
+#' @param v Numeric vector possibly containing NAs
+#'
+#' @return Numeric vector with NAs filled
+#'
+#' @keywords internal
+#' @export
+fill_nearest <- function(v) {
+  if (all(is.na(v))) return(v)
+
+  # Forward fill from first non-NA
+  if (is.na(v[1])) {
+    first <- which(!is.na(v))[1]
+    if (!is.na(first)) v[1:(first - 1)] <- v[first]
+  }
+
+  # Forward fill
+  for (i in 2:length(v)) {
+    if (is.na(v[i])) v[i] <- v[i - 1]
+  }
+
+  # Backward fill
+  for (i in (length(v) - 1):1) {
+    if (is.na(v[i])) v[i] <- v[i + 1]
+  }
+
+  v
+}
+
+#' Extract significance curve from wavelet analysis result
+#'
+#' @description
+#' Searches for GWS significance curve in wavelet analysis output.
+#' Tries multiple possible field names.
+#'
+#' @param wv List output from wavelet_spectral_analysis()
+#'
+#' @return Numeric vector of significance values, or NULL if not found
+#'
+#' @keywords internal
+#' @export
+extract_signif_curve <- function(wv) {
+  # Try multiple possible names
+  cand <- c("gws_signif", "gws_sig", "signif_gws", "signif_gws_curve",
+            "gws_significance", "signif")
+
+  for (nm in cand) {
+    if (!is.null(wv[[nm]]) && is.numeric(wv[[nm]])) {
+      return(as.numeric(wv[[nm]]))
+    }
+  }
+
+  NULL
+}
+
+#' Regrid GWS to target period vector
+#'
+#' @description
+#' Interpolates GWS from wavelet analysis onto a target period grid.
+#' Uses linear interpolation and fills edge NAs.
+#'
+#' @param wv List output from wavelet_spectral_analysis()
+#' @param target_period Numeric vector of target periods
+#' @param use_unmasked Logical. If TRUE and available, use gws_unmasked
+#'
+#' @return Numeric vector of GWS values on target_period grid
+#'
+#' @keywords internal
+#' @export
+gws_regrid <- function(wv, target_period, use_unmasked = FALSE) {
+  # Get GWS
+  g <- if (isTRUE(use_unmasked) && !is.null(wv$gws_unmasked)) {
+    wv$gws_unmasked
+  } else {
+    wv$gws
+  }
+
+  # Get period
+  p <- wv$gws_period
+
+  # Validate
+  if (is.null(g) || !is.numeric(g)) {
+    stop("wavelet_spectral_analysis() missing numeric $gws.", call. = FALSE)
+  }
+  if (is.null(p) || !is.numeric(p)) {
+    stop("wavelet_spectral_analysis() missing numeric $gws_period.", call. = FALSE)
+  }
+
+  g <- as.numeric(g)
+  p <- as.numeric(p)
+
+  # Remove non-finite values
+  ok <- is.finite(p) & is.finite(g)
+  p <- p[ok]
+  g <- g[ok]
+
+  # Handle edge case: too few points
+  if (length(g) < 2L) {
+    out <- rep(if (length(g) == 1L) g[1] else NA_real_, length(target_period))
+    return(fill_nearest(out))
+  }
+
+  # Interpolate
+  out <- stats::approx(x = p, y = g, xout = target_period, rule = 2)$y
+  fill_nearest(out)
+}
+
+# ==============================================================================
+# Original wavelet_helpers.R functions below
+# ==============================================================================
+
 #' Morlet Wavelet in Fourier Domain
 #'
 #' @description
@@ -11,11 +137,11 @@
 #'   This value balances time and frequency localization.
 #'
 #' @return Numeric vector (complex). The Morlet wavelet in Fourier space,
-#'   with length equal to \code{length(k)}.
+#'   with length equal to length(k).
 #'
 #' @details
 #' The Morlet wavelet is defined in Fourier space as:
-#' \deqn{\psi(s k) = \pi^{-1/4} \sqrt{s k_2 n} \exp(-\frac{(s k - k_0)^2}{2})}
+#' psi(s k) = pi^(-1/4) * sqrt(s k_2 n) * exp(-(s k - k_0)^2 / 2)
 #' where the exponential term is applied only to positive frequencies.
 #'
 #' The normalization factor ensures energy conservation and proper inverse
@@ -23,13 +149,10 @@
 #'
 #' @references
 #' Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-#' \emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
+#' Bulletin of the American Meteorological Society, 79(1), 61-78.
 #'
 #' @keywords internal
 #' @export
-# =========================
-# 1) morlet_wavelet(): REMOVE one-sided sqrt(2) factor
-# =========================
 morlet_wavelet <- function(k, s, k0 = 6) {
 
   # Basic validation
@@ -47,14 +170,11 @@ morlet_wavelet <- function(k, s, k0 = 6) {
   expnt <- -((s * k - k0)^2 / 2) * z
 
   # TC98 Eq. 4 normalization (TWO-SIDED / standard)
-  # NOTE: removed sqrt(2) one-sided factor
   norm <- sqrt(s * k[2]) * (pi^(-0.25)) * sqrt(nn)
 
   daughter <- norm * exp(expnt) * z
   daughter
 }
-
-
 
 #' Compute Morlet Wavelet Parameters
 #'
@@ -67,26 +187,24 @@ morlet_wavelet <- function(k, s, k0 = 6) {
 #'   Standard choice is 6, which gives ~6 oscillations per wavelet.
 #'
 #' @return Named numeric vector with three elements:
-#'   \describe{
-#'     \item{fourier_factor}{Conversion factor from wavelet scale to Fourier period}
-#'     \item{coi}{Cone of influence e-folding time}
-#'     \item{dofmin}{Minimum degrees of freedom (2 for Morlet)}
-#'   }
+#'   fourier_factor: Conversion factor from wavelet scale to Fourier period
+#'   coi: Cone of influence e-folding time
+#'   dofmin: Minimum degrees of freedom (2 for Morlet)
 #'
 #' @details
-#' The Fourier factor allows conversion between wavelet scale \eqn{s} and
-#' equivalent Fourier period \eqn{T}:
-#' \deqn{T = \frac{4\pi}{k_0 + \sqrt{2 + k_0^2}} \cdot s}
+#' The Fourier factor allows conversion between wavelet scale s and
+#' equivalent Fourier period T:
+#' T = (4*pi / (k_0 + sqrt(2 + k_0^2))) * s
 #'
 #' The cone of influence (COI) defines the e-folding time for edge effects:
-#' \deqn{COI = \frac{\text{fourier\_factor}}{\sqrt{2}}}
+#' COI = fourier_factor / sqrt(2)
 #'
 #' Values outside the COI are subject to edge artifacts and should be
 #' interpreted with caution.
 #'
 #' @references
 #' Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-#' \emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
+#' Bulletin of the American Meteorological Society, 79(1), 61-78.
 #' See Table 1 and Section 3f.
 #'
 #' @examples
@@ -122,7 +240,6 @@ morlet_parameters <- function(k0 = 6) {
   ))
 }
 
-
 #' Extract and Reconstruct Wavelet Components from Significant Periods
 #'
 #' @description
@@ -133,8 +250,8 @@ morlet_parameters <- function(k0 = 6) {
 #' @param wave Complex matrix. Wavelet transform coefficients with dimensions
 #'   (scales x time). Output from continuous wavelet transform.
 #' @param signif_periods Integer vector. Indices of significant period scales
-#'   to reconstruct. Each index corresponds to a row in \code{wave}.
-#' @param scale Numeric vector. Scale values corresponding to rows of \code{wave}.
+#'   to reconstruct. Each index corresponds to a row in wave.
+#' @param scale Numeric vector. Scale values corresponding to rows of wave.
 #' @param dj Numeric scalar. Scale resolution parameter used in wavelet transform
 #'   (default = 0.25). Smaller values give finer resolution.
 #' @param dt Numeric scalar. Time step of the original series (default = 1).
@@ -146,18 +263,16 @@ morlet_parameters <- function(k0 = 6) {
 #' @param Cdelta Numeric scalar. Reconstruction constant for Morlet wavelet
 #'   (default = 0.776). Depends on wavelet type; see Torrence & Compo (1998) Table 2.
 #' @param w0_0 Numeric scalar. Normalization constant psi_0(0) = pi^(-1/4)
-#'   for Morlet wavelet (default = \code{pi^(-1/4)}).
+#'   for Morlet wavelet (default = pi^(-1/4)).
 #' @param include_residual Logical. If TRUE (default), includes a "Noise" component
 #'   representing the sum of all non-significant scales, ensuring complete
 #'   signal decomposition where rowSums(output) equals the reconstructed signal.
 #'
-#' @return A tibble with columns:
-#'   \itemize{
-#'     \item \code{Component_1, Component_2, ...}: One column per significant period
-#'     \item \code{Noise}: (if include_residual = TRUE) Sum of all non-significant scales
-#'   }
+#' @return A matrix with columns:
+#'   Component_1, Component_2, ...: One column per significant period
+#'   Noise: (if include_residual = TRUE) Sum of all non-significant scales
 #'   Number of rows equals the length of the original time series.
-#'   Property: \code{rowSums(output)} approximately equals the original signal.
+#'   Property: rowSums(output) approximately equals the original signal.
 #'
 #' @details
 #' The reconstruction formula (Torrence & Compo 1998, Eq. 11) is:
@@ -166,18 +281,16 @@ morlet_parameters <- function(k0 = 6) {
 #'       sum over j of Re(W_n(s_j)) / sqrt(s_j)
 #'
 #' This function performs a complete wavelet decomposition by:
-#' \enumerate{
-#'   \item Extracting each significant period as a separate component
-#'   \item Summing all remaining (non-significant) scales into a "Noise" component
-#'   \item Ensuring: original_signal = sum(significant_components) + Noise
-#' }
+#' 1. Extracting each significant period as a separate component
+#' 2. Summing all remaining (non-significant) scales into a "Noise" component
+#' 3. Ensuring: original_signal = sum(significant_components) + Noise
 #'
 #' This differs from partial reconstruction, which would only sum significant
 #' scales and lose information from non-significant scales.
 #'
 #' @references
 #' Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-#' \emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
+#' Bulletin of the American Meteorological Society, 79(1), 61-78.
 #' See Section 3i and Table 2.
 #'
 #' @examples
@@ -207,13 +320,8 @@ morlet_parameters <- function(k0 = 6) {
 #' # - Noise: All non-significant scales combined + mean
 #' }
 #'
-#' @importFrom tibble as_tibble
 #' @keywords internal
 #' @export
-# =========================
-# 2) extract_wavelet_components(): REMOVE Cdelta_effective = Cdelta * sqrt(2)
-#    Use TC98 Cdelta directly.
-# =========================
 extract_wavelet_components <- function(wave,
                                        signif_periods,
                                        scale,
@@ -286,5 +394,3 @@ extract_wavelet_components <- function(wave,
 
   COMPS
 }
-
-

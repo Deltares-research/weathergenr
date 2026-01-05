@@ -22,9 +22,9 @@ extract_wavelet_components(
 (scales x time). Output from continuous wavelet transform.}
 
 \item{signif_periods}{Integer vector. Indices of significant period scales
-to reconstruct. Each index corresponds to a row in \code{wave}.}
+to reconstruct. Each index corresponds to a row in wave.}
 
-\item{scale}{Numeric vector. Scale values corresponding to rows of \code{wave}.}
+\item{scale}{Numeric vector. Scale values corresponding to rows of wave.}
 
 \item{dj}{Numeric scalar. Scale resolution parameter used in wavelet transform
 (default = 0.25). Smaller values give finer resolution.}
@@ -42,20 +42,18 @@ complete reconstruction: rowSums(output) = original_signal.}
 (default = 0.776). Depends on wavelet type; see Torrence & Compo (1998) Table 2.}
 
 \item{w0_0}{Numeric scalar. Normalization constant psi_0(0) = pi^(-1/4)
-for Morlet wavelet (default = \code{pi^(-1/4)}).}
+for Morlet wavelet (default = pi^(-1/4)).}
 
 \item{include_residual}{Logical. If TRUE (default), includes a "Noise" component
 representing the sum of all non-significant scales, ensuring complete
 signal decomposition where rowSums(output) equals the reconstructed signal.}
 }
 \value{
-A tibble with columns:
-  \itemize{
-    \item \code{Component_1, Component_2, ...}: One column per significant period
-    \item \code{Noise}: (if include_residual = TRUE) Sum of all non-significant scales
-  }
+A matrix with columns:
+  Component_1, Component_2, ...: One column per significant period
+  Noise: (if include_residual = TRUE) Sum of all non-significant scales
   Number of rows equals the length of the original time series.
-  Property: \code{rowSums(output)} approximately equals the original signal.
+  Property: rowSums(output) approximately equals the original signal.
 }
 \description{
 Reconstructs time series components from the wavelet transform for
@@ -69,11 +67,9 @@ x_n = (delta_j * sqrt(delta_t)) / (C_delta * psi_0(0)) *
       sum over j of Re(W_n(s_j)) / sqrt(s_j)
 
 This function performs a complete wavelet decomposition by:
-\enumerate{
-  \item Extracting each significant period as a separate component
-  \item Summing all remaining (non-significant) scales into a "Noise" component
-  \item Ensuring: original_signal = sum(significant_components) + Noise
-}
+1. Extracting each significant period as a separate component
+2. Summing all remaining (non-significant) scales into a "Noise" component
+3. Ensuring: original_signal = sum(significant_components) + Noise
 
 This differs from partial reconstruction, which would only sum significant
 scales and lose information from non-significant scales.
@@ -108,7 +104,7 @@ lines(reconstructed, col = "red")
 }
 \references{
 Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-\emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
+Bulletin of the American Meteorological Society, 79(1), 61-78.
 See Section 3i and Table 2.
 }
 \keyword{internal}
