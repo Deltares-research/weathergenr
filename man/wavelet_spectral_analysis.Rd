@@ -41,7 +41,7 @@ series before wavelet analysis. Default is \code{FALSE}.}
 
 \item{mode}{Character. Computation mode: \code{"fast"} (default) for speed-optimized
 filtering with essential outputs only, or \code{"complete"} for comprehensive analysis
-including reconstruction and diagnostics. Fast mode returns 8 outputs (~50 KB),
+including reconstruction and diagnostics. Fast mode returns 9 outputs (~50 KB),
 complete mode returns 18+ outputs (~5 MB). Fast mode is ~3x faster by skipping
 signal reconstruction and detailed diagnostics.}
 
@@ -75,12 +75,13 @@ small. Default is 5.}
 \value{
 A list with outputs depending on mode:
 
-\strong{Fast mode (8 outputs):}
+\strong{Fast mode (9 outputs):}
 \describe{
   \item{gws}{Numeric vector. COI-masked global wavelet spectrum.}
-  \item{gws_unmasked}{Numeric vector. Unmasked global wavelet spectrum.}
+  \item{gws_unmasked}{Numeric vector. Unmasked global wavelet spectrum (plotting only).}
   \item{gws_period}{Numeric vector. Fourier periods corresponding to wavelet scales.}
-  \item{gws_signif}{Numeric vector. COI- and neff-corrected significance threshold.}
+  \item{gws_signif}{Numeric vector. COI- and neff-corrected significance threshold (inference).}
+  \item{gws_signif_unmasked}{Numeric vector. Unmasked significance threshold (plotting only).}
   \item{has_significance}{Logical. Indicates whether any significant scales were found.}
   \item{signif_periods}{Integer vector. Indices of significant wavelet scales.}
   \item{coi}{Numeric vector. Cone of influence in time units.}
@@ -124,7 +125,7 @@ with the following methodological refinements:
   \item two-sided (TC98-consistent) wavelet normalization,
   \item COI-masked global wavelet spectrum,
   \item effective degrees of freedom based on wavelet decorrelation time,
-  \item separation of inference curves from plotting-only legacy curves.
+  \item separation of inference curves from plotting curves.
 }
 
 Reconstructed components correspond to **individual wavelet scales** and are
@@ -138,7 +139,7 @@ wv_fast <- wavelet_spectral_analysis(
   rnorm(100),
   mode = "fast"
 )
-names(wv_fast)  # 8 outputs
+names(wv_fast)  # 9 outputs
 
 # Complete mode - for detailed analysis
 wv_complete <- wavelet_spectral_analysis(

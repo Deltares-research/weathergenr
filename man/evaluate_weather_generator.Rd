@@ -48,46 +48,10 @@ plots are not saved to disk.}
 }
 \value{
 A named list of `ggplot2` plot objects with class "weather_assessment".
-  Includes:
-  \itemize{
-    \item \code{daily_mean}, \code{daily_sd}: Daily statistics comparisons
-    \item \code{spell_length}, \code{wetdry_days_count}: Spell diagnostics
-    \item \code{crossgrid}, \code{intergrid}: Correlation diagnostics
-    \item \code{monthly_cycle}: Monthly climatology
-    \item \code{annual_precip}: Annual precipitation time series
-    \item \code{annual_pattern_<var>}: Per-variable monthly statistics
-  }
 }
 \description{
 Comprehensive diagnostic evaluation comparing synthetic weather simulations
 against historical observations across multiple grid cells. Computes summary
 statistics, wet/dry day counts, spell lengths, and inter-site correlations,
 and generates diagnostic plots to assess stochastic weather generator performance.
-}
-\details{
-The function performs comprehensive validation of weather generator output by
-comparing simulated and observed statistics across multiple dimensions:
-temporal (daily, monthly, annual), spatial (cross-grid correlations), and
-distributional (means, variances, spell lengths).
-
-Observed and simulated data must be structurally consistent. The precipitation
-variable is required for wet/dry occurrence analysis. Computations leverage
-`dplyr`, `tidyr`, `ggplot2`, and `e1071` packages.
-}
-\examples{
-\dontrun{
-# Assess weather generator with 3 realizations
-assessment <- evaluate_weather_generator(
-  daily.sim = synthetic_data,
-  daily.obs = observed_data,
-  variables = c("precip", "temp"),
-  variable.labels = c("Precipitation", "Temperature"),
-  realization.num = 3,
-  output.path = "diagnostics/"
-)
-
-# View specific diagnostic
-print(assessment$daily_mean)
-}
-
 }

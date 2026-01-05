@@ -32,12 +32,13 @@ List with elements:
   \item P_sim_reg: Regional power matrix (n_realizations x n_regions)
   \item P_sim_bg: Background power vector (n_realizations)
   \item presence_rpad: Presence indicators (n_realizations)
-  \item gws_cache: ALWAYS cached GWS matrix (n_periods x n_realizations)
+  \item gws_cache: ALWAYS cached masked GWS matrix (n_periods x n_realizations) for filtering
+  \item gws_cache_unmasked: ALWAYS cached unmasked GWS matrix (n_periods x n_realizations) for plotting
 }
 }
 \description{
 Performs wavelet analysis on observed series and all simulated realizations.
 Identifies significant periods, computes regional power and contrast metrics,
-and ALWAYS caches GWS for efficiency.
+and ALWAYS caches both masked (for filtering) and unmasked (for plotting) GWS.
 }
 \keyword{internal}

@@ -394,18 +394,23 @@ generate_weather_series <- function(
     sample.num = realization.num,
     seed = warm_seed,
     padding = TRUE,
-    bounds = list(
-      relax.priority = c("wavelet", "mean", "sd", "tail_low", "tail_high")
-    ),
+    bounds = list(),
+    relax.order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
     make.plots = TRUE,
     wavelet.pars = list(signif.level = warm.signif.level, noise.type = "red",
       period.lower.limit = 2, detrend = FALSE),
     verbose = TRUE)
 
-  sim_annual_sub$plots[[1]]
-  sim_annual_sub$plots[[2]]
-  sim_annual_sub$plots[[3]]
-
+  tryCatch({
+    ggplot2::ggsave(file.path(output.path, "warm_annual_series.png"), sim_annual_sub$plots[[1]],
+                    width = 8, height = 5)
+    ggplot2::ggsave(file.path(output.path, "warm_annual_statistics.png"), sim_annual_sub$plots[[2]],
+                    width = 8, height = 5)
+    ggplot2::ggsave(file.path(output.path, "warm_annual_wavelet.png"), sim_annual_sub$plots[[3]],
+                    width = 8, height = 5)
+  }, error = function(e) {
+    logger::log_warn("Failed to save warm plots: {e$message}")
+  })
 
   # ::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (KNN & MC) :::::::::::::::::::
 
@@ -475,7 +480,7 @@ generate_weather_series <- function(
   logger::log_info("[Done] Simulation complete. Elapsed time: {Sys.time() - start_time} secs")
 
   # Only return resampled_dates!
-  return(list(resampled = resampled_dates, dates = sim_dates_d$date))
+  return(list(resampled = resampled_dates, dates = sim_dates_d$dateo))
 }
 
 

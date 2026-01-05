@@ -10,6 +10,7 @@ filter_warm_simulations(
   sample.num = 5,
   seed = NULL,
   padding = TRUE,
+  relax.order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   bounds = list(),
   wavelet.pars = list(signif.level = 0.8, noise.type = "red", period.lower.limit = 2,
     detrend = TRUE),

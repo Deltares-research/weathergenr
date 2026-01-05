@@ -241,7 +241,7 @@ wavelet_spectral_analysis <- function(variable,
     stats::fft(f * daughter, inverse = TRUE) / n
   }))
 
-  period <- as.numeric(fourier_factor * scale)
+  period <- fourier_factor * scale
 
   coi_indices <- c(
     1e-5,
@@ -249,13 +249,13 @@ wavelet_spectral_analysis <- function(variable,
     rev(seq_len(ceiling((n1 - 1) / 2))),
     1e-5
   )
-  coi <- as.numeric(coi_base * dt * coi_indices[1:n1])
+  coi <- coi_base * dt * coi_indices[1:n1]
 
   wave <- wave[, 1:n1, drop = FALSE]
   power <- abs(wave)^2
 
   # --- COI mask (used by gws + plotting masks) ---
-  coi_mask <- outer(period, coi, FUN = "<=")   # [n_scales x n_time]
+  coi_mask <- outer(period, coi, FUN = "<=")
   n_coi <- rowSums(coi_mask)
 
   # --- Significance Testing (pointwise) ---
@@ -263,16 +263,17 @@ wavelet_spectral_analysis <- function(variable,
   dofmin <- empir[1]
   gamma_fac <- empir[3]
 
+  # --- Lag1 estimation (reuse centered variable) ---
+  x_centered <- variable_org - mean(variable_org)
+
   if (noise.type == "white") {
     lag1 <- 0
   } else {
-    x <- variable_org - mean(variable_org)
-
     lag1 <- tryCatch({
-      fit <- stats::ar(x, aic = FALSE, order.max = 1, method = "yw")
+      fit <- stats::ar(x_centered, aic = FALSE, order.max = 1, method = "yw")
       as.numeric(fit$ar[1])
     }, error = function(e) {
-      stats::cor(x[-length(x)], x[-1])
+      stats::cor(x_centered[-length(x_centered)], x_centered[-1])
     })
 
     if (!is.finite(lag1)) lag1 <- 0
@@ -285,8 +286,7 @@ wavelet_spectral_analysis <- function(variable,
 
     if (!is.null(seed)) set.seed(seed)
 
-    x0 <- variable_org - mean(variable_org)
-    sig_eps <- stats::sd(x0) * sqrt(max(1e-12, 1 - lag1^2))
+    sig_eps <- stats::sd(x_centered) * sqrt(max(1e-12, 1 - lag1^2))
 
     phi_boot <- replicate(lag1_boot_n, {
       xb <- as.numeric(stats::arima.sim(n = n1, model = list(ar = lag1), sd = sig_eps))
@@ -316,30 +316,37 @@ wavelet_spectral_analysis <- function(variable,
   freq <- dt / period
   fft_theor <- (1 - lag1^2) / (1 - 2 * lag1 * cos(freq * 2 * pi) + lag1^2)
 
-  chisquare <- stats::qchisq(signif.level, dofmin) / dofmin
-  signif <- fft_theor * chisquare
-  sigm <- sweep(power, 1, signif, FUN = "/")
-
-  # --- COI-masked power and pointwise significance (for plotting) ---
+  # --- COI-masked power (needed for gws in all modes) ---
   power_coi <- power
   power_coi[!coi_mask] <- NA_real_
 
-  sigm_coi <- sigm
-  sigm_coi[!coi_mask] <- NA_real_
+  # --- Complete-mode-only: pointwise significance ---
+  sigm <- NULL
+  sigm_coi <- NULL
+  power_signif_coi <- NULL
 
-  power_signif_coi <- sigm_coi > 1
-  power_signif_coi[is.na(sigm_coi)] <- FALSE
+  if (compute_full) {
+    chisquare <- stats::qchisq(signif.level, dofmin) / dofmin
+    signif <- fft_theor * chisquare
+    sigm <- sweep(power, 1, signif, FUN = "/")
+
+    sigm_coi <- sigm
+    sigm_coi[!coi_mask] <- NA_real_
+
+    power_signif_coi <- sigm_coi > 1
+    power_signif_coi[is.na(sigm_coi)] <- FALSE
+  }
 
   # --- gws (masked for inference + unmasked for plotting) ---
   mean_power_coi <- rowMeans(power_coi, na.rm = TRUE)
   mean_power_coi[!is.finite(mean_power_coi)] <- NA_real_
 
-  gws_unmasked <- as.numeric(variance1 * rowMeans(power))
+  gws_unmasked <- variance1 * rowMeans(power)
   gws_unmasked[!is.finite(gws_unmasked)] <- mean(gws_unmasked[is.finite(gws_unmasked)], na.rm = TRUE)
-  gws <- as.numeric(variance1 * mean_power_coi)
+  gws <- variance1 * mean_power_coi
 
   # --- COI-consistent neff (decorrelation-adjusted; inference curve) ---
-  neff <- (as.numeric(n_coi) * dt) / (gamma_fac * scale)
+  neff <- (n_coi * dt) / (gamma_fac * scale)
   neff[neff < 1] <- NA_real_
   neff[!is.finite(neff)] <- NA_real_
 
@@ -367,7 +374,7 @@ wavelet_spectral_analysis <- function(variable,
   chisq[ok] <- stats::qchisq(signif.level, dof[ok]) / dof[ok]
 
   gws_signif <- rep(NA_real_, length(dof))
-  gws_signif[ok] <- as.numeric(fft_theor[ok] * variance1 * chisq[ok])
+  gws_signif[ok] <- fft_theor[ok] * variance1 * chisq[ok]
 
   # --- UNMASKED gws significance (plotting only) ---
   neff_unmasked <- (n1 * dt) / (gamma_fac * scale)
@@ -383,8 +390,8 @@ wavelet_spectral_analysis <- function(variable,
   chisq_unmasked[!ok_u] <- 1
 
   gws_signif_unmasked <- rep(NA_real_, length(dof_unmasked))
-  gws_signif_unmasked[ok_u] <- as.numeric(fft_theor[ok_u] * variance1 * chisq_unmasked[ok_u])
-  gws_signif_unmasked[!ok_u] <- as.numeric(fft_theor[!ok_u] * variance1 * chisq_unmasked[!ok_u])
+  gws_signif_unmasked[ok_u] <- fft_theor[ok_u] * variance1 * chisq_unmasked[ok_u]
+  gws_signif_unmasked[!ok_u] <- fft_theor[!ok_u] * variance1 * chisq_unmasked[!ok_u]
 
   # --- Identify Significant Periods (use inference curves only) ---
   sig_periods <- which(
@@ -398,7 +405,6 @@ wavelet_spectral_analysis <- function(variable,
 
     signif_periods <- integer(0)
 
-    # In the no-significance case, the only consistent component is the analyzed series itself
     comps <- matrix(variable_org, ncol = 1)
     colnames(comps) <- "noise"
 
@@ -416,7 +422,6 @@ wavelet_spectral_analysis <- function(variable,
 
     # RECONSTRUCTION: Only in complete mode (skip in fast mode for speed)
     if (compute_full) {
-      # Reconstruct significant scales AND residual in a single consistent space.
       comps_tb <- extract_wavelet_components(
         wave = wave,
         signif_periods = signif_periods,
@@ -435,7 +440,6 @@ wavelet_spectral_analysis <- function(variable,
       period_labels <- round(period[signif_periods], 2)
       comp_names <- paste0("period_", period_labels)
 
-      # extract_wavelet_components returns: Component_1..Component_k, Noise
       if (ncol(comps_mat) != (length(signif_periods) + 1L)) {
         stop("Internal error: unexpected number of reconstructed component columns.")
       }
@@ -451,20 +455,15 @@ wavelet_spectral_analysis <- function(variable,
         )
       }
     } else {
-      # Fast mode: skip reconstruction
       comps <- NULL
     }
   }
 
-  # Explicit no-significance handling outputs
   signif_periods <- as.integer(signif_periods)
   has_significance <- length(signif_periods) > 0
-  significance_status <- if (has_significance) "significant_scales_found" else "no_significant_scales"
-  signif_period_values <- if (has_significance) period[signif_periods] else numeric(0)
 
   # Build return list based on mode
   if (mode == "fast") {
-    # FAST MODE: Essential outputs only
     out <- list(
       gws = gws,
       gws_unmasked = gws_unmasked,
@@ -477,7 +476,6 @@ wavelet_spectral_analysis <- function(variable,
       power = power
     )
   } else {
-    # COMPLETE MODE
     out <- list(
       gws = gws,
       gws_unmasked = gws_unmasked,
@@ -500,7 +498,6 @@ wavelet_spectral_analysis <- function(variable,
       gws_neff_unmasked = neff_unmasked
     )
 
-    # Optional additions
     if (return_recon_error && !is.null(comps)) {
       out$reconstruction_error <- out_recon_err
     }

@@ -26,7 +26,7 @@
 #' @import ggplot2
 #' @importFrom stats quantile
 #' @export
-create_filter_diagnostic_plots <- function(obs.use, series_sim_for_stats, pool,
+plot_filter_diagnostics <- function(obs.use, series_sim_for_stats, pool,
                                            rel.diff.mean, rel.diff.sd, tail_metrics,
                                            power.period, power.obs, power.signif,
                                            gws_cache_mat, wavelet_q = c(0.05, 0.95)) {
@@ -136,7 +136,6 @@ create_filter_diagnostic_plots <- function(obs.use, series_sim_for_stats, pool,
     geom_line(aes(x = period, y = obs), df_gws_lines, color = "blue", linewidth = 0.8) +
     geom_line(aes(x = period, y = signif), df_gws_lines, color = "red", linewidth = 0.8, linetype = "dashed") +
     labs(x = "Period", y = "Power")
-
 
   list(timeseries = p_timeseries, stats = p_stats, wavelet_gws = p_gws)
 }
