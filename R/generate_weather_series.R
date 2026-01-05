@@ -347,15 +347,15 @@ generate_weather_series <- function(
 
   # power spectra analysis of historical series
   warm_power <- wavelet_spectral_analysis(variable = warm_variable,
-    signif.level = warm.signif.level, period.lower.limit = 2, detrend = TRUE)
+    signif.level = warm.signif.level, period.lower.limit = 2, detrend = FALSE, mode  = "complete")
 
   p <- weathergenr::plot_wavelet_spectra(
     variable = warm_variable,
     variable.year = climate_a_aavg$wyear,
-    period = warm_power$GWS_period,
+    period = warm_power$gws_period,
     POWER = warm_power$power,
-    GWS = warm_power$GWS,
-    GWS_signif = warm_power$GWS_signif,
+    GWS = warm_power$gws_unmasked,
+    GWS_signif = warm_power$gws_signif_unmasked,
     coi = warm_power$coi,
     sigm = warm_power$sigm)
 
@@ -384,70 +384,30 @@ generate_weather_series <- function(
   }
 
   # Annual time-series simulation
-  sim_annual <- wavelet_arima(
-    wavelet.components = tibble(comp = warm_variable),
-    sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = warm_seed)
+  sim_annual <- wavelet_arima(wavelet.components = warm_power$comps,
+    sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = warm_seed,
+    match.variance = TRUE)
 
-  # wavelet analysis on simulated series
-  #sim_power <- sapply(1:warm.sample.num, function(x) {
-  #  wavelet_spectral_analysis(sim_annual[, x], signif.level = warm.signif.level)$GWS})
+  sim_annual_sub <- weathergenr::filter_warm_simulations(
+    series.obs = warm_variable,
+    series.sim = sim_annual,
+    sample.num = realization.num,
+    seed = warm_seed,
+    padding = TRUE,
+    bounds = list(
+      relax.priority = c("wavelet", "mean", "sd", "tail_low", "tail_high")
+    ),
+    make.plots = TRUE,
+    wavelet.pars = list(signif.level = warm.signif.level, noise.type = "red",
+      period.lower.limit = 2, detrend = FALSE),
+    verbose = TRUE)
+
+  sim_annual_sub$plots[[1]]
+  sim_annual_sub$plots[[2]]
+  sim_annual_sub$plots[[3]]
 
 
-  # WAVELET POWER ANALYSIS
-  logger::log_info("[WARM] Computing wavelet power spectra for {warm.sample.num} simulations")
-
-  if (compute.parallel && warm.sample.num > 20000) {
-
-    logger::log_info("[WARM] Using parallel computation for wavelet analysis")
-
-     parallel::clusterExport(cl,
-                            varlist = c("sim_annual", "warm.signif.level"),
-                            envir = environment())
-    parallel::clusterEvalQ(cl, library(weathergenr))
-
-    sim_power <- foreach::foreach(
-      x = 1:warm.sample.num,
-      .combine = cbind,
-      .packages = "weathergenr"
-    ) %dopar% {
-      wavelet_spectral_analysis(sim_annual[, x],
-                               signif.level = warm.signif.level)$GWS
-    }
-
-  } else {
-
-    sim_power <- sapply(1:warm.sample.num, function(x) {
-      wavelet_spectral_analysis(sim_annual[, x],
-                                period.lower.limit = 2,
-                                signif.level = warm.signif.level)$GWS
-    })
-
-  }
-
-  sim_power_pars <- wavelet_spectral_analysis(sim_annual[, 1],
-          period.lower.limit = 2, signif.level = warm.signif.level)
-
-  wavelet_spectral_analysis(warm_variable,
-                            period.lower.limit = 2, signif.level = warm.signif.level)$GWS_signif
-
-  plot_period <- if (length(setdiff(sim_power_pars$GWS_period, warm_power$GWS_period)) == 0)
-    warm_power$GWS_period else sim_power_pars$GWS_period
-
-  sim_annual_sub <- filter_warm_simulations(
-      series.obs = warm_variable,
-      series.sim = sim_annual,
-      power.obs = warm_power$GWS,
-      power.sim = sim_power,
-      power.period = plot_period,
-      power.signif = warm_power$GWS_signif,
-      sample.num = realization.num,
-      output.path = output.path,
-      bounds = warm.subset.criteria,
-      seed = warm_seed,
-      save.plots = FALSE,
-      save.series = FALSE)
-
-  # ::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (knn & mc) :::::::::::::::::::
+  # ::::::::::: TEMPORAL & SPATIAL DISSAGGREGATION (KNN & MC) :::::::::::::::::::
 
   logger::log_info("[KNN] Starting daily weather simulation using KNN + Markov Chain scheme")
 

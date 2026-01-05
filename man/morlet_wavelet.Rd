@@ -16,7 +16,7 @@ This value balances time and frequency localization.}
 }
 \value{
 Numeric vector (complex). The Morlet wavelet in Fourier space,
-  with length equal to \code{length(k)}.
+  with length equal to length(k).
 }
 \description{
 Computes the Morlet wavelet function in Fourier space for a given scale.
@@ -25,7 +25,7 @@ The function applies normalization following Torrence & Compo (1998).
 }
 \details{
 The Morlet wavelet is defined in Fourier space as:
-\deqn{\psi(s k) = \pi^{-1/4} \sqrt{s k_2 n} \exp(-\frac{(s k - k_0)^2}{2})}
+psi(s k) = pi^(-1/4) * sqrt(s k_2 n) * exp(-(s k - k_0)^2 / 2)
 where the exponential term is applied only to positive frequencies.
 
 The normalization factor ensures energy conservation and proper inverse
@@ -33,6 +33,6 @@ transform reconstruction.
 }
 \references{
 Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-\emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
+Bulletin of the American Meteorological Society, 79(1), 61-78.
 }
 \keyword{internal}

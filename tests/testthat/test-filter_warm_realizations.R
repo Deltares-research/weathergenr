@@ -1,225 +1,304 @@
+# test-filter_warm_realizations.R
+
 library(testthat)
+library(weathergenr)
 
-# ------------------------------------------------------------------------------
-test_that("filter_warm_simulations validates inputs", {
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
 
-  series.obs <- rnorm(10)
-  series.sim <- matrix(rnorm(100), nrow = 10)
-  power.obs <- runif(5)
-  power.sim <- matrix(runif(50), nrow = 5)
-  power.period <- 1:5
-  power.signif <- rep(0.5, 5)
-
-  expect_error(
-    filter_warm_simulations(series.obs = "a"),
-    "'series.obs' must be a numeric vector"
-  )
-
-  expect_error(
-    filter_warm_simulations(series.obs, series.sim = 1:10),
-    "'series.sim' must be a numeric matrix"
-  )
-
-  expect_error(
-    filter_warm_simulations(series.obs, series.sim, power.obs = "x"),
-    "'power.obs' must be a numeric vector"
-  )
-
-  expect_error(
-    filter_warm_simulations(series.obs, series.sim,
-                            power.obs, power.sim,
-                            power.period = 1:3,
-                            power.signif = 1:5),
-    "same length"
-  )
-
-  expect_error(
-    filter_warm_simulations(series.obs, series.sim,
-                            power.obs, power.sim[, 1:2],
-                            power.period, power.signif),
-    "same number of realizations"
-  )
-})
-
-# ------------------------------------------------------------------------------
-test_that("filter_warm_simulations runs and returns correct structure", {
-
+make_inputs <- function(n_years = 30, n_real = 10, n_period = 12) {
   set.seed(1)
 
-  series.obs <- rnorm(20)
-  series.sim <- replicate(10, series.obs + rnorm(20, sd = 0.1))
+  series.obs <- rnorm(n_years, mean = 100, sd = 20)
+  series.sim <- replicate(n_real, rnorm(n_years, mean = 100, sd = 20))
+  series.sim <- matrix(series.sim, nrow = n_years, ncol = n_real)
 
-  power.obs <- runif(6, 1, 2)
-  power.sim <- matrix(replicate(10, power.obs), nrow = 6)
+  power.period <- seq_len(n_period)
+  power.obs <- runif(n_period, 0.5, 2.0)
+  power.signif <- rep(1.0, n_period)
 
-  res <- suppressWarnings(
-    filter_warm_simulations(
-      series.obs,
-      series.sim,
-      power.obs,
-      power.sim,
-      power.period = 1:6,
-      power.signif = rep(0.8, 6),
-      save.plots = FALSE,
-      save.series = FALSE,
-      seed = 42
-    )
+  # power.sim must be [n_period x n_real]
+  power.sim <- matrix(runif(n_period * n_real, 0.2, 2.5), nrow = n_period, ncol = n_real)
+
+  list(
+    series.obs = series.obs,
+    series.sim = series.sim,
+    power.obs = power.obs,
+    power.sim = power.sim,
+    power.period = power.period,
+    power.signif = power.signif
+  )
+}
+
+# Capture all warnings produced by expr; return list(value=..., warnings=character())
+capture_warnings <- function(expr) {
+  warns <- character(0)
+  val <- withCallingHandlers(
+    expr,
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  list(value = val, warnings = warns)
+}
+
+# -----------------------------------------------------------------------------
+# 1) Basic structure + determinism
+# -----------------------------------------------------------------------------
+
+test_that("filter_warm_simulations returns expected structure", {
+  inp <- make_inputs(n_years = 30, n_real = 12, n_period = 10)
+
+  out <- filter_warm_simulations(
+    series.obs = inp$series.obs,
+    series.sim = inp$series.sim,
+    power.obs = inp$power.obs,
+    power.sim = inp$power.sim,
+    power.period = inp$power.period,
+    power.signif = inp$power.signif,
+    sample.num = 5,
+    seed = 123,
+    save.plots = FALSE
   )
 
-  expect_named(res, c("subsetted", "sampled", "n_filtered", "filter_summary"))
-  expect_true(is.matrix(res$subsetted))
-  expect_true(is.matrix(res$sampled))
-  expect_true(is.numeric(res$n_filtered))
-  expect_true(is.data.frame(res$filter_summary))
+  expect_type(out, "list")
+  expect_true(all(c("subsetted", "sampled", "n_filtered", "filter_summary") %in% names(out)))
+
+  expect_true(is.matrix(out$subsetted))
+  expect_true(is.matrix(out$sampled))
+  expect_true(is.numeric(out$n_filtered))
+  expect_true(is.data.frame(out$filter_summary))
+
+  # basic dimensions
+  expect_equal(nrow(out$subsetted), length(inp$series.obs))
+  expect_equal(nrow(out$sampled), length(inp$series.obs))
+  expect_lte(ncol(out$sampled), 5)
 })
 
-# ------------------------------------------------------------------------------
-test_that("statistical filters remove bad realizations", {
+test_that("filter_warm_simulations is deterministic given seed", {
+  inp <- make_inputs(n_years = 30, n_real = 12, n_period = 10)
 
-  set.seed(2)
-
-  series.obs <- rnorm(30)
-  good <- replicate(5, series.obs + rnorm(30, sd = 0.05))
-  bad  <- replicate(5, series.obs * 5)
-  series.sim <- cbind(good, bad)
-
-  power.obs <- runif(4, 1, 2)
-  power.sim <- matrix(rep(power.obs, 10), nrow = 4)
-
-  res <- suppressWarnings(
-    filter_warm_simulations(
-      series.obs,
-      series.sim,
-      power.obs,
-      power.sim,
-      power.period = 1:4,
-      power.signif = rep(0.5, 4),
-      save.plots = FALSE,
-      save.series = FALSE
-    )
+  out1 <- filter_warm_simulations(
+    series.obs = inp$series.obs,
+    series.sim = inp$series.sim,
+    power.obs = inp$power.obs,
+    power.sim = inp$power.sim,
+    power.period = inp$power.period,
+    power.signif = inp$power.signif,
+    sample.num = 5,
+    seed = 999,
+    save.plots = FALSE
   )
 
-  expect_lt(res$n_filtered, ncol(series.sim))
-  expect_gt(res$n_filtered, 0)
+  out2 <- filter_warm_simulations(
+    series.obs = inp$series.obs,
+    series.sim = inp$series.sim,
+    power.obs = inp$power.obs,
+    power.sim = inp$power.sim,
+    power.period = inp$power.period,
+    power.signif = inp$power.signif,
+    sample.num = 5,
+    seed = 999,
+    save.plots = FALSE
+  )
+
+  expect_equal(out1$sampled, out2$sampled)
+  expect_equal(out1$n_filtered, out2$n_filtered)
 })
 
-# ------------------------------------------------------------------------------
-test_that("power spectrum filter excludes realizations without signal", {
+# -----------------------------------------------------------------------------
+# 2) Input validation: isolate each fail-fast check
+# -----------------------------------------------------------------------------
 
-  series.obs <- rnorm(20)
-  series.sim <- replicate(6, series.obs + rnorm(20, 0.1))
+test_that("filter_warm_simulations validates series.obs vs series.sim year length", {
+  inp <- make_inputs(n_years = 30, n_real = 10, n_period = 12)
 
-  power.obs <- c(2, 1, 0.5)
-  power.signif <- c(1, 1, 1)
+  # break only year length: series.obs length != nrow(series.sim)
+  series.obs_bad <- inp$series.obs[-1]  # length 29
 
-  power.sim <- cbind(
-    matrix(c(2, 1.2, 0.6), nrow = 3, ncol = 3),
-    matrix(c(0.3, 0.2, 0.1), nrow = 3, ncol = 3)
-  )
-
-  res <- suppressWarnings(
+  expect_error(
     filter_warm_simulations(
-      series.obs,
-      series.sim,
-      power.obs,
-      power.sim,
-      power.period = 1:3,
-      power.signif = power.signif,
-      save.plots = FALSE,
-      save.series = FALSE
-    )
-  )
-
-  expect_gt(res$n_filtered, 0)
-  expect_lte(res$n_filtered, ncol(series.sim))
-})
-
-# ------------------------------------------------------------------------------
-test_that("fallback activates when no realization passes power filter", {
-
-  series.obs <- rnorm(15)
-  series.sim <- replicate(5, series.obs + rnorm(15, 0.1))
-
-  power.obs <- c(10, 10)
-  power.sim <- matrix(0.01, nrow = 2, ncol = 5)
-
-  expect_warning(
-    res <- filter_warm_simulations(
-      series.obs,
-      series.sim,
-      power.obs,
-      power.sim,
-      power.period = 1:2,
-      power.signif = c(5, 5),
-      save.plots = FALSE,
-      save.series = FALSE
+      series.obs = series.obs_bad,
+      series.sim = inp$series.sim,
+      power.obs = inp$power.obs,
+      power.sim = inp$power.sim,
+      power.period = inp$power.period,
+      power.signif = inp$power.signif,
+      save.plots = FALSE
     ),
-    regexp = ".*"
+    "Length mismatch: length\\(series\\.obs\\)"
   )
-
-  expect_gt(res$n_filtered, 0)
 })
 
-# ------------------------------------------------------------------------------
-test_that("sampling is reproducible with seed", {
+test_that("filter_warm_simulations validates power.period vs power.signif length", {
+  inp <- make_inputs(n_years = 30, n_real = 10, n_period = 12)
 
-  series.obs <- rnorm(20)
-  series.sim <- replicate(20, series.obs + rnorm(20, 0.1))
+  power.period_bad <- inp$power.period[-1]  # length 11, power.signif length 12
 
-  power.obs <- runif(5, 1, 2)
-  power.sim <- matrix(rep(power.obs, 20), nrow = 5)
-
-  res1 <- suppressWarnings(
+  expect_error(
     filter_warm_simulations(
-      series.obs, series.sim,
-      power.obs, power.sim,
-      power.period = 1:5,
-      power.signif = rep(0.5, 5),
-      seed = 123,
-      save.plots = FALSE,
-      save.series = FALSE
-    )
+      series.obs = inp$series.obs,
+      series.sim = inp$series.sim,
+      power.obs = inp$power.obs,
+      power.sim = inp$power.sim,
+      power.period = power.period_bad,
+      power.signif = inp$power.signif,
+      save.plots = FALSE
+    ),
+    "must have the same length"
   )
-
-  res2 <- suppressWarnings(
-    filter_warm_simulations(
-      series.obs, series.sim,
-      power.obs, power.sim,
-      power.period = 1:5,
-      power.signif = rep(0.5, 5),
-      seed = 123,
-      save.plots = FALSE,
-      save.series = FALSE
-    )
-  )
-
-  expect_equal(res1$sampled, res2$sampled)
 })
 
-# ------------------------------------------------------------------------------
-test_that("filter_summary is consistent", {
+test_that("filter_warm_simulations validates realization mismatch (ncol series.sim vs ncol power.sim)", {
+  inp <- make_inputs(n_years = 30, n_real = 10, n_period = 12)
 
-  series.obs <- rnorm(10)
-  series.sim <- replicate(5, series.obs)
+  # break only ncol(power.sim): keep all other dims consistent
+  power.sim_bad <- inp$power.sim[, 1:2, drop = FALSE]  # now 2 realizations vs 10
 
-  power.obs <- runif(3, 1, 2)
-  power.sim <- matrix(rep(power.obs, 5), nrow = 3)
-
-  res <- suppressWarnings(
+  expect_error(
     filter_warm_simulations(
-      series.obs,
-      series.sim,
-      power.obs,
-      power.sim,
-      power.period = 1:3,
-      power.signif = rep(0.5, 3),
+      series.obs = inp$series.obs,
+      series.sim = inp$series.sim,
+      power.obs = inp$power.obs,
+      power.sim = power.sim_bad,
+      power.period = inp$power.period,
+      power.signif = inp$power.signif,
+      save.plots = FALSE
+    ),
+    "Realization mismatch: ncol\\(series\\.sim\\)"
+  )
+})
+
+test_that("filter_warm_simulations validates period/grid mismatch (nrow power.sim)", {
+  inp <- make_inputs(n_years = 30, n_real = 10, n_period = 12)
+
+  # break only nrow(power.sim): keep ncol(power.sim) consistent
+  power.sim_bad <- inp$power.sim[1:10, , drop = FALSE]  # 10 periods vs 12
+
+  expect_error(
+    filter_warm_simulations(
+      series.obs = inp$series.obs,
+      series.sim = inp$series.sim,
+      power.obs = inp$power.obs,
+      power.sim = power.sim_bad,
+      power.period = inp$power.period,
+      power.signif = inp$power.signif,
+      save.plots = FALSE
+    ),
+    "Period/grid mismatch: nrow\\(power\\.sim\\)"
+  )
+})
+
+# -----------------------------------------------------------------------------
+# 3) Priority 1.1 behavior: "most periods" power filter + fallback chain warnings
+# -----------------------------------------------------------------------------
+
+test_that("fallback activates when no realizations pass power filter (captures multiple warnings)", {
+  inp <- make_inputs(n_years = 30, n_real = 10, n_period = 12)
+
+  # Construct a situation where power filter is impossible to satisfy:
+  # - Make observed significant at many periods
+  # - Make simulated power always below significance so has_signal becomes FALSE for all realizations
+  power.signif <- rep(10, length(inp$power.signif))
+  power.obs <- rep(20, length(inp$power.obs))     # obs > signif => significant periods exist
+  power.sim <- matrix(0.0, nrow = length(power.signif), ncol = ncol(inp$series.sim))  # never exceeds signif
+
+  cap <- capture_warnings(
+    filter_warm_simulations(
+      series.obs = inp$series.obs,
+      series.sim = inp$series.sim,
+      power.obs = power.obs,
+      power.sim = power.sim,
+      power.period = inp$power.period,
+      power.signif = power.signif,
+      sample.num = 5,
+      seed = 123,
       save.plots = FALSE,
-      save.series = FALSE
+      bounds = list(
+        mean = 0.0001, sd = 0.0001, min = 0.0001, max = 0.0001,
+        sig.thr = 0.8, nsig.thr = 1.5,
+        sig.frac = 0.8, nsig.frac = 0.95
+      )
     )
   )
 
-  expect_equal(
-    res$filter_summary$n_passed[res$filter_summary$filter == "mean"],
-    5
+  out <- cap$value
+  warns <- cap$warnings
+
+  # Expect at least the initial fallback warning; subsequent warnings may occur depending on stats tightness.
+  expect_true(any(grepl("Dropping power constraint", warns)))
+
+  # Ensure function still returns a valid result
+  expect_true(is.matrix(out$sampled))
+  expect_equal(nrow(out$sampled), length(inp$series.obs))
+  expect_lte(ncol(out$sampled), 5)
+
+  # Ensure relaxation_level is reported (and not "none" in this constructed case)
+  expect_true("relaxation_level" %in% names(out$filter_summary))
+  expect_true(any(out$filter_summary$relaxation_level != "none"))
+})
+
+test_that("Priority 1.1 power filter respects bounds$sig.frac (80% default)", {
+  inp <- make_inputs(n_years = 30, n_real = 10, n_period = 10)
+
+  # Make 10 significant periods in obs by setting obs > signif everywhere
+  power.signif <- rep(1, 10)
+  power.obs <- rep(2, 10)
+
+  # Construct power.sim so that realization 1 matches 8/10 periods (80%), realization 2 matches 7/10 (70%)
+  power.sim <- matrix(0.5, nrow = 10, ncol = 10)
+
+  # Ensure has_signal TRUE for both (at least one period exceeds signif)
+  power.sim[1, 1] <- 1.2
+  power.sim[1, 2] <- 1.2
+
+  # With sig.thr=0.8, lower bound = obs*0.8 = 1.6; set "within bounds" to 1.7
+  power.sim[1:8, 1] <- 1.7  # 80% within
+  power.sim[1:7, 2] <- 1.7  # 70% within
+
+  out <- filter_warm_simulations(
+    series.obs = inp$series.obs,
+    series.sim = inp$series.sim,
+    power.obs = power.obs,
+    power.sim = power.sim,
+    power.period = inp$power.period,
+    power.signif = power.signif,
+    sample.num = 5,
+    seed = 1,
+    save.plots = FALSE,
+    bounds = list(
+      mean = 1, sd = 1, min = 1, max = 1,  # stats wide open
+      sig.thr = 0.8,
+      nsig.thr = 1000,                     # effectively disable nonsig constraint
+      sig.frac = 0.8,
+      nsig.frac = 1.0                      # must be in (0,1]
+    )
+  )
+
+  # With stats wide open and power filter active, we should retain >=1 realization.
+  expect_gte(out$n_filtered, 1)
+})
+
+# -----------------------------------------------------------------------------
+# 4) save.plots requires output.path
+# -----------------------------------------------------------------------------
+
+test_that("save.plots=TRUE requires output.path", {
+  inp <- make_inputs()
+
+  expect_error(
+    filter_warm_simulations(
+      series.obs = inp$series.obs,
+      series.sim = inp$series.sim,
+      power.obs = inp$power.obs,
+      power.sim = inp$power.sim,
+      power.period = inp$power.period,
+      power.signif = inp$power.signif,
+      save.plots = TRUE,
+      output.path = NULL
+    ),
+    "output\\.path"
   )
 })

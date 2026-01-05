@@ -12,11 +12,9 @@ Standard choice is 6, which gives ~6 oscillations per wavelet.}
 }
 \value{
 Named numeric vector with three elements:
-  \describe{
-    \item{fourier_factor}{Conversion factor from wavelet scale to Fourier period}
-    \item{coi}{Cone of influence e-folding time}
-    \item{dofmin}{Minimum degrees of freedom (2 for Morlet)}
-  }
+  fourier_factor: Conversion factor from wavelet scale to Fourier period
+  coi: Cone of influence e-folding time
+  dofmin: Minimum degrees of freedom (2 for Morlet)
 }
 \description{
 Calculates key parameters for the Morlet wavelet transform, including
@@ -24,12 +22,12 @@ the Fourier factor (scale-to-period conversion), cone of influence (COI),
 and minimum degrees of freedom.
 }
 \details{
-The Fourier factor allows conversion between wavelet scale \eqn{s} and
-equivalent Fourier period \eqn{T}:
-\deqn{T = \frac{4\pi}{k_0 + \sqrt{2 + k_0^2}} \cdot s}
+The Fourier factor allows conversion between wavelet scale s and
+equivalent Fourier period T:
+T = (4*pi / (k_0 + sqrt(2 + k_0^2))) * s
 
 The cone of influence (COI) defines the e-folding time for edge effects:
-\deqn{COI = \frac{\text{fourier\_factor}}{\sqrt{2}}}
+COI = fourier_factor / sqrt(2)
 
 Values outside the COI are subject to edge artifacts and should be
 interpreted with caution.
@@ -45,7 +43,7 @@ print(params)
 }
 \references{
 Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-\emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
+Bulletin of the American Meteorological Society, 79(1), 61-78.
 See Table 1 and Section 3f.
 }
 \keyword{internal}
