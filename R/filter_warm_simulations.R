@@ -103,6 +103,7 @@ filter_warm_simulations <- function(series.obs = NULL,
                                     sample.num = 5,
                                     seed = NULL,
                                     padding = TRUE,
+                                    relax.order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
                                     bounds = list(),
                                     wavelet.pars = list(
                                       signif.level = 0.80,
@@ -135,9 +136,42 @@ filter_warm_simulations <- function(series.obs = NULL,
   n_realizations <- ncol(series.sim)
 
   if (n_realizations < sample.num) {
-    warning("sample.num exceeds number of realizations; returning at most ncol(series.sim).", call. = FALSE)
+    warning("sample.num exceeds number of series; returning at most ncol(series.sim).", call. = FALSE)
     sample.num <- n_realizations
   }
+
+  # ---------------------------------------------------------------------------
+  # Relaxation order (NEW: user-configurable)
+  # ---------------------------------------------------------------------------
+  allowed <- c("mean", "sd", "tail_low", "tail_high", "wavelet")
+  if (is.null(relax.order) || !is.character(relax.order)) {
+    stop("'relax.order' must be a character vector.", call. = FALSE)
+  }
+  relax.order <- as.character(relax.order)
+
+  if (anyNA(relax.order) || any(!nzchar(relax.order))) {
+    stop("'relax.order' must not contain NA/empty strings.", call. = FALSE)
+  }
+  if (any(duplicated(relax.order))) {
+    stop("'relax.order' must not contain duplicates.", call. = FALSE)
+  }
+  if (!all(relax.order %in% allowed)) {
+    bad <- setdiff(relax.order, allowed)
+    stop("Invalid entries in 'relax.order': ", paste(bad, collapse = ", "),
+         ". Allowed: ", paste(allowed, collapse = ", "), call. = FALSE)
+  }
+  if (!setequal(relax.order, allowed)) {
+    missing <- setdiff(allowed, relax.order)
+    extra   <- setdiff(relax.order, allowed)
+    msg <- character(0)
+    if (length(missing) > 0) msg <- c(msg, paste0("missing: ", paste(missing, collapse = ", ")))
+    if (length(extra) > 0)   msg <- c(msg, paste0("extra: ", paste(extra, collapse = ", ")))
+    stop("'relax.order' must contain exactly these filters once each: ",
+         paste(allowed, collapse = ", "), ". Problem: ", paste(msg, collapse = " | "),
+         call. = FALSE)
+  }
+
+  RELAX_ORDER <- relax.order
 
   # ---------------------------------------------------------------------------
   # Bounds defaults - IMPROVEMENT: Added wavelet.presence.frac parameter
@@ -257,7 +291,7 @@ filter_warm_simulations <- function(series.obs = NULL,
 
   if (verbose) {
     log_step("Computing distributional statistics",
-             sprintf("mean, sd, tail mass for %d realizations", n_realizations))
+             sprintf("mean, sd, tail mass for %d series", n_realizations))
   }
 
   obs_mean <- mean(obs.use)
@@ -348,11 +382,6 @@ filter_warm_simulations <- function(series.obs = NULL,
     for (nm in active) ok <- ok & pass_list[[nm]]
     which(ok)
   }
-
-  # ---------------------------------------------------------------------------
-  # Relaxation priority order (used throughout)
-  # ---------------------------------------------------------------------------
-  RELAX_ORDER <- c("mean", "sd", "tail_low", "tail_high", "wavelet")
 
   # ---------------------------------------------------------------------------
   # IMPROVEMENT 4: Simplified relaxation (no complex tie-breaking)
@@ -470,7 +499,7 @@ filter_warm_simulations <- function(series.obs = NULL,
 
   # Sample from pool
   if (verbose) {
-    log_step("Sampling realizations",
+    log_step("Sampling series",
              sprintf("selecting %d from pool of %d", sample.num, length(pool)))
   }
 
@@ -511,14 +540,15 @@ filter_warm_simulations <- function(series.obs = NULL,
   plots_out <- NULL
   if (make.plots) {
     if (verbose) {
-      log_step("Creating diagnostic plots",
-               "time series, statistics, and wavelet spectra")
+      log_step("Creating diagnostic plots", "time-series, statistics, and wavelet spectra")
     }
 
     if (length(pool) < 1L) {
       warning("make.plots=TRUE but final pool is empty; plots=NULL.", call. = FALSE)
-    } else {
-      plots_out <- create_filter_diagnostic_plots(
+
+      } else {
+
+      plots_out <- plot_filter_diagnostics(
         obs.use = obs.use,
         series_sim_for_stats = series_sim_for_stats,
         pool = pool,
@@ -528,7 +558,7 @@ filter_warm_simulations <- function(series.obs = NULL,
         power.period = power.period,
         power.obs = power.obs,
         power.signif = power.signif_unmasked,
-        gws_cache_mat = gws_cache_mat,
+        gws_cache_mat = wavelet_results$gws_cache_unmasked,
         wavelet_q = b$plot.wavelet_q
       )
     }
@@ -551,18 +581,6 @@ filter_warm_simulations <- function(series.obs = NULL,
       idx_pool = pool,
       idx_sampled = idx_sampled,
       relaxation_log = relax_log,
-      tailmass = list(
-        low.p  = b$tail.low.p,
-        high.p = b$tail.high.p,
-        tol.log = b$tail.tol.log,
-        eps = b$tail.eps,
-        scale_obs = tail_metrics$scale_obs,
-        low.thr  = if (is.finite(tail_metrics$thr_low)) tail_metrics$thr_low else NULL,
-        high.thr = if (is.finite(tail_metrics$thr_high)) tail_metrics$thr_high else NULL,
-        M_obs_low  = tail_metrics$M_obs_low,
-        M_obs_high = tail_metrics$M_obs_high
-      ),
-      wavelet = wavelet_diag,
       final_params = as.list(b)
     ),
     plots = plots_out
