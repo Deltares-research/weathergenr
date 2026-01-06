@@ -23,8 +23,8 @@
 #'   is estimated using Yule-Walker.
 #' @param period.lower.limit Numeric scalar. Minimum Fourier period (in time units)
 #'   to consider when identifying significant scales. Default is 2.
-#' @param detrend Logical. If \code{TRUE}, removes a linear trend from the input
-#'   series before wavelet analysis. Default is \code{FALSE}.
+#' @param detrend Logical. If \code{TRUE}, removes a linear trend **slope only**
+#'   (preserves the series mean level) before wavelet analysis. Default is \code{FALSE}.
 #' @param mode Character. Computation mode: \code{"fast"} (default) for speed-optimized
 #'   filtering with essential outputs only, or \code{"complete"} for comprehensive analysis
 #'   including reconstruction and diagnostics. Fast mode returns 9 outputs (~50 KB),
@@ -101,26 +101,6 @@
 #' @seealso
 #' \code{\link{morlet_wavelet}}, \code{\link{extract_wavelet_components}}
 #'
-#' @examples
-#' \dontrun{
-#' # Fast mode (default) - for filtering
-#' wv_fast <- wavelet_spectral_analysis(
-#'   rnorm(100),
-#'   mode = "fast"
-#' )
-#' names(wv_fast)  # 9 outputs
-#'
-#' # Complete mode - for detailed analysis
-#' wv_complete <- wavelet_spectral_analysis(
-#'   rnorm(100),
-#'   mode = "complete"
-#' )
-#' names(wv_complete)  # 18+ outputs
-#'
-#' # Plot reconstructed components (complete mode only)
-#' plot(wv_complete$comps)
-#' }
-#'
 #' @export
 wavelet_spectral_analysis <- function(variable,
                                       signif.level = 0.90,
@@ -137,7 +117,6 @@ wavelet_spectral_analysis <- function(variable,
                                       warn_neff = FALSE,
                                       neff_warn_min = 5,
                                       neff_warn_frac = 0.60) {
-
 
   # --- Input Validation ---
   if (!is.numeric(variable)) stop("variable must be numeric")
@@ -202,9 +181,13 @@ wavelet_spectral_analysis <- function(variable,
   # --- Wavelet Transform Analysis ---
   variable_org <- as.numeric(variable)
 
-  if (detrend) {
-    trend <- stats::fitted(stats::lm(variable_org ~ seq_along(variable_org)))
-    variable_org <- variable_org - trend
+  # Detrend slope only (preserve mean level)
+  if (isTRUE(detrend)) {
+    tt <- seq_along(variable_org)
+    fit <- stats::lm(variable_org ~ tt)
+    b <- stats::coef(fit)[2]
+    if (!is.finite(b)) b <- 0
+    variable_org <- variable_org - b * (tt - mean(tt))
   }
 
   variance1 <- stats::var(variable_org)
@@ -519,5 +502,6 @@ wavelet_spectral_analysis <- function(variable,
       )
     }
   }
+
   out
 }

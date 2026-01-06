@@ -103,57 +103,56 @@ wavelet_arima <- function(wavelet.components = NULL,
     stop("Input 'sim.year.num' must be specified.")
   }
 
-  if (!is.numeric(sim.year.num) || sim.year.num < 1) {
+  # --- FIX 1: enforce integer-ish sim.year.num and sim.num with clean messages
+  .is_int_scalar <- function(x) {
+    is.numeric(x) && length(x) == 1L && is.finite(x) && (x %% 1 == 0)
+  }
+
+  if (!.is_int_scalar(sim.year.num) || sim.year.num < 1L) {
     stop("'sim.year.num' must be a positive integer.")
   }
+  sim.year.num <- as.integer(sim.year.num)
 
-  if (!is.numeric(sim.num) || sim.num < 1) {
+  if (!.is_int_scalar(sim.num) || sim.num < 1L) {
     stop("'sim.num' must be a positive integer.")
   }
+  sim.num <- as.integer(sim.num)
 
-  if (!is.logical(match.variance)) {
+  if (!is.logical(match.variance) || length(match.variance) != 1L) {
     stop("'match.variance' must be logical (TRUE/FALSE).")
   }
 
-  if (!is.numeric(variance.tolerance) || variance.tolerance < 0 || variance.tolerance > 1) {
+  if (!is.numeric(variance.tolerance) || length(variance.tolerance) != 1L ||
+      !is.finite(variance.tolerance) || variance.tolerance < 0 || variance.tolerance > 1) {
     stop("'variance.tolerance' must be between 0 and 1.")
   }
 
+  if (!is.logical(check.diagnostics) || length(check.diagnostics) != 1L) {
+    stop("'check.diagnostics' must be logical (TRUE/FALSE).")
+  }
+
   # ============================================================================
-  # OPTIMIZATION 1: Efficient component list conversion
+  # Efficient component list conversion
   # ============================================================================
 
   if (is.matrix(wavelet.components)) {
-    # Matrix: Check if numeric
     if (!is.numeric(wavelet.components)) {
       stop("Matrix 'wavelet.components' must be numeric.")
     }
     ncomp <- ncol(wavelet.components)
-    # Pre-allocate list for efficiency
     comp_list <- vector("list", ncomp)
-    for (k in seq_len(ncomp)) {
-      comp_list[[k]] <- wavelet.components[, k]
-    }
+    for (k in seq_len(ncomp)) comp_list[[k]] <- wavelet.components[, k]
 
   } else if (is.data.frame(wavelet.components)) {
-    # Data frame: Check each column
     col_types <- vapply(wavelet.components, is.numeric, logical(1))
-    if (!all(col_types)) {
-      stop("All columns of 'wavelet.components' must be numeric.")
-    }
+    if (!all(col_types)) stop("All columns of 'wavelet.components' must be numeric.")
     ncomp <- ncol(wavelet.components)
-    # Pre-allocate list
     comp_list <- vector("list", ncomp)
-    for (k in seq_len(ncomp)) {
-      comp_list[[k]] <- wavelet.components[[k]]  # Use [[ for data.frame columns
-    }
+    for (k in seq_len(ncomp)) comp_list[[k]] <- wavelet.components[[k]]
 
   } else if (is.list(wavelet.components)) {
-    # List: Check each element
     elem_types <- vapply(wavelet.components, is.numeric, logical(1))
-    if (!all(elem_types)) {
-      stop("All elements of 'wavelet.components' must be numeric vectors.")
-    }
+    if (!all(elem_types)) stop("All elements of 'wavelet.components' must be numeric vectors.")
     ncomp <- length(wavelet.components)
     comp_list <- wavelet.components
 
@@ -161,11 +160,27 @@ wavelet_arima <- function(wavelet.components = NULL,
     stop("'wavelet.components' must be a matrix, data.frame, or list of numeric vectors.")
   }
 
+  # --- FIX 2: explicit NA check inside each component vector (before sd/mean)
+  na_comp <- vapply(comp_list, function(x) anyNA(x), logical(1))
+  if (any(na_comp)) {
+    bad <- which(na_comp)
+    stop(
+      "Missing values detected in wavelet component(s): ",
+      paste(bad, collapse = ", "),
+      ". Remove/impute NAs before calling wavelet_arima().",
+      call. = FALSE
+    )
+  }
+
   # ============================================================================
   # RNG State Management
   # ============================================================================
 
   if (!is.null(seed)) {
+    if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed)) {
+      stop("'seed' must be NULL or a single finite number.", call. = FALSE)
+    }
+
     if (exists(".Random.seed", envir = .GlobalEnv)) {
       old_seed <- .Random.seed
       has_seed <- TRUE
@@ -174,20 +189,15 @@ wavelet_arima <- function(wavelet.components = NULL,
     }
 
     on.exit({
-      if (has_seed) {
-        .Random.seed <<- old_seed
-      }
+      if (has_seed) .Random.seed <<- old_seed
     }, add = TRUE)
   }
 
   # ============================================================================
-  # OPTIMIZATION 2: Pre-allocate output matrix
+  # Pre-allocate output matrix
   # ============================================================================
 
-  # Allocate final output matrix once instead of using Reduce on lists
   output <- matrix(0, nrow = sim.year.num, ncol = sim.num)
-
-  # Track variance corrections efficiently
   variance_corrections <- logical(ncomp)
 
   # ============================================================================
@@ -196,15 +206,14 @@ wavelet_arima <- function(wavelet.components = NULL,
 
   for (k in seq_len(ncomp)) {
 
-    component <- comp_list[[k]]  # Direct access, no unlist needed
+    component <- as.numeric(comp_list[[k]])
     n_obs <- length(component)
 
-    # -------------------------------------------------------------------------
-    # OPTIMIZATION 3: Fast edge case checks
-    # -------------------------------------------------------------------------
-
-    # Check for constant component (single calculation)
-    comp_sd <- sd(component)
+    # constant component check is now safe because NA is excluded above
+    comp_sd <- stats::sd(component)
+    if (!is.finite(comp_sd)) {
+      stop("Component ", k, " has non-finite standard deviation.", call. = FALSE)
+    }
 
     if (comp_sd < 1e-10) {
       warning(
@@ -212,12 +221,10 @@ wavelet_arima <- function(wavelet.components = NULL,
         "Returning constant values without ARIMA modeling.",
         call. = FALSE
       )
-      # Add constant directly to output (vectorized)
       output <- output + mean(component)
       next
     }
 
-    # Short component warning
     if (n_obs < 10) {
       warning(
         "Component ", k, " has only ", n_obs,
@@ -226,22 +233,11 @@ wavelet_arima <- function(wavelet.components = NULL,
       )
     }
 
-    # -------------------------------------------------------------------------
-    # OPTIMIZATION 4: Efficient centering (computed once)
-    # -------------------------------------------------------------------------
-
     comp_mean <- mean(component)
     centered <- component - comp_mean
-    target_sd <- comp_sd  # Already computed above
+    target_sd <- comp_sd
 
-    # Set independent seed for this component
-    if (!is.null(seed)) {
-      set.seed(seed + k * 1000)
-    }
-
-    # -------------------------------------------------------------------------
-    # Fit ARIMA Model
-    # -------------------------------------------------------------------------
+    if (!is.null(seed)) set.seed(as.integer(seed) + k * 1000L)
 
     MODEL <- tryCatch(
       {
@@ -263,42 +259,30 @@ wavelet_arima <- function(wavelet.components = NULL,
           "\nFalling back to resampling with replacement.",
           call. = FALSE
         )
-        return(NULL)
+        NULL
       }
     )
 
-    # -------------------------------------------------------------------------
-    # OPTIMIZATION 5: Fast fallback (direct matrix sampling)
-    # -------------------------------------------------------------------------
-
     if (is.null(MODEL)) {
-      # Sample directly into matrix columns (vectorized)
       for (j in seq_len(sim.num)) {
         output[, j] <- output[, j] + sample(component, sim.year.num, replace = TRUE)
       }
       next
     }
 
-    # -------------------------------------------------------------------------
-    # Model Diagnostics (Optional)
-    # -------------------------------------------------------------------------
-
     if (check.diagnostics) {
       if (!is.null(MODEL$convergence) && MODEL$convergence != 0) {
-        warning(
-          "ARIMA model for component ", k, " did not converge properly.",
-          call. = FALSE
-        )
+        warning("ARIMA model for component ", k, " did not converge properly.", call. = FALSE)
       }
 
       if (length(MODEL$residuals) > 1) {
         ljung_test <- tryCatch(
-          Box.test(MODEL$residuals, type = "Ljung-Box",
-                   lag = min(10, length(MODEL$residuals) - 1)),
+          stats::Box.test(MODEL$residuals, type = "Ljung-Box",
+                          lag = min(10, length(MODEL$residuals) - 1)),
           error = function(e) NULL
         )
 
-        if (!is.null(ljung_test) && ljung_test$p.value < 0.05) {
+        if (!is.null(ljung_test) && is.finite(ljung_test$p.value) && ljung_test$p.value < 0.05) {
           warning(
             "Component ", k, ": Residuals show significant autocorrelation ",
             "(Ljung-Box p = ", round(ljung_test$p.value, 4), "). ",
@@ -309,10 +293,6 @@ wavelet_arima <- function(wavelet.components = NULL,
       }
     }
 
-    # -------------------------------------------------------------------------
-    # Extract Model Parameters
-    # -------------------------------------------------------------------------
-
     intercept <- 0
     if ("intercept" %in% names(MODEL$coef)) {
       intercept <- MODEL$coef[["intercept"]]
@@ -321,58 +301,37 @@ wavelet_arima <- function(wavelet.components = NULL,
     }
 
     model_sd <- sqrt(MODEL$sigma2)
+    needs_variance_check <- isTRUE(match.variance)
 
-    # -------------------------------------------------------------------------
-    # OPTIMIZATION 6: Vectorized simulation with conditional variance matching
-    # -------------------------------------------------------------------------
-
-    # Pre-compute variance correction threshold
-    needs_variance_check <- match.variance
-
-    # Simulate all realizations for this component
     for (j in seq_len(sim.num)) {
 
-      # Generate single realization
-      simulated <- as.numeric(
-        stats::simulate(MODEL, sim.year.num, sd = model_sd)
-      ) + intercept + comp_mean
+      simulated <- as.numeric(stats::simulate(MODEL, sim.year.num, sd = model_sd)) +
+        intercept + comp_mean
 
-      # Variance matching (if enabled)
       if (needs_variance_check) {
-        sim_sd <- sd(simulated)
-        relative_diff <- abs(sim_sd - target_sd) / target_sd
+        sim_sd <- stats::sd(simulated)
 
-        if (relative_diff > variance.tolerance) {
-          # Efficient variance correction
-          sim_mean <- mean(simulated)
-          simulated <- comp_mean + (simulated - sim_mean) * (target_sd / sim_sd)
-
-          # Mark that correction was applied (only once per component)
-          if (!variance_corrections[k]) {
-            variance_corrections[k] <- TRUE
+        # If sim_sd is 0/non-finite, rescaling is impossible; skip correction safely
+        if (is.finite(sim_sd) && sim_sd > 0) {
+          relative_diff <- abs(sim_sd - target_sd) / target_sd
+          if (relative_diff > variance.tolerance) {
+            sim_mean <- mean(simulated)
+            simulated <- comp_mean + (simulated - sim_mean) * (target_sd / sim_sd)
+            if (!variance_corrections[k]) variance_corrections[k] <- TRUE
           }
         }
       }
 
-      # Add to output matrix (in-place, no memory allocation)
       output[, j] <- output[, j] + simulated
     }
   }
 
-  # ============================================================================
-  # Reporting
-  # ============================================================================
-
-  if (match.variance && any(variance_corrections)) {
+  if (match.variance && any(variance_corrections) && requireNamespace("logger", quietly = TRUE)) {
     corrected_comps <- which(variance_corrections)
     logger::log_info(
       "[WARM] Variance correction applied to component(s): {paste(corrected_comps, collapse = ', ')}"
     )
   }
 
-  # ============================================================================
-  # Return
-  # ============================================================================
-
-  return(output)
+  output
 }

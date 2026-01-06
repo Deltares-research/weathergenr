@@ -36,8 +36,8 @@ is estimated using Yule-Walker.}
 \item{period.lower.limit}{Numeric scalar. Minimum Fourier period (in time units)
 to consider when identifying significant scales. Default is 2.}
 
-\item{detrend}{Logical. If \code{TRUE}, removes a linear trend from the input
-series before wavelet analysis. Default is \code{FALSE}.}
+\item{detrend}{Logical. If \code{TRUE}, removes a linear trend **slope only**
+(preserves the series mean level) before wavelet analysis. Default is \code{FALSE}.}
 
 \item{mode}{Character. Computation mode: \code{"fast"} (default) for speed-optimized
 filtering with essential outputs only, or \code{"complete"} for comprehensive analysis
@@ -131,27 +131,6 @@ with the following methodological refinements:
 Reconstructed components correspond to **individual wavelet scales** and are
 additive but not orthogonal. They should not be interpreted as independent
 stochastic modes.
-}
-\examples{
-\dontrun{
-# Fast mode (default) - for filtering
-wv_fast <- wavelet_spectral_analysis(
-  rnorm(100),
-  mode = "fast"
-)
-names(wv_fast)  # 9 outputs
-
-# Complete mode - for detailed analysis
-wv_complete <- wavelet_spectral_analysis(
-  rnorm(100),
-  mode = "complete"
-)
-names(wv_complete)  # 18+ outputs
-
-# Plot reconstructed components (complete mode only)
-plot(wv_complete$comps)
-}
-
 }
 \references{
 Torrence, C., & Compo, G. P. (1998). A practical guide to wavelet analysis.
