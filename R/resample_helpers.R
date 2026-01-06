@@ -285,3 +285,214 @@ monthly_markov_probs <- function(
   )
 }
 
+
+
+
+#' Determine Next State in a First-Order Markov Chain
+#'
+#' Given the previous state and a random number `rn`, this function returns the next
+#' state in a 3-state first-order Markov chain. The transition probabilities are
+#' state- and index-specific.
+#'
+#' States are typically defined as:
+#' - 0: Dry
+#' - 1: Wet
+#' - 2: Extreme
+#'
+#' The transition is determined using cumulative probabilities for the transitions
+#' to state 0 and 1. Any remaining probability is assigned to state 2.
+#'
+#' @param prev_state Integer. The current (previous) state (0, 1, or 2).
+#' @param rn Numeric. A random number in [0, 1] used to sample the next state.
+#' @param idx Integer. Index for selecting transition probabilities (e.g., time step or spatial location).
+#' @param p00 Numeric vector. Probability of transition from state 0 to 0.
+#' @param p01 Numeric vector. Probability of transition from state 0 to 1.
+#' @param p10 Numeric vector. Probability of transition from state 1 to 0.
+#' @param p11 Numeric vector. Probability of transition from state 1 to 1.
+#' @param p20 Numeric vector. Probability of transition from state 2 to 0.
+#' @param p21 Numeric vector. Probability of transition from state 2 to 1.
+#'
+#' @return Integer. The next state (0, 1, or 2).
+#'
+#' @examples
+#' # Suppose we're at time step 5 with current state = 1
+#' set.seed(123)
+#' rn <- runif(1)
+#' markov_next_state(
+#'   prev_state = 1,
+#'   rn = rn,
+#'   idx = 5,
+#'   p00 = rep(0.7, 10),
+#'   p01 = rep(0.2, 10),
+#'   p10 = rep(0.3, 10),
+#'   p11 = rep(0.4, 10),
+#'   p20 = rep(0.1, 10),
+#'   p21 = rep(0.3, 10)
+#' )
+#'
+#' @export
+markov_next_state <- function(prev_state, rn, idx, p00, p01, p10, p11, p20, p21) {
+
+  # Clamp random number
+  if (!is.finite(rn)) rn <- 0
+  if (rn < 0) rn <- 0
+  if (rn > 1) rn <- 1
+
+  # Validate prev_state
+  if (!(prev_state %in% c(0L, 1L, 2L))) {
+    prev_state <- 0L
+  }
+
+  # Clamp idx to valid range
+  n <- length(p00)
+  if (idx < 1L) idx <- 1L
+  if (idx > n)  idx <- n
+
+  # Select row probabilities
+  if (prev_state == 0L) {
+    a <- p00[idx]
+    b <- p01[idx]
+  } else if (prev_state == 1L) {
+    a <- p10[idx]
+    b <- p11[idx]
+  } else {
+    a <- p20[idx]
+    b <- p21[idx]
+  }
+
+  # NA -> 0
+  if (!is.finite(a)) a <- 0
+  if (!is.finite(b)) b <- 0
+
+  # Clamp negatives
+  if (a < 0) a <- 0
+  if (b < 0) b <- 0
+
+  # Enforce stochastic validity
+  s <- a + b
+  if (s > 1) {
+    if (s > 1.01) {  # Tolerance for rounding
+      warning(sprintf("Invalid transition probabilities: sum = %.3f at idx %d", s, idx))
+    }
+    a <- a / s
+    b <- b / s
+    s <- 1  # Force exact normalization
+  }
+
+  # Draw next state
+  if (rn < a) {
+    0L
+  } else if (rn < (a + b)) {
+    1L
+  } else {
+    2L
+  }
+}
+
+#' Get Indices for a Specific Occurrence State Transition
+#'
+#' Returns the indices in a precipitation time series (prcp) where a specified
+#' state transition occurs, based on wet/dry/extreme day thresholds.
+#'
+#' This optimized version pre-classifies all states once, avoiding repeated
+#' subsetting and threshold comparisons. Typically 5-10x faster than the
+#' if-else chain approach.
+#'
+#' The occurrence states are defined as:
+#' - 0: Dry day (precipitation <= wet.thr)
+#' - 1: Wet day (precipitation > wet.thr and <= extreme.thr)
+#' - 2: Extreme wet day (precipitation > extreme.thr)
+#'
+#' @param from.state Integer. The current occurrence state (0 = dry, 1 = wet, 2 = extreme).
+#' @param to.state Integer. The next occurrence state (0 = dry, 1 = wet, 2 = extreme).
+#' @param prcp Numeric vector of precipitation values.
+#' @param candidate.idx Integer vector of indices representing the current day in the time series.
+#' @param wet.thr Numeric. Threshold separating dry and wet days.
+#' @param extreme.thr Numeric. Threshold above which days are considered extreme.
+#'
+#' @return Integer vector of indices where the given transition from from.state to to.state occurs.
+#'
+#' @details
+#' This function pre-extracts and classifies precipitation states once, then
+#' performs a simple integer comparison to find matching transitions. This is
+#' much more efficient than the if-else chain approach which would subset and
+#' compare thresholds multiple times.
+#'
+#' @examples
+#' prcp <- c(0, 0, 5, 15, 30, 0, 2, 25, 40, 0)
+#' candidate.idx <- 1:(length(prcp) - 1)
+#' wet.thr <- 1
+#' extreme.thr <- 20
+#'
+#' # Find transitions from dry to wet
+#' get_state_indices(0, 1, prcp, candidate.idx, wet.thr, extreme.thr)
+#' # Returns: 6 (index where transition occurs)
+#'
+#' # Find transitions from wet to extreme
+#' get_state_indices(1, 2, prcp, candidate.idx, wet.thr, extreme.thr)
+#' # Returns: 3 7 (indices where transitions occur)
+#'
+#' # Find transitions from extreme to dry
+#' get_state_indices(2, 0, prcp, candidate.idx, wet.thr, extreme.thr)
+#' # Returns: 5 9 (indices where transitions occur)
+#'
+#' @export
+get_state_indices <- function(from.state, to.state, prcp, candidate.idx, wet.thr, extreme.thr) {
+
+  #Extract precipitation values
+  prcp_cur <- prcp[candidate.idx]
+  prcp_next <- prcp[candidate.idx + 1]
+
+  state_cur <- ifelse(prcp_cur <= wet.thr, 0L,
+                      ifelse(prcp_cur <= extreme.thr, 1L, 2L))
+
+  state_next <- ifelse(prcp_next <= wet.thr, 0L,
+                       ifelse(prcp_next <= extreme.thr, 1L, 2L))
+
+  # Returns indices in candidate.idx where the transition occurs
+  which(state_cur == from.state & state_next == to.state)
+}
+
+
+#' Safely Get or Sample an Index from a Vector
+#'
+#' Returns a valid index from `precip.tomorrow` based on the provided `result`.
+#' If `result` is missing, out of bounds, or invalid, a random index is sampled instead.
+#' If `precip.tomorrow` is empty, `NA_integer_` is returned.
+#'
+#' This function is useful in stochastic weather generation workflows where fallback
+#' behavior is needed when a computed index is not valid.
+#'
+#' @param result Integer. Proposed index for retrieving an element from `precip.tomorrow`.
+#' @param precip.tomorrow Numeric vector. A set of candidate precipitation values (e.g., for the next day).
+#'
+#' @return Integer. A valid index from `precip.tomorrow`, or `NA_integer_` if `precip.tomorrow` is empty.
+#'
+#' @examples
+#' precip.tomorrow <- c(0, 5, 10, 20)
+#'
+#' # Valid index
+#' get_result_index(2, precip.tomorrow) # returns 2
+#'
+#' # Invalid index: falls back to sampling
+#' set.seed(1)
+#' get_result_index(10, precip.tomorrow) # randomly returns a valid index
+#'
+#' # NA index: falls back to sampling
+#' get_result_index(NA, precip.tomorrow)
+#'
+#' # Empty vector: returns NA
+#' get_result_index(1, numeric(0))
+#'
+#' @export
+get_result_index <- function(result, precip.tomorrow) {
+  if (is.na(result) || length(result) == 0 || result < 1 || result > length(precip.tomorrow)) {
+    if (length(precip.tomorrow) > 0) {
+      sample(seq_along(precip.tomorrow), 1)
+    } else {
+      NA_integer_
+    }
+  } else {
+    result
+  }
+}

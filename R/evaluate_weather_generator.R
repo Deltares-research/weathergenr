@@ -53,10 +53,6 @@ evaluate_weather_generator <- function(
   # INPUT VALIDATION
   # ============================================================================
 
-  if (!is.numeric(max.grids) || length(max.grids) != 1 || max.grids < 1) {
-    stop("'max.grids' must be a positive integer")
-  }
-
   validate_inputs(
     daily.sim = daily.sim,
     daily.obs = daily.obs,
@@ -65,6 +61,15 @@ evaluate_weather_generator <- function(
     wet.quantile = wet.quantile,
     extreme.quantile = extreme.quantile
   )
+
+  if (!is.numeric(max.grids) ||
+      length(max.grids) != 1L ||
+      is.na(max.grids) ||
+      !is.finite(max.grids) ||
+      max.grids < 1 ||
+      max.grids != as.integer(max.grids)) {
+    stop("'max.grids' must be a positive integer", call. = FALSE)
+  }
 
   # ============================================================================
   # SETUP

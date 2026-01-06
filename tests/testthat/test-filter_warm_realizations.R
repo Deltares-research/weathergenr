@@ -1,8 +1,5 @@
 # test-filter_warm_realizations.R
 
-library(testthat)
-library(weathergenr)
-
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
@@ -36,26 +33,28 @@ get_named_or_find <- function(x, name_candidates, pred) {
 # -----------------------------------------------------------------------------
 # Wavelet mocks (fast + deterministic)
 # -----------------------------------------------------------------------------
-mock_wavelet_factory <- function(n_period = 12, mode = c("sig", "nosig")) {
-  mode <- match.arg(mode)
+mock_wavelet_factory <- function(n_period = 12, sig_mode = c("sig", "nosig")) {
+  sig_mode <- match.arg(sig_mode)
 
   function(variable,
-           signif.level,
-           noise.type,
-           period.lower.limit,
-           detrend,
-           mode = "fast") {
+           signif.level = 0.90,
+           noise.type = "red",
+           period.lower.limit = 2,
+           detrend = FALSE,
+           mode = "fast",
+           ...) {
 
     set.seed(length(variable) + n_period)
 
     gws_period <- seq_len(n_period)
 
-    if (mode == "nosig") {
-      gws <- rep(0.9, n_period)     # never significant relative to signif=1
+    # NOTE: use sig_mode (outer) to decide significance behavior
+    if (sig_mode == "nosig") {
+      gws <- rep(0.9, n_period)      # never significant relative to signif=1
       gws_unmasked <- gws
     } else {
       gws <- rep(0.9, n_period)
-      gws[c(3, 4, 5, 8)] <- 1.3     # some significant periods
+      gws[c(3, 4, 5, 8)] <- 1.3      # some significant periods
       gws_unmasked <- gws
     }
 
@@ -64,7 +63,11 @@ mock_wavelet_factory <- function(n_period = 12, mode = c("sig", "nosig")) {
       gws = gws,
       gws_unmasked = gws_unmasked,
       gws_signif = rep(1.0, n_period),
-      gws_signif_unmasked = rep(1.0, n_period)
+      gws_signif_unmasked = rep(1.0, n_period),
+      has_significance = any(gws > 1.0),
+      signif_periods = which(gws > 1.0),
+      coi = rep(Inf, length(variable)),
+      power = matrix(0, nrow = n_period, ncol = length(variable))
     )
   }
 }
@@ -83,14 +86,14 @@ mock_fill_nearest <- function(x) as.numeric(x)
 test_that("filter_warm_simulations returns expected structure", {
   inp <- make_inputs(n_years = 30, n_real = 12)
 
-  local_mocked_bindings(
-    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, mode = "sig"),
+  testthat::local_mocked_bindings(
+    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, sig_mode = "sig"),
     gws_regrid = mock_gws_regrid,
     fill_nearest = mock_fill_nearest,
-    .env = asNamespace("weathergenr")
+    .package = "weathergenr"
   )
 
-  out <- filter_warm_simulations(
+  out <- weathergenr::filter_warm_simulations(
     series.obs = inp$series.obs,
     series.sim = inp$series.sim,
     sample.num = 5,
@@ -140,14 +143,14 @@ test_that("filter_warm_simulations returns expected structure", {
 test_that("filter_warm_simulations is deterministic given seed", {
   inp <- make_inputs(n_years = 30, n_real = 12)
 
-  local_mocked_bindings(
-    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, mode = "sig"),
+  testthat::local_mocked_bindings(
+    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, sig_mode = "sig"),
     gws_regrid = mock_gws_regrid,
     fill_nearest = mock_fill_nearest,
-    .env = asNamespace("weathergenr")
+    .package = "weathergenr"
   )
 
-  out1 <- filter_warm_simulations(
+  out1 <- weathergenr::filter_warm_simulations(
     series.obs = inp$series.obs,
     series.sim = inp$series.sim,
     sample.num = 5,
@@ -156,7 +159,7 @@ test_that("filter_warm_simulations is deterministic given seed", {
     verbose = FALSE
   )
 
-  out2 <- filter_warm_simulations(
+  out2 <- weathergenr::filter_warm_simulations(
     series.obs = inp$series.obs,
     series.sim = inp$series.sim,
     sample.num = 5,
@@ -181,14 +184,14 @@ test_that("series length mismatch reconciles to a common length (sampled rows ma
   inp <- make_inputs(n_years = 30, n_real = 10)
   series.obs_short <- inp$series.obs[-1]  # length 29, sim has 30 rows
 
-  local_mocked_bindings(
-    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 10, mode = "sig"),
+  testthat::local_mocked_bindings(
+    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 10, sig_mode = "sig"),
     gws_regrid = mock_gws_regrid,
     fill_nearest = mock_fill_nearest,
-    .env = asNamespace("weathergenr")
+    .package = "weathergenr"
   )
 
-  out <- filter_warm_simulations(
+  out <- weathergenr::filter_warm_simulations(
     series.obs = series.obs_short,
     series.sim = inp$series.sim,
     sample.num = 5,
@@ -204,23 +207,21 @@ test_that("series length mismatch reconciles to a common length (sampled rows ma
   )
 
   expect_true(is.matrix(sampled))
-
-  # Your latest behavior (per failure) appears to align to series.sim length (nrow(series.sim)).
   expect_equal(nrow(sampled), nrow(inp$series.sim))
 })
 
 test_that("validates series.sim is a numeric matrix", {
   inp <- make_inputs(n_years = 30, n_real = 10)
 
-  local_mocked_bindings(
-    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 10, mode = "sig"),
+  testthat::local_mocked_bindings(
+    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 10, sig_mode = "sig"),
     gws_regrid = mock_gws_regrid,
     fill_nearest = mock_fill_nearest,
-    .env = asNamespace("weathergenr")
+    .package = "weathergenr"
   )
 
   expect_error(
-    filter_warm_simulations(
+    weathergenr::filter_warm_simulations(
       series.obs = inp$series.obs,
       series.sim = as.data.frame(inp$series.sim),
       make.plots = FALSE,
@@ -238,15 +239,15 @@ test_that("validates series.sim is a numeric matrix", {
 test_that("wavelet filter is disabled when no significant periods exist in observed GWS (silent or warning)", {
   inp <- make_inputs(n_years = 30, n_real = 10)
 
-  local_mocked_bindings(
-    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, mode = "nosig"),
+  testthat::local_mocked_bindings(
+    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, sig_mode = "nosig"),
     gws_regrid = mock_gws_regrid,
     fill_nearest = mock_fill_nearest,
-    .env = asNamespace("weathergenr")
+    .package = "weathergenr"
   )
 
   out <- suppressWarnings(
-    filter_warm_simulations(
+    weathergenr::filter_warm_simulations(
       series.obs = inp$series.obs,
       series.sim = inp$series.sim,
       sample.num = 5,
@@ -266,11 +267,11 @@ test_that("wavelet filter is disabled when no significant periods exist in obser
 test_that("relaxation engages when bounds are too strict to reach sample.num", {
   inp <- make_inputs(n_years = 30, n_real = 25)
 
-  local_mocked_bindings(
-    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, mode = "sig"),
+  testthat::local_mocked_bindings(
+    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, sig_mode = "sig"),
     gws_regrid = mock_gws_regrid,
     fill_nearest = mock_fill_nearest,
-    .env = asNamespace("weathergenr")
+    .package = "weathergenr"
   )
 
   strict_bounds <- list(
@@ -300,7 +301,7 @@ test_that("relaxation engages when bounds are too strict to reach sample.num", {
     relax.wavelet.contrast.tol.max = 1.00
   )
 
-  out <- filter_warm_simulations(
+  out <- weathergenr::filter_warm_simulations(
     series.obs = inp$series.obs,
     series.sim = inp$series.sim,
     sample.num = 7,
@@ -317,7 +318,6 @@ test_that("relaxation engages when bounds are too strict to reach sample.num", {
   expect_equal(nrow(sampled), length(inp$series.obs))
   expect_lte(ncol(sampled), 7)
 
-  # Relaxation indicators (best-effort; do not fail if schema changed)
   relax_cols <- c("relaxation_level", "relax_level", "relaxation", "relax_iter", "iteration")
   if (is.data.frame(filter_summary)) {
     col_present <- intersect(relax_cols, names(filter_summary))
@@ -335,15 +335,15 @@ test_that("relaxation engages when bounds are too strict to reach sample.num", {
 test_that("make.plots=TRUE requires output.path (only if enforced)", {
   inp <- make_inputs(n_years = 30, n_real = 10)
 
-  local_mocked_bindings(
-    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, mode = "sig"),
+  testthat::local_mocked_bindings(
+    wavelet_spectral_analysis = mock_wavelet_factory(n_period = 12, sig_mode = "sig"),
     gws_regrid = mock_gws_regrid,
     fill_nearest = mock_fill_nearest,
-    .env = asNamespace("weathergenr")
+    .package = "weathergenr"
   )
 
   err <- try(
-    filter_warm_simulations(
+    weathergenr::filter_warm_simulations(
       series.obs = inp$series.obs,
       series.sim = inp$series.sim,
       sample.num = 5,

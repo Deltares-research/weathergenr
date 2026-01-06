@@ -425,22 +425,22 @@ generate_weather_series <- function(
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
 
     resample_weather_dates(
-      PRCP_FINAL_ANNUAL_SIM = sim_annual_sub$sampled[, n],
-      ANNUAL_PRCP = warm_variable,
-      PRCP = climate_d_aavg$precip,
-      TEMP = climate_d_aavg$temp,
-      START_YEAR_SIM = sim.year.start,
-      k1 = n,
-      ymax = sim.year.num,
-      dates.d = dates_d,
-      sim.dates.d = sim_dates_d,
-      knn.annual.sample.num = knn.sample.num,
-      dry.spell.change = dry.spell.change,
-      wet.spell.change = wet.spell.change,
-      month.start = month.start,
-      wet.quantile = mc.wet.quantile,
-      extreme.quantile = mc.extreme.quantile,
-      seed = daily_seed  + n
+      annual_prcp_sim = sim_annual_sub$sampled[, n],
+      annual_prcp_obs = warm_variable,
+      daily_prcp_obs = climate_d_aavg$precip,
+      daily_temp_obs = climate_d_aavg$temp,
+      sim_start_year = sim.year.start,
+      realization_id = n,
+      n_sim_years = sim.year.num,
+      obs_dates_table = dates_d,
+      sim_dates_table = sim_dates_d,
+      annual_knn_n = knn.sample.num,
+      year_start_month = month.start,
+      wet_q = mc.wet.quantile,
+      extreme_q = mc.extreme.quantile,
+      dry_spell_factor = dry.spell.change,
+      wet_spell_factor = wet.spell.change,
+      seed = daily_seed + n
     )
   }
 
