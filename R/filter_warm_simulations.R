@@ -174,43 +174,43 @@ filter_warm_simulations <- function(series.obs = NULL,
   RELAX_ORDER <- relax.order
 
   # ---------------------------------------------------------------------------
-  # Bounds defaults - IMPROVEMENT: Added wavelet.presence.frac parameter
+  # Bounds defaults
   # ---------------------------------------------------------------------------
   b_list <- modifyList(list(
     mean = 0.05,
     sd   = 0.05,
 
-    tail.low.p  = 0.10,
-    tail.high.p = 0.90,
-    tail.tol.log = log(1.10),
+    tail.low.p  = 0.20,
+    tail.high.p = 0.80,
+    tail.tol.log = log(1.05),
     tail.eps = 1e-5,
 
-    sig.frac = 0.80,
+    sig.frac = 0.60,
     wavelet.region.tol = 0.50,
     wavelet.contrast.tol = 0.30,
     wavelet.min_bg = 1e-12,
     wavelet.require_presence = TRUE,
-    wavelet.presence.frac = NULL,  # NEW: NULL means use wavelet.pars$signif.level
+    wavelet.presence.frac = NULL,
 
     plot.wavelet_q = c(0.50, 0.95),
 
-    relax.mult = 1.5,
+    relax.mult = 1.25,
     relax.mean.max = 0.25,
     relax.sd.max = 0.25,
 
-    relax.tail.tol.log.max = log(3.0),
-    relax.tail.p.step = 0.05,
-    relax.tail.p.low.max  = 0.45,
-    relax.tail.p.high.min = 0.55,
+    relax.tail.tol.log.max = log(2.0),
+    relax.tail.p.step = 0.02,
+    relax.tail.p.low.max  = 0.40,
+    relax.tail.p.high.min = 0.40,
 
     relax.wavelet.sig.frac.step = 0.05,
-    relax.wavelet.sig.frac.min = 0.40,
+    relax.wavelet.sig.frac.min = 0.30,
     relax.wavelet.region.tol.step = 0.10,
     relax.wavelet.region.tol.max = 1.00,
     relax.wavelet.contrast.tol.step = 0.10,
     relax.wavelet.contrast.tol.max = 1.00,
 
-    relax.max.iter = 10L
+    relax.max.iter = 20L
   ), bounds)
 
   b <- list2env(b_list, parent = environment())

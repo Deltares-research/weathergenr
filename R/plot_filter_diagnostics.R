@@ -111,10 +111,11 @@ plot_filter_diagnostics <- function(obs.use, series_sim_for_stats, pool,
   stats_plot <- stats.pool.long |>
     dplyr::mutate(par = factor(.data$par, levels = c("mean", "sd", "tail_low", "tail_high")))
 
+
   p_stats <- ggplot(stats_plot, aes(x = "a", y = .data$value)) +
     theme_bw() +
     geom_hline(yintercept = 0, linewidth = 0.8, color = "blue") +
-    geom_point(size = 3, alpha = 0.3, color = "black") +
+    geom_point(size = 3, alpha = 0.3, color = "black", position = "jitter") +
     facet_wrap(~par, nrow = 1, labeller = as_labeller(par_labels)) +
     labs(x = "Filtered realizations", y = "Relative difference (%)") +
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +

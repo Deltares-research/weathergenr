@@ -6,7 +6,16 @@
 \usage{
 compute_realization_fit_metrics(obs.results, sim.results, variables)
 }
+\arguments{
+\item{obs.results}{Observed data results from process_observed_data}
+
+\item{sim.results}{Simulated data results from process_simulated_data}
+
+\item{variables}{Character vector of variable names}
+}
 \description{
-Compute fit metrics for each realization
+Computes Mean Absolute Error (MAE) for all key metrics.
+MAE measures the average magnitude of errors between simulated and observed values.
+Lower MAE indicates better fit.
 }
 \keyword{internal}

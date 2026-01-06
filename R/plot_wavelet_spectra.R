@@ -156,7 +156,7 @@ plot_wavelet_spectra <- function(
     labs(y = bquote(Power ~ (.(variable.unit)^2)), x = "")
 
   # Combine panels
-  p_combined <- p_spectrum + p_gws + patchwork::plot_layout(widths = c(3.2, 1.2))
+  p_combined <- p_spectrum + p_gws + patchwork::plot_layout(widths = c(3, 1.2))
 
   return(p_combined)
 }
