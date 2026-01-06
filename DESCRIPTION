@@ -18,16 +18,15 @@ Imports:
     forecast,
     foreach,
     ggplot2,
+    gridExtra,
     ncdf4,
     parallel,
     patchwork,
-    scales,
     stats,
     tidyr,
     utils,
     logger,
-    tibble,
-    sp
+    tibble
 Suggests:
     devtools,
     quarto,

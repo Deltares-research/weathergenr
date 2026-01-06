@@ -29,6 +29,7 @@
 #'   \item \code{summary}: Overall assessment metrics
 #' }
 #'
+#' @importFrom gridExtra grid.arrange
 #' @export
 validate_quantile_mapping <- function(
     value.original,

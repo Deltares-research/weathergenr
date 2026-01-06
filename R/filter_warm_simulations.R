@@ -1,84 +1,87 @@
-#' Filter and sample WARM simulations by distributional, tail-mass, and wavelet criteria
+#' Filter and sample WARM simulations using distributional, tail, and wavelet criteria
 #'
 #' @description
-#' Filters a matrix of simulated annual series (WARM realizations) against an observed
-#' annual series using fast distributional checks (mean, standard deviation),
-#' robust tail-shape checks based on lower/upper tail mass relative to observed
-#' quantile thresholds, and an observed-relevant wavelet (GWS) filter.
-#'
-#' The function applies a tiered relaxation strategy when too few candidates pass.
-#' If still insufficient after bounds$relax.max.iter iterations, it falls back
-#' to a deterministic selection of the sample.num realizations with the smallest
-#' absolute relative mean difference.
-#'
-#' If make.plots=TRUE, diagnostic plots are returned (time series overlay,
-#' relative-difference scatter facets, and wavelet GWS ribbon/lines).
-#'
-#' @param series.obs Numeric vector. Observed annual series.
-#' @param series.sim Numeric matrix. Simulated annual series, with years in rows and
-#'   realizations in columns.
-#' @param sample.num Integer scalar. Number of realizations to sample from the final
-#'   candidate pool.
-#' @param seed Optional integer. Random seed for reproducible window sampling and
-#'   candidate sampling.
-#' @param padding Logical scalar. If TRUE, pads the observed significant-period
-#'   set by one index on each side when evaluating presence of observed-relevant signal.
-#' @param bounds Named list. Overrides defaults for filtering and relaxation parameters.
-#'   Common entries include:
-#'   \itemize{
-#'     \item mean, sd: relative-difference tolerances.
-#'     \item tail.low.p, tail.high.p: quantile probabilities for tail thresholds.
-#'     \item tail.tol.log: tolerance on |log(M_sim+eps)-log(M_obs+eps)|.
-#'     \item tail.eps: epsilon used inside the log transform.
-#'     \item sig.frac, wavelet.region.tol, wavelet.contrast.tol,
-#'           wavelet.require_presence, wavelet.presence.frac: wavelet filter controls.
-#'     \item relax.*: relaxation settings, including relax.max.iter.
-#'   }
-#' @param wavelet.pars Named list passed to wavelet_spectral_analysis() for
-#'   observed and simulated series. Expected entries:
-#'   signif.level, noise.type, period.lower.limit, detrend.
-#' @param make.plots Logical scalar. If TRUE, returns diagnostic ggplot objects.
-#' @param verbose Logical scalar. If TRUE, prints iteration diagnostics using
-#'   logger::log_info().
-#'
-#' @details
-#' \strong{Length harmonization:} If observed and simulated series have different
-#' lengths, the function uses n_use = min(length(series.obs), nrow(series.sim)).
-#' A random contiguous window of length n_use is selected from the observed
-#' series (if needed), and each realization receives an independently sampled window
-#' of length n_use (if needed).
-#'
-#' \strong{Tail mass metrics:} Let t_L and t_H be observed quantile
-#' thresholds at tail.low.p and tail.high.p. Define lower-tail deficit
-#' mass and upper-tail excess mass (normalized by n_use * robust_scale(obs)),
-#' then compare simulations to observations using log-distance with epsilon
-#' tail.eps.
-#'
-#' \strong{Wavelet filter (observed-relevant GWS):} Significant observed periods are
-#' identified where observed GWS / signif > 1. These are grouped into contiguous
-#' regions. For each realization, regional integrated power and regional-to-background
-#' contrast are compared to observed within tolerances, requiring at least
-#' sig.frac of regions to pass. Optionally requires presence of signal.
-#'
-#' \strong{Improvements in this version:}
+#' Filters a set of WARM realizations (simulated annual series) against an observed
+#' annual series using three tiers of checks:
 #' \itemize{
-#'   \item wavelet.presence.frac parameter now exposed (was hardcoded to signif.level)
-#'   \item GWS always cached for efficiency (was conditional on make.plots)
-#'   \item Simplified relaxation logic (removed complex tie-breaking)
-#'   \item Extracted helper functions for better modularity and testability
+#'   \item \strong{Distributional}: relative differences in mean and standard deviation,
+#'   \item \strong{Tail behavior}: lower/upper tail mass relative to observed quantile thresholds,
+#'   \item \strong{Spectral}: an observed-relevant global wavelet spectrum (GWS) filter.
 #' }
 #'
-#' @return A list with elements:
-#' \itemize{
-#'   \item subsetted: matrix of realizations in the final candidate pool
-#'     (original rows from series.sim).
-#'   \item sampled: matrix of sample.num sampled realizations
-#'     (original rows from series.sim).
-#'   \item filter_summary: data.frame with per-filter pass counts and percentages,
-#'     and the final relaxation level.
-#'   \item diagnostics: list containing length/window metadata, pool indices,
-#'     relaxation log, tail-mass details, wavelet diagnostics, and final parameters.
-#'   \item plots: NULL or a list of ggplot objects if make.plots=TRUE.
+#' If fewer than \code{sample.num} realizations pass, the function relaxes criteria
+#' iteratively (up to \code{bounds$relax.max.iter}) by loosening the currently
+#' most restrictive active filter. If still insufficient, a deterministic fallback
+#' returns the \code{sample.num} realizations with the smallest absolute relative
+#' mean difference.
+#'
+#' @param series.obs Numeric vector. Observed annual series (no missing values recommended).
+#' @param series.sim Numeric matrix. Simulated annual series with years in rows and
+#'   realizations in columns.
+#' @param sample.num Integer scalar. Number of realizations to return in \code{sampled}.
+#'   If greater than \code{ncol(series.sim)}, it is reduced to \code{ncol(series.sim)} with a warning.
+#' @param seed Optional integer. Random seed used for window selection (if lengths differ)
+#'   and for sampling from the final candidate pool.
+#' @param padding Logical scalar. If \code{TRUE}, expands the observed significant-period
+#'   set by one index on each side when assessing presence of observed-relevant signal
+#'   in simulated spectra.
+#' @param relax.order Character vector. Relaxation priority ordering for criteria.
+#'   Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
+#'   When multiple filters have identical pass rates, this order is used to break ties.
+#' @param bounds Named list. Filtering thresholds and relaxation controls. Any entry
+#'   provided overrides the defaults. Common entries include:
+#'   \itemize{
+#'     \item \code{mean}, \code{sd}: relative-difference tolerances for mean and sd.
+#'     \item \code{tail.low.p}, \code{tail.high.p}: quantiles defining lower/upper tail thresholds.
+#'     \item \code{tail.tol.log}: tolerance on log-distance between simulated and observed tail mass.
+#'     \item \code{tail.eps}: epsilon added to tail mass before log transform for stability.
+#'     \item \code{sig.frac}: minimum fraction of observed-relevant regions required to pass the wavelet filter.
+#'     \item \code{wavelet.region.tol}, \code{wavelet.contrast.tol}: tolerances for regional power and contrast ratios.
+#'     \item \code{wavelet.require_presence}, \code{wavelet.presence.frac}: controls for requiring signal presence.
+#'     \item \code{relax.*}: relaxation step sizes and caps (including \code{relax.max.iter}).
+#'   }
+#' @param wavelet.pars Named list passed to \code{\link{wavelet_spectral_analysis}} for
+#'   observed and simulated series. Typical entries include \code{signif.level},
+#'   \code{noise.type}, \code{period.lower.limit}, and \code{detrend}.
+#' @param make.plots Logical scalar. If \code{TRUE}, returns diagnostic plots (time series overlay,
+#'   relative-difference summaries, and wavelet GWS diagnostics) in \code{plots}.
+#' @param verbose Logical scalar. If \code{TRUE}, logs per-iteration pass rates and relaxation steps
+#'   using \code{logger::log_info()}.
+#'
+#' @details
+#' \strong{Length harmonization}:
+#' The evaluation is performed over \code{n_use = min(length(series.obs), nrow(series.sim))}.
+#' If the observed series is longer than \code{n_use}, one contiguous window of length \code{n_use}
+#' is sampled and used for all comparisons. If simulated realizations are longer than \code{n_use},
+#' each realization is evaluated on its own sampled contiguous window of length \code{n_use}.
+#' Returned series in \code{subsetted} and \code{sampled} always use the original rows from
+#' \code{series.sim} (no trimming in the outputs).
+#'
+#' \strong{Tail-mass metrics}:
+#' Lower and upper thresholds are defined by the observed quantiles at
+#' \code{bounds$tail.low.p} and \code{bounds$tail.high.p}. Tail behavior is summarized as
+#' normalized deficit/excess mass relative to those thresholds, and compared using a
+#' stabilized log-distance with \code{bounds$tail.eps}.
+#'
+#' \strong{Wavelet filter (observed-relevant GWS)}:
+#' The observed GWS is tested against its significance curve to identify significant periods,
+#' which are grouped into contiguous regions. For each realization, regional integrated power
+#' and region-to-background contrast are compared to the observed within the specified
+#' tolerances, requiring at least \code{bounds$sig.frac} of regions to pass. Optional
+#' presence checks ensure simulated power exceeds a minimum fraction of observed power in
+#' the observed-relevant band.
+#'
+#' @return A list with:
+#' \describe{
+#'   \item{subsetted}{Numeric matrix. All realizations that remain in the final candidate pool
+#'     (columns subset of \code{series.sim}).}
+#'   \item{sampled}{Numeric matrix. \code{sample.num} realizations sampled from the final pool
+#'     (columns subset of \code{series.sim}).}
+#'   \item{filter_summary}{Data frame summarizing pass counts and pass rates by criterion, and the
+#'     final selection mode (tiered relaxation vs fallback).}
+#'   \item{diagnostics}{List containing window metadata, pool/sample indices, relaxation log, and
+#'     final parameter values used for filtering.}
+#'   \item{plots}{NULL or a named list of ggplot objects when \code{make.plots = TRUE}.}
 #' }
 #'
 #' @seealso \code{\link{wavelet_spectral_analysis}}
@@ -96,7 +99,6 @@
 #' out$filter_summary
 #' out$plots$wavelet_gws
 #' }
-#'
 #' @export
 filter_warm_simulations <- function(series.obs = NULL,
                                     series.sim = NULL,
