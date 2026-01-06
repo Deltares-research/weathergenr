@@ -45,9 +45,13 @@ plots are not saved to disk.}
 \item{save.plots}{Logical. Whether to save plots to `output.path` (default = `TRUE`).}
 
 \item{show.title}{Logical. Whether to display titles in plots (default = `TRUE`).}
+
+\item{max.grids}{Integer. Maximum number of grid cells to evaluate (default = 25).
+If more grids are provided, a random subsample is used to control memory.}
 }
 \value{
 A named list of `ggplot2` plot objects with class "weather_assessment".
+  The returned object also contains fit summary metrics stored as attributes.
 }
 \description{
 Comprehensive diagnostic evaluation comparing synthetic weather simulations

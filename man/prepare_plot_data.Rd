@@ -9,8 +9,4 @@ prepare_plot_data(obs.results, sim.results, variables, n_grids)
 \description{
 Prepare data for plotting
 }
-\keyword{Prepare}
-\keyword{data}
-\keyword{for}
 \keyword{internal}
-\keyword{plotting}

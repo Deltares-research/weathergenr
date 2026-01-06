@@ -22,8 +22,11 @@
 #'   plots are not saved to disk.
 #' @param save.plots Logical. Whether to save plots to `output.path` (default = `TRUE`).
 #' @param show.title Logical. Whether to display titles in plots (default = `TRUE`).
+#' @param max.grids Integer. Maximum number of grid cells to evaluate (default = 25).
+#'   If more grids are provided, a random subsample is used to control memory.
 #'
 #' @return A named list of `ggplot2` plot objects with class "weather_assessment".
+#'   The returned object also contains fit summary metrics stored as attributes.
 #'
 #' @import dplyr
 #' @import tidyr
@@ -175,12 +178,16 @@ evaluate_weather_generator <- function(
     extreme.quantile = extreme.quantile
   )
 
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info("[Assessment] Observed data processing complete")
+  }
+
   # ============================================================================
   # PROCESS SIMULATED DATA
   # ============================================================================
 
   if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Processing simulated data")
+    logger::log_info("[Assessment] Processing simulated data ({realization.num} realizations)")
   }
 
   sim.results <- process_simulated_data(
@@ -190,12 +197,16 @@ evaluate_weather_generator <- function(
     mc.thresholds = obs.results$mc.thresholds
   )
 
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info("[Assessment] Simulated data processing complete")
+  }
+
   # ============================================================================
   # MERGE AND PREPARE PLOT DATA
   # ============================================================================
 
   if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Preparing diagnostic data")
+    logger::log_info("[Assessment] Preparing diagnostic data for plotting")
   }
 
   plot.data <- prepare_plot_data(
@@ -204,6 +215,10 @@ evaluate_weather_generator <- function(
     variables = variables,
     n_grids = n_grids
   )
+
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info("[Assessment] Diagnostic data preparation complete")
+  }
 
   # ============================================================================
   # GENERATE DIAGNOSTIC PLOTS
@@ -223,18 +238,49 @@ evaluate_weather_generator <- function(
     output.path = output.path
   )
 
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info("[Assessment] Generated {length(plots)} diagnostic plots")
+    if (save.plots) {
+      logger::log_info("[Assessment] Plots saved to: {output.path}")
+    }
+  }
+
   # ============================================================================
-  # FINALIZE AND RETURN
+  # COMPUTE FIT METRICS SUMMARY TABLE
   # ============================================================================
 
   if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Completed. {length(plots)} diagnostic plots generated")
-    if (save.plots) logger::log_info("[Assessment] Plots saved to: {output.path}")
+    logger::log_info("[Assessment] Computing fit metrics for all realizations")
+  }
+
+  fit_summary <- compute_realization_fit_metrics(
+    obs.results = obs.results,
+    sim.results = sim.results,
+    variables = variables
+  )
+
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info("[Assessment] Fit metrics computation complete")
+  }
+
+  # ============================================================================
+  # DISPLAY FIT SUMMARY TABLE
+  # ============================================================================
+
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info("[Assessment] Displaying fit assessment summary")
+  }
+
+  display_fit_summary_table(fit_summary, variables)
+
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info("[Assessment] Assessment completed successfully")
   }
 
   structure(
     plots,
     class = c("weather_assessment", "list"),
+    fit_summary = fit_summary,
     metadata = list(
       n_grids = n_grids,
       realization.num = realization.num,
@@ -242,6 +288,169 @@ evaluate_weather_generator <- function(
       assessment.date = Sys.Date()
     )
   )
+}
+
+# ==============================================================================
+# FIT SUMMARY DISPLAY
+# ==============================================================================
+
+#' Display fit summary table for all realizations
+#' @keywords internal
+display_fit_summary_table <- function(fit_summary, variables) {
+
+  if (is.null(fit_summary) || nrow(fit_summary) == 0) {
+    cat("\n")
+    cat("WARNING: No fit metrics computed\n")
+    cat("\n")
+    return(invisible(NULL))
+  }
+
+  # Select key metrics for display (good coverage of different features)
+  key_metrics <- character(0)
+
+  # 1. Mean accuracy - select first variable if precip exists, otherwise first variable
+  if ("mae_mean_precip" %in% names(fit_summary)) {
+    key_metrics <- c(key_metrics, "mae_mean_precip")
+  } else {
+    mean_cols <- grep("^mae_mean_", names(fit_summary), value = TRUE)
+    if (length(mean_cols) > 0) key_metrics <- c(key_metrics, mean_cols[1])
+  }
+
+  # 2. Variability accuracy - select first variable
+  sd_cols <- grep("^mae_sd_", names(fit_summary), value = TRUE)
+  if (length(sd_cols) > 0) key_metrics <- c(key_metrics, sd_cols[1])
+
+  # 3. Wet/dry day counts
+  if ("mae_days_Wet" %in% names(fit_summary)) {
+    key_metrics <- c(key_metrics, "mae_days_Wet")
+  }
+
+  # 4. Spell lengths
+  if ("mae_spell_Wet" %in% names(fit_summary)) {
+    key_metrics <- c(key_metrics, "mae_spell_Wet")
+  }
+
+  # 5. Cross-grid correlation
+  if ("mae_cor_crossgrid" %in% names(fit_summary)) {
+    key_metrics <- c(key_metrics, "mae_cor_crossgrid")
+  }
+
+  # 6. Inter-variable correlation
+  if ("mae_cor_intervariable" %in% names(fit_summary)) {
+    key_metrics <- c(key_metrics, "mae_cor_intervariable")
+  }
+
+  # 7. Overall score (always include)
+  key_metrics <- c(key_metrics, "overall_score")
+
+  # Filter to available metrics
+  key_metrics <- key_metrics[key_metrics %in% names(fit_summary)]
+
+  # Prepare display data
+  display_data <- fit_summary[, c("rlz", "rank", key_metrics), drop = FALSE]
+
+  # Create nice column names for display
+  col_names <- names(display_data)
+  display_names <- col_names
+  display_names <- gsub("^mae_mean_", "Mean.", display_names)
+  display_names <- gsub("^mae_sd_", "SD.", display_names)
+  display_names <- gsub("^mae_days_", "Days.", display_names)
+  display_names <- gsub("^mae_spell_", "Spell.", display_names)
+  display_names <- gsub("mae_cor_crossgrid", "Cor.Cross", display_names)
+  display_names <- gsub("mae_cor_intervariable", "Cor.Inter", display_names)
+  display_names <- gsub("overall_score", "Score", display_names)
+  display_names <- gsub("rlz", "Rlz", display_names)
+  display_names <- gsub("rank", "Rank", display_names)
+
+  # Calculate column widths
+  col_widths <- pmax(
+    nchar(display_names),
+    apply(display_data, 2, function(x) max(nchar(format(x, digits = 4, nsmall = 4))))
+  ) + 2
+
+  # Ensure minimum widths
+  col_widths <- pmax(col_widths, 6)
+
+  # Print header
+  cat("\n")
+  cat(strrep("=", sum(col_widths) + length(col_widths) - 1), "\n")
+  cat(" FIT ASSESSMENT SUMMARY - ALL REALIZATIONS\n")
+  cat(strrep("=", sum(col_widths) + length(col_widths) - 1), "\n")
+  cat("\n")
+
+  # Print metric descriptions
+  cat(" Metrics shown (Mean Absolute Error, lower is better):\n")
+  cat("  MAE measures average magnitude of errors between simulated and observed\n")
+  cat("\n")
+  for (i in seq_along(key_metrics)) {
+    if (key_metrics[i] == "overall_score") {
+      cat("  - Score       : Normalized overall score across all metrics\n")
+    } else if (grepl("^mae_mean_", key_metrics[i])) {
+      var <- sub("^mae_mean_", "", key_metrics[i])
+      cat("  - Mean.", var, "   : MAE of monthly means\n", sep = "")
+    } else if (grepl("^mae_sd_", key_metrics[i])) {
+      var <- sub("^mae_sd_", "", key_metrics[i])
+      cat("  - SD.", var, "     : MAE of monthly standard deviations\n", sep = "")
+    } else if (grepl("^mae_days_", key_metrics[i])) {
+      cat("  - Days.", sub("^mae_days_", "", key_metrics[i]), "   : MAE of wet/dry day counts\n", sep = "")
+    } else if (grepl("^mae_spell_", key_metrics[i])) {
+      cat("  - Spell.", sub("^mae_spell_", "", key_metrics[i]), "  : MAE of wet/dry spell lengths (days)\n", sep = "")
+    } else if (key_metrics[i] == "mae_cor_crossgrid") {
+      cat("  - Cor.Cross   : MAE of cross-grid correlations\n")
+    } else if (key_metrics[i] == "mae_cor_intervariable") {
+      cat("  - Cor.Inter   : MAE of inter-variable correlations\n")
+    }
+  }
+  cat("\n")
+
+  # Print column headers
+  header_line <- paste(
+    mapply(function(name, width) {
+      format(name, width = width, justify = "right")
+    }, display_names, col_widths),
+    collapse = " "
+  )
+  cat(header_line, "\n")
+  cat(strrep("-", sum(col_widths) + length(col_widths) - 1), "\n")
+
+  # Print data rows
+  for (i in seq_len(nrow(display_data))) {
+    row_values <- as.character(display_data[i, ])
+
+    # Format numeric values
+    for (j in seq_along(row_values)) {
+      if (col_names[j] %in% c("rlz", "rank")) {
+        row_values[j] <- format(as.integer(display_data[i, j]), width = col_widths[j], justify = "right")
+      } else {
+        row_values[j] <- format(
+          round(as.numeric(display_data[i, j]), 4),
+          width = col_widths[j],
+          justify = "right",
+          nsmall = 4
+        )
+      }
+    }
+
+    cat(paste(row_values, collapse = " "), "\n")
+  }
+
+  cat(strrep("=", sum(col_widths) + length(col_widths) - 1), "\n")
+
+  # Print summary statistics
+  best_rlz <- fit_summary$rlz[1]
+  worst_rlz <- fit_summary$rlz[nrow(fit_summary)]
+  median_score <- median(fit_summary$overall_score, na.rm = TRUE)
+
+  cat("\n")
+  cat(" Summary:\n")
+  cat("  - Best realization  : ", best_rlz, " (score = ",
+      format(round(fit_summary$overall_score[1], 4), nsmall = 4), ")\n", sep = "")
+  cat("  - Worst realization : ", worst_rlz, " (score = ",
+      format(round(fit_summary$overall_score[nrow(fit_summary)], 4), nsmall = 4), ")\n", sep = "")
+  cat("  - Median score      : ", format(round(median_score, 4), nsmall = 4), "\n", sep = "")
+  cat("\n")
+
+  invisible(fit_summary)
 }
 
 # ==============================================================================
@@ -430,11 +639,11 @@ process_observed_data <- function(daily.obs, variables, n_grids,
   # At this point, standardize_obs_sim_periods() already removed leap days
   # and filtered to full-year windows. We keep leap-day handling here as a safety net.
   his.date <- daily.obs[[1]]$date
-  leap.idx <- find_leap_days(his.date)
-  if (!is.null(leap.idx)) {
-    daily.obs <- lapply(daily.obs, function(df) df[-leap.idx, , drop = FALSE])
-    his.date <- daily.obs[[1]]$date
-  }
+  # leap.idx <- find_leap_days(his.date)
+  # if (!is.null(leap.idx)) {
+  #   daily.obs <- lapply(daily.obs, function(df) df[-leap.idx, , drop = FALSE])
+  #   his.date <- daily.obs[[1]]$date
+  # }
 
   his.datemat <- dplyr::tibble(
     date = his.date,
@@ -535,13 +744,22 @@ process_simulated_data <- function(daily.sim, realization.num, variables, mc.thr
 }
 
 #' Compute fit metrics for each realization
+#'
+#' Computes Mean Absolute Error (MAE) for all key metrics.
+#' MAE measures the average magnitude of errors between simulated and observed values.
+#' Lower MAE indicates better fit.
+#'
+#' @param obs.results Observed data results from process_observed_data
+#' @param sim.results Simulated data results from process_simulated_data
+#' @param variables Character vector of variable names
+#'
 #' @keywords internal
 compute_realization_fit_metrics <- function(obs.results, sim.results, variables) {
 
   metrics_list <- list()
 
-  # --- 1. RMSE for means (by variable, across all grid-months) ---
-  rmse_mean <- sim.results$stats.season %>%
+  # --- 1. MAE for means (by variable, across all grid-months) ---
+  mae_mean <- sim.results$stats.season %>%
     dplyr::filter(.data$stat == "mean") %>%
     dplyr::left_join(
       obs.results$stats.season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
@@ -549,13 +767,13 @@ compute_realization_fit_metrics <- function(obs.results, sim.results, variables)
     ) %>%
     dplyr::group_by(.data$rlz, .data$variable) %>%
     dplyr::summarize(
-      rmse_mean = sqrt(mean((.data$Simulated - .data$Observed)^2, na.rm = TRUE)),
+      mae_mean = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$rmse_mean, names_prefix = "rmse_mean_")
+    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_mean, names_prefix = "mae_mean_")
 
-  # --- 2. RMSE for SDs ---
-  rmse_sd <- sim.results$stats.season %>%
+  # --- 2. MAE for SDs ---
+  mae_sd <- sim.results$stats.season %>%
     dplyr::filter(.data$stat == "sd") %>%
     dplyr::left_join(
       obs.results$stats.season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
@@ -563,10 +781,10 @@ compute_realization_fit_metrics <- function(obs.results, sim.results, variables)
     ) %>%
     dplyr::group_by(.data$rlz, .data$variable) %>%
     dplyr::summarize(
-      rmse_sd = sqrt(mean((.data$Simulated - .data$Observed)^2, na.rm = TRUE)),
+      mae_sd = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$rmse_sd, names_prefix = "rmse_sd_")
+    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_sd, names_prefix = "mae_sd_")
 
   # --- 3. MAE for wet/dry day counts ---
   mae_wetdry_days <- sim.results$wetdry %>%
@@ -596,8 +814,8 @@ compute_realization_fit_metrics <- function(obs.results, sim.results, variables)
     ) %>%
     tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_spell_")
 
-  # --- 5. Correlation skill: cross-grid ---
-  cor_crossgrid <- sim.results$cor %>%
+  # --- 5. MAE for cross-grid correlations ---
+  mae_cor_crossgrid <- sim.results$cor %>%
     dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
     dplyr::left_join(
       obs.results$cor %>%
@@ -608,12 +826,11 @@ compute_realization_fit_metrics <- function(obs.results, sim.results, variables)
     dplyr::group_by(.data$rlz) %>%
     dplyr::summarize(
       mae_cor_crossgrid = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
-      rmse_cor_crossgrid = sqrt(mean((.data$Simulated - .data$Observed)^2, na.rm = TRUE)),
       .groups = "drop"
     )
 
-  # --- 6. Correlation skill: inter-variable ---
-  cor_intervariable <- sim.results$cor %>%
+  # --- 6. MAE for inter-variable correlations ---
+  mae_cor_intervariable <- sim.results$cor %>%
     dplyr::filter(.data$id1 == .data$id2, .data$variable1 != .data$variable2) %>%
     dplyr::left_join(
       obs.results$cor %>%
@@ -624,38 +841,45 @@ compute_realization_fit_metrics <- function(obs.results, sim.results, variables)
     dplyr::group_by(.data$rlz) %>%
     dplyr::summarize(
       mae_cor_intervariable = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
-      rmse_cor_intervariable = sqrt(mean((.data$Simulated - .data$Observed)^2, na.rm = TRUE)),
       .groups = "drop"
     )
 
   # --- 7. Merge all metrics ---
-  summary_df <- rmse_mean %>%
-    dplyr::left_join(rmse_sd, by = "rlz") %>%
+  summary_df <- mae_mean %>%
+    dplyr::left_join(mae_sd, by = "rlz") %>%
     dplyr::left_join(mae_wetdry_days, by = "rlz") %>%
     dplyr::left_join(mae_spells, by = "rlz") %>%
-    dplyr::left_join(cor_crossgrid, by = "rlz") %>%
-    dplyr::left_join(cor_intervariable, by = "rlz")
+    dplyr::left_join(mae_cor_crossgrid, by = "rlz") %>%
+    dplyr::left_join(mae_cor_intervariable, by = "rlz")
 
   # --- 8. Compute overall score (normalized, lower = better) ---
-  # Normalize each metric to [0,1] range, then average
+  # Normalize all MAE metrics to 0-1 scale for fair weighting when combining
   metric_cols <- setdiff(names(summary_df), "rlz")
 
   summary_df <- summary_df %>%
     dplyr::mutate(
       dplyr::across(
         dplyr::all_of(metric_cols),
-        ~ (.x - min(.x, na.rm = TRUE)) / (max(.x, na.rm = TRUE) - min(.x, na.rm = TRUE)),
+        ~ {
+          rng <- range(.x, na.rm = TRUE)
+          den <- rng[2] - rng[1]
+          if (!is.finite(den) || den == 0) {
+            # constant / all-NA column -> neutral 0 (won't affect means with na.rm=TRUE)
+            return(rep(0, length(.x)))
+          }
+          (.x - rng[1]) / den
+        },
         .names = "norm_{.col}"
       )
     )
 
-  norm_cols <- names(summary_df)[grepl("^norm_", names(summary_df))]
+  norm_cols <- grep("^norm_", names(summary_df), value = TRUE)
 
   summary_df <- summary_df %>%
     dplyr::mutate(
       overall_score = rowMeans(dplyr::across(dplyr::all_of(norm_cols)), na.rm = TRUE)
     ) %>%
-    dplyr::select(-.data[[norm_cols]]) %>%
+    dplyr::select(-dplyr::all_of(norm_cols)) %>%
     dplyr::arrange(.data$overall_score) %>%
     dplyr::mutate(rank = dplyr::row_number()) %>%
     dplyr::select(.data$rlz, .data$rank, .data$overall_score, dplyr::everything())
@@ -959,7 +1183,7 @@ compute_conditional_precip_cor <- function(data,
 #' Generate symmetric dummy points for equal axis scaling
 #' @keywords internal
 generate_symmetric_dummy_points <- function(df, facet.var = "variable",
-                                           x.col = "Observed", y.col = "Simulated") {
+                                            x.col = "Observed", y.col = "Simulated") {
 
   df %>%
     dplyr::filter(
@@ -986,8 +1210,39 @@ generate_symmetric_dummy_points <- function(df, facet.var = "variable",
     dplyr::select(dplyr::all_of(facet.var), .data$Observed, .data$Simulated)
 }
 
-#' Prepare data for plotting
+
+#' Filter correlations by type (cross-grid or inter-variable)
 #' @keywords internal
+filter_correlations <- function(cor_data, same_var, same_id, allowed_pairs, pair_type) {
+
+  result <- cor_data %>%
+    dplyr::filter(
+      (.data$variable1 == .data$variable2) == same_var,
+      (.data$id1 == .data$id2) == same_id
+    )
+
+  if (pair_type == "id") {
+    result <- result %>%
+      dplyr::mutate(
+        pair = paste(pmin(.data$id1, .data$id2), pmax(.data$id1, .data$id2), sep = ":")
+      ) %>%
+      dplyr::filter(.data$pair %in% allowed_pairs) %>%
+      dplyr::select(-.data$pair)
+
+  } else if (pair_type == "variable") {
+    result <- result %>%
+      dplyr::mutate(
+        pair = paste(pmin(.data$variable1, .data$variable2),
+                     pmax(.data$variable1, .data$variable2), sep = ":"),
+        variable = .data$pair
+      ) %>%
+      dplyr::filter(.data$pair %in% allowed_pairs) %>%
+      dplyr::select(-.data$pair)
+  }
+
+  result
+}
+
 #' Prepare data for plotting
 #' @keywords internal
 prepare_plot_data <- function(obs.results, sim.results, variables, n_grids) {
@@ -1059,29 +1314,17 @@ prepare_plot_data <- function(obs.results, sim.results, variables, n_grids) {
   # Cross-grid correlations: same variable, different grids
   # ---------------------------------------------------------------------------
 
-  stats.crosscor <- stats.allcor %>%
-    dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
-    dplyr::mutate(
-      id_pair = paste(pmin(.data$id1, .data$id2), pmax(.data$id1, .data$id2), sep = ":")
-    ) %>%
-    dplyr::filter(.data$id_pair %in% id_pairs_allowed) %>%
-    dplyr::select(-.data$id_pair)
+  stats.crosscor <- filter_correlations(cor_data = stats.allcor,
+                                        same_var = TRUE, same_id = FALSE, allowed_pairs = id_pairs_allowed,
+                                        pair_type = "id")
 
   # ---------------------------------------------------------------------------
   # Inter-variable correlations: same grid, different variables
   # ---------------------------------------------------------------------------
 
-  stats.intercor <- stats.allcor %>%
-    dplyr::filter(.data$id1 == .data$id2, .data$variable1 != .data$variable2) %>%
-    dplyr::mutate(
-      var_pair = paste(pmin(.data$variable1, .data$variable2),
-                       pmax(.data$variable1, .data$variable2),
-                       sep = ":")
-    ) %>%
-    dplyr::filter(.data$var_pair %in% var_pairs_allowed) %>%
-    # create a single "variable" column for faceting, consistent ordering
-    dplyr::mutate(variable = .data$var_pair) %>%
-    dplyr::select(-.data$var_pair)
+  stats.intercor <- filter_correlations(cor_data = stats.allcor,
+                                        same_var = FALSE, same_id = TRUE, allowed_pairs = var_pairs_allowed,
+                                        pair_type = "variable")
 
   # ---------------------------------------------------------------------------
   # Wet/dry statistics
@@ -1113,8 +1356,8 @@ prepare_plot_data <- function(obs.results, sim.results, variables, n_grids) {
 #' Create all diagnostic plots
 #' @keywords internal
 create_all_diagnostic_plots <- function(plot.data, plot.config, variables,
-                                       variable.labels, show.title,
-                                       save.plots, output.path) {
+                                        variable.labels, show.title,
+                                        save.plots, output.path) {
 
   plots <- list()
 
@@ -1221,7 +1464,7 @@ create_all_diagnostic_plots <- function(plot.data, plot.config, variables,
 #' Export multi-panel plot
 #' @keywords internal
 export_multipanel_plot <- function(p, filename, show.title, save.plots,
-                                  title = NULL, subtitle = NULL, output.path) {
+                                   title = NULL, subtitle = NULL, output.path) {
 
   if (show.title && !is.null(title)) {
     p <- p + ggplot2::labs(title = title, subtitle = subtitle)
@@ -1252,7 +1495,7 @@ export_multipanel_plot <- function(p, filename, show.title, save.plots,
 #' Create daily mean plot
 #' @keywords internal
 create_daily_mean_plot <- function(daily.stats.season, plot.config,
-                                  show.title, save.plots, output.path) {
+                                   show.title, save.plots, output.path) {
 
   data.mean <- daily.stats.season %>%
     dplyr::filter(.data$stat == "mean")
@@ -1303,7 +1546,7 @@ create_daily_mean_plot <- function(daily.stats.season, plot.config,
 #' Create daily standard deviation plot
 #' @keywords internal
 create_daily_sd_plot <- function(daily.stats.season, plot.config,
-                                show.title, save.plots, output.path) {
+                                 show.title, save.plots, output.path) {
 
   data.sd <- daily.stats.season %>%
     dplyr::filter(.data$stat == "sd")
@@ -1354,7 +1597,7 @@ create_daily_sd_plot <- function(daily.stats.season, plot.config,
 #' Create spell length plot
 #' @keywords internal
 create_spell_length_plot <- function(stats.wetdry, plot.config,
-                                    show.title, save.plots, output.path) {
+                                     show.title, save.plots, output.path) {
 
   data.spells <- stats.wetdry %>%
     dplyr::filter(.data$type == "spells")
@@ -1438,22 +1681,19 @@ create_wetdry_days_plot <- function(stats.wetdry, plot.config,
     # force symmetric axes per facet
     ggplot2::geom_point(data = dummy.points, color = "blue", alpha = 0) +
 
-    # ***SHOW ALL GRID x MONTH POINTS***
-    ggplot2::geom_point(alpha = 0.25, size = 1.2) +
-
     # overlay summary range + median if you still want it
     ggplot2::stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
-      alpha = 0.3, color = "gray60",
-      linewidth = 1.2
+      alpha = plot.config$alpha,
+      linewidth = 1.5
     ) +
     ggplot2::stat_summary(
       fun = "median",
       geom = "point",
-      alpha = 0.8,
-      size = 2.2
+      alpha = plot.config$alpha,
+      size = 2
     ) +
     ggplot2::facet_wrap(~ stat, ncol = 2, nrow = 1, scales = "free") +
     ggplot2::labs(x = "Observed", y = "Simulated")
@@ -1474,7 +1714,7 @@ create_wetdry_days_plot <- function(stats.wetdry, plot.config,
 #' Create cross-grid correlation plot
 #' @keywords internal
 create_crossgrid_cor_plot <- function(stats.crosscor, plot.config,
-                                     show.title, save.plots, output.path) {
+                                      show.title, save.plots, output.path) {
 
   dummy.points <- generate_symmetric_dummy_points(
     df = stats.crosscor,
@@ -1522,7 +1762,7 @@ create_crossgrid_cor_plot <- function(stats.crosscor, plot.config,
 #' Create inter-grid correlation plot
 #' @keywords internal
 create_intergrid_cor_plot <- function(stats.intercor, plot.config,
-                                     show.title, save.plots, output.path) {
+                                      show.title, save.plots, output.path) {
 
   dummy.points <- generate_symmetric_dummy_points(
     df = stats.intercor,
@@ -1608,8 +1848,8 @@ create_precip_cond_cor_plot <- function(stats.precip_cor_cond, plot.config,
 #' Create monthly pattern plot for a single variable
 #' @keywords internal
 create_monthly_pattern_plot <- function(stats.mon.aavg.sim, stats.mon.aavg.obs,
-                                       variable, variable.label, plot.config,
-                                       show.title, save.plots, output.path) {
+                                        variable, variable.label, plot.config,
+                                        show.title, save.plots, output.path) {
 
   # Simulated data
   dat.sim <- stats.mon.aavg.sim %>%
@@ -1669,7 +1909,7 @@ create_monthly_pattern_plot <- function(stats.mon.aavg.sim, stats.mon.aavg.obs,
 #' Create monthly cycle plot
 #' @keywords internal
 create_monthly_cycle_plot <- function(daily.stats.season, plot.config,
-                                     show.title, save.plots, output.path) {
+                                      show.title, save.plots, output.path) {
 
   # Simulated average
   sim.avg <- daily.stats.season %>%
@@ -1714,7 +1954,7 @@ create_monthly_cycle_plot <- function(daily.stats.season, plot.config,
 #' Create annual precipitation plot
 #' @keywords internal
 create_annual_precip_plot <- function(stats.annual.aavg.sim, stats.annual.aavg.obs,
-                                     plot.config, show.title, save.plots, output.path) {
+                                      plot.config, show.title, save.plots, output.path) {
 
   # Simulated data
   sim.precip <- stats.annual.aavg.sim %>%
