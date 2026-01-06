@@ -181,7 +181,6 @@ wavelet_spectral_analysis <- function(variable,
   # --- Wavelet Transform Analysis ---
   variable_org <- as.numeric(variable)
 
-  # Detrend slope only (preserve mean level)
   if (isTRUE(detrend)) {
     tt <- seq_along(variable_org)
     fit <- stats::lm(variable_org ~ tt)

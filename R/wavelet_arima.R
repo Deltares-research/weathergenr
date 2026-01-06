@@ -328,9 +328,7 @@ wavelet_arima <- function(wavelet.components = NULL,
 
   if (match.variance && any(variance_corrections) && requireNamespace("logger", quietly = TRUE)) {
     corrected_comps <- which(variance_corrections)
-    logger::log_info(
-      "[WARM] Variance correction applied to component(s): {paste(corrected_comps, collapse = ', ')}"
-    )
+    logger::log_info("[WARM] Variance correction applied to component(s)")
   }
 
   output

@@ -1,159 +1,98 @@
 #' @title Generate Synthetic Gridded Daily Weather Series
 #'
 #' @description
-#' Generates stochastic daily weather time series for one or more grid cells by
-#' combining:
+#' Generate stochastic gridded daily weather by coupling an annual-scale
+#' low-frequency generator with daily-scale resampling and persistence logic.
+#' The workflow combines:
 #' \itemize{
-#'   \item annual low-frequency variability simulated using Wavelet
-#'         Autoregressive Modeling (WARM),
-#'   \item annual K-nearest-neighbor (KNN) selection of historical years,
-#'   \item a three-state (dry, wet, extreme) daily Markov chain for spell
-#'         persistence,
+#'   \item Wavelet Autoregressive Modeling (WARM) on an annual aggregate of
+#'         \code{warm.variable} to simulate low-frequency variability,
+#'   \item annual K-nearest-neighbor (KNN) matching to select historical analogue years,
+#'   \item a three-state (dry, wet, extreme) daily Markov chain to control spell persistence,
 #'   \item daily KNN resampling of precipitation and temperature anomalies.
 #' }
 #'
-#' The function supports both calendar-year and water-year simulations.
-#' The simulation regime is inferred automatically from \code{month.start}:
+#' The simulation regime is inferred from \code{month.start}:
 #' \itemize{
-#'   \item \code{month.start == 1}: calendar-year simulation (January to December),
-#'   \item \code{month.start != 1}: water-year simulation starting in the specified month.
+#'   \item \code{month.start == 1}: calendar-year simulation,
+#'   \item \code{month.start != 1}: water-year simulation starting at \code{month.start}.
 #' }
 #'
 #' @details
-#' The workflow consists of four main stages:
+#' \strong{Calendar handling (robust Gregorian input):}
+#' Inputs may be on the Gregorian calendar and may include Feb 29. Internally,
+#' the function enforces a 365-day calendar by removing Feb 29 from \code{weather.date}
+#' and dropping the corresponding rows from every element of \code{weather.data}.
+#' All downstream processing and outputs therefore use a 365-day calendar.
 #'
+#' \strong{Workflow:}
 #' \enumerate{
-#'   \item \strong{Preprocessing of historical data:}
-#'         Leap days are removed, water years are computed, and grid-cell data
-#'         are aggregated to basin or domain averages for annual modeling.
-#'
-#'   \item \strong{Annual-scale simulation (WARM):}
-#'         Low-frequency variability in the selected \code{warm.variable}
-#'         (typically precipitation) is modeled using wavelet decomposition and
-#'         autoregressive resampling. A subset of annual traces is retained based
-#'         on user-defined summary-statistic criteria.
-#'
-#'   \item \strong{Daily disaggregation:}
-#'         For each simulated year, historical years are selected using annual
-#'         KNN matching. Daily weather is generated sequentially using a
-#'         three-state Markov chain (dry, wet, extreme) and daily KNN resampling
-#'         of anomalies.
-#'
-#'   \item \strong{Output construction:}
-#'         For each realization, the function returns the sequence of resampled
-#'         historical dates corresponding to the simulated daily weather.
+#'   \item \strong{Historical preprocessing:} enforce a 365-day calendar, compute
+#'         calendar/water-year indices, and build a historical dates table used for
+#'         KNN matching and Markov chain sequencing.
+#'   \item \strong{Annual WARM simulation:} aggregate historical daily data to annual
+#'         means (by water year if applicable), run wavelet analysis on the annual
+#'         series, simulate candidate annual traces via \code{\link{wavelet_arima}},
+#'         and subset traces using \code{\link{filter_warm_simulations}}.
+#'   \item \strong{Daily disaggregation:} for each realization, call
+#'         \code{resample_weather_dates()} to generate a simulated sequence of
+#'         historical analogue dates (in the internal 365-day calendar).
+#'   \item \strong{Output construction:} map resampled internal dates back to
+#'         historical observation dates (\code{dateo}) and return simulated dates.
 #' }
 #'
-#' All simulations are performed on a 365-day calendar (no leap days).
+#' @param weather.data Named list of data frames (one per grid cell) with observed
+#'   daily weather. Each data frame must have one row per day corresponding to
+#'   \code{weather.date}, and columns for all \code{variables}.
+#' @param weather.grid Data frame describing grid cells. Must contain columns
+#'   \code{id}, \code{xind}, \code{yind}, \code{x}, \code{y}.
+#' @param weather.date Vector of class \code{Date} corresponding to rows of each
+#'   \code{weather.data[[i]]}. May include Feb 29; Feb 29 is removed internally
+#'   along with the corresponding rows in \code{weather.data}.
+#' @param variables Character vector of daily variables to simulate
+#'   (e.g., \code{c("precip","temp")}).
+#' @param sim.year.num Integer number of years to simulate. If \code{NULL},
+#'   defaults to the number of unique historical simulation-years (calendar year
+#'   or water year depending on \code{month.start}).
+#' @param sim.year.start Integer first simulation year (calendar year if
+#'   \code{month.start == 1}, otherwise first water year).
+#' @param month.start Integer in \code{1:12}. First month of the simulation year.
+#' @param realization.num Integer number of realizations to generate.
+#' @param warm.variable Character name of the annual driver variable used in WARM
+#'   (must be in \code{variables}).
+#' @param warm.signif.level Numeric in (0,1). Wavelet significance level for
+#'   retaining low-frequency components in WARM.
+#' @param warm.sample.num Integer number of candidate annual traces to generate
+#'   before subsetting.
+#' @param warm.subset.criteria Named list of thresholds used to filter annual WARM
+#'   traces (must include \code{mean}, \code{sd}, \code{min}, \code{max},
+#'   \code{sig.thr}, \code{nsig.thr}).
+#' @param knn.sample.num Integer number of historical years sampled in annual KNN.
+#' @param mc.wet.quantile Numeric in (0,1). Wet-day threshold quantile.
+#' @param mc.extreme.quantile Numeric in (0,1). Extreme-day threshold quantile.
+#' @param dry.spell.change Numeric length-12 vector of monthly dry-spell adjustment factors.
+#' @param wet.spell.change Numeric length-12 vector of monthly wet-spell adjustment factors.
+#' @param output.path Character directory for diagnostics/CSV outputs.
+#' @param seed Optional integer seed for reproducibility.
+#' @param compute.parallel Logical; if \code{TRUE}, run disaggregation in parallel.
+#' @param num.cores Optional integer number of cores for parallel execution.
 #'
-#' @param weather.data
-#' A named list of data frames containing observed daily weather for each grid
-#' cell. Each data frame must have one row per day (no leap days) and one column
-#' per variable listed in \code{variables}.
-#'
-#' @param weather.grid
-#' Data frame describing the spatial layout of grid cells. Must include at least
-#' columns \code{id}, \code{xind}, \code{yind}, and spatial coordinates
-#' \code{x}, \code{y}. Currently used for bookkeeping only.
-#'
-#' @param weather.date
-#' Vector of class \code{Date} giving the observation dates corresponding to
-#' \code{weather.data}. Must be identical for all grid cells.
-#'
-#' @param variables
-#' Character vector giving the names of daily weather variables to simulate
-#' (for example \code{c("precip", "temp")}).
-#'
-#' @param sim.year.start
-#' Integer. First simulation year. Interpreted as a calendar year if
-#' \code{month.start == 1}, otherwise as the first water year.
-#'
-#' @param sim.year.num
-#' Integer. Number of years to simulate. If \code{NULL}, defaults to the number
-#' of complete historical years available.
-#'
-#' @param realization.num
-#' Integer. Number of independent stochastic realizations to generate.
-#'
-#' @param month.start
-#' Integer in \code{1:12}. First month of the simulation year. Use \code{1} for
-#' calendar-year simulations, or another month (for example \code{10}) for
-#' water-year simulations.
-#'
-#' @param warm.variable
-#' Character string giving the variable used for annual WARM modeling.
-#' Typically a low-frequency driver such as precipitation.
-#'
-#' @param warm.signif.level
-#' Numeric in (0, 1). Significance level used to retain low-frequency wavelet
-#' components during WARM analysis.
-#'
-#' @param warm.sample.num
-#' Integer. Number of candidate annual traces generated by the WARM model before
-#' subsetting.
-#'
-#' @param warm.subset.criteria
-#' Named list of numeric thresholds used to filter annual WARM traces based on
-#' summary statistics (for example \code{mean}, \code{sd}, \code{min}, \code{max},
-#' \code{sig.thr}, \code{nsig.thr}).
-#'
-#' @param knn.sample.num
-#' Integer. Number of historical years sampled in the annual KNN step during
-#' daily disaggregation.
-#'
-#' @param mc.wet.quantile
-#' Numeric in (0, 1). Quantile used to define the wet-day threshold for the daily
-#' Markov chain.
-#'
-#' @param mc.extreme.quantile
-#' Numeric in (0, 1). Quantile used to define the extreme wet-day threshold for
-#' the daily Markov chain.
-#'
-#' @param dry.spell.change
-#' Numeric vector of length 12. Monthly adjustment factors controlling dry-spell
-#' persistence in the Markov chain (\code{1} = no change).
-#'
-#' @param wet.spell.change
-#' Numeric vector of length 12. Monthly adjustment factors controlling wet-spell
-#' persistence in the Markov chain (\code{1} = no change).
-#'
-#' @param seed
-#' Optional integer. Base random seed for reproducibility.
-#'
-#' @param compute.parallel
-#' Logical. If \code{TRUE}, daily disaggregation across realizations is performed
-#' in parallel.
-#'
-#' @param num.cores
-#' Integer. Number of CPU cores to use for parallel execution. If \code{NULL},
-#' all available cores minus one are used.
-#'
-#' @param output.path
-#' Character string. Directory where diagnostic figures and intermediate CSV
-#' files (simulated dates and resampled dates) are written.
-#'
-#' @return
-#' A list with two elements:
+#' @return A list with:
 #' \describe{
-#'   \item{resampled}{A data frame with one column per realization, giving the
-#'   resampled historical dates corresponding to each simulated day.}
-#'   \item{dates}{A \code{Date} vector giving the simulated daily time axis
-#'   (365-day calendar, no leap days).}
+#'   \item{resampled}{Tibble/data.frame with one column per realization. Each
+#'     column contains the historical \code{dateo} values selected as analogues
+#'     for each simulated day.}
+#'   \item{dates}{Vector of \code{Date} giving the simulated daily time axis
+#'     (Feb 29 excluded).}
 #' }
 #'
-#' @references
-#' Steinschneider, S., Brown, C., & Lall, U. (2013).
-#' A semiparametric multivariate, multisite weather generator with low-frequency
-#' variability for use in climate risk assessments streamflow generators. \emph{Water Resources Research}.
 #' @export
-#'
 #' @import ggplot2
 #' @import tidyr
 #' @import patchwork
 #' @import dplyr
 #' @import logger
 #' @importFrom dplyr mutate
-
 generate_weather_series <- function(
     weather.data = NULL,
     weather.grid = NULL,
@@ -161,13 +100,13 @@ generate_weather_series <- function(
     variables = NULL,
     sim.year.num = NULL,
     sim.year.start = 2020,
-    month.start = 1, #
+    month.start = 1,
     realization.num = 5,
     warm.variable = "precip",
     warm.signif.level = 0.90,
     warm.sample.num = 5000,
     warm.subset.criteria = list(mean = 0.1, sd = 0.1, min = 0.1,
-       max = 0.1, sig.thr = 0.8, nsig.thr = 1.5),
+                                max = 0.1, sig.thr = 0.8, nsig.thr = 1.5),
     knn.sample.num = 120,
     mc.wet.quantile = 0.3,
     mc.extreme.quantile = 0.8,
@@ -179,22 +118,20 @@ generate_weather_series <- function(
     num.cores = NULL
 ) {
 
-
   start_time <- Sys.time()
 
   # Directory checks
   dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
 
   # ------------------------------------------------------------
-  # Checks
+  # Input validation
   # ------------------------------------------------------------
-  stopifnot(is.list(weather.data))
-  stopifnot(is.data.frame(weather.grid))
-  stopifnot(length(weather.date) == nrow(weather.data[[1]]))
-  stopifnot(month.start %in% 1:12)
-  stopifnot(is.list(weather.data), is.data.frame(weather.grid))
-
   stopifnot(
+    "weather.data must be a list" = is.list(weather.data),
+    "weather.grid must be a data frame" = is.data.frame(weather.grid),
+    "weather.date must be a Date vector" = inherits(weather.date, "Date"),
+    "weather.date length must match data rows" = length(weather.date) == nrow(weather.data[[1]]),
+    "month.start must be 1-12" = month.start %in% 1:12,
     "variables must be non-empty" = length(variables) > 0,
     "variables must exist in weather.data" = all(variables %in% names(weather.data[[1]])),
     "dry.spell.change must have length 12" = length(dry.spell.change) == 12,
@@ -223,26 +160,24 @@ generate_weather_series <- function(
   wavelet_seed <- sample.int(.Machine$integer.max, 1)
   daily_seed <- sample.int(.Machine$integer.max, 1)
 
-
   # PARALELL COMPUTING SETUP :::::::::::::::::::::::::::::::::::::::::::::::::::
   if (compute.parallel) {
 
     if (is.null(num.cores)) num.cores <- parallel::detectCores() - 1
 
-      cl <- parallel::makeCluster(num.cores)
-      doParallel::registerDoParallel(cl)
+    cl <- parallel::makeCluster(num.cores)
+    doParallel::registerDoParallel(cl)
 
-      # Set RNG stream for reproducibility
-      if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
+    # Set RNG stream for reproducibility
+    if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
 
-      on.exit(parallel::stopCluster(cl), add = TRUE)
+    on.exit(parallel::stopCluster(cl), add = TRUE)
 
-      logger::log_info("\n[Initialize] Starting in parallel mode:")
-      logger::log_info("[Initialize] Number of cores: {num.cores}")
+    logger::log_info("\n[Initialize] Starting in parallel mode:")
+    logger::log_info("[Initialize] Number of cores: {num.cores}")
 
-    } else {
-
-      logger::log_info("\n[Initialize] Starting in sequential mode")
+  } else {
+    logger::log_info("\n[Initialize] Starting in sequential mode")
   }
 
   # Number of grids
@@ -251,23 +186,46 @@ generate_weather_series <- function(
   # PREPARE DATA MATRICES ::::::::::::::::::::::::::::::::::::::::::::::::::::::
   logger::log_info("[Initialize] Randomization seed: {seed}")
   logger::log_info("[Initialize] Climate variables: {paste(variables, collapse = ', ')}")
-  logger::log_info("[Initialize] Historical period: {weather.date[1]} to {weather.date[length(weather.date)]}")
   logger::log_info("[Initialize] Total number of grids: {n_grids}")
+  logger::log_info("[Initialize] Historical period: {weather.date[1]} to {weather.date[length(weather.date)]}")
 
-  # Leap day adjustment (only if present)
+  # ---------------------------------------------------------------------------
+  # Calendar normalization: enforce 365-day calendar (remove Feb 29 if present)
+  # ---------------------------------------------------------------------------
   leap_idx <- find_leap_days(weather.date)
-  if (is.null(leap_idx)) {
-    his_date <- weather.date
-  } else {his_date <- weather.date[-leap_idx]}
+
+  if (!is.null(leap_idx) && length(leap_idx) > 0L) {
+
+    # Drop from dates
+    weather.date <- weather.date[-leap_idx]
+
+    # Drop the same rows from each grid-cell series
+    weather.data <- lapply(weather.data, function(df) {
+      if (!is.data.frame(df)) stop("Each element of weather.data must be a data.frame.", call. = FALSE)
+      if (nrow(df) != (length(weather.date) + length(leap_idx))) {
+        stop("Each weather.data[[i]] must have nrow equal to the original length(weather.date).", call. = FALSE)
+      }
+      df[-leap_idx, , drop = FALSE]
+    })
+
+    logger::log_info("[Initialize] Feb 29 removed from inputs: dropped {length(leap_idx)} row(s) (365-day calendar enforced).")
+  }
+
+  # Historical date vector (internal 365-day calendar)
+  his_date <- weather.date
 
   # Date indices
   his_yr <- as.integer(format(his_date, "%Y"))
   his_wyear <- get_water_year(his_date, month.start)
 
-  # Prepare date vector
-  dates_d <- tibble(dateo = his_date, year = his_yr, wyear = his_wyear,
+  # Prepare date table
+  dates_d <- tibble::tibble(
+    dateo = his_date,
+    year  = his_yr,
+    wyear = his_wyear,
     month = as.integer(format(his_date, "%m")),
-    day   = as.integer(format(his_date, "%d")))
+    day   = as.integer(format(his_date, "%d"))
+  )
 
   year_start <- min(his_wyear)
   year_end   <- max(his_wyear)
@@ -284,32 +242,62 @@ generate_weather_series <- function(
 
   stopifnot(all(!is.na(dates_d$date)))
 
+  # Keep only complete years (365 days after Feb 29 removal)
+  wyear_counts <- as.data.frame(table(dates_d$wyear), stringsAsFactors = FALSE)
+  names(wyear_counts) <- c("wyear", "n_days")
+  wyear_counts$wyear <- as.integer(wyear_counts$wyear)
+
+  full_wyears <- wyear_counts$wyear[wyear_counts$n_days == 365L]
+
+  if (length(full_wyears) == 0L) {
+    stop("No complete simulation-years found in historical record (need 365 days per year after Feb 29 removal).",
+         call. = FALSE)
+  }
+
+  # Keep the longest contiguous block (recommended)
+  full_wyears <- sort(full_wyears)
+  runs <- split(full_wyears, cumsum(c(1L, diff(full_wyears) != 1L)))
+  full_wyears <- runs[[which.max(lengths(runs))]]
+
+  dates_d <- dplyr::filter(dates_d, wyear %in% full_wyears)
+
+  # Ensure deterministic matching
+  if (anyDuplicated(dates_d$date)) {
+    stop("Internal error: dates_d$date contains duplicates; mapping is ambiguous.", call. = FALSE)
+  }
+
   # Track the index positions to be kept in the weather data
   wyear_idx <- match(dates_d$dateo, weather.date)
+  if (anyNA(wyear_idx)) stop("Internal error: dates_d$dateo did not match weather.date.", call. = FALSE)
 
-  # Multivariate list of daily climate data
-  climate_d <- lapply(seq_len(n_grids), function(i) {
-    df <- weather.data[[i]][wyear_idx, variables, drop = FALSE]
-    df$wyear <- dates_d$wyear
-    df
-  })
+  # DAILY CLIMATE DATA - Area Averaged
+  if (n_grids == 1) {
 
-  # DAILY CLIMATE DATA - Area Average
-  climate_d_aavg <- weather.data[[1]][wyear_idx, variables, drop = FALSE]
+    # Single grid: direct extraction
+    climate_d_aavg <- weather.data[[1]][wyear_idx, variables, drop = FALSE]
 
-  # Accumulate remaining grids (if any)
-  if (n_grids > 1) {
-    for (i in 2:n_grids) {
-      climate_d_aavg <- climate_d_aavg + weather.data[[i]][wyear_idx, variables, drop = FALSE]
+  } else {
+
+    n_days <- length(wyear_idx)
+    n_vars <- length(variables)
+
+    climate_d_aavg_mat <- matrix(0, nrow = n_days, ncol = n_vars)
+    colnames(climate_d_aavg_mat) <- variables
+
+    for (i in seq_len(n_grids)) {
+      grid_data <- as.matrix(weather.data[[i]][wyear_idx, variables, drop = FALSE])
+      climate_d_aavg_mat <- climate_d_aavg_mat + grid_data
     }
-    climate_d_aavg <- climate_d_aavg / n_grids
+
+    climate_d_aavg <- as.data.frame(climate_d_aavg_mat / n_grids)
   }
+
   climate_d_aavg$wyear <- dates_d$wyear
 
   # ANNUAL CLIMATE DATA - Area Average
   climate_a_aavg <- climate_d_aavg %>%
-    group_by(wyear) %>%
-    summarize(across(all_of(variables), mean), .groups = "drop")
+    dplyr::group_by(wyear) %>%
+    dplyr::summarize(dplyr::across(dplyr::all_of(variables), mean), .groups = "drop")
 
   # ------------------------------------------------------------
   # Simulated dates
@@ -323,7 +311,7 @@ generate_weather_series <- function(
   sim_date_ini <- seq.Date(sim_date_start, sim_date_end, by = "day")
   sim_date_ini <- sim_date_ini[format(sim_date_ini, "%m-%d") != "02-29"]
 
-  sim_dates_d <- tibble(
+  sim_dates_d <- tibble::tibble(
     dateo = sim_date_ini,
     year  = as.integer(format(sim_date_ini, "%Y")),
     wyear = get_water_year(sim_date_ini, month.start),
@@ -342,14 +330,19 @@ generate_weather_series <- function(
 
   # ::::::::::: ANNUAL TIME-SERIES GENERATION USING WARM ::::::::::::::::::::::::
 
-  #####  Wavelet analysis on observed annual series
-  warm_variable <- climate_a_aavg %>% pull({{warm.variable}})
+  detrend <- TRUE
 
-  # power spectra analysis of historical series
-  warm_power <- wavelet_spectral_analysis(variable = warm_variable,
-    signif.level = warm.signif.level, period.lower.limit = 2, detrend = FALSE, mode  = "complete")
+  warm_variable <- climate_a_aavg %>% dplyr::pull({{warm.variable}})
 
-  p <- weathergenr::plot_wavelet_spectra(
+  warm_power <- wavelet_spectral_analysis(
+    variable = warm_variable,
+    signif.level = warm.signif.level,
+    period.lower.limit = 2,
+    detrend = detrend,
+    mode  = "complete"
+  )
+
+  p <- plot_wavelet_spectra(
     variable = warm_variable,
     variable.year = climate_a_aavg$wyear,
     period = warm_power$gws_period,
@@ -359,36 +352,29 @@ generate_weather_series <- function(
     coi = warm_power$coi,
     sigm = warm_power$sigm)
 
-
   tryCatch({
     ggplot2::ggsave(file.path(output.path, "global_wavelet_power_spectrum.png"), p,
-                    width = 10, height = 4)
+                    width = 8, height = 5)
   }, error = function(e) {
     logger::log_warn("Failed to save wavelet spectrum plot: {e$message}")
   })
 
-  # if there is low-frequency signal
   if (any(!is.na(warm_power$signif_periods))) {
-
     logger::log_info("[WARM] Significant low-frequency components detected: {length(warm_power$comps_names)-1}")
-    logger::log_info("[WARM] Detected periodiocity (years): {paste(warm_power$signif_periods, collapse = ', ')}")
-
-    # if there is no low frequency signal (INTEGRATE THIS!!!!)
+    logger::log_info("[WARM] Detected periodiocity (years): {paste(round(warm_power$gws_period[warm_power$signif_periods],2), collapse = ', ')}")
   } else {
-
-    # Set low-frequency signal criteria to null
     logger::log_info("[WARM] No low-frequency signals detected")
-    warm.subset.criteria$sig.thr <- NULL
-    warm.subset.criteria$nsig.thr <- NULL
-
   }
 
-  # Annual time-series simulation
-  sim_annual <- wavelet_arima(wavelet.components = warm_power$comps,
-    sim.year.num = sim.year.num, sim.num = warm.sample.num, seed = warm_seed,
-    match.variance = TRUE)
+  sim_annual <- wavelet_arima(
+    wavelet.components = warm_power$comps,
+    sim.year.num = sim.year.num,
+    sim.num = warm.sample.num,
+    seed = warm_seed,
+    match.variance = TRUE
+  )
 
-  sim_annual_sub <- weathergenr::filter_warm_simulations(
+  sim_annual_sub <- filter_warm_simulations(
     series.obs = warm_variable,
     series.sim = sim_annual,
     sample.num = realization.num,
@@ -397,8 +383,11 @@ generate_weather_series <- function(
     bounds = list(),
     relax.order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
     make.plots = TRUE,
-    wavelet.pars = list(signif.level = warm.signif.level, noise.type = "red",
-      period.lower.limit = 2, detrend = FALSE),
+    wavelet.pars = list(
+      signif.level = warm.signif.level,
+      noise.type = "red",
+      period.lower.limit = 2,
+      detrend = detrend),
     verbose = TRUE)
 
   tryCatch({
@@ -423,7 +412,6 @@ generate_weather_series <- function(
   }
 
   resampled_ini <- foreach::foreach(n = seq_len(realization.num)) %d% {
-
     resample_weather_dates(
       annual_prcp_sim = sim_annual_sub$sampled[, n],
       annual_prcp_obs = warm_variable,
@@ -445,18 +433,17 @@ generate_weather_series <- function(
   }
 
   # Prepare the results data frame
-  resampled_dates <- as_tibble(matrix(0, nrow = nrow(sim_dates_d), ncol = realization.num),
-        .name_repair = ~ paste0("rlz_", 1:realization.num))
+  resampled_dates <- vector("list", realization.num)
+  names(resampled_dates) <- paste0("rlz_", 1:realization.num)
 
-  for (x in 1:ncol(resampled_dates)) {
-    resampled_dates[, x] <- dates_d$dateo[match(resampled_ini[[x]], dates_d$date)]
+  for (x in seq_len(realization.num)) {
+    resampled_dates[[x]] <- dates_d$dateo[match(resampled_ini[[x]], dates_d$date)]
   }
+  resampled_dates <- as_tibble(resampled_dates)
 
   # Write results to CSV
   tryCatch({
-    utils::write.csv(sim_dates_d$date,
-                     file.path(output.path, "sim_dates.csv"),
-                     row.names = FALSE)
+    utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
     TRUE
   }, error = function(e) {
     logger::log_error("Failed to write sim_dates.csv: {e$message}")
@@ -464,24 +451,15 @@ generate_weather_series <- function(
   })
 
   tryCatch({
-    utils::write.csv(resampled_dates,
-                     file.path(output.path, "resampled_dates.csv"),
-                     row.names = FALSE)
+    utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
     TRUE
   }, error = function(e) {
     logger::log_error("Failed to write resampled_dates.csv: {e$message}")
     FALSE
   })
 
-  #utils::write.csv(sim_dates_d$date, file.path(output.path, "sim_dates.csv"), row.names = FALSE)
-  #utils::write.csv(resampled_dates, file.path(output.path, "resampled_dates.csv"), row.names = FALSE)
-
   logger::log_info("[Done] Results saved to: `", output.path, "`")
   logger::log_info("[Done] Simulation complete. Elapsed time: {Sys.time() - start_time} secs")
 
-  # Only return resampled_dates!
   return(list(resampled = resampled_dates, dates = sim_dates_d$dateo))
 }
-
-
-

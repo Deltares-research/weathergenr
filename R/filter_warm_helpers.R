@@ -2,6 +2,60 @@
 # Helper Functions for filter_warm_simulations()
 # ==============================================================================
 
+#' WARM filtering default bounds
+#'
+#' @description
+#' Internal defaults for filter_warm_simulations() bounds. Users should usually
+#' override only a few entries via generate_weather_series(warm.bounds = list(...)).
+#'
+#' @return Named list of defaults.
+#' @keywords internal
+filter_warm_bounds_defaults <- function() {
+  list(
+    # --- distributional tolerances (relative diff) ---
+    mean = 0.05,
+    sd   = 0.05,
+
+    # --- tail behaviour (quantile-defined tails + log-distance tol) ---
+    tail.low.p   = 0.20,
+    tail.high.p  = 0.80,
+    tail.tol.log = log(1.05),
+    tail.eps     = 1e-5,
+
+    # --- wavelet (observed-relevant regions) ---
+    sig.frac               = 0.60,
+    wavelet.region.tol     = 0.50,
+    wavelet.contrast.tol   = 0.30,
+    wavelet.min_bg         = 1e-12,
+    wavelet.require_presence = TRUE,
+    wavelet.presence.frac  = NULL,
+
+    # --- plotting diagnostics ---
+    plot.wavelet_q = c(0.50, 0.95),
+
+    # --- relaxation controls ---
+    relax.mult = 1.25,
+    relax.mean.max = 0.25,
+    relax.sd.max   = 0.25,
+
+    relax.tail.tol.log.max = log(2.0),
+    relax.tail.p.step      = 0.02,
+    relax.tail.p.low.max   = 0.40,
+    relax.tail.p.high.min  = 0.40,
+
+    relax.wavelet.sig.frac.step     = 0.05,
+    relax.wavelet.sig.frac.min      = 0.30,
+    relax.wavelet.region.tol.step   = 0.10,
+    relax.wavelet.region.tol.max    = 1.00,
+    relax.wavelet.contrast.tol.step = 0.10,
+    relax.wavelet.contrast.tol.max  = 1.00,
+
+    relax.max.iter = 20L
+  )
+}
+
+
+
 #' Compute tail-mass metrics for filtering
 #'
 #' @description
@@ -193,12 +247,32 @@ compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
   P_sim_reg <- NULL
   P_sim_bg  <- NULL
   presence_rpad <- NULL
-  gws_cache_mat <- NULL
-  gws_cache_unmasked_mat <- NULL
 
+  # -------------------------------------------------------------------------
+  # FIX: ALWAYS allocate and compute caches (independent of significance)
+  # -------------------------------------------------------------------------
+  gws_cache_mat <- matrix(NA_real_, nrow = length(power.period), ncol = n_realizations)
+  gws_cache_unmasked_mat <- matrix(NA_real_, nrow = length(power.period), ncol = n_realizations)
+
+  for (j in seq_len(n_realizations)) {
+    wv <- wavelet_spectral_analysis(
+      series_sim_for_stats[, j],
+      signif.level = wavelet.pars$signif.level,
+      noise.type = wavelet.pars$noise.type,
+      period.lower.limit = wavelet.pars$period.lower.limit,
+      detrend = isTRUE(wavelet.pars$detrend),
+      mode = "fast"
+    )
+
+    gws_cache_mat[, j] <- gws_regrid(wv, power.period, use_unmasked = FALSE)
+    gws_cache_unmasked_mat[, j] <- gws_regrid(wv, power.period, use_unmasked = TRUE)
+  }
+
+  # -------------------------------------------------------------------------
+  # The rest: only compute region-based metrics if observed has significant signal
+  # -------------------------------------------------------------------------
   if (length(periods_sig_core) == 0) {
-    warning("No significant periods found in observed GWS (R_obs <= 1 everywhere). Wavelet filter disabled for this run.", call. = FALSE)
-    wavelet_active <- FALSE
+      wavelet_active <- FALSE
   } else {
     regions <- split_regions(periods_sig_core)
     n_regions <- length(regions)
@@ -223,45 +297,23 @@ compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
       )))
     }
 
-    # Initialize storage - BOTH masked and unmasked
+    # Initialize storage
     P_sim_reg <- matrix(NA_real_, nrow = n_realizations, ncol = n_regions)
     P_sim_bg  <- rep(NA_real_, n_realizations)
     presence_rpad <- rep(FALSE, n_realizations)
 
-    gws_cache_mat <- matrix(NA_real_, nrow = length(power.period), ncol = n_realizations)
-    gws_cache_unmasked_mat <- matrix(NA_real_, nrow = length(power.period), ncol = n_realizations)
-
-    # Compute wavelet for each realization -------------------------------------
-
+    # Use the already-computed masked cache for metrics (no second wavelet call)
     for (j in seq_len(n_realizations)) {
+      gj_masked <- gws_cache_mat[, j]
 
-      wv <- wavelet_spectral_analysis(
-        series_sim_for_stats[, j],
-        signif.level = wavelet.pars$signif.level,
-        noise.type = wavelet.pars$noise.type,
-        period.lower.limit = wavelet.pars$period.lower.limit,
-        detrend = isTRUE(wavelet.pars$detrend),
-        mode = "fast"
-      )
-
-      # Regrid and cache BOTH masked (for filtering) and unmasked (for plotting)
-      gj_masked <- gws_regrid(wv, power.period, use_unmasked = FALSE)
-      gj_unmasked <- gws_regrid(wv, power.period, use_unmasked = TRUE)
-
-      gws_cache_mat[, j] <- gj_masked
-      gws_cache_unmasked_mat[, j] <- gj_unmasked
-
-      # Use masked version for all filtering computations
       bg <- sum(gj_masked[bg_idx], na.rm = TRUE)
       bg <- max(bg, min_bg)
       P_sim_bg[j] <- bg
 
-      # Regional powers (use masked)
       for (r in seq_len(n_regions)) {
         P_sim_reg[j, r] <- sum(gj_masked[regions[[r]]], na.rm = TRUE)
       }
 
-      # Presence check (use masked)
       rpad <- gj_masked[periods_sig_pad] / signif_grid[periods_sig_pad]
       presence_rpad[j] <- any(is.finite(rpad) & (rpad > 1))
     }
@@ -283,10 +335,11 @@ compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
     P_sim_reg = P_sim_reg,
     P_sim_bg = P_sim_bg,
     presence_rpad = presence_rpad,
-    gws_cache = gws_cache_mat,  # Masked - for filtering
-    gws_cache_unmasked = gws_cache_unmasked_mat  # Unmasked - for plotting
+    gws_cache = gws_cache_mat,
+    gws_cache_unmasked = gws_cache_unmasked_mat
   )
 }
+
 
 #' Compute pass vectors for all filters
 #'

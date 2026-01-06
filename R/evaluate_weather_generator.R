@@ -183,10 +183,6 @@ evaluate_weather_generator <- function(
     extreme.quantile = extreme.quantile
   )
 
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Observed data processing complete")
-  }
-
   # ============================================================================
   # PROCESS SIMULATED DATA
   # ============================================================================
@@ -202,10 +198,6 @@ evaluate_weather_generator <- function(
     mc.thresholds = obs.results$mc.thresholds
   )
 
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Simulated data processing complete")
-  }
-
   # ============================================================================
   # MERGE AND PREPARE PLOT DATA
   # ============================================================================
@@ -220,10 +212,6 @@ evaluate_weather_generator <- function(
     variables = variables,
     n_grids = n_grids
   )
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Diagnostic data preparation complete")
-  }
 
   # ============================================================================
   # GENERATE DIAGNOSTIC PLOTS
@@ -263,10 +251,6 @@ evaluate_weather_generator <- function(
     sim.results = sim.results,
     variables = variables
   )
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Fit metrics computation complete")
-  }
 
   # ============================================================================
   # DISPLAY FIT SUMMARY TABLE

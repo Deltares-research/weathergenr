@@ -537,8 +537,9 @@ filter_warm_simulations <- function(series.obs = NULL,
   }
 
   # ---------------------------------------------------------------------------
-  # IMPROVEMENT 5: Use helper function for plotting
+  # Helper function for plotting
   # ---------------------------------------------------------------------------
+
   plots_out <- NULL
   if (make.plots) {
     if (verbose) {
@@ -553,7 +554,7 @@ filter_warm_simulations <- function(series.obs = NULL,
       plots_out <- plot_filter_diagnostics(
         obs.use = obs.use,
         series_sim_for_stats = series_sim_for_stats,
-        pool = pool,
+        pool = idx_sampled,
         rel.diff.mean = rel.diff.mean,
         rel.diff.sd = rel.diff.sd,
         tail_metrics = tail_metrics,

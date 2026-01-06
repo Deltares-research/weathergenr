@@ -86,10 +86,16 @@ knn_sample <- function(
   # RNG handling
   # -------------------------------------------------
   if (!is.null(seed)) {
-    old_seed <- .Random.seed
+    if (exists(".Random.seed", envir = .GlobalEnv)) {
+      old_seed <- .Random.seed
+      has_seed <- TRUE
+    } else {
+      has_seed <- FALSE
+    }
+    on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
     set.seed(seed)
-    on.exit(.Random.seed <<- old_seed, add = TRUE)
   }
+
 
   candidates <- as.matrix(candidates)
   nc <- nrow(candidates)
@@ -106,8 +112,7 @@ knn_sample <- function(
   }
 
   # -------------------------------------------------
-  # OPTIMIZED: Weighted squared Euclidean distances
-  # Compute squared distances (defer sqrt until needed)
+  # Weighted squared Euclidean distances
   # -------------------------------------------------
   if (p == 2) {
     # Special case for p=2 (common: precipitation + temperature)
