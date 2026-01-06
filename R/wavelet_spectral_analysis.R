@@ -266,7 +266,19 @@ wavelet_spectral_analysis <- function(variable,
   lag1_ci_out <- NULL
   if (lag1_ci && noise.type == "red") {
 
-    if (!is.null(seed)) set.seed(seed)
+    # RNG state management
+    if (!is.null(seed)) {
+      if (exists(".Random.seed", envir = .GlobalEnv)) {
+        old_seed_lag1 <- .Random.seed
+        has_seed_lag1 <- TRUE
+      } else {
+        has_seed_lag1 <- FALSE
+      }
+      on.exit({
+        if (has_seed_lag1) .Random.seed <<- old_seed_lag1
+      }, add = TRUE)
+      set.seed(seed)
+    }
 
     sig_eps <- stats::sd(x_centered) * sqrt(max(1e-12, 1 - lag1^2))
 

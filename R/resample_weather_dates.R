@@ -100,8 +100,13 @@ resample_weather_dates <- function(
   base_seed <- if (is.null(seed)) NULL else seed + realization_id
 
   if (!is.null(base_seed)) {
-    old_seed <- .Random.seed
-    on.exit({ .Random.seed <<- old_seed }, add = TRUE)
+    if (exists(".Random.seed", envir = .GlobalEnv)) {
+      old_seed <- .Random.seed
+      has_seed <- TRUE
+    } else {
+      has_seed <- FALSE
+    }
+    on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
     set.seed(base_seed)
   }
 

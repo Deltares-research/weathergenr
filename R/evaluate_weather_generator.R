@@ -24,6 +24,8 @@
 #' @param show.title Logical. Whether to display titles in plots (default = `TRUE`).
 #' @param max.grids Integer. Maximum number of grid cells to evaluate (default = 25).
 #'   If more grids are provided, a random subsample is used to control memory.
+#' @param seed Optional integer. Random seed for reproducible grid subsampling and
+#'   year window selection. If NULL, results will vary between runs.
 #'
 #' @return A named list of `ggplot2` plot objects with class "weather_assessment".
 #'   The returned object also contains fit summary metrics stored as attributes.
@@ -46,7 +48,8 @@ evaluate_weather_generator <- function(
     output.path = NULL,
     save.plots = TRUE,
     show.title = TRUE,
-    max.grids = 25
+    max.grids = 25,
+    seed = NULL
 ) {
 
   # ============================================================================
@@ -69,6 +72,24 @@ evaluate_weather_generator <- function(
       max.grids < 1 ||
       max.grids != as.integer(max.grids)) {
     stop("'max.grids' must be a positive integer", call. = FALSE)
+  }
+
+  # ============================================================================
+  # RNG STATE MANAGEMENT
+  # ============================================================================
+
+  if (!is.null(seed)) {
+    if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed)) {
+      stop("'seed' must be NULL or a single finite number", call. = FALSE)
+    }
+    if (exists(".Random.seed", envir = .GlobalEnv)) {
+      old_seed <- .Random.seed
+      has_seed <- TRUE
+    } else {
+      has_seed <- FALSE
+    }
+    on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
+    set.seed(seed)
   }
 
   # ============================================================================
