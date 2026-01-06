@@ -240,6 +240,7 @@ filter_warm_simulations <- function(series.obs = NULL,
   # ---------------------------------------------------------------------------
   # RNG management
   # ---------------------------------------------------------------------------
+
   if (!is.null(seed)) {
     if (exists(".Random.seed", envir = .GlobalEnv)) {
       old_seed <- .Random.seed
@@ -248,7 +249,7 @@ filter_warm_simulations <- function(series.obs = NULL,
       has_seed <- FALSE
     }
     on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
-    set.seed(seed)
+    set.seed(seed)                    # Only set.seed() needed
   }
 
   # ---------------------------------------------------------------------------
@@ -505,7 +506,6 @@ filter_warm_simulations <- function(series.obs = NULL,
              sprintf("selecting %d from pool of %d", sample.num, length(pool)))
   }
 
-  if (!is.null(seed)) set.seed(seed)
   idx_sampled <- if (length(pool) == sample.num) pool else sample(pool, size = sample.num, replace = FALSE)
 
   # ---------------------------------------------------------------------------

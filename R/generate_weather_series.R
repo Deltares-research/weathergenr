@@ -160,6 +160,8 @@ generate_weather_series <- function(
   wavelet_seed <- sample.int(.Machine$integer.max, 1)
   daily_seed <- sample.int(.Machine$integer.max, 1)
 
+
+
   # PARALELL COMPUTING SETUP :::::::::::::::::::::::::::::::::::::::::::::::::::
   if (compute.parallel) {
 
@@ -378,7 +380,7 @@ generate_weather_series <- function(
     series.obs = warm_variable,
     series.sim = sim_annual,
     sample.num = realization.num,
-    seed = warm_seed,
+    seed = warm_seed + 1L,
     padding = TRUE,
     bounds = list(),
     relax.order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
