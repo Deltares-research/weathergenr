@@ -1,9 +1,6 @@
 # test-read_netcdf.R
 # Unit tests for read_netcdf() aligned with current behavior (incl. leap.days warning)
 
-library(testthat)
-library(weathergenr)
-
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------

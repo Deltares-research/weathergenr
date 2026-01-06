@@ -1,4 +1,4 @@
-library(testthat)
+
 
 test_that("pet_hargreaves returns correct length and no NAs for standard input", {
   months <- c(1, 6, 12)

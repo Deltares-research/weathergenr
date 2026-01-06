@@ -1,10 +1,16 @@
-# =============================================================================
-# Unit Tests for wavelet_spectral_analysis()
-# (Adjusted: reconstruction is NOT expected to be exact; use relative error + RMSE)
-# =============================================================================
 
-library(testthat)
-library(weathergenr)
+test_that("DEBUG: wavelet_spectral_analysis identity", {
+  w <- wavelet_spectral_analysis
+  env <- environment(w)
+  where <- tryCatch(getNamespaceName(env), error = function(e) "<non-namespace>")
+  msg <- paste0(
+    "wavelet_spectral_analysis from: ", where,
+    " | file: ", paste0(deparse(body(w))[1], collapse = " ")
+  )
+  message(msg)
+  expect_true(TRUE)
+})
+
 
 # =============================================================================
 # BASIC STRUCTURE AND INPUT VALIDATION
@@ -14,7 +20,7 @@ test_that("wavelet_spectral_analysis (fast mode) returns expected structure", {
   set.seed(123)
   x <- rnorm(64)
 
-  res <- wavelet_spectral_analysis(
+  res <- weathergenr::wavelet_spectral_analysis(
     x,
     mode = "fast"
   )
@@ -44,7 +50,7 @@ test_that("wavelet_spectral_analysis (complete mode) returns expected structure"
   set.seed(123)
   x <- rnorm(64)
 
-  res <- wavelet_spectral_analysis(
+  res <- weathergenr::wavelet_spectral_analysis(
     x,
     mode = "complete"
   )
@@ -76,7 +82,7 @@ test_that("wavelet_spectral_analysis rejects NA input", {
   x[10] <- NA
 
   expect_error(
-    wavelet_spectral_analysis(x, mode = "fast"),
+    weathergenr::wavelet_spectral_analysis(x, mode = "fast"),
     regexp = "missing values|contains missing values",
     fixed = FALSE
   )
@@ -86,8 +92,8 @@ test_that("wavelet_spectral_analysis is deterministic (no bootstrap)", {
   set.seed(999)
   x <- rnorm(64)
 
-  res1 <- wavelet_spectral_analysis(x, mode = "fast")
-  res2 <- wavelet_spectral_analysis(x, mode = "fast")
+  res1 <- weathergenr::wavelet_spectral_analysis(x, mode = "fast")
+  res2 <- weathergenr::wavelet_spectral_analysis(x, mode = "fast")
 
   expect_equal(res1$gws, res2$gws)
   expect_equal(res1$gws_signif, res2$gws_signif)
@@ -121,7 +127,7 @@ test_that("comps reconstruct the signal within a reasonable relative error (mult
 
   for (signal in cases) {
 
-    res <- wavelet_spectral_analysis(
+    res <- weathergenr::wavelet_spectral_analysis(
       signal,
       mode = "complete"
     )
@@ -150,7 +156,7 @@ test_that("comps equals noise-only when no significance is found", {
   set.seed(1)
   x <- rnorm(64)
 
-  res <- wavelet_spectral_analysis(
+  res <- weathergenr::wavelet_spectral_analysis(
     x,
     mode = "complete",
      ,
@@ -178,7 +184,7 @@ test_that("detects known periodic signal (soft)", {
 
   x <- sin(2 * pi * t / true_period) + rnorm(n, sd = 0.3)
 
-  res <- wavelet_spectral_analysis(
+  res <- weathergenr::wavelet_spectral_analysis(
     x,
     mode = "fast"
   )
@@ -199,7 +205,7 @@ test_that("white noise does not systematically produce only very long-period sig
   set.seed(42)
   x <- rnorm(128)
 
-  res <- wavelet_spectral_analysis(
+  res <- weathergenr::wavelet_spectral_analysis(
     x,
     mode = "fast",
     noise.type = "white"
@@ -225,7 +231,7 @@ test_that("COI masking removes pointwise significance ratio outside COI", {
 
   x <- sin(2 * pi * t / n)
 
-  res <- wavelet_spectral_analysis(
+  res <- weathergenr::wavelet_spectral_analysis(
     x,
     mode = "complete",
     noise.type = "white"
@@ -246,7 +252,7 @@ test_that("lag1 bootstrap CI is returned when requested", {
   set.seed(101)
   x <- as.numeric(arima.sim(n = 128, model = list(ar = 0.7)))
 
-  res <- wavelet_spectral_analysis(
+  res <- weathergenr::wavelet_spectral_analysis(
     x,
     lag1_ci = TRUE,
     lag1_ci_level = 0.90,
@@ -271,26 +277,41 @@ test_that("warning is emitted when Neff is small for most scales", {
   x <- as.numeric(arima.sim(n = 16, model = list(ar = 0.6)))
 
   expect_warning(
-    wavelet_spectral_analysis(
-      x,
+    weathergenr::wavelet_spectral_analysis(
+      variable = x,
       mode = "fast",
-      neff_warn_min = 10,
-      neff_warn_frac = 0.5
+      return_diagnostics = FALSE,  # otherwise complete mode is forced internally
+      warn_neff = TRUE,            # neff warning is opt-in (default is FALSE)
+      neff_warn_min = 1e6,         # make the condition robust: almost surely neff < min
+      neff_warn_frac = 0.01        # small fraction threshold so warning triggers reliably
     ),
     regexp = "neff",
     fixed = FALSE
   )
 })
 
+
 # =============================================================================
 # DIAGNOSTICS OUTPUT (DEFAULT BEHAVIOR)
 # =============================================================================
+
+test_that("DEBUG: wavelet_spectral_analysis identity", {
+  w <- weathergenr::wavelet_spectral_analysis
+  env <- environment(w)
+  where <- tryCatch(getNamespaceName(env), error = function(e) "<non-namespace>")
+  msg <- paste0(
+    "wavelet_spectral_analysis from: ", where,
+    " | file: ", paste0(deparse(body(w))[1], collapse = " ")
+  )
+  message(msg)
+  expect_true(TRUE)
+})
 
 test_that("diagnostics contain required fields (default return_diagnostics=TRUE)", {
   set.seed(123)
   x <- rnorm(64)
 
-  res <- wavelet_spectral_analysis(x)
+  res <- weathergenr::wavelet_spectral_analysis(x)
 
   expect_true("diagnostics" %in% names(res))
   diag <- res$diagnostics

@@ -1,4 +1,3 @@
-library(testthat)
 
 test_that("Water year defaults to calendar year when starting month is January", {
   d <- as.Date(c("2022-01-01", "2022-12-31"))

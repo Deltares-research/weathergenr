@@ -1,26 +1,29 @@
-library(ncdf4)
-library(testthat)
 
-testthat::test_that("Check if write_netcdf works correctly", {
+test_that("write_netcdf round-trip matches read_netcdf", {
 
   signif_digits <- 3
 
-  # Read file
   ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-  ncdata <- read_netcdf(
-    nc.file = ncfile, leap.days = FALSE, omit.empty = TRUE,
-    spatial.ref = "spatial_ref", signif.digits = signif_digits)
+  expect_true(file.exists(ncfile))
 
+  # Read template file (avoid Feb 29 warning)
+  ncdata <- weathergenr::read_netcdf(
+    nc.file = ncfile,
+    leap.days = TRUE,
+    omit.empty = TRUE,
+    spatial.ref = "spatial_ref",
+    signif.digits = signif_digits
+  )
 
+  output_path <- tempdir()
   file_prefix <- "testfile"
-  file_suffix <- as.integer(Sys.time())
-  output_path <- "C:/TEMP/"
+  file_suffix <- format(Sys.time(), "%Y%m%d%H%M%S")
 
-  # save to new file
-  write_netcdf(
+  # Write
+  out_path <- weathergenr::write_netcdf(
     data = ncdata$data,
     coord.grid = ncdata$grid,
-    origin.date = ncdata$date[1],
+    origin.date = as.character(ncdata$date[1]),
     output.path = output_path,
     calendar.type = "proleptic_gregorian",
     nc.template.file = ncfile,
@@ -31,9 +34,12 @@ testthat::test_that("Check if write_netcdf works correctly", {
     signif.digits = signif_digits
   )
 
-  ncfile2 <- paste0(output_path, file_prefix, "_", file_suffix, ".nc")
-  ncdata2 <- read_netcdf(
-    nc.file = ncfile2, leap.days = FALSE,
+  expect_true(file.exists(out_path))
+
+  # Read written file (avoid Feb 29 warning)
+  ncdata2 <- weathergenr::read_netcdf(
+    nc.file = out_path,
+    leap.days = TRUE,
     signif.digits = signif_digits
   )
 
@@ -41,8 +47,6 @@ testthat::test_that("Check if write_netcdf works correctly", {
   expect_equal(ncdata2$data, ncdata$data)
   expect_equal(ncdata2$grid, ncdata$grid)
 })
-
-
 
 
 

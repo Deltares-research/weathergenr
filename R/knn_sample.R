@@ -88,16 +88,15 @@ knn_sample <- function(
   if (!is.null(seed)) {
     old_seed <- .Random.seed
     set.seed(seed)
-    on.exit({
-      if (exists("old_seed", inherits = FALSE)) {
-        .Random.seed <<- old_seed
-      }
-    })
+    on.exit(.Random.seed <<- old_seed, add = TRUE)
   }
 
   candidates <- as.matrix(candidates)
   nc <- nrow(candidates)
   p <- ncol(candidates)
+  if (nc == 0) {
+    stop("No candidates provided to knn_sample")
+  }
 
   if (is.null(weights)) {
     weights <- rep(1, p)
@@ -196,109 +195,3 @@ knn_sample <- function(
   nn_indices[sampled_rel]
 }
 
-
-
-
-# knn_sample <- function(
-#     candidates,
-#     target,
-#     k,
-#     n = 1,
-#     prob = FALSE,
-#     weights = NULL,
-#     seed = NULL,
-#     sampling = c("rank", "distance"),
-#     bandwidth = NULL,
-#     epsilon = 1e-8
-# ) {
-#
-#   sampling <- match.arg(sampling)
-#
-#   # -------------------------------------------------
-#   # RNG handling
-#   # -------------------------------------------------
-#   if (!is.null(seed)) {
-#     old_seed <- .Random.seed
-#     set.seed(seed)
-#     on.exit({
-#       if (exists("old_seed", inherits = FALSE)) {
-#         .Random.seed <<- old_seed
-#       }
-#     })
-#   }
-#
-#   candidates <- as.matrix(candidates)
-#
-#   p <- ncol(candidates)
-#   if (is.null(weights)) {
-#     weights <- rep(1, p)
-#   } else {
-#     if (length(weights) != p)
-#       stop("Length of weights must equal number of columns in candidates.")
-#   }
-#
-#   # -------------------------------------------------
-#   # Weighted Euclidean distances
-#   # -------------------------------------------------
-#   #diffs <- candidates - matrix(target, nrow(candidates), p, byrow = TRUE)
-#   #weighted_sq_diffs <- diffs^2 * rep(weights, each = nrow(candidates))
-#   #dists <- sqrt(rowSums(weighted_sq_diffs))
-#
-#   nc <- nrow(candidates)
-#   d2 <- numeric(nc)
-#
-#   for (j in seq_len(p)) {
-#     dj <- candidates[, j] - target[j]
-#     d2 <- d2 + weights[j] * dj * dj
-#   }
-#
-#   dists <- sqrt(d2)
-#
-#   # -------------------------------------------------
-#   # k nearest neighbors
-#   # -------------------------------------------------
-#
-#   n_cand <- length(dists)
-#   k_eff  <- min(k, n_cand)
-#
-#   ord <- order(dists)
-#   nn_indices <- ord[seq_len(k_eff)]
-#   nn_dists   <- dists[nn_indices]
-#
-#   # -------------------------------------------------
-#   # Sampling probabilities
-#   # -------------------------------------------------
-#   if (!prob) {
-#
-#     probs <- rep(1 / k_eff, k_eff)
-#
-#   } else if (sampling == "rank") {
-#
-#     # Rank-based probabilities (default)
-#     probs <- (1 / seq_len(k_eff))
-#     probs <- probs / sum(probs)
-#
-#   } else if (sampling == "distance") {
-#
-#     # Distance-based probabilities
-#     if (is.null(bandwidth)) {
-#
-#       # Automatic bandwidth: median NN distance (robust)
-#       bandwidth <- stats::median(nn_dists, na.rm = TRUE)
-#     }
-#
-#     if (!is.finite(bandwidth) || bandwidth <= 0) {
-#       probs <- rep(1 / k_eff, k_eff)
-#     } else {
-#       probs <- exp(-(nn_dists^2) / (2 * bandwidth^2)) + epsilon
-#       probs <- probs / sum(probs)
-#     }
-#   }
-#
-#   # -------------------------------------------------
-#   # Sample neighbors
-#   # -------------------------------------------------
-#   sampled_rel <- sample.int(k_eff, n, replace = TRUE, prob = probs)
-#   nn_indices[sampled_rel]
-# }
-#
