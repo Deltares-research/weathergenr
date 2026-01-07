@@ -29,3 +29,5 @@
 ^_pkgdown\.yml$
 ^pkgdown$
 
+^dev$
+^\.build_quarto_vignettes\.R$

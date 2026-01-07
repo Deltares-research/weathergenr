@@ -16,8 +16,6 @@ generate_weather_series(
   warm.variable = "precip",
   warm.signif.level = 0.9,
   warm.sample.num = 5000,
-  warm.subset.criteria = list(mean = 0.1, sd = 0.1, min = 0.1, max = 0.1, sig.thr = 0.8,
-    nsig.thr = 1.5),
   knn.sample.num = 120,
   mc.wet.quantile = 0.3,
   mc.extreme.quantile = 0.8,
@@ -63,10 +61,6 @@ retaining low-frequency components in WARM.}
 
 \item{warm.sample.num}{Integer number of candidate annual traces to generate
 before subsetting.}
-
-\item{warm.subset.criteria}{Named list of thresholds used to filter annual WARM
-traces (must include \code{mean}, \code{sd}, \code{min}, \code{max},
-\code{sig.thr}, \code{nsig.thr}).}
 
 \item{knn.sample.num}{Integer number of historical years sampled in annual KNN.}
 
