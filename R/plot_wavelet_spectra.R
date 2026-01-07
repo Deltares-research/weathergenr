@@ -1,23 +1,5 @@
 #' Plot Wavelet Power Spectrum and Global Wavelet Spectrum
 #'
-#' Creates a two-panel figure showing the time-period wavelet power spectrum (with cone of influence and significance contour)
-#' and the global wavelet spectrum for a time series.
-#'
-#' @param variable Numeric vector. The original time series (for length).
-#' @param variable.year Numeric vector. Year labels for x-axis (optional).
-#' @param period Numeric vector. Periods (scales) used in the wavelet transform.
-#' @param POWER Matrix. Wavelet power spectrum (periods x time).
-#' @param GWS Numeric vector. Global wavelet spectrum (mean power at each period).
-#' @param GWS_signif Numeric vector. Significance threshold for the global wavelet spectrum.
-#' @param coi Numeric vector. Cone of influence for each time point.
-#' @param sigm Matrix. Significance mask (periods x time), e.g., significant (1) or not (0).
-#' @param variable.unit Character. Unit label for the variable (default is "mm").
-#'
-#' @importFrom stats var sd cor fft simulate
-#' @return A patchwork plot object with the time-period power spectrum and global wavelet spectrum.
-#' @export
-#' Plot Wavelet Power Spectrum and Global Wavelet Spectrum
-#'
 #' Creates a two-panel figure showing (i) the time-period wavelet power spectrum
 #' (with cone of influence and significance contour) and (ii) the global wavelet
 #' spectrum for a time series.
@@ -29,35 +11,6 @@
 #'   \item The spectrum is plotted on the native wavelet grid (no interpolation), avoiding
 #'         smoothing/extrapolation artifacts that can flatten contrast.
 #'   \item Uses a perceptually uniform \code{viridis} color scale.
-#' }
-#'
-#' @param variable Numeric vector. The original time series (for length).
-#' @param variable.year Numeric vector. Year labels for x-axis (optional).
-#' @param period Numeric vector. Periods (scales) used in the wavelet transform.
-#' @param POWER Matrix. Wavelet power spectrum (periods x time).
-#' @param GWS Numeric vector. Global wavelet spectrum (mean power at each period).
-#' @param GWS_signif Numeric vector. Significance threshold for the global wavelet spectrum.
-#' @param coi Numeric vector. Cone of influence for each time point.
-#' @param sigm Matrix. Significance mask or ratio (periods x time). Contour is drawn at 1.
-#' @param variable.unit Character. Unit label for the variable (default is "mm").
-#'
-#' @importFrom stats var sd cor fft simulate
-#' @return A patchwork plot object with the time-period power spectrum and global wavelet spectrum.
-#' @export
-#' Plot Wavelet Power Spectrum and Global Wavelet Spectrum
-#'
-#' Creates a two-panel figure showing (i) the time-period wavelet power spectrum
-#' (with cone of influence and significance contour) and (ii) the global wavelet
-#' spectrum for a time series.
-#'
-#' Key plotting choices for interpretability:
-#' \itemize{
-#'   \item Power is plotted on a log2 scale with robust color limits (5th-95th percentiles)
-#'         to avoid "washed out" fields when dynamic range is large.
-#'   \item The spectrum is plotted on the native wavelet grid (no interpolation).
-#'   \item Uses a perceptually uniform \code{viridis} color scale.
-#'   \item Uses explicit tile extents so irregular \code{period} spacing renders
-#'         as a continuous heatmap.
 #' }
 #'
 #' @param variable Numeric vector. The original time series (for length).

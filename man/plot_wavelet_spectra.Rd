@@ -31,7 +31,7 @@ plot_wavelet_spectra(
 
 \item{coi}{Numeric vector. Cone of influence for each time point.}
 
-\item{sigm}{Matrix. Significance mask (periods x time), e.g., significant (1) or not (0).}
+\item{sigm}{Matrix. Significance mask or ratio (periods x time). Contour is drawn at 1.}
 
 \item{variable.unit}{Character. Unit label for the variable (default is "mm").}
 }
@@ -39,6 +39,17 @@ plot_wavelet_spectra(
 A patchwork plot object with the time-period power spectrum and global wavelet spectrum.
 }
 \description{
-Creates a two-panel figure showing the time-period wavelet power spectrum (with cone of influence and significance contour)
-and the global wavelet spectrum for a time series.
+Creates a two-panel figure showing (i) the time-period wavelet power spectrum
+(with cone of influence and significance contour) and (ii) the global wavelet
+spectrum for a time series.
+}
+\details{
+Key plotting choices for interpretability:
+\itemize{
+  \item Power is plotted on a log2 scale with robust color limits (5th-95th percentiles)
+        to avoid a "washed out" field when the dynamic range is large.
+  \item The spectrum is plotted on the native wavelet grid (no interpolation), avoiding
+        smoothing/extrapolation artifacts that can flatten contrast.
+  \item Uses a perceptually uniform \code{viridis} color scale.
+}
 }

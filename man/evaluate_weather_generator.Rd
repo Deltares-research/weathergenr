@@ -15,7 +15,8 @@ evaluate_weather_generator(
   output.path = NULL,
   save.plots = TRUE,
   show.title = TRUE,
-  max.grids = 25
+  max.grids = 25,
+  seed = NULL
 )
 }
 \arguments{
@@ -48,6 +49,9 @@ plots are not saved to disk.}
 
 \item{max.grids}{Integer. Maximum number of grid cells to evaluate (default = 25).
 If more grids are provided, a random subsample is used to control memory.}
+
+\item{seed}{Optional integer. Random seed for reproducible grid subsampling and
+year window selection. If NULL, results will vary between runs.}
 }
 \value{
 A named list of `ggplot2` plot objects with class "weather_assessment".
