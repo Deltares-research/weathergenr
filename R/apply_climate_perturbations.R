@@ -74,6 +74,7 @@
 #' @seealso
 #' \code{\link{quantile_mapping}}
 #'
+#' @importFrom logger log_info
 #' @import dplyr
 #' @export
 apply_climate_perturbations <- function(
@@ -96,25 +97,18 @@ apply_climate_perturbations <- function(
   if (is.null(climate.data)) stop("'climate.data' must not be NULL")
   if (is.null(climate.grid)) stop("'climate.grid' must not be NULL")
   if (is.null(sim.dates)) stop("'sim.dates' must not be NULL")
-  if (is.null(change.factor.precip.mean)) {
-    stop("'change.factor.precip.mean' must not be NULL")
-  }
-  if (is.null(change.factor.precip.variance)) {
-    stop("'change.factor.precip.variance' must not be NULL")
-  }
-  if (is.null(change.factor.temp.mean)) {
-    stop("'change.factor.temp.mean' must not be NULL")
-  }
+  if (is.null(change.factor.precip.mean)) stop("'change.factor.precip.mean' must not be NULL")
+  if (is.null(change.factor.precip.variance)) stop("'change.factor.precip.variance' must not be NULL")
+  if (is.null(change.factor.temp.mean)) stop("'change.factor.temp.mean' must not be NULL")
 
-  # Check types
-  if (!is.list(climate.data)) {
-    stop("'climate.data' must be a list of data frames")
-  }
-  if (!is.data.frame(climate.grid)) {
-    stop("'climate.grid' must be a data frame")
-  }
-  if (!inherits(sim.dates, "Date")) {
-    stop("'sim.dates' must be a Date vector")
+  if (!is.list(climate.data)) stop("'climate.data' must be a list of data frames")
+  if (!is.data.frame(climate.grid)) stop("'climate.grid' must be a data frame")
+  if (!inherits(sim.dates, "Date")) stop("'sim.dates' must be a Date vector")
+  if (!is.logical(verbose) || length(verbose) != 1L) stop("'verbose' must be logical (TRUE/FALSE)")
+
+  .log <- function(fmt, ...) {
+    if (isTRUE(verbose)) logger::log_info(fmt, ...)
+    invisible(NULL)
   }
 
   # Check dimensions
@@ -131,7 +125,6 @@ apply_climate_perturbations <- function(
     stop("'climate.grid' must contain a 'y' column (latitude)")
   }
 
-  # Check change factor lengths
   if (length(change.factor.precip.mean) != 12) {
     stop("'change.factor.precip.mean' must have length 12 (one per month)")
   }
@@ -142,15 +135,9 @@ apply_climate_perturbations <- function(
     stop("'change.factor.temp.mean' must have length 12 (one per month)")
   }
 
-  # Check that all change factors are positive
-  if (any(change.factor.precip.mean <= 0)) {
-    stop("'change.factor.precip.mean' must contain positive values")
-  }
-  if (any(change.factor.precip.variance <= 0)) {
-    stop("'change.factor.precip.variance' must contain positive values")
-  }
+  if (any(change.factor.precip.mean <= 0)) stop("'change.factor.precip.mean' must contain positive values")
+  if (any(change.factor.precip.variance <= 0)) stop("'change.factor.precip.variance' must contain positive values")
 
-  # Validate required columns in climate data
   required_cols <- c("precip", "temp", "temp_min", "temp_max")
   for (i in seq_along(climate.data)) {
     missing_cols <- setdiff(required_cols, names(climate.data[[i]]))
@@ -160,8 +147,6 @@ apply_climate_perturbations <- function(
         paste(missing_cols, collapse = ", ")
       )
     }
-
-    # Check that data length matches sim.dates
     if (nrow(climate.data[[i]]) != length(sim.dates)) {
       stop(
         "Grid cell ", i, " has ", nrow(climate.data[[i]]), " rows but ",
@@ -174,38 +159,29 @@ apply_climate_perturbations <- function(
   # TEMPORAL INDICES
   # ==========================================================================
 
-  year_vec <- as.integer(format(sim.dates, "%Y"))
-  year_ind <- year_vec - min(year_vec) + 1
+  year_vec  <- as.integer(format(sim.dates, "%Y"))
+  year_ind  <- year_vec - min(year_vec) + 1
   month_ind <- as.integer(format(sim.dates, "%m"))
 
   n_years <- max(year_ind)
-  n_days <- length(sim.dates)
+  n_days  <- length(sim.dates)
 
-  if (verbose) {
-    message(
-      "Simulation period: ", n_years, " years (",
-      min(year_vec), "-", max(year_vec), "), ",
-      n_days, " days"
-    )
-  }
+  .log(
+    "[PERTURBATION] Simulation period: {n_years} years ({min(year_vec)}-{max(year_vec)}), {n_days} days"
+  )
 
   # ==========================================================================
   # COMPUTE TEMPERATURE CHANGE FACTORS
   # ==========================================================================
 
   if (transient.temp.change) {
-    # Gradual change: ramp from 0 to 2x factor to achieve mean = factor
-    # Example: factor = 2 DegC to ramp 0 to 4 DegC to mean = 2 DegC
-    # This ensures equivalent mean impact to step change
     temp_change_matrix <- sapply(1:12, function(m) {
       seq(0, change.factor.temp.mean[m] * 2, length.out = n_years)
     })
-    # Ensure it's always a matrix (sapply returns vector if n_years=1)
     if (!is.matrix(temp_change_matrix)) {
       temp_change_matrix <- matrix(temp_change_matrix, nrow = 1, ncol = 12)
     }
   } else {
-    # Step change: apply full factor uniformly
     temp_change_matrix <- sapply(1:12, function(m) {
       rep(change.factor.temp.mean[m], n_years)
     })
@@ -214,28 +190,20 @@ apply_climate_perturbations <- function(
     }
   }
 
-  # Map to daily values using vectorized matrix indexing
   temp_change_daily <- temp_change_matrix[cbind(year_ind, month_ind)]
 
-  if (verbose) {
-    message(
-      "Temperature: ",
-      ifelse(transient.temp.change, "transient", "step"),
-      " change (mean = ", round(mean(change.factor.temp.mean), 2), " DegC)"
-    )
-  }
+  .log(
+    "[PERTURBATION] Temperature: {if (isTRUE(transient.temp.change)) 'transient' else 'step'} change (mean = {round(mean(change.factor.temp.mean), 2)} DegC)"
+  )
 
   # ==========================================================================
   # COMPUTE PRECIPITATION CHANGE FACTORS
   # ==========================================================================
 
-  # Minimum factor to prevent extreme reductions
   min_factor <- 0.01
 
   if (transient.precip.change) {
-    # Gradual change: ramp from 1.0 to (factor-1)*2+1 to achieve mean = factor
-    # Example: factor = 1.2 to ramp 1.0 to 1.4 to mean = 1.2
-    # This ensures equivalent mean impact to step change
+
     precip_mean_deltaf <- (change.factor.precip.mean - 1) * 2 + 1
     precip_mean_matrix <- sapply(1:12, function(m) {
       seq(1, precip_mean_deltaf[m], length.out = n_years)
@@ -255,51 +223,38 @@ apply_climate_perturbations <- function(
     }
 
   } else {
-    # Step change: apply full factor uniformly
-    precip_mean_matrix <- sapply(1:12, function(m) {
-      rep(change.factor.precip.mean[m], n_years)
-    })
+
+    precip_mean_matrix <- sapply(1:12, function(m) rep(change.factor.precip.mean[m], n_years))
     if (!is.matrix(precip_mean_matrix)) {
       precip_mean_matrix <- matrix(precip_mean_matrix, nrow = 1, ncol = 12)
     }
 
-    precip_var_matrix <- sapply(1:12, function(m) {
-      rep(change.factor.precip.variance[m], n_years)
-    })
+    precip_var_matrix <- sapply(1:12, function(m) rep(change.factor.precip.variance[m], n_years))
     if (!is.matrix(precip_var_matrix)) {
       precip_var_matrix <- matrix(precip_var_matrix, nrow = 1, ncol = 12)
     }
   }
 
-  if (verbose) {
-    message(
-      "Precipitation: ",
-      ifelse(transient.precip.change, "transient", "step"),
-      " change (mean = ", round(mean(change.factor.precip.mean), 3), ")"
-    )
-  }
+  .log(
+    "[PERTURBATION] Precipitation: {if (isTRUE(transient.precip.change)) 'transient' else 'step'} change (mean = {round(mean(change.factor.precip.mean), 3)})"
+  )
 
   # ==========================================================================
   # APPLY PERTURBATIONS TO EACH GRID CELL
   # ==========================================================================
 
-  if (verbose) {
-    message("Applying perturbations to ", ngrids, " grid cells...")
-  }
+  .log("[PERTURBATION] Applying perturbations to {ngrids} grid cells")
 
-  # Extract latitudes once for efficiency
   latitudes <- climate.grid$y
 
-  # Process each grid cell
   climate.data <- lapply(seq_len(ngrids), function(i) {
 
-    if (verbose && (i == 1 || i %% 100 == 0 || i == ngrids)) {
-      message("  Processing grid ", i, " of ", ngrids)
+    if (isTRUE(verbose) && (i == 1L || i %% 100L == 0L || i == ngrids)) {
+      .log("[PERTURBATION] Processing grid {i} of {ngrids}")
     }
 
     grid_data <- climate.data[[i]]
 
-    # --- Precipitation: Quantile mapping ---
     grid_data$precip <- quantile_mapping(
       value = grid_data$precip,
       mon.ts = month_ind,
@@ -310,12 +265,10 @@ apply_climate_perturbations <- function(
       verbose = FALSE
     )
 
-    # --- Temperature: Additive changes ---
-    grid_data$temp <- grid_data$temp + temp_change_daily
+    grid_data$temp     <- grid_data$temp + temp_change_daily
     grid_data$temp_min <- grid_data$temp_min + temp_change_daily
     grid_data$temp_max <- grid_data$temp_max + temp_change_daily
 
-    # --- PET: Recalculate if requested ---
     if (calculate.pet) {
       grid_data$pet <- pet_hargreaves(
         months = month_ind,
@@ -325,8 +278,6 @@ apply_climate_perturbations <- function(
       )
     }
 
-    # --- Clean invalid values ---
-    # Replace Inf, -Inf, and NaN with 0
     grid_data[] <- lapply(grid_data, function(col) {
       replace(col, is.infinite(col) | is.nan(col), 0)
     })
@@ -334,9 +285,7 @@ apply_climate_perturbations <- function(
     grid_data
   })
 
-  if (verbose) {
-    message("Perturbation complete.")
-  }
+  .log("[PERTURBATION] Perturbation complete")
 
   climate.data
 }

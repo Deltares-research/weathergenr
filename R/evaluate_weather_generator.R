@@ -646,21 +646,13 @@ validate_inputs <- function(daily.sim, daily.obs, variables, realization.num,
 process_observed_data <- function(daily.obs, variables, n_grids,
                                   wet.quantile, extreme.quantile) {
 
-  # At this point, standardize_obs_sim_periods() already removed leap days
-  # and filtered to full-year windows. We keep leap-day handling here as a safety net.
   his.date <- daily.obs[[1]]$date
-  # leap.idx <- find_leap_days(his.date)
-  # if (!is.null(leap.idx)) {
-  #   daily.obs <- lapply(daily.obs, function(df) df[-leap.idx, , drop = FALSE])
-  #   his.date <- daily.obs[[1]]$date
-  # }
 
   his.datemat <- dplyr::tibble(
     date = his.date,
     year = as.integer(format(date, "%Y")),
     mon = as.integer(format(date, "%m")),
-    day = as.integer(format(date, "%d"))
-  )
+    day = as.integer(format(date, "%d")))
 
   his <- lapply(seq_len(n_grids), function(i) {
     df <- daily.obs[[i]][, variables, drop = FALSE]
@@ -680,8 +672,7 @@ process_observed_data <- function(daily.obs, variables, n_grids,
         ppos <- .data$precip[is.finite(.data$precip) & .data$precip > 0]
         if (length(ppos) >= 5) stats::quantile(ppos, extreme.quantile, names = FALSE, na.rm = TRUE) else 0
       },
-      .groups = "drop"
-    )
+      .groups = "drop")
 
 
   his.stats <- compute_timeseries_statistics(

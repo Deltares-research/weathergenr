@@ -31,7 +31,8 @@ test_that("write_netcdf round-trip matches read_netcdf", {
     nc.spatial.ref = "spatial_ref",
     nc.file.prefix = file_prefix,
     nc.file.suffix = file_suffix,
-    signif.digits = signif_digits
+    signif.digits = signif_digits,
+    verbose = FALSE
   )
 
   expect_true(file.exists(out_path))

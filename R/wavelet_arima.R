@@ -17,68 +17,11 @@
 #'   (default: 0.1 = 10\%). Only applies if match.variance = TRUE.
 #' @param check.diagnostics Logical. If TRUE, perform basic ARIMA model diagnostics
 #'   and issue warnings if models appear inadequate (default: FALSE).
+#' @param verbose Logical. If TRUE, emit informative logger::log_info() messages
+#'   (default: TRUE). If FALSE, suppresses all logger::log_info() output from this function.
 #'
 #' @return A matrix of dimension \code{sim.year.num} x \code{sim.num}, where each
 #'   column is a synthetic time series realization.
-#'
-#' @details
-#' The function implements the Wavelet Autoregressive Modeling (WARM) approach:
-#'
-#' 1. Each wavelet component is centered (mean removed)
-#'
-#' 2. An ARIMA(p,0,q) model is fitted to the centered component
-#'
-#' 3. Multiple realizations are simulated from the fitted model
-#'
-#' 4. Mean is restored to each simulation
-#'
-#' 5. Optionally, variance is corrected to match the original component
-#'
-#' 6. Components are summed to produce final synthetic series
-#'
-#' Variance matching ensures that ARIMA models that slightly underfit do not produce
-#' under-dispersed simulations. This is particularly important for maintaining the
-#' correct amplitude of low-frequency oscillations.
-#'
-#' @references
-#' Steinschneider, S. and Lall, U. (2015). A hierarchical Bayesian regional model
-#' for nonstationary precipitation extremes in Northern California conditioned on
-#' tropical moisture exports. \emph{Water Resources Research}, 51(3), 1472-1492.
-#'
-#' @examples
-#' \dontrun{
-#' # Simulate 10 synthetic annual series (length 30) from two wavelet components
-#' set.seed(42)
-#' wavelet.components <- list(
-#'   signal = sin(2 * pi * 1:30 / 8) + rnorm(30, 0, 0.2),
-#'   noise  = rnorm(30, 0, 0.5)
-#' )
-#'
-#' # With variance matching (recommended)
-#' result <- waveletARIMA(
-#'   wavelet.components,
-#'   sim.year.num = 30,
-#'   sim.num = 10,
-#'   seed = 123,
-#'   match.variance = TRUE
-#' )
-#'
-#' # Check variance preservation
-#' original_var <- var(rowSums(sapply(wavelet.components, identity)))
-#' simulated_var <- apply(result, 2, var)
-#' cat("Original variance:", round(original_var, 3), "\n")
-#' cat("Simulated variance range:",
-#'     round(range(simulated_var), 3), "\n")
-#'
-#' # Visualize
-#' matplot(result, type = "l", lty = 1,
-#'         col = adjustcolor("black", alpha = 0.3),
-#'         main = "Synthetic Wavelet-ARIMA Realizations")
-#' lines(rowSums(sapply(wavelet.components, identity)),
-#'       col = "red", lwd = 2)
-#' legend("topright", legend = c("Observed", "Simulated"),
-#'        col = c("red", "black"), lwd = c(2, 1))
-#' }
 #'
 #' @importFrom stats sd simulate
 #' @importFrom forecast auto.arima
@@ -89,7 +32,8 @@ wavelet_arima <- function(wavelet.components = NULL,
                           seed = NULL,
                           match.variance = TRUE,
                           variance.tolerance = 0.1,
-                          check.diagnostics = FALSE) {
+                          check.diagnostics = FALSE,
+                          verbose = TRUE) {
 
   # ============================================================================
   # Input Validation
@@ -101,6 +45,10 @@ wavelet_arima <- function(wavelet.components = NULL,
 
   if (is.null(sim.year.num)) {
     stop("Input 'sim.year.num' must be specified.")
+  }
+
+  if (!is.logical(verbose) || length(verbose) != 1L) {
+    stop("'verbose' must be logical (TRUE/FALSE).")
   }
 
   # --- FIX 1: enforce integer-ish sim.year.num and sim.num with clean messages
@@ -209,7 +157,6 @@ wavelet_arima <- function(wavelet.components = NULL,
     component <- as.numeric(comp_list[[k]])
     n_obs <- length(component)
 
-    # constant component check is now safe because NA is excluded above
     comp_sd <- stats::sd(component)
     if (!is.finite(comp_sd)) {
       stop("Component ", k, " has non-finite standard deviation.", call. = FALSE)
@@ -311,7 +258,6 @@ wavelet_arima <- function(wavelet.components = NULL,
       if (needs_variance_check) {
         sim_sd <- stats::sd(simulated)
 
-        # If sim_sd is 0/non-finite, rescaling is impossible; skip correction safely
         if (is.finite(sim_sd) && sim_sd > 0) {
           relative_diff <- abs(sim_sd - target_sd) / target_sd
           if (relative_diff > variance.tolerance) {
@@ -326,8 +272,8 @@ wavelet_arima <- function(wavelet.components = NULL,
     }
   }
 
-  if (match.variance && any(variance_corrections) && requireNamespace("logger", quietly = TRUE)) {
-    corrected_comps <- which(variance_corrections)
+  if (verbose && match.variance && any(variance_corrections) &&
+      requireNamespace("logger", quietly = TRUE)) {
     logger::log_info("[WARM] Variance correction applied to component(s)")
   }
 

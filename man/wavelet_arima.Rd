@@ -11,7 +11,8 @@ wavelet_arima(
   seed = NULL,
   match.variance = TRUE,
   variance.tolerance = 0.1,
-  check.diagnostics = FALSE
+  check.diagnostics = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -34,6 +35,9 @@ statistical properties.}
 
 \item{check.diagnostics}{Logical. If TRUE, perform basic ARIMA model diagnostics
 and issue warnings if models appear inadequate (default: FALSE).}
+
+\item{verbose}{Logical. If TRUE, emit informative logger::log_info() messages
+(default: TRUE). If FALSE, suppresses all logger::log_info() output from this function.}
 }
 \value{
 A matrix of dimension \code{sim.year.num} x \code{sim.num}, where each
@@ -43,64 +47,4 @@ A matrix of dimension \code{sim.year.num} x \code{sim.num}, where each
 Simulates synthetic time series by modeling each wavelet component (signal or noise)
 with an ARIMA model, and then summing the simulated components. Optionally enforces
 variance matching to preserve statistical properties of the original components.
-}
-\details{
-The function implements the Wavelet Autoregressive Modeling (WARM) approach:
-
-1. Each wavelet component is centered (mean removed)
-
-2. An ARIMA(p,0,q) model is fitted to the centered component
-
-3. Multiple realizations are simulated from the fitted model
-
-4. Mean is restored to each simulation
-
-5. Optionally, variance is corrected to match the original component
-
-6. Components are summed to produce final synthetic series
-
-Variance matching ensures that ARIMA models that slightly underfit do not produce
-under-dispersed simulations. This is particularly important for maintaining the
-correct amplitude of low-frequency oscillations.
-}
-\examples{
-\dontrun{
-# Simulate 10 synthetic annual series (length 30) from two wavelet components
-set.seed(42)
-wavelet.components <- list(
-  signal = sin(2 * pi * 1:30 / 8) + rnorm(30, 0, 0.2),
-  noise  = rnorm(30, 0, 0.5)
-)
-
-# With variance matching (recommended)
-result <- waveletARIMA(
-  wavelet.components,
-  sim.year.num = 30,
-  sim.num = 10,
-  seed = 123,
-  match.variance = TRUE
-)
-
-# Check variance preservation
-original_var <- var(rowSums(sapply(wavelet.components, identity)))
-simulated_var <- apply(result, 2, var)
-cat("Original variance:", round(original_var, 3), "\n")
-cat("Simulated variance range:",
-    round(range(simulated_var), 3), "\n")
-
-# Visualize
-matplot(result, type = "l", lty = 1,
-        col = adjustcolor("black", alpha = 0.3),
-        main = "Synthetic Wavelet-ARIMA Realizations")
-lines(rowSums(sapply(wavelet.components, identity)),
-      col = "red", lwd = 2)
-legend("topright", legend = c("Observed", "Simulated"),
-       col = c("red", "black"), lwd = c(2, 1))
-}
-
-}
-\references{
-Steinschneider, S. and Lall, U. (2015). A hierarchical Bayesian regional model
-for nonstationary precipitation extremes in Northern California conditioned on
-tropical moisture exports. \emph{Water Resources Research}, 51(3), 1472-1492.
 }
