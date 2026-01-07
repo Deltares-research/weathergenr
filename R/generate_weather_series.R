@@ -64,9 +64,6 @@
 #'   retaining low-frequency components in WARM.
 #' @param warm.sample.num Integer number of candidate annual traces to generate
 #'   before subsetting.
-#' @param warm.subset.criteria Named list of thresholds used to filter annual WARM
-#'   traces (must include \code{mean}, \code{sd}, \code{min}, \code{max},
-#'   \code{sig.thr}, \code{nsig.thr}).
 #' @param knn.sample.num Integer number of historical years sampled in annual KNN.
 #' @param mc.wet.quantile Numeric in (0,1). Wet-day threshold quantile.
 #' @param mc.extreme.quantile Numeric in (0,1). Extreme-day threshold quantile.
@@ -105,8 +102,6 @@ generate_weather_series <- function(
     warm.variable = "precip",
     warm.signif.level = 0.90,
     warm.sample.num = 5000,
-    warm.subset.criteria = list(mean = 0.1, sd = 0.1, min = 0.1,
-                                max = 0.1, sig.thr = 0.8, nsig.thr = 1.5),
     knn.sample.num = 120,
     mc.wet.quantile = 0.3,
     mc.extreme.quantile = 0.8,
@@ -148,19 +143,11 @@ generate_weather_series <- function(
     stop("All grid cells must have the same number of observations")
   }
 
-  # Validate warm.subset.criteria
-  required_criteria <- c("mean", "sd", "min", "max", "sig.thr", "nsig.thr")
-  if (!all(required_criteria %in% names(warm.subset.criteria))) {
-    stop("warm.subset.criteria must contain: ", paste(required_criteria, collapse = ", "))
-  }
-
   # SET RNG seeds
   if (!is.null(seed)) set.seed(seed)
   warm_seed <- sample.int(.Machine$integer.max, 1)
   wavelet_seed <- sample.int(.Machine$integer.max, 1)
   daily_seed <- sample.int(.Machine$integer.max, 1)
-
-
 
   # PARALELL COMPUTING SETUP :::::::::::::::::::::::::::::::::::::::::::::::::::
   if (compute.parallel) {

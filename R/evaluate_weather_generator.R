@@ -99,13 +99,24 @@ evaluate_weather_generator <- function(
   if (requireNamespace("logger", quietly = TRUE)) {
     logger::log_info(
       paste0(
-        "[Assessment] Start | grids={length(daily.obs)} | ",
-        "realizations={realization.num} | ",
-        "variables={paste(variables, collapse = ',')} | ",
-        "wet.q={wet.quantile} | extreme.q={extreme.quantile}"
-      )
+        "[Assessment] Start | grids = {length(daily.obs)} | ",
+        "realizations = {realization.num} | ")
     )
   }
+
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info(
+      paste0(
+        "[Assessment] variables = {paste(variables, collapse = ',')} | ")
+    )
+  }
+
+  if (requireNamespace("logger", quietly = TRUE)) {
+    logger::log_info(
+      paste0("[Assessment] Parameters: wet.q = { wet.quantile} | extreme.q = { extreme.quantile}")
+    )
+  }
+
 
   if (is.null(variable.labels)) variable.labels <- variables
 
@@ -155,9 +166,6 @@ evaluate_weather_generator <- function(
     }
   }
 
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Evaluating {n_grids} grid cells with {realization.num} realizations")
-  }
 
   # ============================================================================
   # STANDARDIZE PERIODS (FULL YEARS + MATCH LENGTH VIA RANDOM WINDOW)
@@ -181,9 +189,8 @@ evaluate_weather_generator <- function(
     logger::log_info(
       paste0(
         "[Assessment] Standardized period | ",
-        "years=", std$n_years, " | ",
-        "obs.year.range=", std$obs_year_start, "-", std$obs_year_end, " | ",
-        "sim.year.range=", std$sim_year_start, "-", std$sim_year_end
+        "Obs = ", std$obs_year_start, "-", std$obs_year_end, " | ",
+        "Sim = ", std$sim_year_start, "-", std$sim_year_end
       )
     )
   }

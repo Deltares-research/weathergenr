@@ -1,13 +1,15 @@
+
 utils::globalVariables(c(
   "scenario", "prcp", "tavg", "statistic",
   "z", "y", "clevel",
   "Location", "Metric", "Baseline", "colorRampPalette", ".",
   "level_mid", "horizon",
-  "value", "minval", "maxval"
+  "value", "minval", "maxval",
+  "min_val", "max_val", "lim", "minlim", "maxlim",
+  "pct.change","assessment","original","adjusted","threshold",
+  "idx","series","period","lo","hi","obs","sim_mu",
+  "xmin","xmax","ymin","ymax","dateo"
 ))
-
-
-utils::globalVariables(c("min_val", "max_val", "lim", "minlim", "maxlim"))
 
 # Workaround for rlang warning
 wyear <- year <- mon <- day <- precip <- sd <- variable <- value <- id_variable <- 0
