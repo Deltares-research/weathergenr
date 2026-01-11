@@ -1,0 +1,132 @@
+# K-Nearest Neighbor (KNN) Sampling from Candidates
+
+Given a set of candidate vectors and a target vector, selects indices of
+the `k` nearest candidates (using weighted Euclidean distance) to the
+target, then samples `n` indices from these neighbors, either uniformly
+or with rank-based or distance-based probabilities. Optionally, a random
+seed can be set for reproducibility.
+
+## Usage
+
+``` r
+knn_sample(
+  candidates,
+  target,
+  k,
+  n = 1,
+  prob = FALSE,
+  weights = NULL,
+  seed = NULL,
+  sampling = c("rank", "distance"),
+  bandwidth = NULL,
+  epsilon = 1e-08
+)
+```
+
+## Arguments
+
+- candidates:
+
+  Numeric matrix or data frame. Each row is a candidate vector.
+
+- target:
+
+  Numeric vector. The target vector for comparison.
+
+- k:
+
+  Integer. Number of nearest neighbors to consider (k \<= number of
+  candidates).
+
+- n:
+
+  Integer. Number of samples to draw (default = 1).
+
+- prob:
+
+  Logical. If TRUE, sampling probabilities favor closer neighbors; if
+  FALSE (default), sampling is uniform among k nearest neighbors.
+
+- weights:
+
+  Optional numeric vector of length equal to ncol(candidates). Feature
+  weights for distance calculation. Default is equal weights.
+
+- seed:
+
+  Optional integer. If provided, sets random seed for reproducible
+  sampling. The seed state is restored on exit.
+
+- sampling:
+
+  Character. Sampling method when prob = TRUE. Either "rank" (default,
+  probability decreases with neighbor rank: 1, 1/2, 1/3, ...) or
+  "distance" (probability based on Gaussian kernel of distances).
+  Ignored when prob = FALSE.
+
+- bandwidth:
+
+  Numeric. Bandwidth parameter for distance-based sampling kernel. If
+  NULL (default), uses median nearest neighbor distance. Only used when
+  sampling = "distance" and prob = TRUE.
+
+- epsilon:
+
+  Numeric. Small constant added to distance-based probabilities to
+  prevent zero probabilities (default = 1e-8). Only used when sampling =
+  "distance" and prob = TRUE.
+
+## Value
+
+Integer vector of length `n`, giving indices of sampled candidates (rows
+of `candidates`).
+
+## Details
+
+The function computes the weighted Euclidean distance between each
+candidate and the target. The `k` nearest neighbors (smallest distances)
+are identified.
+
+Sampling modes:
+
+- prob = FALSE:
+
+  All k neighbors sampled with equal probability (uniform)
+
+- prob = TRUE, sampling = "rank":
+
+  Probability = 1/rank, normalized. Closest neighbor has highest
+  probability.
+
+- prob = TRUE, sampling = "distance":
+
+  Probability based on Gaussian kernel: exp(-distance^2 / (2 \*
+  bandwidth^2))
+
+Sampling is with replacement. If `seed` is set, the random seed will be
+temporarily changed and restored on exit.
+
+## Examples
+
+``` r
+set.seed(42)
+candidates <- matrix(rnorm(50), ncol = 2)
+target <- c(0, 0)
+
+# Sample 1 index from 5 nearest neighbors, uniform probability
+knn_sample(candidates, target, k = 5, n = 1)
+#> [1] 21
+
+# Sample 3 indices from 5 nearest neighbors, rank-weighted probability
+knn_sample(candidates, target, k = 5, n = 3, prob = TRUE, seed = 123)
+#> [1] 15  6 15
+
+# Using feature weights (weight first dimension more heavily)
+knn_sample(candidates, target, k = 5, n = 2, weights = c(2, 1), seed = 10)
+#> [1] 17 10
+
+# Distance-based sampling with custom bandwidth
+knn_sample(candidates, target, k = 10, n = 5, prob = TRUE,
+           sampling = "distance", bandwidth = 1.5)
+#> [1]  6  6 10  8  8
+```
