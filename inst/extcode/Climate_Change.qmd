@@ -1,0 +1,66 @@
+---
+title: "Climate Perturbations"
+format: html
+execute:
+  echo: true
+  warning: false
+  eval: true
+  cache: true 
+vignette: >
+  %\VignetteIndexEntry{Getting started}
+  %\VignetteEngine{quarto::quarto}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteDepends{weathergenr, dplyr, ggplot2}
+---
+
+
+# Overview
+
+This vignette shows how the climate forcing data for a climate stress test can be prepared with *weathergenr*. 
+
+```{r ncfile}
+library(weathergenr)
+ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+ncdata <- readNetcdf(ncfile)
+```
+
+## Define stochastic weather realizations
+
+```{r stochastic1}
+# Set path to store weather generator results
+output_path <- "C:/TEMP"
+variables <- c("precip", "temp", "temp_min", "temp_max")
+variable_labels <- c("Precip.", "Temp. (avg)", "Temp. (min)", "Temp. (max)")
+realization_num <- 3
+```
+
+
+```{r stochastic2, results='hide', eval = TRUE, cache=TRUE}
+set.seed(123)
+stochastic_weather <- generateWeatherSeries(
+  weather.data = ncdata$data,
+  weather.grid = ncdata$grid,
+  weather.date = ncdata$date,
+  variable.names = variables,
+  variable.labels = variables,
+  variable.units = NULL,
+  sim.year.num = 20,
+  sim.year.start = 2020,
+  month.start = 1,
+  realization.num = realization_num,
+  warm.variable = "precip",
+  warm.signif.level = 0.90,
+  warm.sample.num = 10000,
+  warm.subset.criteria = NULL,
+  knn.sample.num = 100,
+  mc.wet.quantile = 0.3,
+  mc.extreme.quantile = 0.8,
+  output.path = output_path,
+  seed = 123,
+  compute.parallel = FALSE,
+  num.cores = NULL,
+  save.rdata = FALSE
+)
+```
+
+## Define climate change domain 

@@ -1,0 +1,132 @@
+# Overview
+
+*weathergenr* is an R package for generating synthetic weather series
+using a multivariate, gridded, stochastic weather generator. It builds
+on the methodology introduced by [Steinscheineder et al
+(2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528),
+and provides an efficient, user-friendly implementation tailored for
+climate and hydrological studies.
+
+Key features include:
+
+📂 Support for gridded NetCDF datasets  
+⚙️ Script automation and enhanced usability  
+⚡ Significant performance gains via vectorized and parallelized code
+
+# Installation
+
+Before installing, make sure you have:
+
+- [R](https://cran.r-project.org/bin/) installed  
+- An R IDE such as [RStudio](https://posit.co/download/rstudio-desktop/)
+
+To install the development version of `weathergenr` from GitHub:
+
+``` r
+
+# install.packages("devtools")
+# devtools::install_github("Deltares/weathergenr")
+```
+
+# Quick start
+
+Work-in-progress tutorials and examples are available below:
+
+  
+[📘 Getting
+Started](https://github.com/Deltares-research/weathergenr/blob/Dev/Vignettes/getting_started.md)  
+
+Stay tuned - more vignettes and usage examples will be added as the
+package evolves.
+
+# Licence
+
+Copyright (c) 2019, Deltares
+
+Licensed under the MIT License.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+“Software”), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Package index
+
+## All functions
+
+- [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
+  : Apply Climate Change Perturbations to Gridded Weather Data
+- [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
+  : Evaluate Stochastic Weather Generator Performance
+- [`filter_warm_simulations()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_simulations.md)
+  : Filter and sample WARM simulations using distributional, tail, and
+  wavelet criteria
+- [`find_leap_days()`](https://deltares-research.github.io/weathergenr/reference/find_leap_days.md)
+  : Find leap-day positions (Feb 29) in a date vector
+- [`generate_weather_series()`](https://deltares-research.github.io/weathergenr/reference/generate_weather_series.md)
+  : Generate Synthetic Gridded Daily Weather Series
+- [`get_result_index()`](https://deltares-research.github.io/weathergenr/reference/get_result_index.md)
+  : Safely Get or Sample an Index from a Vector
+- [`get_state_indices()`](https://deltares-research.github.io/weathergenr/reference/get_state_indices.md)
+  : Get Indices for a Specific Occurrence State Transition
+- [`get_water_year()`](https://deltares-research.github.io/weathergenr/reference/get_water_year.md)
+  : Calculate Water Year from Date Vector
+- [`knn_sample()`](https://deltares-research.github.io/weathergenr/reference/knn_sample.md)
+  : K-Nearest Neighbor (KNN) Sampling from Candidates
+- [`make_noleap_dates()`](https://deltares-research.github.io/weathergenr/reference/make_noleap_dates.md)
+  : Generate a no-leap (365-day) daily date sequence
+- [`markov_next_state()`](https://deltares-research.github.io/weathergenr/reference/markov_next_state.md)
+  : Determine Next State in a First-Order Markov Chain
+- [`monthly_markov_probs()`](https://deltares-research.github.io/weathergenr/reference/monthly_markov_probs.md)
+  : Estimate Monthly Occurrence-State Markov Transition Probabilities
+- [`pet_hargreaves()`](https://deltares-research.github.io/weathergenr/reference/pet_hargreaves.md)
+  : Estimate Monthly Potential Evapotranspiration (Hargreaves Method)
+- [`plot(`*`<qmap_diagnostics>`*`)`](https://deltares-research.github.io/weathergenr/reference/plot.qmap_diagnostics.md)
+  : Plot method for qmap_diagnostics
+- [`plot_global_wavelet_spectrum()`](https://deltares-research.github.io/weathergenr/reference/plot_global_wavelet_spectrum.md)
+  : Plot Global Wavelet Spectrum
+- [`plot_wavelet_spectra()`](https://deltares-research.github.io/weathergenr/reference/plot_wavelet_spectra.md)
+  : Plot Wavelet Power Spectrum and Global Wavelet Spectrum
+- [`print(`*`<qmap_diagnostics>`*`)`](https://deltares-research.github.io/weathergenr/reference/print.qmap_diagnostics.md)
+  : Print method for qmap_diagnostics
+- [`quantile_mapping()`](https://deltares-research.github.io/weathergenr/reference/quantile_mapping.md)
+  : Quantile Mapping for Climate Change Perturbation of Precipitation
+- [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
+  : Read a gridded NetCDF file into tidy weather format (fast + memory
+  efficient)
+- [`resample_weather_dates()`](https://deltares-research.github.io/weathergenr/reference/resample_weather_dates.md)
+  : Resample Daily Weather Dates Using Annual KNN and Markov Chain Logic
+- [`summary(`*`<qmap_diagnostics>`*`)`](https://deltares-research.github.io/weathergenr/reference/summary.qmap_diagnostics.md)
+  : Summary method for qmap_diagnostics
+- [`validate_quantile_mapping()`](https://deltares-research.github.io/weathergenr/reference/validate_quantile_mapping.md)
+  : Compute Validation Diagnostics for Quantile Mapping
+- [`wavelet_arima()`](https://deltares-research.github.io/weathergenr/reference/wavelet_arima.md)
+  : Wavelet Autoregressive Modeling (WARM)
+- [`wavelet_spectral_analysis()`](https://deltares-research.github.io/weathergenr/reference/wavelet_spectral_analysis.md)
+  : Continuous Wavelet Spectral Analysis with COI-Aware Significance
+- [`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)
+  : Write Gridded Data to a NetCDF File (Template-Based)
+
+# Articles
+
+### Articles
+
+- [Getting Started with
+  weathergenr](https://deltares-research.github.io/weathergenr/articles/getting_started.md):
+
+  Read NetCDF inputs, generate stochastic realizations, and evaluate
+  generator skill.

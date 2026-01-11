@@ -1,35 +1,54 @@
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
 
-## Overview
+[![R-CMD-check](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Deltares-research/weathergenr/actions)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/weathergenr.png)](https://CRAN.R-project.org/package=weathergenr)
+[![License:
+MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 
-Gridwegen is a simplified, scalable implementation of the
-semi-parametric stochastic weather generator developed by
-Steinscheneider and Brown (2013).
+# Overview
 
-## Installation
+*weathergenr* is an R package for generating synthetic weather series
+using a multivariate, gridded, stochastic weather generator. It builds
+on the methodology introduced by [Steinscheineder et al
+(2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528),
+and provides an efficient, user-friendly implementation tailored for
+climate and hydrological studies.
 
-If you haven’t already done, first install
-[R](https://cran.r-project.org/bin/windows/base/) and an R IDE,
-preferably [Rstudio](https://posit.co/download/rstudio-desktop/). Next,
-install the development version of **weathergenr** from github, using
-*devtools*:
+Key features include:
+
+:open_file_folder: Support for gridded NetCDF datasets  
+:gear: Script automation and enhanced usability  
+:zap: Significant performance gains via vectorized and parallelized code
+
+# Installation
+
+Before installing, make sure you have:
+
+- [R](https://cran.r-project.org/bin/) installed  
+- An R IDE such as [RStudio](https://posit.co/download/rstudio-desktop/)
+
+To install the development version of `weathergenr` from GitHub:
 
 ``` r
-install.packages("devtools")
-devtools::install_github("Deltares/weathergenr")
+# install.packages("devtools")
+# devtools::install_github("Deltares/weathergenr")
 ```
 
-## Quick start
+# Quick start
 
-Below, you will find several work in progress tutorials:
+Work-in-progress tutorials and examples are available below:
 
-<br /> [Getting
-started](http://htmlpreview.github.io/?https://github.com/Deltares/weathergenr/blob/dev/vignettes/Getting_started.html)
-<br /> [Simple climate stress
-test](http://htmlpreview.github.io/?https://github.com/Deltares/weathergenr/blob/dev/vignettes/Climate_stress_test.html)
+<br /> [:blue_book: Getting
+Started](https://github.com/Deltares-research/weathergenr/blob/Dev/Vignettes/getting_started.md)
+<br />
 
-## Licence
+Stay tuned - more vignettes and usage examples will be added as the
+package evolves.
+
+# Licence
 
 Copyright (c) 2019, Deltares
 
