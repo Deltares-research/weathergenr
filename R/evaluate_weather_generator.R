@@ -471,7 +471,7 @@ display_fit_summary_table <- function(fit_summary, variables) {
 }
 
 # ==============================================================================
-# NEW HELPERS: PERIOD STANDARDIZATION
+# HELPERS
 # ==============================================================================
 
 #' Find full (365-day) years after leap-day removal and return longest contiguous block
@@ -591,10 +591,6 @@ standardize_obs_sim_periods <- function(daily.obs, daily.sim, realization.num, v
     sim_year_end = max(sim_years_keep)
   )
 }
-
-# ==============================================================================
-# EXISTING HELPERS (UNCHANGED EXCEPT WHERE NOTED)
-# ==============================================================================
 
 #' Validate inputs for weather assessment
 #' @keywords internal
@@ -1186,8 +1182,6 @@ compute_conditional_precip_cor <- function(data,
 }
 
 
-
-
 #' Generate symmetric dummy points for equal axis scaling
 #' @keywords internal
 generate_symmetric_dummy_points <- function(df, facet.var = "variable",
@@ -1448,11 +1442,11 @@ create_all_diagnostic_plots <- function(plot.data, plot.config, variables,
 
   # 8. Monthly cycle
   plots$monthly_cycle <- create_monthly_cycle_plot(
-    plot.data$daily.stats.season,
-    plot.config,
-    show.title,
-    save.plots,
-    output.path
+    daily.stats.season =  plot.data$daily.stats.season,
+    plot.config = plot.config,
+    show.title = show.title,
+    save.plots = save.plots,
+    output.path = output.path
   )
 
   # 9. Annual precipitation
@@ -1953,7 +1947,7 @@ create_monthly_cycle_plot <- function(daily.stats.season, plot.config,
     show.title = show.title,
     save.plots = save.plots,
     title = "Annual cycles of variables",
-    subtitle = paste0(plot.config$subtitle, "\nResults averaged across each month"),
+    subtitle = paste0(plot.config$subtitle, "\nResults averaged over all grid cells and across each month"),
     output.path = output.path
   )
 }

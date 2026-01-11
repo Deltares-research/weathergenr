@@ -197,7 +197,7 @@ generate_weather_series <- function(
       df[-leap_idx, , drop = FALSE]
     })
 
-    logger::log_info("[Initialize] Feb 29 removed from inputs: dropped {length(leap_idx)} row(s) (365-day calendar enforced).")
+    logger::log_info("[Initialize] Dropped {length(leap_idx)} row(s): 365-day calendar enforced")
   }
 
   # Historical date vector (internal 365-day calendar)

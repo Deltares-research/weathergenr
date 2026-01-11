@@ -99,6 +99,8 @@
 #' out$filter_summary
 #' out$plots$wavelet_gws
 #' }
+#' @importFrom utils modifyList
+#' @importFrom stats acf median runif setNames
 #' @export
 filter_warm_simulations <- function(series.obs = NULL,
                                     series.sim = NULL,
@@ -238,6 +240,19 @@ filter_warm_simulations <- function(series.obs = NULL,
   }
 
   # ---------------------------------------------------------------------------
+  # Display initial setup information
+  # ---------------------------------------------------------------------------
+  if (verbose) {
+    log_filtering_setup(
+      n_obs = n_years_obs0,
+      n_sim = n_years_sim0,
+      n_realizations = n_realizations,
+      sample_num = sample.num,
+      relax_priority = RELAX_ORDER
+    )
+  }
+
+  # ---------------------------------------------------------------------------
   # RNG management
   # ---------------------------------------------------------------------------
 
@@ -293,8 +308,7 @@ filter_warm_simulations <- function(series.obs = NULL,
   # ---------------------------------------------------------------------------
 
   if (verbose) {
-    log_step("Computing distributional statistics",
-             sprintf("mean, sd, tail mass for %d series", n_realizations))
+    log_step("Computing ", sprintf("mean, sd, tail mass for observed and %d simulated series", n_realizations))
   }
 
   obs_mean <- mean(obs.use)
@@ -336,8 +350,7 @@ filter_warm_simulations <- function(series.obs = NULL,
   # IMPROVEMENT 2: Use helper function for wavelet metrics + ALWAYS cache
   # ---------------------------------------------------------------------------
   if (verbose) {
-    log_step("Computing wavelet spectra",
-             sprintf("observed + %d simulated series", n_realizations))
+    log_step("Computing wavelet spectra for ", sprintf("observed and %d simulated series", n_realizations))
   }
 
   wavelet_results <- compute_wavelet_metrics(
@@ -360,7 +373,7 @@ filter_warm_simulations <- function(series.obs = NULL,
   gws_cache_mat <- wavelet_results$gws_cache
 
   # ---------------------------------------------------------------------------
-  # IMPROVEMENT 3: Use helper function for pass vectors
+  # Helpers
   # ---------------------------------------------------------------------------
   .compute_pass_vectors <- function() {
     compute_pass_vectors(
@@ -386,28 +399,12 @@ filter_warm_simulations <- function(series.obs = NULL,
     which(ok)
   }
 
-  # ---------------------------------------------------------------------------
-  # IMPROVEMENT 4: Simplified relaxation (no complex tie-breaking)
-  # ---------------------------------------------------------------------------
   .relax_one <- function(filter_name) {
     relax_bounds_one_filter(
       filter_name = filter_name,
       bounds_env = b,
       wavelet_active_env = environment(),
       recompute_tailmass_fn = .recompute_tailmass
-    )
-  }
-
-  # ---------------------------------------------------------------------------
-  # Display initial setup information
-  # ---------------------------------------------------------------------------
-  if (verbose) {
-    log_filtering_setup(
-      n_obs = n_years_obs0,
-      n_sim = n_years_sim0,
-      n_realizations = n_realizations,
-      sample_num = sample.num,
-      relax_priority = RELAX_ORDER
     )
   }
 

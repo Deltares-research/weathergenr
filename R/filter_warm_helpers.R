@@ -566,7 +566,7 @@ log_filtering_setup <- function(n_obs, n_sim, n_realizations, sample_num, relax_
   log_info(sprintf("Simulated series: %d years x %d realizations", n_sim, n_realizations))
   log_info(sprintf("Target: Sample %d realizations from pool", sample_num))
   log_info(sprintf("Relaxation priority: %s", paste(relax_priority, collapse = " > ")))
-  log_info(sprintf("  (Filters relax left-to-right: %s relaxes FIRST, %s relaxes LAST)",
+  log_info(sprintf("  Filters relax left-to-right: %s relaxes FIRST, %s relaxes LAST",
                    relax_priority[1], relax_priority[length(relax_priority)]))
   log_info(strrep("=", 75))
   log_info("")
