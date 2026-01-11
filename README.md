@@ -1,6 +1,6 @@
 
 
-[![R-CMD-check](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Deltares-research/weathergenr/actions)
+[![R-CMD-check](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/weathergenr.png)](https://CRAN.R-project.org/package=weathergenr)
 [![License:
@@ -41,9 +41,8 @@ To install the development version of `weathergenr` from GitHub:
 
 Work-in-progress tutorials and examples are available below:
 
-<br /> [:blue_book: Getting
+\-[:blue_book: Getting
 Started](https://deltares-research.github.io/weathergenr/articles/getting_started.html)
-<br />
 
 Stay tuned - more vignettes and usage examples will be added as the
 package evolves.
