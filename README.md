@@ -29,7 +29,7 @@ The generator explicitly represents climate variability across multiple
 temporal scales and couples long-term variability with realistic daily
 weather sequences.The procedure consists of three main components:
 
-1.  Low-frequency variability (WARM): Interannual to decadal climate
+1.  *Modeling Low-frequency variability*: Interannual to decadal climate
     variability is simulated using wavelet autoregressive modeling
     (WARM) applied to annual climate aggregates (typically
     precipitation). Wavelet decomposition isolates low-frequency
@@ -40,7 +40,7 @@ weather sequences.The procedure consists of three main components:
     generator, ensuring that low-frequency variability is coherently
     embedded in daily weather realizations.
 
-2.  Daily weather generation (Markov chain + KNN): Daily precipitation
+2.  *Daily weather generation (Markov chain + KNN)*: Daily precipitation
     occurrence is simulated using a multi-state Markov chain to
     reproduce wet and dry spell persistence, while daily values of
     precipitation and temperature are generated using
@@ -51,8 +51,8 @@ weather sequences.The procedure consists of three main components:
     variability to interannual conditions without imposing restrictive
     parametric assumptions.
 
-3.  Climate perturbations and quantile mapping: Simulated weather series
-    can be modified using quantile-based perturbation methods
+3.  *Climate perturbations and quantile mapping*: Simulated weather
+    series can be modified using quantile-based perturbation methods
     (e.g. quantile mapping) to impose controlled changes in temperature
     and precipitation distributions. These perturbations allow
     systematic exploration of climate stressors-such as shifts in means,
@@ -61,8 +61,8 @@ weather sequences.The procedure consists of three main components:
 
 ## Intended use
 
-The resulting framework is intended for bottom-up climate vulnerability
-assessments to explore system response under a wide range of plausible
+The resulting framework is intended for *bottom-up climate vulnerability
+assessments* to explore system response under a wide range of plausible
 climate conditions.
 
 ## Key features
