@@ -42,7 +42,7 @@ To install the development version of `weathergenr` from GitHub:
 Work-in-progress tutorials and examples are available below:
 
 <br /> [:blue_book: Getting
-Started](https://github.com/Deltares-research/weathergenr/blob/Dev/Vignettes/getting_started.md)
+Started](https://deltares-research.github.io/weathergenr/articles/getting_started.html)
 <br />
 
 Stay tuned - more vignettes and usage examples will be added as the
