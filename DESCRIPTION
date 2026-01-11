@@ -40,6 +40,7 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.3.3
-URL: https://deltares.github.io/weathergenr/
+URL: https://deltares-research.github.io/weathergenr, https://github.com/Deltares-research/weathergenr
+BugReports: https://github.com/Deltares-research/weathergenr/issues
 Config/testthat/edition: 3
 VignetteBuilder: quarto

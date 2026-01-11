@@ -29,12 +29,12 @@ library(ggplot2)
 
 > **Related functions**
 >
-> - \[[`read_netcdf()`](https://github.com/Deltares-research/weathergenr/reference/read_netcdf.md)\]
-> - \[[`generate_weather_series()`](https://github.com/Deltares-research/weathergenr/reference/generate_weather_series.md)\]
-> - \[[`evaluate_weather_generator()`](https://github.com/Deltares-research/weathergenr/reference/evaluate_weather_generator.md)\]
-> - \[[`write_netcdf()`](https://github.com/Deltares-research/weathergenr/reference/write_netcdf.md)\]
-> - \[[`apply_climate_perturbations()`](https://github.com/Deltares-research/weathergenr/reference/apply_climate_perturbations.md)\]
-> - \[[`wavelet_spectral_analysis()`](https://github.com/Deltares-research/weathergenr/reference/wavelet_spectral_analysis.md)\]
+> - \[[`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)\]
+> - \[[`generate_weather_series()`](https://deltares-research.github.io/weathergenr/reference/generate_weather_series.md)\]
+> - \[[`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)\]
+> - \[[`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)\]
+> - \[[`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)\]
+> - \[[`wavelet_spectral_analysis()`](https://deltares-research.github.io/weathergenr/reference/wavelet_spectral_analysis.md)\]
 
 ## 📂 Reading Gridded Multivariate Weather Data
 
@@ -53,7 +53,7 @@ Map of Ntoum Basin, Gabon
 ### Loading NetCDF Data
 
 The
-[`read_netcdf()`](https://github.com/Deltares-research/weathergenr/reference/read_netcdf.md)
+[`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
 function provides an efficient interface for extracting meteorological
 data from NetCDF files. It handles the complexities of NetCDF format and
 returns data in a tidy, analysis-ready structure optimized for the
@@ -83,7 +83,7 @@ ncdata <- read_netcdf(ncfile)
 #### Understanding the Output Structure
 
 The
-[`read_netcdf()`](https://github.com/Deltares-research/weathergenr/reference/read_netcdf.md)
+[`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
 function returns a list with five components that organize different
 aspects of the climate data:
 
@@ -218,7 +218,7 @@ ensuring traceability and documentation.
 #### Advanced Usage
 
 The
-[`read_netcdf()`](https://github.com/Deltares-research/weathergenr/reference/read_netcdf.md)
+[`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
 function supports several optional parameters for customized data
 loading:
 
@@ -252,7 +252,7 @@ ncdata <- read_netcdf(
 ### Overview of the Weather Generation Method
 
 The
-[`generate_weather_series()`](https://github.com/Deltares-research/weathergenr/reference/generate_weather_series.md)
+[`generate_weather_series()`](https://deltares-research.github.io/weathergenr/reference/generate_weather_series.md)
 function implements a sophisticated multi-scale weather generation
 framework that combines several statistical methods:
 
@@ -477,7 +477,7 @@ for (i in 1:realization_num) {
 
 Validating the weather generator’s performance is crucial to ensure that
 synthetic weather series are suitable for impact modeling. The
-[`evaluate_weather_generator()`](https://github.com/Deltares-research/weathergenr/reference/evaluate_weather_generator.md)
+[`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
 function provides comprehensive diagnostic comparisons between simulated
 and observed weather across multiple statistical dimensions.
 
@@ -704,7 +704,7 @@ this basic tutorial:
 ### Climate Scenario Analysis
 
 Use
-[`apply_climate_perturbations()`](https://github.com/Deltares-research/weathergenr/reference/apply_climate_perturbations.md)
+[`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
 to modify synthetic weather based on climate change scenarios:
 
 Code

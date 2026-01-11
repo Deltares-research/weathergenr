@@ -239,5 +239,5 @@ analysis. *Bulletin of the American Meteorological Society*, 79(1),
 
 ## See also
 
-[`morlet_wavelet`](https://github.com/Deltares-research/weathergenr/reference/morlet_wavelet.md),
-[`extract_wavelet_components`](https://github.com/Deltares-research/weathergenr/reference/extract_wavelet_components.md)
+[`morlet_wavelet`](https://deltares-research.github.io/weathergenr/reference/morlet_wavelet.md),
+[`extract_wavelet_components`](https://deltares-research.github.io/weathergenr/reference/extract_wavelet_components.md)

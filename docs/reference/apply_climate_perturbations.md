@@ -117,7 +117,7 @@ enforced to prevent numerical instabilities.
 
 ## See also
 
-[`quantile_mapping`](https://github.com/Deltares-research/weathergenr/reference/quantile_mapping.md)
+[`quantile_mapping`](https://deltares-research.github.io/weathergenr/reference/quantile_mapping.md)
 
 ## Examples
 
