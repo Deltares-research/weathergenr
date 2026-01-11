@@ -1,4 +1,14 @@
-url: https://deltares.github.io/weathergenr/
+url: https://deltares-research.github.io/weathergenr
+
 template:
   bootstrap: 5
 
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [search, github]
+
+articles:
+  - title: "Articles"
+    contents:
+      - getting_started

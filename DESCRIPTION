@@ -1,16 +1,15 @@
 Package: weathergenr
 Type: Package
 Title: Gridded semi-parametric weather generator
-Version: 0.1.1
+Version: 0.9.0
 Author: Mehmet Umit Taner
-Maintainer: Mehmet Umit Taner <tanerumit@gmail.com>
+Maintainer: M.Umit Taner <tanerumit@deltares.nl>
 Description: This is the gridded, recoded version of the stochastic weather generator 
   first published by Steinscheineider et al. (2013).
 License: MIT + file LICENSE
 Depends:
   R (>= 4.1)
 Imports:
-    akima,
     doParallel,
     dplyr,
     e1071,
@@ -18,25 +17,30 @@ Imports:
     forecast,
     foreach,
     ggplot2,
+    gridExtra,
     ncdf4,
     parallel,
     patchwork,
-    scales,
     stats,
     tidyr,
-    utils
+    utils,
+    logger,
+    tibble,
+    scales
 Suggests:
     devtools,
+    quarto,
+    rmarkdown,
     knitr,
     magrittr,
-    rmarkdown,
     stringr,
     testthat (>= 3.0.0),
     usethis
 Encoding: UTF-8
 Language: en-US
 LazyData: true
-RoxygenNote: 7.3.1
-VignetteBuilder: knitr
-URL: https://deltares.github.io/weathergenr/
+RoxygenNote: 7.3.3
+URL: https://deltares-research.github.io/weathergenr, https://github.com/Deltares-research/weathergenr
+BugReports: https://github.com/Deltares-research/weathergenr/issues
 Config/testthat/edition: 3
+VignetteBuilder: quarto
