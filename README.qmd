@@ -1,5 +1,6 @@
 ---
 title: "weathergenr"
+format: gfm
 ---
 
 [![R-CMD-check](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Deltares-research/weathergenr/actions)

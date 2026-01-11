@@ -1,6 +1,7 @@
+# weathergenr
 
 
-[![R-CMD-check](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Deltares-research/weathergenr/actions)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/weathergenr.png)](https://CRAN.R-project.org/package=weathergenr)
 [![License:
@@ -10,64 +11,102 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 
 # Overview
 
-*weathergenr* is an R package for generating synthetic weather series
-using a multivariate, gridded, stochastic weather generator. It builds
-on the methodology introduced by [Steinscheineder et al
-(2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528),
-and provides an efficient, user-friendly implementation tailored for
-climate and hydrological studies.
+**weathergenr** is an R package for generating **synthetic,
+multivariate, gridded daily weather series** for climate and
+hydrological impact studies. It implements a stochastic weather
+generator designed to preserve **temporal persistence, spatial
+coherence, and low-frequency climate variability**, while remaining
+computationally efficient and reproducible.
 
-Key features include:
+The package is intended for workflows such as:
 
-:open_file_folder: Support for gridded NetCDF datasets  
-:gear: Script automation and enhanced usability  
-:zap: Significant performance gains via vectorized and parallelized code
+- climate risk and stress testing
+- hydrological and water-resources modelling
+- scenario analysis for climate adaptation studies
+
+## Methodological framework
+
+The generator combines multiple statistical components across temporal
+scales:
+
+### Low-frequency variability (WARM)
+
+Interannual to decadal variability is represented using **Wavelet
+Autoregressive Modeling (WARM)** applied to annual aggregates (typically
+precipitation). Wavelet decomposition isolates significant low-frequency
+modes, which are then stochastically simulated using autoregressive
+processes.
+
+### Daily persistence (Markov chain)
+
+Daily precipitation occurrence is controlled using a **three-state
+Markov chain** (dry, wet, extreme), with month-varying transition
+probabilities. This component reproduces wet/dry spell lengths and
+persistence characteristics that strongly influence hydrological
+response.
+
+### Multivariate resampling (KNN)
+
+Daily weather variables (e.g., precipitation and temperature) are
+resampled using **K-nearest-neighbour (KNN)** selection conditioned on
+annual-scale similarity. This preserves cross-variable dependence,
+seasonality, and spatial correlations across grid cells.
+
+### Climate perturbations and quantile mapping
+
+Synthetic series can be modified using **quantile-based perturbation
+methods** (quantile mapping–style transformations), enabling
+scenario-consistent changes (e.g., temperature shifts, precipitation
+scaling) while keeping stochastic variability and imposed trends
+separable.
+
+## Key features
+
+- support for **gridded NetCDF inputs** and outputs
+- multivariate and multisite weather generation
+- explicit representation of low-frequency climate variability
+- efficient filtering and selection of stochastic realizations
+- designed for reproducible, scenario-based workflows
 
 # Installation
 
-Before installing, make sure you have:
-
-- [R](https://cran.r-project.org/bin/) installed  
-- An R IDE such as [RStudio](https://posit.co/download/rstudio-desktop/)
-
-To install the development version of `weathergenr` from GitHub:
+To install the development version from GitHub:
 
 ``` r
 # install.packages("devtools")
-# devtools::install_github("Deltares/weathergenr")
+# devtools::install_github("Deltares-research/weathergenr")
 ```
 
-# Quick start
+# Getting started
 
-Work-in-progress tutorials and examples are available below:
+A worked end-to-end tutorial is available here:
 
-\-[:blue_book: Getting
-Started](https://deltares-research.github.io/weathergenr/articles/getting_started.html)
+- 📘 **Getting Started**  
+  https://deltares-research.github.io/weathergenr/articles/getting_started.html
 
-Stay tuned - more vignettes and usage examples will be added as the
-package evolves.
+Additional vignettes and advanced examples will be added as the package
+evolves.
 
-# Licence
+# Methodological reference
+
+The stochastic weather generator implemented in **weathergenr** is
+conceptually based on the semiparametric, multisite framework developed
+by Steinschneider and Brown (2013). The present package provides an
+independent implementation and extension of these ideas, adapted for
+gridded datasets, modern NetCDF-based workflows, and large-scale
+stochastic simulation.
+
+Users interested in the theoretical foundations of the approach are
+encouraged to consult the original paper:
+
+> Steinschneider, S., & Brown, C. (2013).  
+> *A semiparametric multivariate, multisite weather generator with
+> low-frequency variability for use in climate risk assessments.*  
+> **Water Resources Research**, 49(11), 7205–7220.  
+> https://doi.org/10.1002/wrcr.20528
+
+# License
 
 Copyright (c) 2019, Deltares
 
-Licensed under the MIT License.
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-“Software”), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Licensed under the MIT License. See `LICENSE` for details.
