@@ -70,6 +70,7 @@
 #' A `Date` vector of length equal to `nrow(sim_dates_table)`, giving the
 #' resampled observed dates corresponding to each simulated day.
 #'
+#' @importFrom stats runif
 #' @export
 resample_weather_dates <- function(
     annual_prcp_sim,
