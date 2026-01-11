@@ -1,92 +1,243 @@
 ---
-title: "Getting started"
-format: 
+title: "Getting Started with weathergenr"
+description: "Read NetCDF inputs, generate stochastic realizations, and evaluate generator skill."
+format:
   html:
     toc: true
-    toc-location: body
-    toc-title: "Table of Contents"
-    toc-depth: 3  # Optional: controls heading levels shown
+    toc-location: left
+    toc-title: "Contents"
+    toc-depth: 2
+    toc-expand: 2
+    page-layout: full
+    code-fold: true
+    code-tools: true
+    df-print: tibble
 execute:
   echo: true
   warning: false
-  eval: true
-  cache: true 
+  message: false
+  cache: false
+  freeze: auto
 vignette: >
-  %\VignetteIndexEntry{Getting started}
+  %\VignetteIndexEntry{Getting Started with weathergenr}
   %\VignetteEngine{quarto::quarto}
   %\VignetteEncoding{UTF-8}
-  %\VignetteDepends{weathergenr, dplyr, ggplot2}
+  %\VignetteDepends{weathergenr, dplyr, ggplot2, tibble}
 ---
 
-# :open_file_folder: Reading Gridded Multivariate Weather Data
+# Introduction
 
-First lets load the packages required
+The **weathergenr** package provides a comprehensive toolkit for stochastic weather generation and climate data analysis. It implements sophisticated statistical methods to create synthetic daily weather series that preserve the statistical properties of observed climate data while enabling scenario-based climate impact assessments.
 
-```{r setup, echo = TRUE, results = "hide", warning = FALSE}
+This vignette demonstrates the core workflow:
+
+1. Reading gridded meteorological data from NetCDF files
+2. Generating synthetic weather realizations using coupled statistical methods  
+3. Evaluating the quality of synthetic weather against historical observations
+
+## Load Required Packages
+
+```{r setup, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}
 library(weathergenr)
 library(dplyr)
 library(ggplot2)
 ```
 
-For this exercise, we'll use the ERA5 dataset (ECMWF Reanalysis v5) included with the package, clipped over the Ntoum Basin in Gabon.
+::: {.callout-note}
+## Related functions
 
-![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){width="60%"}
+- [`read_netcdf()`]
+- [`generate_weather_series()`]
+- [`evaluate_weather_generator()`]
+- [`write_netcdf()`]
+- [`apply_climate_perturbations()`]
+- [`wavelet_spectral_analysis()`]
+:::
 
-Use readNetcdf() to extract meteorological data from NetCDF files. It wraps several ncdf4 functions and returns a structured object with:
 
--   spatial coordinates
--   dates
--   grid info
--   meteorological variables
+
+
+# 📂 Reading Gridded Multivariate Weather Data
+
+## About the Example Dataset
+
+For this tutorial, we use the ERA5 dataset (ECMWF Reanalysis v5) included with the package. The data covers the Ntoum Basin in Gabon, a tropical watershed in West Central Africa. The dataset includes daily precipitation, mean temperature, minimum temperature, and maximum temperature at a 0.25-degree spatial resolution.
+
+![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){width="40%" fig-align="left"}
+
+## Loading NetCDF Data
+
+The `read_netcdf()` function provides an efficient interface for extracting meteorological data from NetCDF files. It handles the complexities of NetCDF format and returns data in a tidy, analysis-ready structure optimized for the weathergenr workflow.
+
+### Key Features
+
+The function performs several important operations:
+
+- Extracts spatial coordinates and temporal information
+- Organizes data into per-grid-cell time series
+- Handles calendar systems including leap day management
+- Provides variable renaming capabilities
+- Optionally removes empty grid cells → reduces memory usage
 
 ```{r ncfile}
+# Locate the example NetCDF file
 ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+
+# Read the NetCDF file with default settings
 ncdata <- read_netcdf(ncfile)
 ```
 
-Inspect the structure:
+### Understanding the Output Structure
 
-```{r ncdata1}
+The `read_netcdf()` function returns a list with five components that organize different aspects of the climate data:
+
+```{r ncdata_structure}
+# Display the top-level structure
 names(ncdata)
 ```
 
-Each grid cell's data is stored as a tidy data frame within the data list:
+#### 1. Time Series Data
 
-```{r ncdata2}
+The `data` element contains a list of tibbles, one for each grid cell. Each tibble represents a daily time series with columns for each meteorological variable:
+
+```{r ncdata_timeseries}
+# Examine the first grid cell's time series
 ncdata$data[[1]]
 ```
 
-Grid metadata can be accessed through the grid element:
+This structure allows efficient access to complete time series for individual locations while maintaining a compact memory footprint.
 
-```{r ncdata3}
+#### 2. Spatial Grid Information
+
+The `grid` element provides spatial metadata for each grid cell:
+
+```{r ncdata_grid}
+# View grid metadata
 ncdata$grid
 ```
 
-Associated dates are accessed via the date element:
+Each row describes a grid cell with:
 
-```{r ncdata4}
+- `id`: Sequential identifier for the grid cell
+- `xind`, `yind`: Array indices in the original NetCDF file
+- `x`, `y`: Spatial coordinates (longitude/latitude or projected coordinates)
+
+#### 3. Temporal Information
+
+The `date` element contains the complete time axis as a vector of Date objects:
+
+```{r ncdata_dates}
+# Display the first and last few dates
 head(ncdata$date)
+tail(ncdata$date)
+
+# Confirm the total number of days
+length(ncdata$date)
 ```
 
-# :gear: Generate Stochastic Weather Realizations
+#### 4. Dimension Vectors
 
-We use generate_weather_series() to simulate new weather sequences from historical record using a coupled a Wavelet Autoregressive Model (WARM) with a a Markov Chain and KNN resampling scheme (See: [Steinscheineder et al (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528)
+The `dimensions` element stores the raw dimension vectors from the NetCDF file:
 
-Define output path, variables, and simulation parameters. **realization_num** parameters sets how many stochastic replicates will be generated.
+```{r ncdata_dimensions}
+# View available dimensions
+names(ncdata$dimensions)
+```
 
-```{r set_params}
+#### 5. Metadata Attributes
+
+The `attributes` element preserves variable attributes, spatial reference information, and global metadata from the NetCDF file, ensuring traceability and documentation.
+
+### Advanced Usage
+
+The `read_netcdf()` function supports several optional parameters for customized data loading:
+
+```{r ncfile_advanced, eval = FALSE}
+# Example: Load specific variables and rename them
+ncdata <- read_netcdf(
+  nc.file = ncfile,
+  variables = c("precip", "temp"),
+  var_rename = c(precip = "precipitation", temp = "temperature")
+)
+
+# Example: Handle 365-day calendar data (no leap days)
+ncdata <- read_netcdf(
+  nc.file = ncfile,
+  leap.days = FALSE
+)
+
+# Example: Round values to reduce precision and memory
+ncdata <- read_netcdf(
+  nc.file = ncfile,
+  signif.digits = 4,
+  omit.empty = TRUE
+)
+```
+
+# ⚙️ Generating Stochastic Weather Realizations
+
+## Overview of the Weather Generation Method
+
+The `generate_weather_series()` function implements a sophisticated multi-scale weather generation framework that combines several statistical methods:
+
+### Statistical Components
+
+1. **Wavelet Autoregressive Modeling (WARM)**: Captures low-frequency (annual to multi-year) climate variability by decomposing annual precipitation signals into wavelet components → simulating their temporal evolution using ARIMA models.
+
+2. **Markov Chain Model**: Controls the persistence of wet and dry spells at the daily scale by modeling transitions between three precipitation states (dry, wet, extreme) with monthly-varying transition probabilities.
+
+3. **K-Nearest Neighbors (KNN) Resampling**: Selects historical analogue years based on similarity in annual precipitation patterns → resamples daily weather sequences from these analogues while preserving spatial and temporal correlations.
+
+This coupled approach ensures that synthetic weather series preserve both:
+
+- **Temporal structure**: Day-to-day persistence, seasonal cycles, and interannual variability
+- **Spatial coherence**: Correlations between grid cells and co-occurrence patterns of weather events
+- **Statistical properties**: Means, variances, extremes, and distributional characteristics
+
+The method is described in detail by [Steinschneider and Brown (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528).
+
+## Setting Up the Simulation
+
+First, define the output directory and specify which meteorological variables to simulate:
+
+```{r setup_simulation}
+# Create a temporary directory for outputs
 output_path <- tempdir()
+
+# Define variables to simulate
 variables <- c("precip", "temp", "temp_min", "temp_max")
-variable_labels <- c("Precip.", "Temp. (avg)", "Temp. (min)", "Temp. (max)")
+
+# Labels for plotting (optional)
+variable_labels <- c("Precipitation", "Temperature (mean)", 
+                     "Temperature (min)", "Temperature (max)")
+
+# Number of stochastic realizations to generate
 realization_num <- 3
 ```
 
-Call the generator:
+### Understanding Simulation Parameters
 
-```{r run_wegen, results='hide'}
+Key parameters control different aspects of the weather generation:
 
+- **Temporal scope**: `sim.year.num` and `sim.year.start` define the simulation period
+- **Realization count**: `realization.num` specifies how many independent synthetic series to create
+- **WARM parameters**: Control annual-scale variability simulation
+  - `warm.variable`: The primary driver variable (typically precipitation)
+  - `warm.signif.level`: Significance threshold for retaining wavelet components (0.90 = 90% confidence)
+  - `warm.sample.num`: Number of candidate annual traces to generate before filtering
+- **KNN parameters**: Control daily-scale resampling
+  - `knn.sample.num`: Number of historical analogue years to consider
+- **Markov Chain parameters**: Define precipitation state thresholds
+  - `mc.wet.quantile`: Threshold for wet day classification (0.3 = 30th percentile)
+  - `mc.extreme.quantile`: Threshold for extreme precipitation (0.8 = 80th percentile)
+
+## Running the Weather Generator
+
+```{r run_generator, results = 'hide'}
+# Set a seed for reproducibility
 seed <- 123
 
+# Generate synthetic weather series
 stochastic_weather <- generate_weather_series(
   weather.data = ncdata$data,
   weather.grid = ncdata$grid,
@@ -99,10 +250,8 @@ stochastic_weather <- generate_weather_series(
   warm.variable = "precip",
   warm.signif.level = 0.90,
   warm.sample.num = 10000,
-  warm.subset.criteria = list(mean = NULL, sd = NULL, min = NULL, max = NULL,
-      sig.thr = NULL, nsig.thr = NULL),
   knn.sample.num = 100,
-  mc.wet.quantile = 0.3,
+  mc.wet.quantile = 0.2,
   mc.extreme.quantile = 0.8,
   output.path = output_path,
   seed = seed,
@@ -111,22 +260,80 @@ stochastic_weather <- generate_weather_series(
 )
 ```
 
-Check resampled dates by the weather generator:
+### Understanding the Output
 
-```{r stochastic3}
+The function returns a list containing:
+
+- `resampled`: The historical dates selected as analogues for each simulation day
+- `dates`: The simulated daily time axis (always 365-day calendar, Feb 29 excluded)
+
+```{r examine_output}
+# View the structure of the output
+names(stochastic_weather)
+
+# Check the simulated date range
+head(stochastic_weather$dates)
+tail(stochastic_weather$dates)
+
+# Examine resampled dates for the first realization
+head(stochastic_weather$resampled[[1]])
+```
+
+### Interpreting Resampled Dates
+
+The resampled dates show which historical days were selected as analogues. This information reveals:
+
+- Whether the generator is drawing from wet or dry historical periods
+- The diversity of historical conditions being sampled
+- Temporal clustering patterns in the resampling scheme
+
+```{r resampled_summary}
+# Display resampled dates for all realizations
 stochastic_weather$resampled
 ```
 
-# :mag: Evaluate Synthetic Series
+## Extracting Synthetic Weather Data
 
-Compare stochastic simulations against historical data using **evaluateWegen** function:
+To access the actual weather values (not just the resampled dates), you need to extract the corresponding data from the historical record:
 
-```{r eval_outputs, results = "hide"}
+```{r extract_synthetic, eval = FALSE}
+# Example: Extract synthetic weather for all realizations
+synthetic_data <- list()
+
+for (i in 1:realization_num) {
+  # Get the day order for this realization
+  day_order <- match(stochastic_weather$resampled[[i]], ncdata$date)
+  
+  # Extract corresponding weather data for each grid cell
+  synthetic_data[[i]] <- lapply(ncdata$data, function(cell_data) {
+    cell_data[day_order, variables] %>%
+      mutate(date = stochastic_weather$dates, .before = 1)
+  })
+}
+```
+
+# 🔍 Evaluating Synthetic Weather Series
+
+## Purpose of Evaluation
+
+Validating the weather generator's performance is crucial to ensure that synthetic weather series are suitable for impact modeling. The `evaluate_weather_generator()` function provides comprehensive diagnostic comparisons between simulated and observed weather across multiple statistical dimensions.
+
+## Preparing Data for Evaluation
+
+The evaluation function requires:
+
+1. Observed weather data in list format (one element per grid cell)
+2. Simulated weather data structured similarly
+3. Matching date columns in both datasets
+
+```{r prepare_evaluation, results = "hide"}
+# Create day order indices for each realization
 day_order <- sapply(
   1:realization_num,
   function(n) match(stochastic_weather$resampled[[n]], ncdata$date)
 )
 
+# Extract synthetic weather samples
 rlz_sample <- list()
 for (n in 1:realization_num) {
   rlz_sample[[n]] <- lapply(ncdata$data[ncdata$grid$id], function(x) {
@@ -136,28 +343,152 @@ for (n in 1:realization_num) {
   })
 }
 
+# Prepare observed data
 obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) {
   x %>%
     select(precip, temp, temp_min, temp_max) %>%
-    dplyr::mutate(date = ncdata$date, .before = 1)
+    mutate(date = ncdata$date, .before = 1)
 })
+```
 
-out <- evaluate_weather_generator(
+## Running the Evaluation
+
+```{r run_evaluation, results = "hide"}
+# Evaluate weather generator performance
+evaluation_plots <- evaluate_weather_generator(
   daily.sim = rlz_sample,
   daily.obs = obs_sample,
   output.path = NULL,
   save.plots = FALSE,
   variables = variables,
   variable.labels = variable_labels,
-  variable.units = NULL,
   realization.num = realization_num,
   wet.quantile = 0.3,
   extreme.quantile = 0.8
 )
 ```
 
-Daily statistics of all weather variables
+## Understanding Evaluation Metrics
 
-```{r eval_plots1, eval=TRUE, echo=TRUE}
-out
+The evaluation function computes and visualizes several key aspects of weather generator performance:
+
+### 1. Daily Statistics
+
+Comparison of mean, standard deviation, and skewness for each variable across all grid cells. This assesses whether the generator preserves the central tendency, variability, and distributional shape of observed weather.
+
+### 2. Wet and Dry Day Frequencies
+
+For precipitation, the evaluation examines:
+
+- Total number of wet days (above the wet threshold)
+- Number of extreme precipitation days (above the extreme threshold)
+- Dry day frequencies
+
+These metrics reveal whether the generator correctly reproduces precipitation occurrence patterns.
+
+### 3. Spell Length Distributions
+
+Analysis of consecutive wet and dry periods:
+
+- Mean wet spell length
+- Mean dry spell length
+- Distribution of spell durations
+
+This assesses the generator's ability to capture persistence in weather patterns.
+
+### 4. Spatial Correlations
+
+Inter-site correlation matrices for each variable, comparing observed versus simulated spatial coherence. This is critical for applications requiring realistic spatial patterns (e.g., regional hydrology).
+
+## Viewing Evaluation Results
+
+```{r view_evaluation, eval = TRUE, echo = TRUE, fig.width = 10, fig.height = 8}
+# Display all diagnostic plots
+evaluation_plots
+```
+
+### Interpreting the Plots
+
+Good weather generator performance is indicated by:
+
+- **Scatter plots near the 1:1 line**: Simulated statistics closely match observed values
+- **Overlapping distributions**: Similar shapes and ranges between observed and simulated
+- **Consistent correlation patterns**: Spatial correlations preserved in synthetic data
+- **Balanced residuals**: No systematic bias in any direction
+
+Discrepancies may indicate:
+
+- Parameter tuning needed → adjust WARM or Markov chain thresholds
+- Insufficient historical analogue pool → increase KNN sample size
+- Structural limitations for specific climate regimes
+
+# Other Features
+
+The weathergenr package supports additional capabilities not covered in this basic tutorial:
+
+## Climate Scenario Analysis
+
+Use `apply_climate_perturbations()` to modify synthetic weather based on climate change scenarios:
+
+```{r climate_scenarios, eval = FALSE}
+# Example: Apply temperature increase and precipitation changes
+perturbed_weather <- apply_climate_perturbations(
+  weather.data = synthetic_data[[1]],
+  temperature.change = 2.0,  # 2°C increase
+  precipitation.change = 1.1,  # 10% increase
+  month.start = 1
+)
+```
+
+## Wavelet Spectral Analysis
+
+Explore low-frequency climate variability using wavelet transforms:
+
+```{r wavelet_analysis, eval = FALSE}
+# Analyze spectral characteristics of annual precipitation
+wavelet_results <- wavelet_spectral_analysis(
+  annual.series = annual_precip,
+  signif.level = 0.90,
+  mode = "fast"
+)
+```
+
+## Parallel Computing
+
+For large spatial domains, enable parallel processing to accelerate computation:
+
+```{r parallel_example, eval = FALSE}
+# Generate weather using multiple cores
+stochastic_weather <- generate_weather_series(
+  # ... other parameters ...
+  compute.parallel = TRUE,
+  num.cores = 4
+)
+```
+
+## Saving and Exporting Results
+
+Results can be written back to NetCDF format for use in other tools:
+
+```{r save_results, eval = FALSE}
+# Example: Write synthetic weather to NetCDF
+write_netcdf(
+  weather.data = synthetic_data[[1]],
+  weather.grid = ncdata$grid,
+  weather.date = stochastic_weather$dates,
+  variables = variables,
+  output.file = file.path(output_path, "synthetic_weather.nc")
+)
+```
+
+# Further Reading
+- **Methodological details**: See Steinschneider and Brown (2013) for the theoretical foundation
+- **Package documentation**: Use `?function_name` to access detailed help for any function
+
+---
+
+**Session Information**
+
+```{r session_info, echo = FALSE}
+sessionInfo()
 ```

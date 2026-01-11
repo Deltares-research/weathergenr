@@ -3,7 +3,8 @@ Type: Package
 Title: Gridded semi-parametric weather generator
 Version: 0.9.0
 Author: Mehmet Umit Taner
-Maintainer: Mehmet Umit Taner <tanerumit@gmail.com>
+url: https://deltares-research.github.io/weathergenr
+Maintainer: M.Umit Taner <tanerumit@deltares.nl>
 Description: This is the gridded, recoded version of the stochastic weather generator 
   first published by Steinscheineider et al. (2013).
 License: MIT + file LICENSE
