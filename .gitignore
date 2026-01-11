@@ -1,6 +1,4 @@
-
-docs
-
+# R / IDE
 .Rproj.user
 .Rhistory
 .RData
@@ -10,24 +8,23 @@ docs
 .DS_Store
 .httr-oauth
 
-/vignettes/*.R
-vignettes/*_files/
-vignettes/*.html
-
+# Build artifacts
 /*.Rcheck/
 /*.tar.gz
-/Meta/
+*-Ex.R
+
+# pkgdown (keep source folder tracked; ignore only build artifacts if any)
+/pkgdown/
+
+# Quarto/knitr artifacts
+vignettes/*_files/
+vignettes/*.html
+*_cache/
 /cache/
 /temp/
 
+# Misc
 /tests/tests_manual/
-
 man/.Rapp.history
-
-*-Ex.R
-*_cache/
 *.utf8.md
 *.knit.md
-LICENSE.md
-README.md
-
