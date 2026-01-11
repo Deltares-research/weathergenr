@@ -103,7 +103,7 @@ filter_warm_simulations(
 - wavelet.pars:
 
   Named list passed to
-  [`wavelet_spectral_analysis`](https://github.com/Deltares-research/weathergenr/reference/wavelet_spectral_analysis.md)
+  [`wavelet_spectral_analysis`](https://deltares-research.github.io/weathergenr/reference/wavelet_spectral_analysis.md)
   for observed and simulated series. Typical entries include
   `signif.level`, `noise.type`, `period.lower.limit`, and `detrend`.
 
@@ -175,7 +175,7 @@ observed-relevant band.
 
 ## See also
 
-[`wavelet_spectral_analysis`](https://github.com/Deltares-research/weathergenr/reference/wavelet_spectral_analysis.md)
+[`wavelet_spectral_analysis`](https://deltares-research.github.io/weathergenr/reference/wavelet_spectral_analysis.md)
 
 ## Examples
 

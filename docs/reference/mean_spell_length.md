@@ -61,4 +61,4 @@ occurrence or Markov-state definitions used in the analysis.
 
 ## See also
 
-[`markov_next_state`](https://github.com/Deltares-research/weathergenr/reference/markov_next_state.md)
+[`markov_next_state`](https://deltares-research.github.io/weathergenr/reference/markov_next_state.md)

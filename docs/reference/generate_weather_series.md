@@ -174,12 +174,12 @@ All downstream processing and outputs therefore use a 365-day calendar.
 2.  **Annual WARM simulation:** aggregate historical daily data to
     annual means (by water year if applicable), run wavelet analysis on
     the annual series, simulate candidate annual traces via
-    [`wavelet_arima`](https://github.com/Deltares-research/weathergenr/reference/wavelet_arima.md),
+    [`wavelet_arima`](https://deltares-research.github.io/weathergenr/reference/wavelet_arima.md),
     and subset traces using
-    [`filter_warm_simulations`](https://github.com/Deltares-research/weathergenr/reference/filter_warm_simulations.md).
+    [`filter_warm_simulations`](https://deltares-research.github.io/weathergenr/reference/filter_warm_simulations.md).
 
 3.  **Daily disaggregation:** for each realization, call
-    [`resample_weather_dates()`](https://github.com/Deltares-research/weathergenr/reference/resample_weather_dates.md)
+    [`resample_weather_dates()`](https://deltares-research.github.io/weathergenr/reference/resample_weather_dates.md)
     to generate a simulated sequence of historical analogue dates (in
     the internal 365-day calendar).
 
