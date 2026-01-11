@@ -1,6 +1,5 @@
-# .build_quarto_vignettes.R
 
-# tools/build_quarto_vignettes.R
+# dev/build_quarto_vignettes.R
 
 build_quarto_vignettes <- function() {
   if (!nzchar(Sys.which("quarto"))) {
@@ -29,5 +28,5 @@ build_quarto_vignettes <- function() {
   invisible(TRUE)
 }
 
-# source("tools/build_quarto_vignettes.R")
+# source("dev/.build_quarto_vignettes.R")
 # build_quarto_vignettes()

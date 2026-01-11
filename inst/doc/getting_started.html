@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.32">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Getting Started with weathergenr</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="getting_started_files/libs/clipboard/clipboard.min.js"></script>
+<script src="getting_started_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="getting_started_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="getting_started_files/libs/quarto-html/popper.min.js"></script>
+<script src="getting_started_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="getting_started_files/libs/quarto-html/anchor.min.js"></script>
+<link href="getting_started_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="getting_started_files/libs/quarto-html/quarto-syntax-highlighting-37eea08aefeeee20ff55810ff984fec1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="getting_started_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="getting_started_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="getting_started_files/libs/bootstrap/bootstrap-bb462d781dde1847d9e3ccf7736099dd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-full toc-left">
+<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
+  <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="1">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul class="collapse">
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a>
+  <ul class="collapse">
+  <li><a href="#load-required-packages" id="toc-load-required-packages" class="nav-link" data-scroll-target="#load-required-packages">Load Required Packages</a></li>
+  </ul></li>
+  <li><a href="#reading-gridded-multivariate-weather-data" id="toc-reading-gridded-multivariate-weather-data" class="nav-link" data-scroll-target="#reading-gridded-multivariate-weather-data">📂 Reading Gridded Multivariate Weather Data</a>
+  <ul class="collapse">
+  <li><a href="#about-the-example-dataset" id="toc-about-the-example-dataset" class="nav-link" data-scroll-target="#about-the-example-dataset">About the Example Dataset</a></li>
+  <li><a href="#loading-netcdf-data" id="toc-loading-netcdf-data" class="nav-link" data-scroll-target="#loading-netcdf-data">Loading NetCDF Data</a></li>
+  </ul></li>
+  <li><a href="#generating-stochastic-weather-realizations" id="toc-generating-stochastic-weather-realizations" class="nav-link" data-scroll-target="#generating-stochastic-weather-realizations">⚙️ Generating Stochastic Weather Realizations</a>
+  <ul class="collapse">
+  <li><a href="#overview-of-the-weather-generation-method" id="toc-overview-of-the-weather-generation-method" class="nav-link" data-scroll-target="#overview-of-the-weather-generation-method">Overview of the Weather Generation Method</a></li>
+  <li><a href="#setting-up-the-simulation" id="toc-setting-up-the-simulation" class="nav-link" data-scroll-target="#setting-up-the-simulation">Setting Up the Simulation</a></li>
+  <li><a href="#running-the-weather-generator" id="toc-running-the-weather-generator" class="nav-link" data-scroll-target="#running-the-weather-generator">Running the Weather Generator</a></li>
+  <li><a href="#extracting-synthetic-weather-data" id="toc-extracting-synthetic-weather-data" class="nav-link" data-scroll-target="#extracting-synthetic-weather-data">Extracting Synthetic Weather Data</a></li>
+  </ul></li>
+  <li><a href="#evaluating-synthetic-weather-series" id="toc-evaluating-synthetic-weather-series" class="nav-link" data-scroll-target="#evaluating-synthetic-weather-series">🔍 Evaluating Synthetic Weather Series</a>
+  <ul class="collapse">
+  <li><a href="#purpose-of-evaluation" id="toc-purpose-of-evaluation" class="nav-link" data-scroll-target="#purpose-of-evaluation">Purpose of Evaluation</a></li>
+  <li><a href="#preparing-data-for-evaluation" id="toc-preparing-data-for-evaluation" class="nav-link" data-scroll-target="#preparing-data-for-evaluation">Preparing Data for Evaluation</a></li>
+  <li><a href="#running-the-evaluation" id="toc-running-the-evaluation" class="nav-link" data-scroll-target="#running-the-evaluation">Running the Evaluation</a></li>
+  <li><a href="#understanding-evaluation-metrics" id="toc-understanding-evaluation-metrics" class="nav-link" data-scroll-target="#understanding-evaluation-metrics">Understanding Evaluation Metrics</a></li>
+  <li><a href="#viewing-evaluation-results" id="toc-viewing-evaluation-results" class="nav-link" data-scroll-target="#viewing-evaluation-results">Viewing Evaluation Results</a></li>
+  </ul></li>
+  <li><a href="#next-steps" id="toc-next-steps" class="nav-link" data-scroll-target="#next-steps">Next Steps</a>
+  <ul class="collapse">
+  <li><a href="#advanced-features" id="toc-advanced-features" class="nav-link" data-scroll-target="#advanced-features">Advanced Features</a></li>
+  <li><a href="#further-reading" id="toc-further-reading" class="nav-link" data-scroll-target="#further-reading">Further Reading</a></li>
+  <li><a href="#saving-and-exporting-results" id="toc-saving-and-exporting-results" class="nav-link" data-scroll-target="#saving-and-exporting-results">Saving and Exporting Results</a></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+</div>
+<main class="content column-page-right" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title">Getting Started with weathergenr</h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">View Source</a></li></ul></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta column-page-right">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>The <strong>weathergenr</strong> package provides a comprehensive toolkit for stochastic weather generation and climate data analysis. It implements sophisticated statistical methods to create synthetic daily weather series that preserve the statistical properties of observed climate data while enabling scenario-based climate impact assessments.</p>
+<p>This vignette demonstrates the core workflow:</p>
+<ol type="1">
+<li>Reading gridded meteorological data from NetCDF files</li>
+<li>Generating synthetic weather realizations using coupled statistical methods<br>
+</li>
+<li>Evaluating the quality of synthetic weather against historical observations</li>
+</ol>
+<section id="load-required-packages" class="level2">
+<h2 class="anchored" data-anchor-id="load-required-packages">Load Required Packages</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(weathergenr)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+<section id="reading-gridded-multivariate-weather-data" class="level1">
+<h1>📂 Reading Gridded Multivariate Weather Data</h1>
+<section id="about-the-example-dataset" class="level2">
+<h2 class="anchored" data-anchor-id="about-the-example-dataset">About the Example Dataset</h2>
+<p>For this tutorial, we use the ERA5 dataset (ECMWF Reanalysis v5) included with the package. The data covers the Ntoum Basin in Gabon, a tropical watershed in West Central Africa. The dataset includes daily precipitation, mean temperature, minimum temperature, and maximum temperature at a 0.25-degree spatial resolution.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/ntoum_basin.png" class="img-fluid figure-img" style="width:60.0%"></p>
+<figcaption>Map of Ntoum Basin, Gabon</figcaption>
+</figure>
+</div>
+</section>
+<section id="loading-netcdf-data" class="level2">
+<h2 class="anchored" data-anchor-id="loading-netcdf-data">Loading NetCDF Data</h2>
+<p>The <code>read_netcdf()</code> function provides an efficient interface for extracting meteorological data from NetCDF files. It handles the complexities of NetCDF format and returns data in a tidy, analysis-ready structure optimized for the weathergenr workflow.</p>
+<section id="key-features" class="level3">
+<h3 class="anchored" data-anchor-id="key-features">Key Features</h3>
+<p>The function performs several important operations:</p>
+<ul>
+<li>Extracts spatial coordinates and temporal information</li>
+<li>Organizes data into per-grid-cell time series</li>
+<li>Handles calendar systems including leap day management</li>
+<li>Provides variable renaming capabilities</li>
+<li>Optionally removes empty grid cells → reduces memory usage</li>
+</ul>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Locate the example NetCDF file</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>ncfile <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">"extdata"</span>, <span class="st">"ntoum_era5_data.nc"</span>, <span class="at">package =</span> <span class="st">"weathergenr"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the NetCDF file with default settings</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">read_netcdf</span>(ncfile)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="understanding-the-output-structure" class="level3">
+<h3 class="anchored" data-anchor-id="understanding-the-output-structure">Understanding the Output Structure</h3>
+<p>The <code>read_netcdf()</code> function returns a list with five components that organize different aspects of the climate data:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Display the top-level structure</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(ncdata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "data"       "grid"       "date"       "dimensions" "attributes"</code></pre>
+</div>
+</div>
+<section id="time-series-data" class="level4">
+<h4 class="anchored" data-anchor-id="time-series-data">1. Time Series Data</h4>
+<p>The <code>data</code> element contains a list of tibbles, one for each grid cell. Each tibble represents a daily time series with columns for each meteorological variable:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Examine the first grid cell's time series</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>ncdata<span class="sc">$</span>data[[<span class="dv">1</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 7,671 × 7
+   press_msl   kin temp_min temp_max  temp  kout precip
+       &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
+ 1     1008.  174.     24.4     28.1  25.9  410.  9.12 
+ 2     1008.  162.     23.7     28.1  24.9  410. 15.6  
+ 3     1008.  201.     23.6     27.9  25.6  411.  4.84 
+ 4     1008.  177.     25.0     28.3  26.1  411.  5.20 
+ 5     1007.  218.     24.6     28.1  26.1  411.  1.54 
+ 6     1007.  199.     25.0     28.2  26.3  411.  8.35 
+ 7     1008.  195.     24.3     28.3  25.9  412. 14.4  
+ 8     1009.  158.     24.6     26.5  25.4  412. 11.4  
+ 9     1010.  143.     24.1     27.1  25.1  413.  9.15 
+10     1009.  220.     23.9     28.6  26.1  413.  0.810
+# ℹ 7,661 more rows</code></pre>
+</div>
+</div>
+<p>This structure allows efficient access to complete time series for individual locations while maintaining a compact memory footprint.</p>
+</section>
+<section id="spatial-grid-information" class="level4">
+<h4 class="anchored" data-anchor-id="spatial-grid-information">2. Spatial Grid Information</h4>
+<p>The <code>grid</code> element provides spatial metadata for each grid cell:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># View grid metadata</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>ncdata<span class="sc">$</span>grid</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 5
+     id  xind  yind         x         y
+  &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;dbl[1d]&gt; &lt;dbl[1d]&gt;
+1     1     1     1      9.5       0.5 
+2     2     2     1      9.75      0.5 
+3     3     3     1     10         0.5 
+4     4     1     2      9.5       0.25
+5     5     2     2      9.75      0.25
+6     6     3     2     10         0.25</code></pre>
+</div>
+</div>
+<p>Each row describes a grid cell with:</p>
+<ul>
+<li><code>id</code>: Sequential identifier for the grid cell</li>
+<li><code>xind</code>, <code>yind</code>: Array indices in the original NetCDF file</li>
+<li><code>x</code>, <code>y</code>: Spatial coordinates (longitude/latitude or projected coordinates)</li>
+</ul>
+</section>
+<section id="temporal-information" class="level4">
+<h4 class="anchored" data-anchor-id="temporal-information">3. Temporal Information</h4>
+<p>The <code>date</code> element contains the complete time axis as a vector of Date objects:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Display the first and last few dates</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ncdata<span class="sc">$</span>date)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2000-01-01" "2000-01-02" "2000-01-03" "2000-01-04" "2000-01-05"
+[6] "2000-01-06"</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(ncdata<span class="sc">$</span>date)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2020-12-26" "2020-12-27" "2020-12-28" "2020-12-29" "2020-12-30"
+[6] "2020-12-31"</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Confirm the total number of days</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(ncdata<span class="sc">$</span>date)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 7671</code></pre>
+</div>
+</div>
+</section>
+<section id="dimension-vectors" class="level4">
+<h4 class="anchored" data-anchor-id="dimension-vectors">4. Dimension Vectors</h4>
+<p>The <code>dimensions</code> element stores the raw dimension vectors from the NetCDF file:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># View available dimensions</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(ncdata<span class="sc">$</span>dimensions)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "time"      "longitude" "latitude" </code></pre>
+</div>
+</div>
+</section>
+<section id="metadata-attributes" class="level4">
+<h4 class="anchored" data-anchor-id="metadata-attributes">5. Metadata Attributes</h4>
+<p>The <code>attributes</code> element preserves variable attributes, spatial reference information, and global metadata from the NetCDF file, ensuring traceability and documentation.</p>
+</section>
+</section>
+<section id="advanced-usage" class="level3">
+<h3 class="anchored" data-anchor-id="advanced-usage">Advanced Usage</h3>
+<p>The <code>read_netcdf()</code> function supports several optional parameters for customized data loading:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Load specific variables and rename them</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">read_netcdf</span>(</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">nc.file =</span> ncfile,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">variables =</span> <span class="fu">c</span>(<span class="st">"precip"</span>, <span class="st">"temp"</span>),</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">var_rename =</span> <span class="fu">c</span>(<span class="at">precip =</span> <span class="st">"precipitation"</span>, <span class="at">temp =</span> <span class="st">"temperature"</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Handle 365-day calendar data (no leap days)</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">read_netcdf</span>(</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">nc.file =</span> ncfile,</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">leap.days =</span> <span class="cn">FALSE</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Round values to reduce precision and memory</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">read_netcdf</span>(</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">nc.file =</span> ncfile,</span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">signif.digits =</span> <span class="dv">4</span>,</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">omit.empty =</span> <span class="cn">TRUE</span></span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+</section>
+<section id="generating-stochastic-weather-realizations" class="level1">
+<h1>⚙️ Generating Stochastic Weather Realizations</h1>
+<section id="overview-of-the-weather-generation-method" class="level2">
+<h2 class="anchored" data-anchor-id="overview-of-the-weather-generation-method">Overview of the Weather Generation Method</h2>
+<p>The <code>generate_weather_series()</code> function implements a sophisticated multi-scale weather generation framework that combines several statistical methods:</p>
+<section id="statistical-components" class="level3">
+<h3 class="anchored" data-anchor-id="statistical-components">Statistical Components</h3>
+<ol type="1">
+<li><p><strong>Wavelet Autoregressive Modeling (WARM)</strong>: Captures low-frequency (annual to multi-year) climate variability by decomposing annual precipitation signals into wavelet components → simulating their temporal evolution using ARIMA models.</p></li>
+<li><p><strong>Markov Chain Model</strong>: Controls the persistence of wet and dry spells at the daily scale by modeling transitions between three precipitation states (dry, wet, extreme) with monthly-varying transition probabilities.</p></li>
+<li><p><strong>K-Nearest Neighbors (KNN) Resampling</strong>: Selects historical analogue years based on similarity in annual precipitation patterns → resamples daily weather sequences from these analogues while preserving spatial and temporal correlations.</p></li>
+</ol>
+<p>This coupled approach ensures that synthetic weather series preserve both:</p>
+<ul>
+<li><strong>Temporal structure</strong>: Day-to-day persistence, seasonal cycles, and interannual variability</li>
+<li><strong>Spatial coherence</strong>: Correlations between grid cells and co-occurrence patterns of weather events</li>
+<li><strong>Statistical properties</strong>: Means, variances, extremes, and distributional characteristics</li>
+</ul>
+<p>The method is described in detail by <a href="https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528">Steinschneider and Brown (2013)</a>.</p>
+</section>
+</section>
+<section id="setting-up-the-simulation" class="level2">
+<h2 class="anchored" data-anchor-id="setting-up-the-simulation">Setting Up the Simulation</h2>
+<p>First, define the output directory and specify which meteorological variables to simulate:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a temporary directory for outputs</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>output_path <span class="ot">&lt;-</span> <span class="fu">tempdir</span>()</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Define variables to simulate</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>variables <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"precip"</span>, <span class="st">"temp"</span>, <span class="st">"temp_min"</span>, <span class="st">"temp_max"</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Labels for plotting (optional)</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>variable_labels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Precipitation"</span>, <span class="st">"Temperature (mean)"</span>, </span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>                     <span class="st">"Temperature (min)"</span>, <span class="st">"Temperature (max)"</span>)</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Number of stochastic realizations to generate</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>realization_num <span class="ot">&lt;-</span> <span class="dv">3</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<section id="understanding-simulation-parameters" class="level3">
+<h3 class="anchored" data-anchor-id="understanding-simulation-parameters">Understanding Simulation Parameters</h3>
+<p>Key parameters control different aspects of the weather generation:</p>
+<ul>
+<li><strong>Temporal scope</strong>: <code>sim.year.num</code> and <code>sim.year.start</code> define the simulation period</li>
+<li><strong>Realization count</strong>: <code>realization.num</code> specifies how many independent synthetic series to create</li>
+<li><strong>WARM parameters</strong>: Control annual-scale variability simulation
+<ul>
+<li><code>warm.variable</code>: The primary driver variable (typically precipitation)</li>
+<li><code>warm.signif.level</code>: Significance threshold for retaining wavelet components (0.90 = 90% confidence)</li>
+<li><code>warm.sample.num</code>: Number of candidate annual traces to generate before filtering</li>
+</ul></li>
+<li><strong>KNN parameters</strong>: Control daily-scale resampling
+<ul>
+<li><code>knn.sample.num</code>: Number of historical analogue years to consider</li>
+</ul></li>
+<li><strong>Markov Chain parameters</strong>: Define precipitation state thresholds
+<ul>
+<li><code>mc.wet.quantile</code>: Threshold for wet day classification (0.3 = 30th percentile)</li>
+<li><code>mc.extreme.quantile</code>: Threshold for extreme precipitation (0.8 = 80th percentile)</li>
+</ul></li>
+</ul>
+</section>
+</section>
+<section id="running-the-weather-generator" class="level2">
+<h2 class="anchored" data-anchor-id="running-the-weather-generator">Running the Weather Generator</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set a seed for reproducibility</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>seed <span class="ot">&lt;-</span> <span class="dv">123</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate synthetic weather series</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="ot">&lt;-</span> <span class="fu">generate_weather_series</span>(</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.data =</span> ncdata<span class="sc">$</span>data,</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.grid =</span> ncdata<span class="sc">$</span>grid,</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.date =</span> ncdata<span class="sc">$</span>date,</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">variables =</span> variables,</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">sim.year.num =</span> <span class="dv">20</span>,</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">sim.year.start =</span> <span class="dv">2020</span>,</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">month.start =</span> <span class="dv">1</span>,</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">realization.num =</span> realization_num,</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">warm.variable =</span> <span class="st">"precip"</span>,</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">warm.signif.level =</span> <span class="fl">0.90</span>,</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">warm.sample.num =</span> <span class="dv">10000</span>,</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">knn.sample.num =</span> <span class="dv">100</span>,</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">mc.wet.quantile =</span> <span class="fl">0.2</span>,</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">mc.extreme.quantile =</span> <span class="fl">0.8</span>,</span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">output.path =</span> output_path,</span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>  <span class="at">seed =</span> seed,</span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>  <span class="at">compute.parallel =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a>  <span class="at">num.cores =</span> <span class="cn">NULL</span></span>
+<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<section id="understanding-the-output" class="level3">
+<h3 class="anchored" data-anchor-id="understanding-the-output">Understanding the Output</h3>
+<p>The function returns a list containing:</p>
+<ul>
+<li><code>resampled</code>: The historical dates selected as analogues for each simulation day</li>
+<li><code>dates</code>: The simulated daily time axis (always 365-day calendar, Feb 29 excluded)</li>
+</ul>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># View the structure of the output</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(stochastic_weather)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "resampled" "dates"    </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Check the simulated date range</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(stochastic_weather<span class="sc">$</span>dates)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2020-01-01" "2020-01-02" "2020-01-03" "2020-01-04" "2020-01-05"
+[6] "2020-01-06"</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(stochastic_weather<span class="sc">$</span>dates)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2039-12-26" "2039-12-27" "2039-12-28" "2039-12-29" "2039-12-30"
+[6] "2039-12-31"</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Examine resampled dates for the first realization</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(stochastic_weather<span class="sc">$</span>resampled[[<span class="dv">1</span>]])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2015-01-01" "2011-01-03" "2010-01-04" "2010-01-04" "2010-01-05"
+[6] "2010-01-06"</code></pre>
+</div>
+</div>
+</section>
+<section id="interpreting-resampled-dates" class="level3">
+<h3 class="anchored" data-anchor-id="interpreting-resampled-dates">Interpreting Resampled Dates</h3>
+<p>The resampled dates show which historical days were selected as analogues. This information reveals:</p>
+<ul>
+<li>Whether the generator is drawing from wet or dry historical periods</li>
+<li>The diversity of historical conditions being sampled</li>
+<li>Temporal clustering patterns in the resampling scheme</li>
+</ul>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Display resampled dates for all realizations</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>stochastic_weather<span class="sc">$</span>resampled</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 7,300 × 3
+   rlz_1      rlz_2      rlz_3     
+   &lt;date[1d]&gt; &lt;date[1d]&gt; &lt;date[1d]&gt;
+ 1 2015-01-01 2005-01-01 2013-01-01
+ 2 2011-01-03 2005-01-02 2013-01-05
+ 3 2010-01-04 2010-01-03 2013-01-06
+ 4 2010-01-04 2010-01-04 2013-01-02
+ 5 2010-01-05 2015-01-03 2004-01-05
+ 6 2010-01-06 2005-01-08 2004-01-07
+ 7 2010-01-10 2005-01-09 2004-01-08
+ 8 2010-01-11 2010-01-09 2004-01-25
+ 9 2010-01-12 2010-01-10 2013-01-13
+10 2010-01-13 2015-01-11 2004-01-08
+# ℹ 7,290 more rows</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="extracting-synthetic-weather-data" class="level2">
+<h2 class="anchored" data-anchor-id="extracting-synthetic-weather-data">Extracting Synthetic Weather Data</h2>
+<p>To access the actual weather values (not just the resampled dates), you need to extract the corresponding data from the historical record:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Extract synthetic weather for all realizations</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>synthetic_data <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>realization_num) {</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Get the day order for this realization</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>  day_order <span class="ot">&lt;-</span> <span class="fu">match</span>(stochastic_weather<span class="sc">$</span>resampled[[i]], ncdata<span class="sc">$</span>date)</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Extract corresponding weather data for each grid cell</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>  synthetic_data[[i]] <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data, <span class="cf">function</span>(cell_data) {</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    cell_data[day_order, variables] <span class="sc">%&gt;%</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">date =</span> stochastic_weather<span class="sc">$</span>dates, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+<section id="evaluating-synthetic-weather-series" class="level1">
+<h1>🔍 Evaluating Synthetic Weather Series</h1>
+<section id="purpose-of-evaluation" class="level2">
+<h2 class="anchored" data-anchor-id="purpose-of-evaluation">Purpose of Evaluation</h2>
+<p>Validating the weather generator’s performance is crucial to ensure that synthetic weather series are suitable for impact modeling. The <code>evaluate_weather_generator()</code> function provides comprehensive diagnostic comparisons between simulated and observed weather across multiple statistical dimensions.</p>
+</section>
+<section id="preparing-data-for-evaluation" class="level2">
+<h2 class="anchored" data-anchor-id="preparing-data-for-evaluation">Preparing Data for Evaluation</h2>
+<p>The evaluation function requires:</p>
+<ol type="1">
+<li>Observed weather data in list format (one element per grid cell)</li>
+<li>Simulated weather data structured similarly</li>
+<li>Matching date columns in both datasets</li>
+</ol>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create day order indices for each realization</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>day_order <span class="ot">&lt;-</span> <span class="fu">sapply</span>(</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="dv">1</span><span class="sc">:</span>realization_num,</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(n) <span class="fu">match</span>(stochastic_weather<span class="sc">$</span>resampled[[n]], ncdata<span class="sc">$</span>date)</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Extract synthetic weather samples</span></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>rlz_sample <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (n <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>realization_num) {</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>  rlz_sample[[n]] <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data[ncdata<span class="sc">$</span>grid<span class="sc">$</span>id], <span class="cf">function</span>(x) {</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>    x[day_order[, n], ] <span class="sc">%&gt;%</span></span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">select</span>(precip, temp, temp_min, temp_max) <span class="sc">%&gt;%</span></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">date =</span> stochastic_weather<span class="sc">$</span>dates, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Prepare observed data</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>obs_sample <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data[ncdata<span class="sc">$</span>grid<span class="sc">$</span>id], <span class="cf">function</span>(x) {</span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>  x <span class="sc">%&gt;%</span></span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(precip, temp, temp_min, temp_max) <span class="sc">%&gt;%</span></span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">date =</span> ncdata<span class="sc">$</span>date, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="running-the-evaluation" class="level2">
+<h2 class="anchored" data-anchor-id="running-the-evaluation">Running the Evaluation</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Evaluate weather generator performance</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>evaluation_plots <span class="ot">&lt;-</span> <span class="fu">evaluate_weather_generator</span>(</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">daily.sim =</span> rlz_sample,</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">daily.obs =</span> obs_sample,</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">output.path =</span> <span class="cn">NULL</span>,</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">save.plots =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">variables =</span> variables,</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">variable.labels =</span> variable_labels,</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">realization.num =</span> realization_num,</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">wet.quantile =</span> <span class="fl">0.3</span>,</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">extreme.quantile =</span> <span class="fl">0.8</span></span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="understanding-evaluation-metrics" class="level2">
+<h2 class="anchored" data-anchor-id="understanding-evaluation-metrics">Understanding Evaluation Metrics</h2>
+<p>The evaluation function computes and visualizes several key aspects of weather generator performance:</p>
+<section id="daily-statistics" class="level3">
+<h3 class="anchored" data-anchor-id="daily-statistics">1. Daily Statistics</h3>
+<p>Comparison of mean, standard deviation, and skewness for each variable across all grid cells. This assesses whether the generator preserves the central tendency, variability, and distributional shape of observed weather.</p>
+</section>
+<section id="wet-and-dry-day-frequencies" class="level3">
+<h3 class="anchored" data-anchor-id="wet-and-dry-day-frequencies">2. Wet and Dry Day Frequencies</h3>
+<p>For precipitation, the evaluation examines:</p>
+<ul>
+<li>Total number of wet days (above the wet threshold)</li>
+<li>Number of extreme precipitation days (above the extreme threshold)</li>
+<li>Dry day frequencies</li>
+</ul>
+<p>These metrics reveal whether the generator correctly reproduces precipitation occurrence patterns.</p>
+</section>
+<section id="spell-length-distributions" class="level3">
+<h3 class="anchored" data-anchor-id="spell-length-distributions">3. Spell Length Distributions</h3>
+<p>Analysis of consecutive wet and dry periods:</p>
+<ul>
+<li>Mean wet spell length</li>
+<li>Mean dry spell length</li>
+<li>Distribution of spell durations</li>
+</ul>
+<p>This assesses the generator’s ability to capture persistence in weather patterns.</p>
+</section>
+<section id="spatial-correlations" class="level3">
+<h3 class="anchored" data-anchor-id="spatial-correlations">4. Spatial Correlations</h3>
+<p>Inter-site correlation matrices for each variable, comparing observed versus simulated spatial coherence. This is critical for applications requiring realistic spatial patterns (e.g., regional hydrology).</p>
+</section>
+</section>
+<section id="viewing-evaluation-results" class="level2">
+<h2 class="anchored" data-anchor-id="viewing-evaluation-results">Viewing Evaluation Results</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Display all diagnostic plots</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>evaluation_plots</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>$daily_mean</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-1.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$daily_sd</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-2.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$spell_length</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-3.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$wetdry_days_count</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-4.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$crossgrid</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-5.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$intergrid</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-6.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$precip_cond_cor</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-7.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$annual_pattern_precip</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-8.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$annual_pattern_temp</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-9.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$annual_pattern_temp_min</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-10.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$annual_pattern_temp_max</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-11.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$monthly_cycle</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-12.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+$annual_precip</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="getting_started_files/figure-html/view_evaluation-13.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+attr(,"class")
+[1] "weather_assessment" "list"              
+attr(,"fit_summary")
+# A tibble: 3 × 17
+  rlz    rank overall_score mae_mean_precip mae_mean_temp mae_mean_temp_max
+  &lt;chr&gt; &lt;int&gt;         &lt;dbl&gt;           &lt;dbl&gt;         &lt;dbl&gt;             &lt;dbl&gt;
+1 3         1         0.215            2.60          17.0              19.2
+2 1         2         0.498            2.78          17.0              19.2
+3 2         3         0.695            2.72          17.0              19.2
+# ℹ 11 more variables: mae_mean_temp_min &lt;dbl&gt;, mae_sd_precip &lt;dbl&gt;,
+#   mae_sd_temp &lt;dbl&gt;, mae_sd_temp_max &lt;dbl&gt;, mae_sd_temp_min &lt;dbl&gt;,
+#   mae_days_Dry &lt;dbl&gt;, mae_days_Wet &lt;dbl&gt;, mae_spell_Dry &lt;dbl&gt;,
+#   mae_spell_Wet &lt;dbl&gt;, mae_cor_crossgrid &lt;dbl&gt;, mae_cor_intervariable &lt;dbl&gt;
+attr(,"metadata")
+attr(,"metadata")$n_grids
+[1] 6
+
+attr(,"metadata")$realization.num
+[1] 3
+
+attr(,"metadata")$variables
+[1] "precip"   "temp"     "temp_min" "temp_max"
+
+attr(,"metadata")$assessment.date
+[1] "2026-01-11"</code></pre>
+</div>
+</div>
+<section id="interpreting-the-plots" class="level3">
+<h3 class="anchored" data-anchor-id="interpreting-the-plots">Interpreting the Plots</h3>
+<p>Good weather generator performance is indicated by:</p>
+<ul>
+<li><strong>Scatter plots near the 1:1 line</strong>: Simulated statistics closely match observed values</li>
+<li><strong>Overlapping distributions</strong>: Similar shapes and ranges between observed and simulated</li>
+<li><strong>Consistent correlation patterns</strong>: Spatial correlations preserved in synthetic data</li>
+<li><strong>Balanced residuals</strong>: No systematic bias in any direction</li>
+</ul>
+<p>Discrepancies may indicate:</p>
+<ul>
+<li>Parameter tuning needed → adjust WARM or Markov chain thresholds</li>
+<li>Insufficient historical analogue pool → increase KNN sample size</li>
+<li>Structural limitations for specific climate regimes</li>
+</ul>
+</section>
+</section>
+</section>
+<section id="next-steps" class="level1">
+<h1>Next Steps</h1>
+<section id="advanced-features" class="level2">
+<h2 class="anchored" data-anchor-id="advanced-features">Advanced Features</h2>
+<p>The weathergenr package supports additional capabilities not covered in this basic tutorial:</p>
+<section id="climate-scenario-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="climate-scenario-analysis">Climate Scenario Analysis</h3>
+<p>Use <code>apply_climate_perturbations()</code> to modify synthetic weather based on climate change scenarios:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Apply temperature increase and precipitation changes</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>perturbed_weather <span class="ot">&lt;-</span> <span class="fu">apply_climate_perturbations</span>(</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.data =</span> synthetic_data[[<span class="dv">1</span>]],</span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">temperature.change =</span> <span class="fl">2.0</span>,  <span class="co"># 2°C increase</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">precipitation.change =</span> <span class="fl">1.1</span>,  <span class="co"># 10% increase</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">month.start =</span> <span class="dv">1</span></span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="wavelet-spectral-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="wavelet-spectral-analysis">Wavelet Spectral Analysis</h3>
+<p>Explore low-frequency climate variability using wavelet transforms:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Analyze spectral characteristics of annual precipitation</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>wavelet_results <span class="ot">&lt;-</span> <span class="fu">wavelet_spectral_analysis</span>(</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">annual.series =</span> annual_precip,</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">signif.level =</span> <span class="fl">0.90</span>,</span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">mode =</span> <span class="st">"fast"</span></span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="parallel-computing" class="level3">
+<h3 class="anchored" data-anchor-id="parallel-computing">Parallel Computing</h3>
+<p>For large spatial domains, enable parallel processing to accelerate computation:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate weather using multiple cores</span></span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="ot">&lt;-</span> <span class="fu">generate_weather_series</span>(</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># ... other parameters ...</span></span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">compute.parallel =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">num.cores =</span> <span class="dv">4</span></span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+<section id="further-reading" class="level2">
+<h2 class="anchored" data-anchor-id="further-reading">Further Reading</h2>
+<ul>
+<li><strong>Methodological details</strong>: See Steinschneider and Brown (2013) for the theoretical foundation</li>
+<li><strong>Package documentation</strong>: Use <code>?function_name</code> to access detailed help for any function</li>
+</ul>
+</section>
+<section id="saving-and-exporting-results" class="level2">
+<h2 class="anchored" data-anchor-id="saving-and-exporting-results">Saving and Exporting Results</h2>
+<p>Results can be written back to NetCDF format for use in other tools:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Write synthetic weather to NetCDF</span></span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a><span class="fu">write_netcdf</span>(</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.data =</span> synthetic_data[[<span class="dv">1</span>]],</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.grid =</span> ncdata<span class="sc">$</span>grid,</span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.date =</span> stochastic_weather<span class="sc">$</span>dates,</span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">variables =</span> variables,</span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">output.file =</span> <span class="fu">file.path</span>(output_path, <span class="st">"synthetic_weather.nc"</span>)</span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<hr>
+<p><strong>Session Information</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>R version 4.5.2 (2025-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] LC_COLLATE=English_United States.utf8 
+[2] LC_CTYPE=English_United States.utf8   
+[3] LC_MONETARY=English_United States.utf8
+[4] LC_NUMERIC=C                          
+[5] LC_TIME=English_United States.utf8    
+
+time zone: Europe/Amsterdam
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] ggplot2_4.0.1     dplyr_1.1.4       weathergenr_0.9.0
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.6       xfun_0.55          htmlwidgets_1.6.4  lattice_0.22-7    
+ [5] quadprog_1.5-8     vctrs_0.6.5        tools_4.5.2        generics_0.1.4    
+ [9] curl_7.0.0         parallel_4.5.2     tibble_3.3.0       proxy_0.4-28      
+[13] xts_0.14.1         pkgconfig_2.0.3    Matrix_1.7-4       RColorBrewer_1.1-3
+[17] S7_0.2.1           lifecycle_1.0.4    compiler_4.5.2     farver_2.1.2      
+[21] textshaping_1.0.4  codetools_0.2-20   ncdf4_1.24         htmltools_0.5.9   
+[25] class_7.3-23       yaml_2.3.12        pillar_1.11.1      tidyr_1.3.2       
+[29] MASS_7.3-65        fitdistrplus_1.2-4 iterators_1.0.14   foreach_1.5.2     
+[33] nlme_3.1-168       fracdiff_1.5-3     tidyselect_1.2.1   digest_0.6.39     
+[37] purrr_1.2.0        labeling_0.4.3     tseries_0.10-58    splines_4.5.2     
+[41] fastmap_1.2.0      grid_4.5.2         colorspace_2.1-2   cli_3.6.5         
+[45] logger_0.4.1       magrittr_2.0.4     patchwork_1.3.2    utf8_1.2.6        
+[49] survival_3.8-3     e1071_1.7-17       withr_3.0.2        scales_1.4.0      
+[53] forecast_8.24.0    TTR_0.24.4         rmarkdown_2.30     quantmod_0.4.28   
+[57] otel_0.2.0         nnet_7.3-20        timeDate_4051.111  gridExtra_2.3     
+[61] ragg_1.5.0         zoo_1.8-15         urca_1.3-4         evaluate_1.0.5    
+[65] knitr_1.51         lmtest_0.9-40      viridisLite_0.4.2  rlang_1.1.6       
+[69] isoband_0.3.0      Rcpp_1.1.0         glue_1.8.0         rstudioapi_0.17.1 
+[73] jsonlite_2.0.0     R6_2.6.1           systemfonts_1.3.1 </code></pre>
+</div>
+</div>
+<!-- -->
+
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+        for (let i=0; i<detailsSrc.length; i++) {
+          const details = detailsSrc[i].parentElement;
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="sourceCode" id="cb53" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "Getting Started with weathergenr"</span></span>
+<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span><span class="co"> </span></span>
+<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a><span class="co">  html:</span></span>
+<span id="cb53-5"><a href="#cb53-5" aria-hidden="true" tabindex="-1"></a><span class="co">    toc: true</span></span>
+<span id="cb53-6"><a href="#cb53-6" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-location: left</span></span>
+<span id="cb53-7"><a href="#cb53-7" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-title: "Table of Contents"</span></span>
+<span id="cb53-8"><a href="#cb53-8" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-depth: 2</span></span>
+<span id="cb53-9"><a href="#cb53-9" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-expand: 1             # optional; keeps levels open</span></span>
+<span id="cb53-10"><a href="#cb53-10" aria-hidden="true" tabindex="-1"></a><span class="co">    page-layout: full         # optional; gives the TOC room</span></span>
+<span id="cb53-11"><a href="#cb53-11" aria-hidden="true" tabindex="-1"></a><span class="co">    code-fold: true</span></span>
+<span id="cb53-12"><a href="#cb53-12" aria-hidden="true" tabindex="-1"></a><span class="co">    code-tools: true</span></span>
+<span id="cb53-13"><a href="#cb53-13" aria-hidden="true" tabindex="-1"></a><span class="co">    df-print: tibble</span></span>
+<span id="cb53-14"><a href="#cb53-14" aria-hidden="true" tabindex="-1"></a><span class="an">execute:</span></span>
+<span id="cb53-15"><a href="#cb53-15" aria-hidden="true" tabindex="-1"></a><span class="co">  echo: true</span></span>
+<span id="cb53-16"><a href="#cb53-16" aria-hidden="true" tabindex="-1"></a><span class="co">  warning: false</span></span>
+<span id="cb53-17"><a href="#cb53-17" aria-hidden="true" tabindex="-1"></a><span class="co">  eval: true</span></span>
+<span id="cb53-18"><a href="#cb53-18" aria-hidden="true" tabindex="-1"></a><span class="co">  cache: true </span></span>
+<span id="cb53-19"><a href="#cb53-19" aria-hidden="true" tabindex="-1"></a><span class="an">vignette:</span><span class="co"> &gt;</span></span>
+<span id="cb53-20"><a href="#cb53-20" aria-hidden="true" tabindex="-1"></a><span class="co">  %\VignetteIndexEntry{Getting Started with weathergenr}</span></span>
+<span id="cb53-21"><a href="#cb53-21" aria-hidden="true" tabindex="-1"></a><span class="co">  %\VignetteEngine{quarto::quarto}</span></span>
+<span id="cb53-22"><a href="#cb53-22" aria-hidden="true" tabindex="-1"></a><span class="co">  %\VignetteEncoding{UTF-8}</span></span>
+<span id="cb53-23"><a href="#cb53-23" aria-hidden="true" tabindex="-1"></a><span class="co">  %\VignetteDepends{weathergenr, dplyr, ggplot2, tibble}</span></span>
+<span id="cb53-24"><a href="#cb53-24" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb53-25"><a href="#cb53-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-26"><a href="#cb53-26" aria-hidden="true" tabindex="-1"></a><span class="fu"># Introduction</span></span>
+<span id="cb53-27"><a href="#cb53-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-28"><a href="#cb53-28" aria-hidden="true" tabindex="-1"></a>The **weathergenr** package provides a comprehensive toolkit for stochastic weather generation and climate data analysis. It implements sophisticated statistical methods to create synthetic daily weather series that preserve the statistical properties of observed climate data while enabling scenario-based climate impact assessments.</span>
+<span id="cb53-29"><a href="#cb53-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-30"><a href="#cb53-30" aria-hidden="true" tabindex="-1"></a>This vignette demonstrates the core workflow:</span>
+<span id="cb53-31"><a href="#cb53-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-32"><a href="#cb53-32" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Reading gridded meteorological data from NetCDF files</span>
+<span id="cb53-33"><a href="#cb53-33" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>Generating synthetic weather realizations using coupled statistical methods  </span>
+<span id="cb53-34"><a href="#cb53-34" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>Evaluating the quality of synthetic weather against historical observations</span>
+<span id="cb53-35"><a href="#cb53-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-36"><a href="#cb53-36" aria-hidden="true" tabindex="-1"></a><span class="fu">## Load Required Packages</span></span>
+<span id="cb53-37"><a href="#cb53-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-38"><a href="#cb53-38" aria-hidden="true" tabindex="-1"></a><span class="in">```{r setup, echo = TRUE, results = "hide", warning = FALSE, message = FALSE}</span></span>
+<span id="cb53-39"><a href="#cb53-39" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(weathergenr)</span>
+<span id="cb53-40"><a href="#cb53-40" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb53-41"><a href="#cb53-41" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb53-42"><a href="#cb53-42" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-43"><a href="#cb53-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-44"><a href="#cb53-44" aria-hidden="true" tabindex="-1"></a><span class="fu"># 📂 Reading Gridded Multivariate Weather Data</span></span>
+<span id="cb53-45"><a href="#cb53-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-46"><a href="#cb53-46" aria-hidden="true" tabindex="-1"></a><span class="fu">## About the Example Dataset</span></span>
+<span id="cb53-47"><a href="#cb53-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-48"><a href="#cb53-48" aria-hidden="true" tabindex="-1"></a>For this tutorial, we use the ERA5 dataset (ECMWF Reanalysis v5) included with the package. The data covers the Ntoum Basin in Gabon, a tropical watershed in West Central Africa. The dataset includes daily precipitation, mean temperature, minimum temperature, and maximum temperature at a 0.25-degree spatial resolution.</span>
+<span id="cb53-49"><a href="#cb53-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-50"><a href="#cb53-50" aria-hidden="true" tabindex="-1"></a><span class="al">![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png)</span>{width="60%"}</span>
+<span id="cb53-51"><a href="#cb53-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-52"><a href="#cb53-52" aria-hidden="true" tabindex="-1"></a><span class="fu">## Loading NetCDF Data</span></span>
+<span id="cb53-53"><a href="#cb53-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-54"><a href="#cb53-54" aria-hidden="true" tabindex="-1"></a>The <span class="in">`read_netcdf()`</span> function provides an efficient interface for extracting meteorological data from NetCDF files. It handles the complexities of NetCDF format and returns data in a tidy, analysis-ready structure optimized for the weathergenr workflow.</span>
+<span id="cb53-55"><a href="#cb53-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-56"><a href="#cb53-56" aria-hidden="true" tabindex="-1"></a><span class="fu">### Key Features</span></span>
+<span id="cb53-57"><a href="#cb53-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-58"><a href="#cb53-58" aria-hidden="true" tabindex="-1"></a>The function performs several important operations:</span>
+<span id="cb53-59"><a href="#cb53-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-60"><a href="#cb53-60" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Extracts spatial coordinates and temporal information</span>
+<span id="cb53-61"><a href="#cb53-61" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Organizes data into per-grid-cell time series</span>
+<span id="cb53-62"><a href="#cb53-62" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Handles calendar systems including leap day management</span>
+<span id="cb53-63"><a href="#cb53-63" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Provides variable renaming capabilities</span>
+<span id="cb53-64"><a href="#cb53-64" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Optionally removes empty grid cells → reduces memory usage</span>
+<span id="cb53-65"><a href="#cb53-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-66"><a href="#cb53-66" aria-hidden="true" tabindex="-1"></a><span class="in">```{r ncfile}</span></span>
+<span id="cb53-67"><a href="#cb53-67" aria-hidden="true" tabindex="-1"></a><span class="co"># Locate the example NetCDF file</span></span>
+<span id="cb53-68"><a href="#cb53-68" aria-hidden="true" tabindex="-1"></a>ncfile <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">"extdata"</span>, <span class="st">"ntoum_era5_data.nc"</span>, <span class="at">package =</span> <span class="st">"weathergenr"</span>)</span>
+<span id="cb53-69"><a href="#cb53-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-70"><a href="#cb53-70" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the NetCDF file with default settings</span></span>
+<span id="cb53-71"><a href="#cb53-71" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">read_netcdf</span>(ncfile)</span>
+<span id="cb53-72"><a href="#cb53-72" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-73"><a href="#cb53-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-74"><a href="#cb53-74" aria-hidden="true" tabindex="-1"></a><span class="fu">### Understanding the Output Structure</span></span>
+<span id="cb53-75"><a href="#cb53-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-76"><a href="#cb53-76" aria-hidden="true" tabindex="-1"></a>The <span class="in">`read_netcdf()`</span> function returns a list with five components that organize different aspects of the climate data:</span>
+<span id="cb53-77"><a href="#cb53-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-78"><a href="#cb53-78" aria-hidden="true" tabindex="-1"></a><span class="in">```{r ncdata_structure}</span></span>
+<span id="cb53-79"><a href="#cb53-79" aria-hidden="true" tabindex="-1"></a><span class="co"># Display the top-level structure</span></span>
+<span id="cb53-80"><a href="#cb53-80" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(ncdata)</span>
+<span id="cb53-81"><a href="#cb53-81" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-82"><a href="#cb53-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-83"><a href="#cb53-83" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 1. Time Series Data</span></span>
+<span id="cb53-84"><a href="#cb53-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-85"><a href="#cb53-85" aria-hidden="true" tabindex="-1"></a>The <span class="in">`data`</span> element contains a list of tibbles, one for each grid cell. Each tibble represents a daily time series with columns for each meteorological variable:</span>
+<span id="cb53-86"><a href="#cb53-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-87"><a href="#cb53-87" aria-hidden="true" tabindex="-1"></a><span class="in">```{r ncdata_timeseries}</span></span>
+<span id="cb53-88"><a href="#cb53-88" aria-hidden="true" tabindex="-1"></a><span class="co"># Examine the first grid cell's time series</span></span>
+<span id="cb53-89"><a href="#cb53-89" aria-hidden="true" tabindex="-1"></a>ncdata<span class="sc">$</span>data[[<span class="dv">1</span>]]</span>
+<span id="cb53-90"><a href="#cb53-90" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-91"><a href="#cb53-91" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-92"><a href="#cb53-92" aria-hidden="true" tabindex="-1"></a>This structure allows efficient access to complete time series for individual locations while maintaining a compact memory footprint.</span>
+<span id="cb53-93"><a href="#cb53-93" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-94"><a href="#cb53-94" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 2. Spatial Grid Information</span></span>
+<span id="cb53-95"><a href="#cb53-95" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-96"><a href="#cb53-96" aria-hidden="true" tabindex="-1"></a>The <span class="in">`grid`</span> element provides spatial metadata for each grid cell:</span>
+<span id="cb53-97"><a href="#cb53-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-98"><a href="#cb53-98" aria-hidden="true" tabindex="-1"></a><span class="in">```{r ncdata_grid}</span></span>
+<span id="cb53-99"><a href="#cb53-99" aria-hidden="true" tabindex="-1"></a><span class="co"># View grid metadata</span></span>
+<span id="cb53-100"><a href="#cb53-100" aria-hidden="true" tabindex="-1"></a>ncdata<span class="sc">$</span>grid</span>
+<span id="cb53-101"><a href="#cb53-101" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-102"><a href="#cb53-102" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-103"><a href="#cb53-103" aria-hidden="true" tabindex="-1"></a>Each row describes a grid cell with:</span>
+<span id="cb53-104"><a href="#cb53-104" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-105"><a href="#cb53-105" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`id`</span>: Sequential identifier for the grid cell</span>
+<span id="cb53-106"><a href="#cb53-106" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`xind`</span>, <span class="in">`yind`</span>: Array indices in the original NetCDF file</span>
+<span id="cb53-107"><a href="#cb53-107" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`x`</span>, <span class="in">`y`</span>: Spatial coordinates (longitude/latitude or projected coordinates)</span>
+<span id="cb53-108"><a href="#cb53-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-109"><a href="#cb53-109" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 3. Temporal Information</span></span>
+<span id="cb53-110"><a href="#cb53-110" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-111"><a href="#cb53-111" aria-hidden="true" tabindex="-1"></a>The <span class="in">`date`</span> element contains the complete time axis as a vector of Date objects:</span>
+<span id="cb53-112"><a href="#cb53-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-113"><a href="#cb53-113" aria-hidden="true" tabindex="-1"></a><span class="in">```{r ncdata_dates}</span></span>
+<span id="cb53-114"><a href="#cb53-114" aria-hidden="true" tabindex="-1"></a><span class="co"># Display the first and last few dates</span></span>
+<span id="cb53-115"><a href="#cb53-115" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ncdata<span class="sc">$</span>date)</span>
+<span id="cb53-116"><a href="#cb53-116" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(ncdata<span class="sc">$</span>date)</span>
+<span id="cb53-117"><a href="#cb53-117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-118"><a href="#cb53-118" aria-hidden="true" tabindex="-1"></a><span class="co"># Confirm the total number of days</span></span>
+<span id="cb53-119"><a href="#cb53-119" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(ncdata<span class="sc">$</span>date)</span>
+<span id="cb53-120"><a href="#cb53-120" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-121"><a href="#cb53-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-122"><a href="#cb53-122" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 4. Dimension Vectors</span></span>
+<span id="cb53-123"><a href="#cb53-123" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-124"><a href="#cb53-124" aria-hidden="true" tabindex="-1"></a>The <span class="in">`dimensions`</span> element stores the raw dimension vectors from the NetCDF file:</span>
+<span id="cb53-125"><a href="#cb53-125" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-126"><a href="#cb53-126" aria-hidden="true" tabindex="-1"></a><span class="in">```{r ncdata_dimensions}</span></span>
+<span id="cb53-127"><a href="#cb53-127" aria-hidden="true" tabindex="-1"></a><span class="co"># View available dimensions</span></span>
+<span id="cb53-128"><a href="#cb53-128" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(ncdata<span class="sc">$</span>dimensions)</span>
+<span id="cb53-129"><a href="#cb53-129" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-130"><a href="#cb53-130" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-131"><a href="#cb53-131" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 5. Metadata Attributes</span></span>
+<span id="cb53-132"><a href="#cb53-132" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-133"><a href="#cb53-133" aria-hidden="true" tabindex="-1"></a>The <span class="in">`attributes`</span> element preserves variable attributes, spatial reference information, and global metadata from the NetCDF file, ensuring traceability and documentation.</span>
+<span id="cb53-134"><a href="#cb53-134" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-135"><a href="#cb53-135" aria-hidden="true" tabindex="-1"></a><span class="fu">### Advanced Usage</span></span>
+<span id="cb53-136"><a href="#cb53-136" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-137"><a href="#cb53-137" aria-hidden="true" tabindex="-1"></a>The <span class="in">`read_netcdf()`</span> function supports several optional parameters for customized data loading:</span>
+<span id="cb53-138"><a href="#cb53-138" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-139"><a href="#cb53-139" aria-hidden="true" tabindex="-1"></a><span class="in">```{r ncfile_advanced, eval = FALSE}</span></span>
+<span id="cb53-140"><a href="#cb53-140" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Load specific variables and rename them</span></span>
+<span id="cb53-141"><a href="#cb53-141" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">read_netcdf</span>(</span>
+<span id="cb53-142"><a href="#cb53-142" aria-hidden="true" tabindex="-1"></a>  <span class="at">nc.file =</span> ncfile,</span>
+<span id="cb53-143"><a href="#cb53-143" aria-hidden="true" tabindex="-1"></a>  <span class="at">variables =</span> <span class="fu">c</span>(<span class="st">"precip"</span>, <span class="st">"temp"</span>),</span>
+<span id="cb53-144"><a href="#cb53-144" aria-hidden="true" tabindex="-1"></a>  <span class="at">var_rename =</span> <span class="fu">c</span>(<span class="at">precip =</span> <span class="st">"precipitation"</span>, <span class="at">temp =</span> <span class="st">"temperature"</span>)</span>
+<span id="cb53-145"><a href="#cb53-145" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-146"><a href="#cb53-146" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-147"><a href="#cb53-147" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Handle 365-day calendar data (no leap days)</span></span>
+<span id="cb53-148"><a href="#cb53-148" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">read_netcdf</span>(</span>
+<span id="cb53-149"><a href="#cb53-149" aria-hidden="true" tabindex="-1"></a>  <span class="at">nc.file =</span> ncfile,</span>
+<span id="cb53-150"><a href="#cb53-150" aria-hidden="true" tabindex="-1"></a>  <span class="at">leap.days =</span> <span class="cn">FALSE</span></span>
+<span id="cb53-151"><a href="#cb53-151" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-152"><a href="#cb53-152" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-153"><a href="#cb53-153" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Round values to reduce precision and memory</span></span>
+<span id="cb53-154"><a href="#cb53-154" aria-hidden="true" tabindex="-1"></a>ncdata <span class="ot">&lt;-</span> <span class="fu">read_netcdf</span>(</span>
+<span id="cb53-155"><a href="#cb53-155" aria-hidden="true" tabindex="-1"></a>  <span class="at">nc.file =</span> ncfile,</span>
+<span id="cb53-156"><a href="#cb53-156" aria-hidden="true" tabindex="-1"></a>  <span class="at">signif.digits =</span> <span class="dv">4</span>,</span>
+<span id="cb53-157"><a href="#cb53-157" aria-hidden="true" tabindex="-1"></a>  <span class="at">omit.empty =</span> <span class="cn">TRUE</span></span>
+<span id="cb53-158"><a href="#cb53-158" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-159"><a href="#cb53-159" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-160"><a href="#cb53-160" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-161"><a href="#cb53-161" aria-hidden="true" tabindex="-1"></a><span class="fu"># ⚙️ Generating Stochastic Weather Realizations</span></span>
+<span id="cb53-162"><a href="#cb53-162" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-163"><a href="#cb53-163" aria-hidden="true" tabindex="-1"></a><span class="fu">## Overview of the Weather Generation Method</span></span>
+<span id="cb53-164"><a href="#cb53-164" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-165"><a href="#cb53-165" aria-hidden="true" tabindex="-1"></a>The <span class="in">`generate_weather_series()`</span> function implements a sophisticated multi-scale weather generation framework that combines several statistical methods:</span>
+<span id="cb53-166"><a href="#cb53-166" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-167"><a href="#cb53-167" aria-hidden="true" tabindex="-1"></a><span class="fu">### Statistical Components</span></span>
+<span id="cb53-168"><a href="#cb53-168" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-169"><a href="#cb53-169" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**Wavelet Autoregressive Modeling (WARM)**: Captures low-frequency (annual to multi-year) climate variability by decomposing annual precipitation signals into wavelet components → simulating their temporal evolution using ARIMA models.</span>
+<span id="cb53-170"><a href="#cb53-170" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-171"><a href="#cb53-171" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**Markov Chain Model**: Controls the persistence of wet and dry spells at the daily scale by modeling transitions between three precipitation states (dry, wet, extreme) with monthly-varying transition probabilities.</span>
+<span id="cb53-172"><a href="#cb53-172" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-173"><a href="#cb53-173" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>**K-Nearest Neighbors (KNN) Resampling**: Selects historical analogue years based on similarity in annual precipitation patterns → resamples daily weather sequences from these analogues while preserving spatial and temporal correlations.</span>
+<span id="cb53-174"><a href="#cb53-174" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-175"><a href="#cb53-175" aria-hidden="true" tabindex="-1"></a>This coupled approach ensures that synthetic weather series preserve both:</span>
+<span id="cb53-176"><a href="#cb53-176" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-177"><a href="#cb53-177" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Temporal structure**: Day-to-day persistence, seasonal cycles, and interannual variability</span>
+<span id="cb53-178"><a href="#cb53-178" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Spatial coherence**: Correlations between grid cells and co-occurrence patterns of weather events</span>
+<span id="cb53-179"><a href="#cb53-179" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Statistical properties**: Means, variances, extremes, and distributional characteristics</span>
+<span id="cb53-180"><a href="#cb53-180" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-181"><a href="#cb53-181" aria-hidden="true" tabindex="-1"></a>The method is described in detail by <span class="co">[</span><span class="ot">Steinschneider and Brown (2013)</span><span class="co">](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/wrcr.20528)</span>.</span>
+<span id="cb53-182"><a href="#cb53-182" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-183"><a href="#cb53-183" aria-hidden="true" tabindex="-1"></a><span class="fu">## Setting Up the Simulation</span></span>
+<span id="cb53-184"><a href="#cb53-184" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-185"><a href="#cb53-185" aria-hidden="true" tabindex="-1"></a>First, define the output directory and specify which meteorological variables to simulate:</span>
+<span id="cb53-186"><a href="#cb53-186" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-187"><a href="#cb53-187" aria-hidden="true" tabindex="-1"></a><span class="in">```{r setup_simulation}</span></span>
+<span id="cb53-188"><a href="#cb53-188" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a temporary directory for outputs</span></span>
+<span id="cb53-189"><a href="#cb53-189" aria-hidden="true" tabindex="-1"></a>output_path <span class="ot">&lt;-</span> <span class="fu">tempdir</span>()</span>
+<span id="cb53-190"><a href="#cb53-190" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-191"><a href="#cb53-191" aria-hidden="true" tabindex="-1"></a><span class="co"># Define variables to simulate</span></span>
+<span id="cb53-192"><a href="#cb53-192" aria-hidden="true" tabindex="-1"></a>variables <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"precip"</span>, <span class="st">"temp"</span>, <span class="st">"temp_min"</span>, <span class="st">"temp_max"</span>)</span>
+<span id="cb53-193"><a href="#cb53-193" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-194"><a href="#cb53-194" aria-hidden="true" tabindex="-1"></a><span class="co"># Labels for plotting (optional)</span></span>
+<span id="cb53-195"><a href="#cb53-195" aria-hidden="true" tabindex="-1"></a>variable_labels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Precipitation"</span>, <span class="st">"Temperature (mean)"</span>, </span>
+<span id="cb53-196"><a href="#cb53-196" aria-hidden="true" tabindex="-1"></a>                     <span class="st">"Temperature (min)"</span>, <span class="st">"Temperature (max)"</span>)</span>
+<span id="cb53-197"><a href="#cb53-197" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-198"><a href="#cb53-198" aria-hidden="true" tabindex="-1"></a><span class="co"># Number of stochastic realizations to generate</span></span>
+<span id="cb53-199"><a href="#cb53-199" aria-hidden="true" tabindex="-1"></a>realization_num <span class="ot">&lt;-</span> <span class="dv">3</span></span>
+<span id="cb53-200"><a href="#cb53-200" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-201"><a href="#cb53-201" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-202"><a href="#cb53-202" aria-hidden="true" tabindex="-1"></a><span class="fu">### Understanding Simulation Parameters</span></span>
+<span id="cb53-203"><a href="#cb53-203" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-204"><a href="#cb53-204" aria-hidden="true" tabindex="-1"></a>Key parameters control different aspects of the weather generation:</span>
+<span id="cb53-205"><a href="#cb53-205" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-206"><a href="#cb53-206" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Temporal scope**: <span class="in">`sim.year.num`</span> and <span class="in">`sim.year.start`</span> define the simulation period</span>
+<span id="cb53-207"><a href="#cb53-207" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Realization count**: <span class="in">`realization.num`</span> specifies how many independent synthetic series to create</span>
+<span id="cb53-208"><a href="#cb53-208" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**WARM parameters**: Control annual-scale variability simulation</span>
+<span id="cb53-209"><a href="#cb53-209" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span><span class="in">`warm.variable`</span>: The primary driver variable (typically precipitation)</span>
+<span id="cb53-210"><a href="#cb53-210" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span><span class="in">`warm.signif.level`</span>: Significance threshold for retaining wavelet components (0.90 = 90% confidence)</span>
+<span id="cb53-211"><a href="#cb53-211" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span><span class="in">`warm.sample.num`</span>: Number of candidate annual traces to generate before filtering</span>
+<span id="cb53-212"><a href="#cb53-212" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**KNN parameters**: Control daily-scale resampling</span>
+<span id="cb53-213"><a href="#cb53-213" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span><span class="in">`knn.sample.num`</span>: Number of historical analogue years to consider</span>
+<span id="cb53-214"><a href="#cb53-214" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Markov Chain parameters**: Define precipitation state thresholds</span>
+<span id="cb53-215"><a href="#cb53-215" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span><span class="in">`mc.wet.quantile`</span>: Threshold for wet day classification (0.3 = 30th percentile)</span>
+<span id="cb53-216"><a href="#cb53-216" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span><span class="in">`mc.extreme.quantile`</span>: Threshold for extreme precipitation (0.8 = 80th percentile)</span>
+<span id="cb53-217"><a href="#cb53-217" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-218"><a href="#cb53-218" aria-hidden="true" tabindex="-1"></a><span class="fu">## Running the Weather Generator</span></span>
+<span id="cb53-219"><a href="#cb53-219" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-220"><a href="#cb53-220" aria-hidden="true" tabindex="-1"></a><span class="in">```{r run_generator, results = 'hide'}</span></span>
+<span id="cb53-221"><a href="#cb53-221" aria-hidden="true" tabindex="-1"></a><span class="co"># Set a seed for reproducibility</span></span>
+<span id="cb53-222"><a href="#cb53-222" aria-hidden="true" tabindex="-1"></a>seed <span class="ot">&lt;-</span> <span class="dv">123</span></span>
+<span id="cb53-223"><a href="#cb53-223" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-224"><a href="#cb53-224" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate synthetic weather series</span></span>
+<span id="cb53-225"><a href="#cb53-225" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="ot">&lt;-</span> <span class="fu">generate_weather_series</span>(</span>
+<span id="cb53-226"><a href="#cb53-226" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.data =</span> ncdata<span class="sc">$</span>data,</span>
+<span id="cb53-227"><a href="#cb53-227" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.grid =</span> ncdata<span class="sc">$</span>grid,</span>
+<span id="cb53-228"><a href="#cb53-228" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.date =</span> ncdata<span class="sc">$</span>date,</span>
+<span id="cb53-229"><a href="#cb53-229" aria-hidden="true" tabindex="-1"></a>  <span class="at">variables =</span> variables,</span>
+<span id="cb53-230"><a href="#cb53-230" aria-hidden="true" tabindex="-1"></a>  <span class="at">sim.year.num =</span> <span class="dv">20</span>,</span>
+<span id="cb53-231"><a href="#cb53-231" aria-hidden="true" tabindex="-1"></a>  <span class="at">sim.year.start =</span> <span class="dv">2020</span>,</span>
+<span id="cb53-232"><a href="#cb53-232" aria-hidden="true" tabindex="-1"></a>  <span class="at">month.start =</span> <span class="dv">1</span>,</span>
+<span id="cb53-233"><a href="#cb53-233" aria-hidden="true" tabindex="-1"></a>  <span class="at">realization.num =</span> realization_num,</span>
+<span id="cb53-234"><a href="#cb53-234" aria-hidden="true" tabindex="-1"></a>  <span class="at">warm.variable =</span> <span class="st">"precip"</span>,</span>
+<span id="cb53-235"><a href="#cb53-235" aria-hidden="true" tabindex="-1"></a>  <span class="at">warm.signif.level =</span> <span class="fl">0.90</span>,</span>
+<span id="cb53-236"><a href="#cb53-236" aria-hidden="true" tabindex="-1"></a>  <span class="at">warm.sample.num =</span> <span class="dv">10000</span>,</span>
+<span id="cb53-237"><a href="#cb53-237" aria-hidden="true" tabindex="-1"></a>  <span class="at">knn.sample.num =</span> <span class="dv">100</span>,</span>
+<span id="cb53-238"><a href="#cb53-238" aria-hidden="true" tabindex="-1"></a>  <span class="at">mc.wet.quantile =</span> <span class="fl">0.2</span>,</span>
+<span id="cb53-239"><a href="#cb53-239" aria-hidden="true" tabindex="-1"></a>  <span class="at">mc.extreme.quantile =</span> <span class="fl">0.8</span>,</span>
+<span id="cb53-240"><a href="#cb53-240" aria-hidden="true" tabindex="-1"></a>  <span class="at">output.path =</span> output_path,</span>
+<span id="cb53-241"><a href="#cb53-241" aria-hidden="true" tabindex="-1"></a>  <span class="at">seed =</span> seed,</span>
+<span id="cb53-242"><a href="#cb53-242" aria-hidden="true" tabindex="-1"></a>  <span class="at">compute.parallel =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb53-243"><a href="#cb53-243" aria-hidden="true" tabindex="-1"></a>  <span class="at">num.cores =</span> <span class="cn">NULL</span></span>
+<span id="cb53-244"><a href="#cb53-244" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-245"><a href="#cb53-245" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-246"><a href="#cb53-246" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-247"><a href="#cb53-247" aria-hidden="true" tabindex="-1"></a><span class="fu">### Understanding the Output</span></span>
+<span id="cb53-248"><a href="#cb53-248" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-249"><a href="#cb53-249" aria-hidden="true" tabindex="-1"></a>The function returns a list containing:</span>
+<span id="cb53-250"><a href="#cb53-250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-251"><a href="#cb53-251" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`resampled`</span>: The historical dates selected as analogues for each simulation day</span>
+<span id="cb53-252"><a href="#cb53-252" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`dates`</span>: The simulated daily time axis (always 365-day calendar, Feb 29 excluded)</span>
+<span id="cb53-253"><a href="#cb53-253" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-254"><a href="#cb53-254" aria-hidden="true" tabindex="-1"></a><span class="in">```{r examine_output}</span></span>
+<span id="cb53-255"><a href="#cb53-255" aria-hidden="true" tabindex="-1"></a><span class="co"># View the structure of the output</span></span>
+<span id="cb53-256"><a href="#cb53-256" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(stochastic_weather)</span>
+<span id="cb53-257"><a href="#cb53-257" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-258"><a href="#cb53-258" aria-hidden="true" tabindex="-1"></a><span class="co"># Check the simulated date range</span></span>
+<span id="cb53-259"><a href="#cb53-259" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(stochastic_weather<span class="sc">$</span>dates)</span>
+<span id="cb53-260"><a href="#cb53-260" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(stochastic_weather<span class="sc">$</span>dates)</span>
+<span id="cb53-261"><a href="#cb53-261" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-262"><a href="#cb53-262" aria-hidden="true" tabindex="-1"></a><span class="co"># Examine resampled dates for the first realization</span></span>
+<span id="cb53-263"><a href="#cb53-263" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(stochastic_weather<span class="sc">$</span>resampled[[<span class="dv">1</span>]])</span>
+<span id="cb53-264"><a href="#cb53-264" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-265"><a href="#cb53-265" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-266"><a href="#cb53-266" aria-hidden="true" tabindex="-1"></a><span class="fu">### Interpreting Resampled Dates</span></span>
+<span id="cb53-267"><a href="#cb53-267" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-268"><a href="#cb53-268" aria-hidden="true" tabindex="-1"></a>The resampled dates show which historical days were selected as analogues. This information reveals:</span>
+<span id="cb53-269"><a href="#cb53-269" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-270"><a href="#cb53-270" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Whether the generator is drawing from wet or dry historical periods</span>
+<span id="cb53-271"><a href="#cb53-271" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>The diversity of historical conditions being sampled</span>
+<span id="cb53-272"><a href="#cb53-272" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Temporal clustering patterns in the resampling scheme</span>
+<span id="cb53-273"><a href="#cb53-273" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-274"><a href="#cb53-274" aria-hidden="true" tabindex="-1"></a><span class="in">```{r resampled_summary}</span></span>
+<span id="cb53-275"><a href="#cb53-275" aria-hidden="true" tabindex="-1"></a><span class="co"># Display resampled dates for all realizations</span></span>
+<span id="cb53-276"><a href="#cb53-276" aria-hidden="true" tabindex="-1"></a>stochastic_weather<span class="sc">$</span>resampled</span>
+<span id="cb53-277"><a href="#cb53-277" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-278"><a href="#cb53-278" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-279"><a href="#cb53-279" aria-hidden="true" tabindex="-1"></a><span class="fu">## Extracting Synthetic Weather Data</span></span>
+<span id="cb53-280"><a href="#cb53-280" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-281"><a href="#cb53-281" aria-hidden="true" tabindex="-1"></a>To access the actual weather values (not just the resampled dates), you need to extract the corresponding data from the historical record:</span>
+<span id="cb53-282"><a href="#cb53-282" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-283"><a href="#cb53-283" aria-hidden="true" tabindex="-1"></a><span class="in">```{r extract_synthetic, eval = FALSE}</span></span>
+<span id="cb53-284"><a href="#cb53-284" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Extract synthetic weather for all realizations</span></span>
+<span id="cb53-285"><a href="#cb53-285" aria-hidden="true" tabindex="-1"></a>synthetic_data <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb53-286"><a href="#cb53-286" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-287"><a href="#cb53-287" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>realization_num) {</span>
+<span id="cb53-288"><a href="#cb53-288" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Get the day order for this realization</span></span>
+<span id="cb53-289"><a href="#cb53-289" aria-hidden="true" tabindex="-1"></a>  day_order <span class="ot">&lt;-</span> <span class="fu">match</span>(stochastic_weather<span class="sc">$</span>resampled[[i]], ncdata<span class="sc">$</span>date)</span>
+<span id="cb53-290"><a href="#cb53-290" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb53-291"><a href="#cb53-291" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Extract corresponding weather data for each grid cell</span></span>
+<span id="cb53-292"><a href="#cb53-292" aria-hidden="true" tabindex="-1"></a>  synthetic_data[[i]] <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data, <span class="cf">function</span>(cell_data) {</span>
+<span id="cb53-293"><a href="#cb53-293" aria-hidden="true" tabindex="-1"></a>    cell_data[day_order, variables] <span class="sc">%&gt;%</span></span>
+<span id="cb53-294"><a href="#cb53-294" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">date =</span> stochastic_weather<span class="sc">$</span>dates, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb53-295"><a href="#cb53-295" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb53-296"><a href="#cb53-296" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb53-297"><a href="#cb53-297" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-298"><a href="#cb53-298" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-299"><a href="#cb53-299" aria-hidden="true" tabindex="-1"></a><span class="fu"># 🔍 Evaluating Synthetic Weather Series</span></span>
+<span id="cb53-300"><a href="#cb53-300" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-301"><a href="#cb53-301" aria-hidden="true" tabindex="-1"></a><span class="fu">## Purpose of Evaluation</span></span>
+<span id="cb53-302"><a href="#cb53-302" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-303"><a href="#cb53-303" aria-hidden="true" tabindex="-1"></a>Validating the weather generator's performance is crucial to ensure that synthetic weather series are suitable for impact modeling. The <span class="in">`evaluate_weather_generator()`</span> function provides comprehensive diagnostic comparisons between simulated and observed weather across multiple statistical dimensions.</span>
+<span id="cb53-304"><a href="#cb53-304" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-305"><a href="#cb53-305" aria-hidden="true" tabindex="-1"></a><span class="fu">## Preparing Data for Evaluation</span></span>
+<span id="cb53-306"><a href="#cb53-306" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-307"><a href="#cb53-307" aria-hidden="true" tabindex="-1"></a>The evaluation function requires:</span>
+<span id="cb53-308"><a href="#cb53-308" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-309"><a href="#cb53-309" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Observed weather data in list format (one element per grid cell)</span>
+<span id="cb53-310"><a href="#cb53-310" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>Simulated weather data structured similarly</span>
+<span id="cb53-311"><a href="#cb53-311" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>Matching date columns in both datasets</span>
+<span id="cb53-312"><a href="#cb53-312" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-313"><a href="#cb53-313" aria-hidden="true" tabindex="-1"></a><span class="in">```{r prepare_evaluation, results = "hide"}</span></span>
+<span id="cb53-314"><a href="#cb53-314" aria-hidden="true" tabindex="-1"></a><span class="co"># Create day order indices for each realization</span></span>
+<span id="cb53-315"><a href="#cb53-315" aria-hidden="true" tabindex="-1"></a>day_order <span class="ot">&lt;-</span> <span class="fu">sapply</span>(</span>
+<span id="cb53-316"><a href="#cb53-316" aria-hidden="true" tabindex="-1"></a>  <span class="dv">1</span><span class="sc">:</span>realization_num,</span>
+<span id="cb53-317"><a href="#cb53-317" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(n) <span class="fu">match</span>(stochastic_weather<span class="sc">$</span>resampled[[n]], ncdata<span class="sc">$</span>date)</span>
+<span id="cb53-318"><a href="#cb53-318" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-319"><a href="#cb53-319" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-320"><a href="#cb53-320" aria-hidden="true" tabindex="-1"></a><span class="co"># Extract synthetic weather samples</span></span>
+<span id="cb53-321"><a href="#cb53-321" aria-hidden="true" tabindex="-1"></a>rlz_sample <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb53-322"><a href="#cb53-322" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (n <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>realization_num) {</span>
+<span id="cb53-323"><a href="#cb53-323" aria-hidden="true" tabindex="-1"></a>  rlz_sample[[n]] <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data[ncdata<span class="sc">$</span>grid<span class="sc">$</span>id], <span class="cf">function</span>(x) {</span>
+<span id="cb53-324"><a href="#cb53-324" aria-hidden="true" tabindex="-1"></a>    x[day_order[, n], ] <span class="sc">%&gt;%</span></span>
+<span id="cb53-325"><a href="#cb53-325" aria-hidden="true" tabindex="-1"></a>      <span class="fu">select</span>(precip, temp, temp_min, temp_max) <span class="sc">%&gt;%</span></span>
+<span id="cb53-326"><a href="#cb53-326" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">date =</span> stochastic_weather<span class="sc">$</span>dates, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb53-327"><a href="#cb53-327" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb53-328"><a href="#cb53-328" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb53-329"><a href="#cb53-329" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-330"><a href="#cb53-330" aria-hidden="true" tabindex="-1"></a><span class="co"># Prepare observed data</span></span>
+<span id="cb53-331"><a href="#cb53-331" aria-hidden="true" tabindex="-1"></a>obs_sample <span class="ot">&lt;-</span> <span class="fu">lapply</span>(ncdata<span class="sc">$</span>data[ncdata<span class="sc">$</span>grid<span class="sc">$</span>id], <span class="cf">function</span>(x) {</span>
+<span id="cb53-332"><a href="#cb53-332" aria-hidden="true" tabindex="-1"></a>  x <span class="sc">%&gt;%</span></span>
+<span id="cb53-333"><a href="#cb53-333" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(precip, temp, temp_min, temp_max) <span class="sc">%&gt;%</span></span>
+<span id="cb53-334"><a href="#cb53-334" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">date =</span> ncdata<span class="sc">$</span>date, <span class="at">.before =</span> <span class="dv">1</span>)</span>
+<span id="cb53-335"><a href="#cb53-335" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb53-336"><a href="#cb53-336" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-337"><a href="#cb53-337" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-338"><a href="#cb53-338" aria-hidden="true" tabindex="-1"></a><span class="fu">## Running the Evaluation</span></span>
+<span id="cb53-339"><a href="#cb53-339" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-340"><a href="#cb53-340" aria-hidden="true" tabindex="-1"></a><span class="in">```{r run_evaluation, results = "hide"}</span></span>
+<span id="cb53-341"><a href="#cb53-341" aria-hidden="true" tabindex="-1"></a><span class="co"># Evaluate weather generator performance</span></span>
+<span id="cb53-342"><a href="#cb53-342" aria-hidden="true" tabindex="-1"></a>evaluation_plots <span class="ot">&lt;-</span> <span class="fu">evaluate_weather_generator</span>(</span>
+<span id="cb53-343"><a href="#cb53-343" aria-hidden="true" tabindex="-1"></a>  <span class="at">daily.sim =</span> rlz_sample,</span>
+<span id="cb53-344"><a href="#cb53-344" aria-hidden="true" tabindex="-1"></a>  <span class="at">daily.obs =</span> obs_sample,</span>
+<span id="cb53-345"><a href="#cb53-345" aria-hidden="true" tabindex="-1"></a>  <span class="at">output.path =</span> <span class="cn">NULL</span>,</span>
+<span id="cb53-346"><a href="#cb53-346" aria-hidden="true" tabindex="-1"></a>  <span class="at">save.plots =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb53-347"><a href="#cb53-347" aria-hidden="true" tabindex="-1"></a>  <span class="at">variables =</span> variables,</span>
+<span id="cb53-348"><a href="#cb53-348" aria-hidden="true" tabindex="-1"></a>  <span class="at">variable.labels =</span> variable_labels,</span>
+<span id="cb53-349"><a href="#cb53-349" aria-hidden="true" tabindex="-1"></a>  <span class="at">realization.num =</span> realization_num,</span>
+<span id="cb53-350"><a href="#cb53-350" aria-hidden="true" tabindex="-1"></a>  <span class="at">wet.quantile =</span> <span class="fl">0.3</span>,</span>
+<span id="cb53-351"><a href="#cb53-351" aria-hidden="true" tabindex="-1"></a>  <span class="at">extreme.quantile =</span> <span class="fl">0.8</span></span>
+<span id="cb53-352"><a href="#cb53-352" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-353"><a href="#cb53-353" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-354"><a href="#cb53-354" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-355"><a href="#cb53-355" aria-hidden="true" tabindex="-1"></a><span class="fu">## Understanding Evaluation Metrics</span></span>
+<span id="cb53-356"><a href="#cb53-356" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-357"><a href="#cb53-357" aria-hidden="true" tabindex="-1"></a>The evaluation function computes and visualizes several key aspects of weather generator performance:</span>
+<span id="cb53-358"><a href="#cb53-358" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-359"><a href="#cb53-359" aria-hidden="true" tabindex="-1"></a><span class="fu">### 1. Daily Statistics</span></span>
+<span id="cb53-360"><a href="#cb53-360" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-361"><a href="#cb53-361" aria-hidden="true" tabindex="-1"></a>Comparison of mean, standard deviation, and skewness for each variable across all grid cells. This assesses whether the generator preserves the central tendency, variability, and distributional shape of observed weather.</span>
+<span id="cb53-362"><a href="#cb53-362" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-363"><a href="#cb53-363" aria-hidden="true" tabindex="-1"></a><span class="fu">### 2. Wet and Dry Day Frequencies</span></span>
+<span id="cb53-364"><a href="#cb53-364" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-365"><a href="#cb53-365" aria-hidden="true" tabindex="-1"></a>For precipitation, the evaluation examines:</span>
+<span id="cb53-366"><a href="#cb53-366" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-367"><a href="#cb53-367" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Total number of wet days (above the wet threshold)</span>
+<span id="cb53-368"><a href="#cb53-368" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Number of extreme precipitation days (above the extreme threshold)</span>
+<span id="cb53-369"><a href="#cb53-369" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Dry day frequencies</span>
+<span id="cb53-370"><a href="#cb53-370" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-371"><a href="#cb53-371" aria-hidden="true" tabindex="-1"></a>These metrics reveal whether the generator correctly reproduces precipitation occurrence patterns.</span>
+<span id="cb53-372"><a href="#cb53-372" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-373"><a href="#cb53-373" aria-hidden="true" tabindex="-1"></a><span class="fu">### 3. Spell Length Distributions</span></span>
+<span id="cb53-374"><a href="#cb53-374" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-375"><a href="#cb53-375" aria-hidden="true" tabindex="-1"></a>Analysis of consecutive wet and dry periods:</span>
+<span id="cb53-376"><a href="#cb53-376" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-377"><a href="#cb53-377" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Mean wet spell length</span>
+<span id="cb53-378"><a href="#cb53-378" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Mean dry spell length</span>
+<span id="cb53-379"><a href="#cb53-379" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Distribution of spell durations</span>
+<span id="cb53-380"><a href="#cb53-380" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-381"><a href="#cb53-381" aria-hidden="true" tabindex="-1"></a>This assesses the generator's ability to capture persistence in weather patterns.</span>
+<span id="cb53-382"><a href="#cb53-382" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-383"><a href="#cb53-383" aria-hidden="true" tabindex="-1"></a><span class="fu">### 4. Spatial Correlations</span></span>
+<span id="cb53-384"><a href="#cb53-384" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-385"><a href="#cb53-385" aria-hidden="true" tabindex="-1"></a>Inter-site correlation matrices for each variable, comparing observed versus simulated spatial coherence. This is critical for applications requiring realistic spatial patterns (e.g., regional hydrology).</span>
+<span id="cb53-386"><a href="#cb53-386" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-387"><a href="#cb53-387" aria-hidden="true" tabindex="-1"></a><span class="fu">## Viewing Evaluation Results</span></span>
+<span id="cb53-388"><a href="#cb53-388" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-389"><a href="#cb53-389" aria-hidden="true" tabindex="-1"></a><span class="in">```{r view_evaluation, eval = TRUE, echo = TRUE, fig.width = 10, fig.height = 8}</span></span>
+<span id="cb53-390"><a href="#cb53-390" aria-hidden="true" tabindex="-1"></a><span class="co"># Display all diagnostic plots</span></span>
+<span id="cb53-391"><a href="#cb53-391" aria-hidden="true" tabindex="-1"></a>evaluation_plots</span>
+<span id="cb53-392"><a href="#cb53-392" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-393"><a href="#cb53-393" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-394"><a href="#cb53-394" aria-hidden="true" tabindex="-1"></a><span class="fu">### Interpreting the Plots</span></span>
+<span id="cb53-395"><a href="#cb53-395" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-396"><a href="#cb53-396" aria-hidden="true" tabindex="-1"></a>Good weather generator performance is indicated by:</span>
+<span id="cb53-397"><a href="#cb53-397" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-398"><a href="#cb53-398" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Scatter plots near the 1:1 line**: Simulated statistics closely match observed values</span>
+<span id="cb53-399"><a href="#cb53-399" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Overlapping distributions**: Similar shapes and ranges between observed and simulated</span>
+<span id="cb53-400"><a href="#cb53-400" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Consistent correlation patterns**: Spatial correlations preserved in synthetic data</span>
+<span id="cb53-401"><a href="#cb53-401" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Balanced residuals**: No systematic bias in any direction</span>
+<span id="cb53-402"><a href="#cb53-402" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-403"><a href="#cb53-403" aria-hidden="true" tabindex="-1"></a>Discrepancies may indicate:</span>
+<span id="cb53-404"><a href="#cb53-404" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-405"><a href="#cb53-405" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Parameter tuning needed → adjust WARM or Markov chain thresholds</span>
+<span id="cb53-406"><a href="#cb53-406" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Insufficient historical analogue pool → increase KNN sample size</span>
+<span id="cb53-407"><a href="#cb53-407" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Structural limitations for specific climate regimes</span>
+<span id="cb53-408"><a href="#cb53-408" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-409"><a href="#cb53-409" aria-hidden="true" tabindex="-1"></a><span class="fu"># Next Steps</span></span>
+<span id="cb53-410"><a href="#cb53-410" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-411"><a href="#cb53-411" aria-hidden="true" tabindex="-1"></a><span class="fu">## Advanced Features</span></span>
+<span id="cb53-412"><a href="#cb53-412" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-413"><a href="#cb53-413" aria-hidden="true" tabindex="-1"></a>The weathergenr package supports additional capabilities not covered in this basic tutorial:</span>
+<span id="cb53-414"><a href="#cb53-414" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-415"><a href="#cb53-415" aria-hidden="true" tabindex="-1"></a><span class="fu">### Climate Scenario Analysis</span></span>
+<span id="cb53-416"><a href="#cb53-416" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-417"><a href="#cb53-417" aria-hidden="true" tabindex="-1"></a>Use <span class="in">`apply_climate_perturbations()`</span> to modify synthetic weather based on climate change scenarios:</span>
+<span id="cb53-418"><a href="#cb53-418" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-419"><a href="#cb53-419" aria-hidden="true" tabindex="-1"></a><span class="in">```{r climate_scenarios, eval = FALSE}</span></span>
+<span id="cb53-420"><a href="#cb53-420" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Apply temperature increase and precipitation changes</span></span>
+<span id="cb53-421"><a href="#cb53-421" aria-hidden="true" tabindex="-1"></a>perturbed_weather <span class="ot">&lt;-</span> <span class="fu">apply_climate_perturbations</span>(</span>
+<span id="cb53-422"><a href="#cb53-422" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.data =</span> synthetic_data[[<span class="dv">1</span>]],</span>
+<span id="cb53-423"><a href="#cb53-423" aria-hidden="true" tabindex="-1"></a>  <span class="at">temperature.change =</span> <span class="fl">2.0</span>,  <span class="co"># 2°C increase</span></span>
+<span id="cb53-424"><a href="#cb53-424" aria-hidden="true" tabindex="-1"></a>  <span class="at">precipitation.change =</span> <span class="fl">1.1</span>,  <span class="co"># 10% increase</span></span>
+<span id="cb53-425"><a href="#cb53-425" aria-hidden="true" tabindex="-1"></a>  <span class="at">month.start =</span> <span class="dv">1</span></span>
+<span id="cb53-426"><a href="#cb53-426" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-427"><a href="#cb53-427" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-428"><a href="#cb53-428" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-429"><a href="#cb53-429" aria-hidden="true" tabindex="-1"></a><span class="fu">### Wavelet Spectral Analysis</span></span>
+<span id="cb53-430"><a href="#cb53-430" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-431"><a href="#cb53-431" aria-hidden="true" tabindex="-1"></a>Explore low-frequency climate variability using wavelet transforms:</span>
+<span id="cb53-432"><a href="#cb53-432" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-433"><a href="#cb53-433" aria-hidden="true" tabindex="-1"></a><span class="in">```{r wavelet_analysis, eval = FALSE}</span></span>
+<span id="cb53-434"><a href="#cb53-434" aria-hidden="true" tabindex="-1"></a><span class="co"># Analyze spectral characteristics of annual precipitation</span></span>
+<span id="cb53-435"><a href="#cb53-435" aria-hidden="true" tabindex="-1"></a>wavelet_results <span class="ot">&lt;-</span> <span class="fu">wavelet_spectral_analysis</span>(</span>
+<span id="cb53-436"><a href="#cb53-436" aria-hidden="true" tabindex="-1"></a>  <span class="at">annual.series =</span> annual_precip,</span>
+<span id="cb53-437"><a href="#cb53-437" aria-hidden="true" tabindex="-1"></a>  <span class="at">signif.level =</span> <span class="fl">0.90</span>,</span>
+<span id="cb53-438"><a href="#cb53-438" aria-hidden="true" tabindex="-1"></a>  <span class="at">mode =</span> <span class="st">"fast"</span></span>
+<span id="cb53-439"><a href="#cb53-439" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-440"><a href="#cb53-440" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-441"><a href="#cb53-441" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-442"><a href="#cb53-442" aria-hidden="true" tabindex="-1"></a><span class="fu">### Parallel Computing</span></span>
+<span id="cb53-443"><a href="#cb53-443" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-444"><a href="#cb53-444" aria-hidden="true" tabindex="-1"></a>For large spatial domains, enable parallel processing to accelerate computation:</span>
+<span id="cb53-445"><a href="#cb53-445" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-446"><a href="#cb53-446" aria-hidden="true" tabindex="-1"></a><span class="in">```{r parallel_example, eval = FALSE}</span></span>
+<span id="cb53-447"><a href="#cb53-447" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate weather using multiple cores</span></span>
+<span id="cb53-448"><a href="#cb53-448" aria-hidden="true" tabindex="-1"></a>stochastic_weather <span class="ot">&lt;-</span> <span class="fu">generate_weather_series</span>(</span>
+<span id="cb53-449"><a href="#cb53-449" aria-hidden="true" tabindex="-1"></a>  <span class="co"># ... other parameters ...</span></span>
+<span id="cb53-450"><a href="#cb53-450" aria-hidden="true" tabindex="-1"></a>  <span class="at">compute.parallel =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb53-451"><a href="#cb53-451" aria-hidden="true" tabindex="-1"></a>  <span class="at">num.cores =</span> <span class="dv">4</span></span>
+<span id="cb53-452"><a href="#cb53-452" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-453"><a href="#cb53-453" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-454"><a href="#cb53-454" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-455"><a href="#cb53-455" aria-hidden="true" tabindex="-1"></a><span class="fu">## Further Reading</span></span>
+<span id="cb53-456"><a href="#cb53-456" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Methodological details**: See Steinschneider and Brown (2013) for the theoretical foundation</span>
+<span id="cb53-457"><a href="#cb53-457" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Package documentation**: Use <span class="in">`?function_name`</span> to access detailed help for any function</span>
+<span id="cb53-458"><a href="#cb53-458" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-459"><a href="#cb53-459" aria-hidden="true" tabindex="-1"></a><span class="fu">## Saving and Exporting Results</span></span>
+<span id="cb53-460"><a href="#cb53-460" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-461"><a href="#cb53-461" aria-hidden="true" tabindex="-1"></a>Results can be written back to NetCDF format for use in other tools:</span>
+<span id="cb53-462"><a href="#cb53-462" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-463"><a href="#cb53-463" aria-hidden="true" tabindex="-1"></a><span class="in">```{r save_results, eval = FALSE}</span></span>
+<span id="cb53-464"><a href="#cb53-464" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: Write synthetic weather to NetCDF</span></span>
+<span id="cb53-465"><a href="#cb53-465" aria-hidden="true" tabindex="-1"></a><span class="fu">write_netcdf</span>(</span>
+<span id="cb53-466"><a href="#cb53-466" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.data =</span> synthetic_data[[<span class="dv">1</span>]],</span>
+<span id="cb53-467"><a href="#cb53-467" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.grid =</span> ncdata<span class="sc">$</span>grid,</span>
+<span id="cb53-468"><a href="#cb53-468" aria-hidden="true" tabindex="-1"></a>  <span class="at">weather.date =</span> stochastic_weather<span class="sc">$</span>dates,</span>
+<span id="cb53-469"><a href="#cb53-469" aria-hidden="true" tabindex="-1"></a>  <span class="at">variables =</span> variables,</span>
+<span id="cb53-470"><a href="#cb53-470" aria-hidden="true" tabindex="-1"></a>  <span class="at">output.file =</span> <span class="fu">file.path</span>(output_path, <span class="st">"synthetic_weather.nc"</span>)</span>
+<span id="cb53-471"><a href="#cb53-471" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb53-472"><a href="#cb53-472" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb53-473"><a href="#cb53-473" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-474"><a href="#cb53-474" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb53-475"><a href="#cb53-475" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-476"><a href="#cb53-476" aria-hidden="true" tabindex="-1"></a>**Session Information**</span>
+<span id="cb53-477"><a href="#cb53-477" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-478"><a href="#cb53-478" aria-hidden="true" tabindex="-1"></a><span class="in">```{r session_info, echo = FALSE}</span></span>
+<span id="cb53-479"><a href="#cb53-479" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb53-480"><a href="#cb53-480" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
