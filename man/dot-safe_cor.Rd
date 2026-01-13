@@ -4,44 +4,28 @@
 \alias{.safe_cor}
 \title{Safely Compute Correlation with Pairwise Completeness Check}
 \usage{
-.safe_cor(x, y)
+.safe_cor(x, y, min_pairs = 3L, method = "pearson")
 }
 \arguments{
 \item{x, y}{Numeric vectors of equal length. Only pairs where both values are
-finite are used in the correlation calculation.}
+finite are used.}
+
+\item{min_pairs}{Integer >= 1. Minimum number of paired observations required
+to compute the correlation.}
+
+\item{method}{Character. Correlation method passed to \code{stats::cor()}.
+One of \code{"pearson"}, \code{"spearman"}, or \code{"kendall"}.}
 }
 \value{
-A named numeric vector with two elements:
+Named numeric vector with elements:
 \itemize{
-  \item \code{value}: the correlation coefficient, or \code{NA_real_} if
-    insufficient valid pairs are available,
-  \item \code{n}: the number of finite observation pairs used.
+  \item \code{value}: correlation coefficient, or \code{NA_real_},
+  \item \code{n}: number of finite paired observations.
 }
 }
 \description{
 Computes a correlation coefficient between two numeric vectors using only
 finite paired observations. If the number of valid pairs is below a required
-minimum, the correlation is not computed and an \code{NA} value is returned.
-}
-\details{
-The function first identifies indices where both \code{x} and \code{y} are
-finite. The number of such pairs (\code{n}) is counted and returned alongside
-the correlation estimate. If \code{n} is less than \code{min_pairs}, the
-function returns \code{NA} for the correlation value.
-
-The correlation is computed via \code{stats::cor()} using the method specified
-by the externally defined variable \code{method} (e.g., \code{"pearson"},
-\code{"spearman"}, or \code{"kendall"}).
-
-This helper assumes that \code{min_pairs} and \code{method} are defined in the
-calling environment and performs no validation on their values.
-}
-\examples{
-x <- c(1, 2, 3, NA, 5)
-y <- c(2, 4, NA, 8, 10)
-min_pairs <- 3
-method <- "pearson"
-.safe_cor(x, y)
-
+minimum, the correlation is not computed.
 }
 \keyword{internal}
