@@ -187,7 +187,33 @@ validate_quantile_mapping <- function(
 # HELPER FUNCTIONS FOR DIAGNOSTICS
 # ==============================================================================
 
-#' Compute moment diagnostics
+#' Compute moment diagnostics for quantile-mapped precipitation
+#'
+#' @description
+#' Computes distribution moment statistics for original and adjusted series over a
+#' user-specified subset (typically days where both series are non-zero).
+#' Returns absolute and relative changes and assigns a qualitative assessment per metric.
+#'
+#' @param value.original Numeric vector. Original precipitation values.
+#' @param value.adjusted Numeric vector. Adjusted precipitation values. Must be the same length
+#'   as \code{value.original}.
+#' @param nonzero.mask Logical vector. Subset mask applied to both series before computing
+#'   statistics (e.g., \code{value.original > 0 & value.adjusted > 0}).
+#'
+#' @details
+#' Metrics computed on the masked series are: mean, standard deviation, variance,
+#' coefficient of variation (CV), skewness, and excess kurtosis. Ratio, difference,
+#' and percent change are computed as \code{adjusted/original}, \code{adjusted-original},
+#' and \code{(ratio - 1) * 100}.
+#'
+#' @return A data.frame with one row per metric and columns:
+#' \itemize{
+#'   \item \code{metric}: Metric name.
+#'   \item \code{original}, \code{adjusted}: Metric values.
+#'   \item \code{ratio}, \code{diff}, \code{pct.change}: Relative/absolute change diagnostics.
+#'   \item \code{assessment}: Qualitative assessment (see \code{\link{assess_moment_changes}}).
+#' }
+#'
 #' @keywords internal
 compute_moment_diagnostics <- function(value.original, value.adjusted, nonzero.mask) {
 
@@ -225,7 +251,31 @@ compute_moment_diagnostics <- function(value.original, value.adjusted, nonzero.m
 }
 
 
-#' Compute quantile diagnostics
+#' Compute quantile diagnostics for quantile-mapped precipitation
+#'
+#' @description
+#' Compares specified quantiles between original and adjusted series and reports
+#' relative and absolute differences with a simple qualitative assessment.
+#'
+#' @param value.original Numeric vector. Original precipitation values (typically filtered
+#'   to non-zero or wet days upstream).
+#' @param value.adjusted Numeric vector. Adjusted precipitation values, same length as
+#'   \code{value.original}.
+#' @param quantiles Numeric vector in [0, 1]. Quantile probabilities to evaluate.
+#'
+#' @details
+#' Quantiles are computed with \code{stats::quantile(..., na.rm = TRUE)}. Percent change
+#' is computed from the ratio \code{adjusted/original}. Assessment thresholds currently are:
+#' \itemize{
+#'   \item \code{"good"}: |pct.change| < 5
+#'   \item \code{"acceptable"}: 5 <= |pct.change| < 15
+#'   \item \code{"poor"}: |pct.change| >= 15
+#' }
+#'
+#' @return A data.frame with one row per requested probability and columns:
+#' \code{quantile}, \code{original}, \code{adjusted}, \code{ratio}, \code{diff},
+#' \code{pct.change}, \code{abs.error}, \code{assessment}.
+#'
 #' @keywords internal
 compute_quantile_diagnostics <- function(value.original, value.adjusted, quantiles) {
 
@@ -256,7 +306,32 @@ compute_quantile_diagnostics <- function(value.original, value.adjusted, quantil
 }
 
 
-#' Compute extreme value diagnostics
+#' Compute extreme-value diagnostics for quantile-mapped precipitation
+#'
+#' @description
+#' Evaluates tail behavior by comparing exceedance thresholds and summary statistics
+#' of values above those thresholds for original and adjusted series.
+#'
+#' @param value.original Numeric vector. Original precipitation values (typically filtered
+#'   to non-zero or wet days upstream).
+#' @param value.adjusted Numeric vector. Adjusted precipitation values, same length as
+#'   \code{value.original}.
+#'
+#' @details
+#' For each threshold probability \code{p} in \code{c(0.90, 0.95, 0.99, 0.999)},
+#' the function computes the empirical quantile \code{Q(p)} and then computes
+#' the mean and maximum of the subset \code{x[x >= Q(p)]}. Ratios are returned for
+#' threshold, mean, and max.
+#'
+#' @return A data.frame with one row per threshold probability and columns:
+#' \itemize{
+#'   \item \code{threshold}: Probability used for \code{quantile()}.
+#'   \item \code{original.threshold}, \code{adjusted.threshold}: Exceedance cutoffs.
+#'   \item \code{original.mean}, \code{adjusted.mean}: Mean above cutoff.
+#'   \item \code{original.max}, \code{adjusted.max}: Max above cutoff.
+#'   \item \code{threshold.ratio}, \code{mean.ratio}, \code{max.ratio}: Adjusted/original ratios.
+#' }
+#'
 #' @keywords internal
 compute_extreme_diagnostics <- function(value.original, value.adjusted) {
 
@@ -297,7 +372,29 @@ compute_extreme_diagnostics <- function(value.original, value.adjusted) {
 }
 
 
-#' Compute temporal pattern diagnostics
+#' Compute temporal diagnostics for quantile-mapped precipitation
+#'
+#' @description
+#' Quantifies preservation of temporal structure by comparing annual and monthly means,
+#' their correlations, and lag-1 autocorrelation of the (masked) daily series.
+#'
+#' @param value.original Numeric vector. Original precipitation values.
+#' @param value.adjusted Numeric vector. Adjusted precipitation values, same length as
+#'   \code{value.original}.
+#' @param mon.ts Integer vector. Month index (1--12) for each observation.
+#' @param year.ts Integer vector. Year index for each observation (same length as values).
+#' @param nonzero.mask Logical vector. Mask applied to both series before aggregation
+#'   and autocorrelation calculations.
+#'
+#' @details
+#' Annual and monthly means are computed via \code{tapply(..., mean, na.rm = TRUE)} on
+#' the masked values. Correlations compare original vs adjusted aggregated series.
+#' Lag-1 autocorrelation is computed using \code{stats::acf(..., lag.max = 1, plot = FALSE)}.
+#'
+#' @return A data.frame with columns \code{metric}, \code{value}, and \code{assessment}.
+#' The \code{assessment} field is populated for correlation and autocorrelation-preservation
+#' diagnostics and set to \code{NA} for raw autocorrelation values.
+#'
 #' @keywords internal
 compute_temporal_diagnostics <- function(value.original, value.adjusted,
                                          mon.ts, year.ts, nonzero.mask) {
@@ -362,7 +459,36 @@ compute_temporal_diagnostics <- function(value.original, value.adjusted,
 }
 
 
-#' Compute monthly diagnostics
+#' Compute month-by-month diagnostics for quantile-mapped precipitation
+#'
+#' @description
+#' Computes monthly mean/variance diagnostics for original and adjusted precipitation,
+#' optionally comparing achieved changes against target mean/variance change factors.
+#'
+#' @param value.original Numeric vector. Original precipitation values.
+#' @param value.adjusted Numeric vector. Adjusted precipitation values, same length as
+#'   \code{value.original}.
+#' @param mon.ts Integer vector. Month index (1--12) for each observation.
+#' @param mean.change Optional numeric matrix (n_years x 12). Target mean change factors
+#'   by year and month. If provided with \code{var.change} and \code{year.ts}, the function
+#'   computes mean absolute error to targets.
+#' @param var.change Optional numeric matrix (n_years x 12). Target variance change factors
+#'   by year and month.
+#' @param year.ts Optional integer vector. Year index for each observation. Required only
+#'   when comparing to \code{mean.change} and \code{var.change}.
+#'
+#' @details
+#' Monthly statistics are computed on indices where both series are strictly positive
+#' (\code{value.original > 0 & value.adjusted > 0}) for each month. This isolates intensity
+#' behavior from frequency effects. If target change matrices are provided, targets are
+#' averaged across years using \code{colMeans(..., na.rm = TRUE)}.
+#'
+#' @return A data.frame with one row per month and columns including:
+#' \code{original.mean}, \code{adjusted.mean}, \code{original.var}, \code{adjusted.var},
+#' \code{n.obs}, \code{mean.ratio}, \code{var.ratio}. If targets are provided,
+#' additional columns \code{target.mean.ratio}, \code{target.var.ratio}, \code{mean.error},
+#' \code{var.error}, \code{mean.assessment}, \code{var.assessment} are included.
+#'
 #' @keywords internal
 compute_monthly_diagnostics <- function(value.original, value.adjusted, mon.ts,
                                         mean.change = NULL, var.change = NULL,
@@ -418,7 +544,28 @@ compute_monthly_diagnostics <- function(value.original, value.adjusted, mon.ts,
 }
 
 
-#' Compute spell length diagnostics
+#' Compute wet and dry spell-length diagnostics
+#'
+#' @description
+#' Summarizes persistence characteristics by comparing dry- and wet-spell lengths between
+#' original and adjusted series using a user-defined wet-day threshold.
+#'
+#' @param value.original Numeric vector. Original precipitation values.
+#' @param value.adjusted Numeric vector. Adjusted precipitation values, same length as
+#'   \code{value.original}.
+#' @param threshold Numeric scalar. Wet-day threshold; values < threshold are classified as dry
+#'   and values >= threshold as wet.
+#'
+#' @details
+#' Spell lengths are computed using \code{\link{compute_spell_lengths}} for dry spells
+#' (\code{below = TRUE}) and wet spells (\code{below = FALSE}). The function reports mean,
+#' maximum, and standard deviation of spell lengths and their ratios (adjusted/original).
+#'
+#' @return A data.frame with two rows (\code{"dry"}, \code{"wet"}) and columns:
+#' \code{original.mean}, \code{adjusted.mean}, \code{original.max}, \code{adjusted.max},
+#' \code{original.sd}, \code{adjusted.sd}, \code{mean.ratio}, \code{max.ratio}, \code{sd.ratio},
+#' and \code{assessment}.
+#'
 #' @keywords internal
 compute_spell_diagnostics <- function(value.original, value.adjusted, threshold) {
 
@@ -455,7 +602,27 @@ compute_spell_diagnostics <- function(value.original, value.adjusted, threshold)
 }
 
 
-#' Compute dry day diagnostics
+#' Compute dry-day and wet-day frequency diagnostics
+#'
+#' @description
+#' Compares dry and wet day counts and frequencies between original and adjusted series
+#' given a wet-day threshold.
+#'
+#' @param value.original Numeric vector. Original precipitation values.
+#' @param value.adjusted Numeric vector. Adjusted precipitation values, same length as
+#'   \code{value.original}.
+#' @param threshold Numeric scalar. Wet-day threshold; values < threshold are classified as dry
+#'   and values >= threshold as wet.
+#'
+#' @details
+#' The function reports both counts and frequencies (count divided by total length).
+#' Percent change is computed as \code{adjusted/original - 1}. If original counts are zero
+#' (edge case), percent change may be \code{Inf} or \code{NaN}.
+#'
+#' @return A data.frame with four rows (dry/wet counts and frequencies) and columns:
+#' \code{category}, \code{original}, \code{adjusted}, \code{difference}, \code{pct.change},
+#' \code{assessment}.
+#'
 #' @keywords internal
 compute_dryday_diagnostics <- function(value.original, value.adjusted, threshold) {
 
@@ -489,7 +656,31 @@ compute_dryday_diagnostics <- function(value.original, value.adjusted, threshold
 }
 
 
-#' Compute overall summary metrics
+#' Compute overall summary metrics for quantile-mapping diagnostics
+#'
+#' @description
+#' Aggregates component diagnostics into an overall score and qualitative assessment,
+#' and extracts a compact set of key findings for reporting.
+#'
+#' @param moments Data.frame. Output from \code{\link{compute_moment_diagnostics}}.
+#' @param quantile.metrics Data.frame. Output from \code{\link{compute_quantile_diagnostics}}.
+#' @param extreme.metrics Data.frame. Output from \code{\link{compute_extreme_diagnostics}}.
+#' @param spell.metrics Data.frame. Output from \code{\link{compute_spell_diagnostics}}.
+#' @param dryday.metrics Data.frame. Output from \code{\link{compute_dryday_diagnostics}}.
+#'
+#' @details
+#' Current scoring logic (0--100) weights:
+#' moments (30), quantiles (30), extremes (20), spells (10), dry days (10).
+#' The score is designed for quick triage and is not a formal statistical test.
+#'
+#' @return A list with:
+#' \itemize{
+#'   \item \code{overall.score}: Numeric scalar in [0, 100] (after bounding where applied).
+#'   \item \code{component.scores}: Named numeric vector with per-component scores.
+#'   \item \code{overall.assessment}: Character scalar in \code{c("excellent","good","acceptable","poor")}.
+#'   \item \code{key.findings}: List of headline diagnostics for reporting.
+#' }
+#'
 #' @keywords internal
 compute_summary_metrics <- function(moments, quantile.metrics, extreme.metrics,
                                     spell.metrics, dryday.metrics) {
@@ -547,89 +738,39 @@ compute_summary_metrics <- function(moments, quantile.metrics, extreme.metrics,
   summary
 }
 
-
-# ==============================================================================
-# UTILITY FUNCTIONS
-# ==============================================================================
-
-#' Compute skewness
-#' @keywords internal
-compute_skewness <- function(x) {
-  x <- x[!is.na(x)]
-  n <- length(x)
-  if (n < 3) return(NA)
-
-  m <- mean(x)
-  s <- sd(x)
-  sum((x - m)^3) / (n * s^3)
-}
-
-
-#' Compute kurtosis
-#' @keywords internal
-compute_kurtosis <- function(x) {
-  x <- x[!is.na(x)]
-  n <- length(x)
-  if (n < 4) return(NA)
-
-  m <- mean(x)
-  s <- sd(x)
-  sum((x - m)^4) / (n * s^4) - 3  # Excess kurtosis
-}
-
-
-#' Compute spell lengths
-#' @keywords internal
-compute_spell_lengths <- function(x, threshold, below = TRUE) {
-
-  if (below) {
-    state <- x < threshold
-  } else {
-    state <- x >= threshold
-  }
-
-  # Find runs of TRUE
-  rle.result <- rle(state)
-  spell.lengths <- rle.result$lengths[rle.result$values]
-
-  if (length(spell.lengths) == 0) {
-    return(numeric(0))
-  }
-
-  spell.lengths
-}
-
-
-#' Assess moment changes
-#' @keywords internal
-assess_moment_changes <- function(moments.df) {
-  assessments <- character(nrow(moments.df))
-
-  for (i in seq_len(nrow(moments.df))) {
-    metric <- moments.df$metric[i]
-    pct.change <- abs(moments.df$pct.change[i])
-
-    if (metric %in% c("mean", "variance")) {
-      assessments[i] <- ifelse(pct.change < 5, "excellent",
-                               ifelse(pct.change < 15, "good", "poor"))
-    } else if (metric == "cv") {
-      assessments[i] <- ifelse(pct.change < 10, "excellent",
-                               ifelse(pct.change < 20, "good", "poor"))
-    } else {
-      assessments[i] <- ifelse(pct.change < 15, "good",
-                               ifelse(pct.change < 30, "acceptable", "poor"))
-    }
-  }
-
-  assessments
-}
-
-
 # ==============================================================================
 # PRINT AND PLOT METHODS
 # ==============================================================================
 
-#' Print method for qmap_diagnostics
+#' Print quantile-mapping validation diagnostics
+#'
+#' @description
+#' S3 print method for objects of class \code{"qmap_diagnostics"}. Produces a structured,
+#' human-readable console report summarizing overall performance, component scores,
+#' key findings, and selected detailed diagnostics.
+#'
+#' @param x An object of class \code{"qmap_diagnostics"} as returned by
+#'   \code{\link{validate_quantile_mapping}}.
+#' @param ... Additional arguments (currently ignored). Included for S3 method compatibility.
+#'
+#' @details
+#' The printed output includes:
+#' \itemize{
+#'   \item Overall assessment label and total score (0--100).
+#'   \item Component-level scores for moments, quantiles, extremes, spells, and dry days.
+#'   \item Key findings (mean/variance change, dry-day preservation, extreme amplification).
+#'   \item Tabular summaries of moment preservation and dry-day counts.
+#' }
+#' This method is intended for interactive inspection. For programmatic access,
+#' use the corresponding elements of the \code{"qmap_diagnostics"} object directly
+#' (e.g., \code{x$summary}, \code{x$moments}, \code{x$drydays}).
+#'
+#' @return The input object \code{x}, invisibly.
+#'
+#' @seealso \code{\link{validate_quantile_mapping}},
+#'   \code{\link{summary.qmap_diagnostics}},
+#'   \code{\link{plot.qmap_diagnostics}}
+#'
 #' @export
 print.qmap_diagnostics <- function(x, ...) {
   cat("\n=== Quantile Mapping Diagnostics ===\n\n")
@@ -669,7 +810,45 @@ print.qmap_diagnostics <- function(x, ...) {
 }
 
 
-#' Plot method for qmap_diagnostics
+
+#' Plot diagnostics for quantile-mapping validation
+#'
+#' @description
+#' S3 plot method for objects of class \code{"qmap_diagnostics"} produced by
+#' \code{\link{validate_quantile_mapping}}. Generates one or more ggplot-based diagnostic
+#' figures summarizing moment changes, quantile preservation, extreme-value behavior,
+#' and (optionally) monthly mean patterns.
+#'
+#' @param x An object of class \code{"qmap_diagnostics"} as returned by
+#'   \code{\link{validate_quantile_mapping}}.
+#' @param which Character scalar. Which plot to produce:
+#' \itemize{
+#'   \item \code{"all"}: return/arrange all available panels.
+#'   \item \code{"moments"}: percent changes in distribution moments.
+#'   \item \code{"quantiles"}: scatter of original vs adjusted quantiles.
+#'   \item \code{"extremes"}: comparison of mean exceedances across thresholds.
+#'   \item \code{"monthly"}: monthly mean comparison (requires \code{x$monthly}).
+#' }
+#' @param ... Additional arguments (currently ignored). Included for S3 method compatibility.
+#'
+#' @details
+#' This method requires \pkg{ggplot2}. If \code{which = "monthly"}, it also requires
+#' \pkg{tidyr} for reshaping. If \code{which = "all"} and \pkg{gridExtra} is installed,
+#' plots are arranged in a multi-panel layout; otherwise a named list of ggplot objects
+#' is returned.
+#'
+#' @return
+#' If \code{which = "all"}:
+#' \itemize{
+#'   \item If \pkg{gridExtra} is available, the arranged grob is drawn and returned
+#'   invisibly (side effect).
+#'   \item Otherwise, a named list of ggplot objects is returned.
+#' }
+#' If \code{which != "all"}, a single ggplot object is returned.
+#'
+#' @seealso \code{\link{validate_quantile_mapping}}, \code{\link{print.qmap_diagnostics}},
+#'   \code{\link{summary.qmap_diagnostics}}
+#'
 #' @export
 plot.qmap_diagnostics <- function(x, which = c("all", "moments", "quantiles",
                                                "extremes", "monthly"), ...) {
@@ -792,7 +971,27 @@ plot.qmap_diagnostics <- function(x, which = c("all", "moments", "quantiles",
 }
 
 
-#' Summary method for qmap_diagnostics
+#' Summarize quantile-mapping validation diagnostics
+#'
+#' @description
+#' S3 summary method for \code{"qmap_diagnostics"} objects. Prints a concise textual
+#' summary including the overall score/assessment and selected component-level
+#' diagnostics (moments, quantiles, dry days, and extremes).
+#'
+#' @param object An object of class \code{"qmap_diagnostics"} as returned by
+#'   \code{\link{validate_quantile_mapping}}.
+#' @param ... Additional arguments (currently ignored). Included for S3 method compatibility.
+#'
+#' @details
+#' This method writes to the console via \code{cat()}. It is intended for quick
+#' human-readable reporting rather than programmatic extraction (use \code{object$summary}
+#' and related list elements for that).
+#'
+#' @return The input object, invisibly.
+#'
+#' @seealso \code{\link{validate_quantile_mapping}}, \code{\link{print.qmap_diagnostics}},
+#'   \code{\link{plot.qmap_diagnostics}}
+#'
 #' @export
 summary.qmap_diagnostics <- function(object, ...) {
   cat("\n=== Quantile Mapping Validation Summary ===\n\n")
