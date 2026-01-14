@@ -2,17 +2,32 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{create_spell_length_plot}
 \alias{create_spell_length_plot}
-\title{Create spell length plot}
+\title{Create wet/dry spell length diagnostic plot}
 \usage{
 create_spell_length_plot(
-  stats.wetdry,
-  plot.config,
-  show.title,
-  save.plots,
-  output.path
+  stats_wetdry,
+  plot_config,
+  show_title,
+  save_plots,
+  out_dir
 )
 }
+\arguments{
+\item{stats_wetdry}{Data frame of wet/dry diagnostics including spell statistics.}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+ggplot object (returned invisibly by \code{export_multipanel_plot()}).
+}
 \description{
-Create spell length plot
+Observed-vs-simulated comparison of average wet and dry spell lengths, faceted by
+spell type/statistic. Uses dummy points to enforce symmetric axes per facet.
 }
 \keyword{internal}

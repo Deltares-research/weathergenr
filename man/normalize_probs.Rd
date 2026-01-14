@@ -4,20 +4,20 @@
 \alias{normalize_probs}
 \title{Normalize a Probability Vector with Robust Fallback Handling}
 \usage{
-normalize_probs(p, fallback = NULL)
+normalize_probs(prob, fallback_prob = NULL)
 }
 \arguments{
-\item{p}{Numeric vector of (unnormalized) probabilities or weights.
+\item{prob}{Numeric vector of (unnormalized) probabilities or weights.
 Non-finite values (\code{NA}, \code{NaN}, \code{Inf}) and negative values
 are set to zero prior to normalization.}
 
-\item{fallback}{Optional numeric vector to return when \code{p} has zero
+\item{fallback_prob}{Optional numeric vector to return when \code{prob} has zero
 total mass after cleaning. If \code{NULL} (default), a uniform distribution
-of length \code{length(p)} is returned.}
+of length \code{length(prob)} is returned.}
 }
 \value{
 Numeric vector of probabilities summing to one. If a fallback is used, the
-returned vector is either \code{fallback} or a uniform distribution.
+returned vector is either \code{fallback_prob} or a uniform distribution.
 }
 \description{
 Normalizes a numeric vector to sum to one, treating non-finite and negative
@@ -27,16 +27,16 @@ distribution is returned instead.
 \details{
 This helper is intended for internal use in stochastic or probabilistic
 workflows where degenerate or numerically unstable probability vectors may
-arise. The function does not check that \code{fallback} sums to one; this is
+arise. The function does not check that \code{fallback_prob} sums to one; this is
 assumed to be ensured by the caller.
 }
 \examples{
-p <- c(0.2, NA, -0.1, 0.5)
-normalize_probs(p)
+prob <- c(0.2, NA, -0.1, 0.5)
+normalize_probs(prob)
 
 normalize_probs(c(0, 0, 0))
 
-normalize_probs(c(0, 0, 0), fallback = c(0.7, 0.2, 0.1))
+normalize_probs(c(0, 0, 0), fallback_prob = c(0.7, 0.2, 0.1))
 
 }
 \keyword{internal}

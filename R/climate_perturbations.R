@@ -2,313 +2,223 @@
 # CLIMATE PERTURBATIONS
 # ==============================================================================
 
-#' Apply climate-change perturbations to gridded daily weather data
+#' Apply monthly climate perturbations to gridded daily weather series
 #'
 #' @description
-#' Applies monthly climate-change perturbations to gridded daily weather data by:
+#' Applies **monthly** climate perturbations to **daily** gridded weather series:
 #' \itemize{
-#'   \item adjusting precipitation via quantile mapping with monthly mean/variance factors, and
-#'   \item shifting temperature (mean/min/max) via monthly additive deltas.
+#'   \item **Precipitation** is perturbed using quantile mapping with monthly
+#'   mean and variance factors via \code{perturb_prcp_qm()}.
+#'   \item **Temperature** (\code{temp}, \code{temp_min}, \code{temp_max}) is perturbed
+#'   using monthly additive deltas (step or transient).
+#'   \item **Potential evapotranspiration (PET)** can be recomputed from perturbed
+#'   temperatures using \code{calculate_monthly_pet()}.
 #' }
 #'
-#' Perturbations can be applied as a step change (constant over time) or a transient
-#' change (linearly ramping over years) while preserving the same *mean* change over
-#' the simulation period.
+#' Perturbations can be applied as a **step change** (constant in time) or as a
+#' **transient change** (linearly ramping over years) while preserving the same
+#' *mean* change over the simulation period.
 #'
-#' @param climate.data List of data.frames, one per grid cell. Each data.frame must
-#'   contain columns \code{precip}, \code{temp}, \code{temp_min}, \code{temp_max}.
-#'   If \code{calculate.pet = TRUE}, \code{pet} will be (re)computed and added/overwritten.
-#' @param climate.grid data.frame of grid metadata. Must have \code{nrow(climate.grid) == length(climate.data)}
-#'   and include column \code{y} (latitude in decimal degrees).
-#' @param sim.dates Date vector of length \code{nrow(climate.data[[i]])} for all cells.
-#' @param change.factor.precip.mean Numeric vector length 12. Monthly multiplicative factors
-#'   for precipitation mean (target mean change over the simulation period).
-#' @param change.factor.precip.variance Numeric vector length 12. Monthly multiplicative factors
-#'   for precipitation variance.
-#' @param change.factor.temp.mean Numeric vector length 12. Monthly additive temperature deltas (°C).
-#' @param transient.temp.change Logical. If TRUE, temperature deltas ramp linearly from 0 to
-#'   \code{2 * change.factor.temp.mean} over years (so the average over years equals the specified delta).
-#'   If FALSE, applies step deltas (constant over years).
-#' @param transient.precip.change Logical. If TRUE, precipitation factors ramp linearly from 1 to
-#'   \code{(factor - 1) * 2 + 1} over years (so the average over years equals the specified factor).
-#'   If FALSE, applies step factors (constant over years).
-#' @param calculate.pet Logical. If TRUE, recompute PET using \code{\link{pet_hargreaves}} from perturbed temperatures.
-#' @param fit.method Character. Distribution fitting method passed to \code{\link{quantile_mapping}}.
-#' @param verbose Logical scalar. If TRUE, emit progress logs via \code{.log_info()}.
+#' @param data List of data.frames, one per grid cell. Each data.frame must contain:
+#' \itemize{
+#'   \item \code{prcp} (daily precipitation)
+#'   \item \code{temp} (daily mean temperature)
+#'   \item \code{temp_min} (daily minimum temperature)
+#'   \item \code{temp_max} (daily maximum temperature)
+#' }
+#' If \code{compute_pet = TRUE}, \code{pet} is added or overwritten.
 #'
-#' @details
-#' Transient precipitation factors are constrained to be at least 0.01 to avoid numerical issues.
-#' After perturbations, any \code{Inf} or \code{NaN} values are replaced with 0 (for all columns).
+#' @param grid data.frame of grid metadata with \code{nrow(grid) == length(data)}.
+#' Must include column \code{lat} (latitude in decimal degrees).
 #'
-#' @return List of data.frames, same length and row counts as \code{climate.data}, containing perturbed variables.
+#' @param date Date vector of length \code{nrow(data[[i]])} (identical across cells).
 #'
-#' @seealso \code{\link{quantile_mapping}}, \code{\link{pet_hargreaves}}
+#' @param prcp_mean_factor Numeric vector length 12. Monthly multiplicative factors
+#' for precipitation mean.
+#'
+#' @param prcp_var_factor Numeric vector length 12. Monthly multiplicative factors
+#' for precipitation variance.
+#'
+#' @param temp_delta Numeric vector length 12. Monthly additive temperature deltas (degC)
+#' applied to \code{temp}, \code{temp_min}, and \code{temp_max}.
+#'
+#' @param temp_transient Logical. If \code{TRUE}, temperature deltas ramp linearly
+#' from 0 to \code{2 * temp_delta} over years (mean equals \code{temp_delta}).
+#'
+#' @param prcp_transient Logical. If \code{TRUE}, precipitation factors ramp linearly
+#' from 1 to \code{(factor - 1) * 2 + 1} over years.
+#'
+#' @param compute_pet Logical. If \code{TRUE}, recompute PET using
+#' \code{\link{calculate_monthly_pet}}.
+#'
+#' @param pet_method Character. PET method passed to
+#' \code{\link{calculate_monthly_pet}} (default: \code{"hargreaves"}).
+#'
+#' @param qm_fit_method Character. Distribution-fitting method for
+#' \code{perturb_prcp_qm()}.
+#'
+#' @param verbose Logical. Emit progress logs.
+#'
+#' @return List of data.frames with perturbed variables.
+#'
+#' @seealso \code{\link{perturb_prcp_qm}}, \code{\link{diagnose_prcp_qm}},
+#'   \code{\link{calculate_monthly_pet}}
 #'
 #' @export
 apply_climate_perturbations <- function(
-    climate.data = NULL,
-    climate.grid = NULL,
-    sim.dates = NULL,
-    change.factor.precip.mean = NULL,
-    change.factor.precip.variance = NULL,
-    change.factor.temp.mean = NULL,
-    transient.temp.change = TRUE,
-    transient.precip.change = TRUE,
-    calculate.pet = TRUE,
-    fit.method = "mme",
+    data = NULL,
+    grid = NULL,
+    date = NULL,
+    prcp_mean_factor = NULL,
+    prcp_var_factor = NULL,
+    temp_delta = NULL,
+    temp_transient = TRUE,
+    prcp_transient = TRUE,
+    compute_pet = TRUE,
+    pet_method = "hargreaves",
+    qm_fit_method = "mme",
     verbose = FALSE) {
 
-  # ==========================================================================
-  # INPUT VALIDATION (keep legacy error messages for tests)
-  # ==========================================================================
+  # --------------------------------------------------------------------------
+  # INPUT VALIDATION (legacy messages preserved)
+  # --------------------------------------------------------------------------
 
-  if (is.null(climate.data)) stop("'climate.data' must not be NULL", call. = FALSE)
-  if (is.null(climate.grid)) stop("'climate.grid' must not be NULL", call. = FALSE)
-  if (is.null(sim.dates)) stop("'sim.dates' must not be NULL", call. = FALSE)
-  if (is.null(change.factor.precip.mean)) stop("'change.factor.precip.mean' must not be NULL", call. = FALSE)
-  if (is.null(change.factor.precip.variance)) stop("'change.factor.precip.variance' must not be NULL", call. = FALSE)
-  if (is.null(change.factor.temp.mean)) stop("'change.factor.temp.mean' must not be NULL", call. = FALSE)
+  if (is.null(data)) stop("'climate.data' must not be NULL", call. = FALSE)
+  if (is.null(grid)) stop("'climate.grid' must not be NULL", call. = FALSE)
+  if (is.null(date)) stop("'sim.dates' must not be NULL", call. = FALSE)
+  if (is.null(prcp_mean_factor)) stop("'change.factor.precip.mean' must not be NULL", call. = FALSE)
+  if (is.null(prcp_var_factor)) stop("'change.factor.precip.variance' must not be NULL", call. = FALSE)
+  if (is.null(temp_delta)) stop("'change.factor.temp.mean' must not be NULL", call. = FALSE)
 
-  if (!is.list(climate.data)) stop("'climate.data' must be a list of data frames", call. = FALSE)
-  if (!is.data.frame(climate.grid)) stop("'climate.grid' must be a data frame", call. = FALSE)
-  if (!inherits(sim.dates, "Date")) stop("'sim.dates' must be a Date vector", call. = FALSE)
-  if (!is.logical(verbose) || length(verbose) != 1L) stop("'verbose' must be logical (TRUE/FALSE)", call. = FALSE)
+  if (!is.list(data)) stop("'climate.data' must be a list of data frames", call. = FALSE)
+  if (!is.data.frame(grid)) stop("'climate.grid' must be a data frame", call. = FALSE)
+  if (!inherits(date, "Date")) stop("'sim.dates' must be a Date vector", call. = FALSE)
 
-  ngrids <- length(climate.data)
+  n_grid <- length(data)
 
-  if (ngrids != nrow(climate.grid)) {
+  if (n_grid != nrow(grid)) {
     stop(
-      "Length of 'climate.data' (", ngrids, ") must match ",
-      "number of rows in 'climate.grid' (", nrow(climate.grid), ")",
+      "Length of 'climate.data' (", n_grid, ") must match ",
+      "number of rows in 'climate.grid' (", nrow(grid), ")",
       call. = FALSE
     )
   }
 
-  if (!"y" %in% names(climate.grid)) {
+  if (!"lat" %in% names(grid)) {
     stop("'climate.grid' must contain a 'y' column (latitude)", call. = FALSE)
   }
 
-  if (length(change.factor.precip.mean) != 12) {
-    stop("'change.factor.precip.mean' must have length 12 (one per month)", call. = FALSE)
-  }
-  if (length(change.factor.precip.variance) != 12) {
-    stop("'change.factor.precip.variance' must have length 12 (one per month)", call. = FALSE)
-  }
-  if (length(change.factor.temp.mean) != 12) {
-    stop("'change.factor.temp.mean' must have length 12 (one per month)", call. = FALSE)
-  }
+  required_cols <- c("prcp", "temp", "temp_min", "temp_max")
+  n_day <- length(date)
 
-  if (any(change.factor.precip.mean <= 0)) stop("'change.factor.precip.mean' must contain positive values", call. = FALSE)
-  if (any(change.factor.precip.variance <= 0)) stop("'change.factor.precip.variance' must contain positive values", call. = FALSE)
-
-  required_cols <- c("precip", "temp", "temp_min", "temp_max")
-  n_days <- length(sim.dates)
-
-  for (i in seq_along(climate.data)) {
-    missing_cols <- setdiff(required_cols, names(climate.data[[i]]))
-    if (length(missing_cols) > 0) {
-      stop(
-        "Grid cell ", i, " is missing required columns: ",
-        paste(missing_cols, collapse = ", "),
-        call. = FALSE
-      )
+  for (i in seq_along(data)) {
+    miss <- setdiff(required_cols, names(data[[i]]))
+    if (length(miss) > 0) {
+      stop("Grid cell ", i, " missing columns: ", paste(miss, collapse = ", "), call. = FALSE)
     }
-    if (nrow(climate.data[[i]]) != n_days) {
-      stop(
-        "Grid cell ", i, " has ", nrow(climate.data[[i]]), " rows but ",
-        "'sim.dates' has length ", n_days,
-        call. = FALSE
-      )
+    if (nrow(data[[i]]) != n_day) {
+      stop("Grid cell ", i, " row count does not match 'sim.dates'", call. = FALSE)
     }
   }
 
-  # ==========================================================================
-  # TEMPORAL INDICES
-  # ==========================================================================
+  # --------------------------------------------------------------------------
+  # TIME INDICES
+  # --------------------------------------------------------------------------
 
-  year_vec  <- as.integer(format(sim.dates, "%Y"))
-  year_ind  <- year_vec - min(year_vec) + 1L
-  month_ind <- as.integer(format(sim.dates, "%m"))
+  year <- as.integer(format(date, "%Y"))
+  year_idx <- year - min(year) + 1L
+  month <- as.integer(format(date, "%m"))
+  n_year <- max(year_idx)
 
-  n_years <- max(year_ind)
+  # --------------------------------------------------------------------------
+  # HELPERS
+  # --------------------------------------------------------------------------
 
-  .log_info(
-    msg = sprintf(
-      "Simulation period: %d years (%d-%d), %d days",
-      n_years, min(year_vec), max(year_vec), n_days
-    ),
-    verbose = verbose,
-    tag = "PERTURB"
-  )
-
-  # ==========================================================================
-  # INTERNAL HELPERS
-  # ==========================================================================
-
-  .as_change_matrix <- function(mat_or_vec, n_years) {
-    # Ensure matrix with nrow = n_years, ncol = 12 (handles n_years == 1)
-    if (is.null(dim(mat_or_vec))) {
-      mat_or_vec <- matrix(mat_or_vec, nrow = n_years, ncol = 12)
-    } else {
-      mat_or_vec <- as.matrix(mat_or_vec)
-      if (!identical(dim(mat_or_vec), c(n_years, 12L))) {
-        # vapply typically returns n_years x 12; this is a safety net
-        mat_or_vec <- matrix(as.numeric(mat_or_vec), nrow = n_years, ncol = 12)
-      }
-    }
-    mat_or_vec
+  .as_change_matrix <- function(x) {
+    if (is.null(dim(x))) matrix(x, nrow = n_year, ncol = 12) else x
   }
 
-  # ==========================================================================
-  # COMPUTE TEMPERATURE CHANGE FACTORS
-  # ==========================================================================
+  # --------------------------------------------------------------------------
+  # TEMPERATURE DELTAS
+  # --------------------------------------------------------------------------
 
-  if (isTRUE(transient.temp.change)) {
-    temp_change_matrix <- vapply(
-      1:12,
-      function(m) seq(0, change.factor.temp.mean[m] * 2, length.out = n_years),
-      FUN.VALUE = numeric(n_years)
-    )
+  temp_mat <- if (temp_transient) {
+    vapply(1:12, function(m) seq(0, 2 * temp_delta[m], length.out = n_year),
+           FUN.VALUE = numeric(n_year))
   } else {
-    temp_change_matrix <- vapply(
-      1:12,
-      function(m) rep(change.factor.temp.mean[m], n_years),
-      FUN.VALUE = numeric(n_years)
-    )
+    vapply(1:12, function(m) rep(temp_delta[m], n_year),
+           FUN.VALUE = numeric(n_year))
   }
-  temp_change_matrix <- .as_change_matrix(temp_change_matrix, n_years)
+  temp_mat <- .as_change_matrix(temp_mat)
+  temp_day <- temp_mat[cbind(year_idx, month)]
 
-  temp_change_daily <- temp_change_matrix[cbind(year_ind, month_ind)]
-
-  .log_info(
-    msg = sprintf(
-      "Temperature: %s change (mean monthly delta = %.2f °C)",
-      if (isTRUE(transient.temp.change)) "transient" else "step",
-      mean(change.factor.temp.mean)
-    ),
-    verbose = verbose,
-    tag = "PERTURB"
-  )
-
-  # ==========================================================================
-  # COMPUTE PRECIPITATION CHANGE FACTORS
-  # ==========================================================================
+  # --------------------------------------------------------------------------
+  # PRECIPITATION FACTORS
+  # --------------------------------------------------------------------------
 
   min_factor <- 0.01
 
-  if (isTRUE(transient.precip.change)) {
+  if (prcp_transient) {
+    mean_end <- (prcp_mean_factor - 1) * 2 + 1
+    var_end  <- (prcp_var_factor  - 1) * 2 + 1
 
-    precip_mean_end <- (change.factor.precip.mean - 1) * 2 + 1
-    precip_var_end  <- (change.factor.precip.variance - 1) * 2 + 1
-
-    precip_mean_matrix <- vapply(
-      1:12,
-      function(m) seq(1, precip_mean_end[m], length.out = n_years),
-      FUN.VALUE = numeric(n_years)
-    )
-    precip_var_matrix <- vapply(
-      1:12,
-      function(m) seq(1, precip_var_end[m], length.out = n_years),
-      FUN.VALUE = numeric(n_years)
-    )
-
-    precip_mean_matrix <- .as_change_matrix(precip_mean_matrix, n_years)
-    precip_var_matrix  <- .as_change_matrix(precip_var_matrix, n_years)
-
-    precip_mean_matrix[precip_mean_matrix < min_factor] <- min_factor
-    precip_var_matrix[precip_var_matrix < min_factor] <- min_factor
-
+    mean_mat <- vapply(1:12, function(m) seq(1, mean_end[m], length.out = n_year),
+                       FUN.VALUE = numeric(n_year))
+    var_mat  <- vapply(1:12, function(m) seq(1, var_end[m],  length.out = n_year),
+                       FUN.VALUE = numeric(n_year))
   } else {
-
-    precip_mean_matrix <- vapply(
-      1:12,
-      function(m) rep(change.factor.precip.mean[m], n_years),
-      FUN.VALUE = numeric(n_years)
-    )
-    precip_var_matrix <- vapply(
-      1:12,
-      function(m) rep(change.factor.precip.variance[m], n_years),
-      FUN.VALUE = numeric(n_years)
-    )
-
-    precip_mean_matrix <- .as_change_matrix(precip_mean_matrix, n_years)
-    precip_var_matrix  <- .as_change_matrix(precip_var_matrix, n_years)
+    mean_mat <- vapply(1:12, function(m) rep(prcp_mean_factor[m], n_year),
+                       FUN.VALUE = numeric(n_year))
+    var_mat  <- vapply(1:12, function(m) rep(prcp_var_factor[m], n_year),
+                       FUN.VALUE = numeric(n_year))
   }
 
-  .log_info(
-    msg = sprintf(
-      "Precipitation: %s change (mean monthly factor = %.3f)",
-      if (isTRUE(transient.precip.change)) "transient" else "step",
-      mean(change.factor.precip.mean)
-    ),
-    verbose = verbose,
-    tag = "PERTURB"
-  )
+  mean_mat <- pmax(.as_change_matrix(mean_mat), min_factor)
+  var_mat  <- pmax(.as_change_matrix(var_mat),  min_factor)
 
-  # ==========================================================================
-  # APPLY PERTURBATIONS TO EACH GRID CELL
-  # ==========================================================================
+  # --------------------------------------------------------------------------
+  # APPLY PER GRID
+  # --------------------------------------------------------------------------
 
-  .log_info(
-    msg = sprintf("Applying perturbations to %d grid cells", ngrids),
-    verbose = verbose,
-    tag = "PERTURB"
-  )
+  out <- vector("list", n_grid)
 
-  latitudes <- climate.grid$y
+  for (i in seq_len(n_grid)) {
 
-  out <- vector("list", ngrids)
+    cell <- data[[i]]
 
-  for (i in seq_len(ngrids)) {
-
-    if (isTRUE(verbose) && (i == 1L || i == ngrids || (i %% 100L) == 0L)) {
-      .log_info(
-        msg = sprintf("Processing grid %d of %d", i, ngrids),
-        verbose = TRUE,
-        tag = "PERTURB"
-      )
-    }
-
-    grid_data <- climate.data[[i]]
-
-    grid_data$precip <- quantile_mapping(
-      value = grid_data$precip,
-      mon.ts = month_ind,
-      year.ts = year_ind,
-      mean.change = precip_mean_matrix,
-      var.change = precip_var_matrix,
-      fit.method = fit.method,
+    cell$prcp <- perturb_prcp_qm(
+      prcp = cell$prcp,
+      month = month,
+      year = year_idx,
+      mean_factor = mean_mat,
+      var_factor = var_mat,
+      fit_method = qm_fit_method,
       verbose = FALSE
     )
 
-    grid_data$temp     <- grid_data$temp     + temp_change_daily
-    grid_data$temp_min <- grid_data$temp_min + temp_change_daily
-    grid_data$temp_max <- grid_data$temp_max + temp_change_daily
+    cell$temp     <- cell$temp     + temp_day
+    cell$temp_min <- cell$temp_min + temp_day
+    cell$temp_max <- cell$temp_max + temp_day
 
-    if (isTRUE(calculate.pet)) {
-      grid_data$pet <- pet_hargreaves(
-        months = month_ind,
-        temp = grid_data$temp,
-        tdiff = grid_data$temp_max - grid_data$temp_min,
-        lat = latitudes[i]
+    if (compute_pet) {
+      cell$pet <- calculate_monthly_pet(
+        month = month,
+        temp = cell$temp,
+        temp_range = cell$temp_max - cell$temp_min,
+        lat_deg = grid$lat[i],
+        method = pet_method
       )
     }
 
-    # Replace Inf/NaN with 0 for numeric columns only
-    grid_data[] <- lapply(grid_data, function(col) {
-      if (!is.numeric(col)) return(col)
-      col[is.infinite(col) | is.nan(col)] <- 0
-      col
+    cell[] <- lapply(cell, function(x) {
+      if (is.numeric(x)) {
+        x[!is.finite(x)] <- 0
+      }
+      x
     })
 
-    out[[i]] <- grid_data
+    out[[i]] <- cell
   }
-
-  .log_info(
-    msg = "Perturbation complete",
-    verbose = verbose,
-    tag = "PERTURB"
-  )
 
   out
 }

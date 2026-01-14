@@ -6,45 +6,45 @@
 \usage{
 write_netcdf(
   data = NULL,
-  coord.grid = NULL,
-  output.path = NULL,
-  origin.date = NULL,
-  calendar.type = "noleap",
-  nc.template.file = NULL,
-  nc.compression = 4,
-  nc.spatial.ref = "spatial_ref",
-  nc.file.prefix = "clim_change_rlz",
-  nc.file.suffix = "",
-  signif.digits = NULL,
+  grid = NULL,
+  out_dir = NULL,
+  origin_date = NULL,
+  calendar = "noleap",
+  template_path = NULL,
+  compression = 4,
+  spatial_ref = "spatial_ref",
+  file_prefix = "clim_change_rlz",
+  file_suffix = "",
+  signif_digits = NULL,
   verbose = TRUE
 )
 }
 \arguments{
-\item{data}{List of length \code{nrow(coord.grid)}. Each element is a named list of
+\item{data}{List of length \code{nrow(grid)}. Each element is a named list of
 numeric vectors (time series) for each variable to be written. All list elements must
 have identical variable names and equal length.}
 
-\item{coord.grid}{data.frame with at least \code{xind} and \code{yind} integer indices
+\item{grid}{data.frame with at least \code{xind} and \code{yind} integer indices
 mapping each list element to an output grid cell.}
 
-\item{output.path}{Character. Output directory.}
+\item{out_dir}{Character. Output directory.}
 
-\item{origin.date}{Character or Date. Origin date used for NetCDF time units
+\item{origin_date}{Character or Date. Origin date used for NetCDF time units
 (e.g., \code{"1970-01-01"}).}
 
-\item{calendar.type}{Character. NetCDF calendar type (e.g., \code{"noleap"}).}
+\item{calendar}{Character. NetCDF calendar type (e.g., \code{"noleap"}).}
 
-\item{nc.template.file}{Character. Path to a template NetCDF file.}
+\item{template_path}{Character. Path to a template NetCDF file.}
 
-\item{nc.compression}{Integer 0-9. NetCDF4 deflation level.}
+\item{compression}{Integer 0-9. NetCDF4 deflation level.}
 
-\item{nc.spatial.ref}{Character. Spatial reference variable name in template.}
+\item{spatial_ref}{Character. Spatial reference variable name in template.}
 
-\item{nc.file.prefix}{Character. Prefix for output filename.}
+\item{file_prefix}{Character. Prefix for output filename.}
 
-\item{nc.file.suffix}{Character. Optional suffix appended to filename.}
+\item{file_suffix}{Character. Optional suffix appended to filename.}
 
-\item{signif.digits}{Integer. If not \code{NULL}, round values to this many significant digits.}
+\item{signif_digits}{Integer. If not \code{NULL}, round values to this many significant digits.}
 
 \item{verbose}{Logical. If TRUE, emit progress logs via \code{.log_info()}.}
 }

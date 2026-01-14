@@ -80,103 +80,20 @@ compute_kurtosis <- function(x) {
 compute_spell_lengths <- function(x, threshold, below = TRUE) {
 
   if (below) {
-    state <- x < threshold
+    state <- x <= threshold
   } else {
-    state <- x >= threshold
+    state <- x > threshold
   }
 
-  # Find runs of TRUE
-  rle.result <- rle(state)
-  spell.lengths <- rle.result$lengths[rle.result$values]
+  rle_result <- rle(state)
+  spell_lengths <- rle_result$lengths[rle_result$values]
 
-  if (length(spell.lengths) == 0) {
-    return(numeric(0))
-  }
-
-  spell.lengths
+  if (length(spell_lengths) == 0) return(numeric(0))
+  spell_lengths
 }
 
 
-#' @title Mean Spell Length Above or Below a Threshold
-#'
-#' @description
-#' Computes the mean length of contiguous runs ("spells") in a numeric
-#' time series after threshold-based classification.
-#'
-#' The input vector is first converted to a binary occurrence series using
-#' the supplied threshold. Consecutive days in the same state are grouped
-#' into spells, and the mean spell length is calculated for either the
-#' below-threshold or above-threshold state.
-#'
-#' This function is typically used to diagnose wet or dry spell persistence
-#' in daily precipitation or other hydro-meteorological time series and is
-#' suitable for validating stochastic weather generators and Markov-chain
-#' occurrence models.
-#'
-#' @param x Numeric vector. Daily values of a weather variable
-#'   (for example precipitation or temperature). Missing values are not
-#'   explicitly handled and should be removed beforehand if present.
-#' @param threshold Numeric scalar. Threshold used to classify days into
-#'   two states. Values less than or equal to the threshold are considered
-#'   "below-threshold"; values above the threshold are considered
-#'   "above-threshold".
-#' @param below Logical. If TRUE (default), the mean length of
-#'   below-threshold spells (for example dry spells) is returned.
-#'   If FALSE, the mean length of above-threshold spells
-#'   (for example wet spells) is returned.
-#'
-#' @return
-#' A single numeric value giving the mean spell length (in days) for the
-#' selected state. Returns:
-#' \itemize{
-#'   \item \code{NA_real_} if \code{x} has zero length,
-#'   \item \code{0} if no spells of the selected type are present.
-#' }
-#'
-#' @details
-#' A spell is defined as a maximal sequence of consecutive days belonging
-#' to the same threshold-defined state. Spell lengths are computed from
-#' transitions in the binary occurrence series derived from \code{x}.
-#'
-#' The function treats values exactly equal to the threshold as
-#' below-threshold. This convention should be kept consistent with other
-#' occurrence or Markov-state definitions used in the analysis.
-#'
-#' @seealso
-#' \code{\link{markov_next_state}}
-#'
-#' @export
-#' @keywords internal
-mean_spell_length <- function(x, threshold = 0, below = TRUE) {
 
-  # Validate input
-  if (!is.numeric(x)) {
-    stop("'x' must be a numeric vector")
-  }
-
-  n <- length(x)
-  if (n == 0L) {
-    return(NA_real_)
-  }
-
-  # Convert to binary: 0 = dry, 1 = wet (or vice versa, depending on 'below')
-  binary <- ifelse(x <= threshold, 0, 1)
-
-  # Identify transitions
-  change_points <- c(which(diff(binary) != 0), n)
-  spell_lengths <- diff(c(0L, change_points))
-  spell_types <- binary[change_points]
-
-  # Select spell type
-  selected_lengths <- spell_lengths[spell_types == if (below) 0 else 1]
-
-  if (length(selected_lengths) == 0) {
-    return(0)
-  }
-
-  # Calculate average length
-  return(mean(selected_lengths))
-}
 
 
 #' Assign qualitative assessments for moment preservation
@@ -184,8 +101,8 @@ mean_spell_length <- function(x, threshold = 0, below = TRUE) {
 #' @description
 #' Classifies moment changes based on absolute percent change thresholds that differ by metric.
 #'
-#' @param moments.df Data.frame. Output from \code{\link{compute_moment_diagnostics}} containing
-#'   at least \code{metric} and \code{pct.change}.
+#' @param moments_df Data.frame. Output from \code{\link{compute_moment_diagnostics}} containing
+#'   at least \code{metric} and \code{pct_change}.
 #'
 #' @details
 #' The function applies metric-specific thresholds:
@@ -195,25 +112,25 @@ mean_spell_length <- function(x, threshold = 0, below = TRUE) {
 #'   \item others (sd, skewness, kurtosis): good < 15, acceptable < 30, else poor
 #' }
 #'
-#' @return Character vector of length \code{nrow(moments.df)} with assessment labels.
+#' @return Character vector of length \code{nrow(moments_df)} with assessment labels.
 #'
 #' @keywords internal
-assess_moment_changes <- function(moments.df) {
-  assessments <- character(nrow(moments.df))
+assess_moment_changes <- function(moments_df) {
+  assessments <- character(nrow(moments_df))
 
-  for (i in seq_len(nrow(moments.df))) {
-    metric <- moments.df$metric[i]
-    pct.change <- abs(moments.df$pct.change[i])
+  for (i in seq_len(nrow(moments_df))) {
+    metric <- moments_df$metric[i]
+    pct_change <- abs(moments_df$pct_change[i])
 
     if (metric %in% c("mean", "variance")) {
-      assessments[i] <- ifelse(pct.change < 5, "excellent",
-                               ifelse(pct.change < 15, "good", "poor"))
+      assessments[i] <- ifelse(pct_change < 5, "excellent",
+                               ifelse(pct_change < 15, "good", "poor"))
     } else if (metric == "cv") {
-      assessments[i] <- ifelse(pct.change < 10, "excellent",
-                               ifelse(pct.change < 20, "good", "poor"))
+      assessments[i] <- ifelse(pct_change < 10, "excellent",
+                               ifelse(pct_change < 20, "good", "poor"))
     } else {
-      assessments[i] <- ifelse(pct.change < 15, "good",
-                               ifelse(pct.change < 30, "acceptable", "poor"))
+      assessments[i] <- ifelse(pct_change < 15, "good",
+                               ifelse(pct_change < 30, "acceptable", "poor"))
     }
   }
 
@@ -289,8 +206,6 @@ assess_moment_changes <- function(moments.df) {
 }
 
 
-
-
 # ==============================================================================
 # INTERNAL LOGGING UTILITIES
 # ==============================================================================
@@ -338,5 +253,3 @@ assess_moment_changes <- function(moments.df) {
 
   invisible(NULL)
 }
-
-

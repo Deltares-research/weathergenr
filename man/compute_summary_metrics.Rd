@@ -6,39 +6,13 @@
 \usage{
 compute_summary_metrics(
   moments,
-  quantile.metrics,
-  extreme.metrics,
-  spell.metrics,
-  dryday.metrics
+  quant_metrics,
+  extreme_metrics,
+  spell_metrics,
+  dryday_metrics
 )
 }
-\arguments{
-\item{moments}{Data.frame. Output from \code{\link{compute_moment_diagnostics}}.}
-
-\item{quantile.metrics}{Data.frame. Output from \code{\link{compute_quantile_diagnostics}}.}
-
-\item{extreme.metrics}{Data.frame. Output from \code{\link{compute_extreme_diagnostics}}.}
-
-\item{spell.metrics}{Data.frame. Output from \code{\link{compute_spell_diagnostics}}.}
-
-\item{dryday.metrics}{Data.frame. Output from \code{\link{compute_dryday_diagnostics}}.}
-}
-\value{
-A list with:
-\itemize{
-  \item \code{overall.score}: Numeric scalar in [0, 100] (after bounding where applied).
-  \item \code{component.scores}: Named numeric vector with per-component scores.
-  \item \code{overall.assessment}: Character scalar in \code{c("excellent","good","acceptable","poor")}.
-  \item \code{key.findings}: List of headline diagnostics for reporting.
-}
-}
 \description{
-Aggregates component diagnostics into an overall score and qualitative assessment,
-and extracts a compact set of key findings for reporting.
-}
-\details{
-Current scoring logic (0--100) weights:
-moments (30), quantiles (30), extremes (20), spells (10), dry days (10).
-The score is designed for quick triage and is not a formal statistical test.
+Compute overall summary metrics for quantile-mapping diagnostics
 }
 \keyword{internal}

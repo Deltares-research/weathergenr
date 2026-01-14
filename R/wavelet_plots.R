@@ -1,379 +1,249 @@
-#' Plot Wavelet Power Spectrum and Global Wavelet Spectrum
+#' Plot Wavelet Power and Global Wavelet Spectrum
 #'
-#' Creates a two-panel figure showing (i) the time-period wavelet power spectrum
-#' (with cone of influence and significance contour) and (ii) the global wavelet
-#' spectrum for a time series.
+#' @description
+#' Produces a two-panel diagnostic figure for a 1D time series wavelet analysis:
+#' (1) the time-period wavelet power field and (2) the global wavelet spectrum
+#' (time-averaged power by period) with its significance threshold.
 #'
-#' Key plotting choices for interpretability:
+#' @details
+#' \strong{What this plot is for}
 #' \itemize{
-#'   \item Power is plotted on a log2 scale with robust color limits (5th-95th percentiles)
-#'         to avoid a "washed out" field when the dynamic range is large.
-#'   \item The spectrum is plotted on the native wavelet grid (no interpolation), avoiding
-#'         smoothing/extrapolation artifacts that can flatten contrast.
-#'   \item Uses a perceptually uniform \code{viridis} color scale.
+#'   \item Identify when specific periodicities are active in time (power field).
+#'   \item Summarize dominant variability scales across the full record (global spectrum).
+#'   \item Check edge effects and statistical significance (COI and contour).
 #' }
 #'
-#' @param variable Numeric vector. The original time series (for length).
-#' @param variable.year Numeric vector. Year labels for x-axis (optional).
-#' @param period Numeric vector. Periods (scales) used in the wavelet transform.
-#' @param POWER Matrix. Wavelet power spectrum (periods x time).
-#' @param GWS Numeric vector. Global wavelet spectrum (mean power at each period).
-#' @param GWS_signif Numeric vector. Significance threshold for the global wavelet spectrum.
-#' @param coi Numeric vector. Cone of influence for each time point.
-#' @param sigm Matrix. Significance mask or ratio (periods x time). Contour is drawn at 1.
-#' @param variable.unit Character. Unit label for the variable (default is "mm").
+#' \strong{Key plotting choices}
+#' \itemize{
+#'   \item Power is shown on a \eqn{\log_2} scale after discarding non-finite values and
+#'   non-positive power.
+#'   \item The power field is drawn on the native wavelet grid (no interpolation) using
+#'   explicit cell boundaries, which avoids smoothing artifacts.
+#'   \item Color limits are set using robust quantiles (5th-95th percentile) to avoid
+#'   low-contrast fields when dynamic range is large.
+#' }
 #'
-#' @importFrom stats var sd cor fft simulate
-#' @return A patchwork plot object with the time-period power spectrum and global wavelet spectrum.
+#' \strong{Inputs must be consistent}
+#' \itemize{
+#'   \item \code{n_time = length(series)} and \code{n_period = length(period)}.
+#'   \item \code{power} and \code{signif_mask} must have dimensions
+#'   \code{n_period x n_time}.
+#'   \item \code{coi} must have length \code{n_time}.
+#'   \item \code{period} must be strictly increasing.
+#'   \item If supplied, \code{time} must be strictly increasing and have length \code{n_time}.
+#' }
+#'
+#' @param series Numeric vector. The time series used to define the time dimension
+#'   (length must match the number of columns in \code{power}).
+#' @param time Optional numeric vector of length \code{length(series)} used for the x-axis.
+#'   Must be strictly increasing. If \code{NULL}, uses \code{seq_len(length(series))}.
+#' @param period Numeric vector of wavelet periods (scales), typically in years (or days),
+#'   strictly increasing.
+#' @param power Numeric matrix of wavelet power with dimensions
+#'   \code{length(period) x length(series)}.
+#' @param gws Numeric vector. Global wavelet spectrum (mean power for each \code{period}).
+#'   Must have length \code{length(period)}.
+#' @param gws_signif Numeric vector. Significance threshold for \code{gws}. Must have length
+#'   \code{length(period)}.
+#' @param coi Numeric vector of length \code{length(series)} giving the cone of influence
+#'   in the same units as \code{period}. Values outside the plotted period range are ignored.
+#' @param signif_mask Numeric matrix with dimensions \code{length(period) x length(series)}.
+#'   A contour is drawn at \code{1}. This is typically a significance ratio or a binary mask
+#'   encoded as 0/1 (or NA).
+#' @param unit Character. Unit label used in the global spectrum axis label (default: \code{"mm"}).
+#'
+#' @return A \code{patchwork} object combining the power-field panel and the global spectrum panel.
+#'
+#' @seealso
+#' \code{\link{plot_wavelet_global_spectrum}} for a standalone global spectrum plot.
+#'
+#' @examples
+#' \dontrun{
+#' # Assuming you computed wavelet outputs elsewhere:
+#' # w <- analyze_wavelet_spectrum(series)
+#' p <- plot_wavelet_power(
+#'   series      = series,
+#'   time        = years,
+#'   period      = w$period,
+#'   power       = w$power,
+#'   gws         = w$gws,
+#'   gws_signif  = w$gws_signif,
+#'   coi         = w$coi,
+#'   signif_mask = w$signif_mask,
+#'   unit        = "mm"
+#' )
+#' print(p)
+#' }
+#'
 #' @export
-plot_wavelet_spectra <- function(
-    variable,
-    variable.year = NULL,
+#' @import ggplot2
+#' @import patchwork
+#' @import scales
+#' @importFrom stats quantile
+plot_wavelet_power <- function(
+    series,
+    time = NULL,
     period,
-    POWER,
-    GWS,
-    GWS_signif,
+    power,
+    gws,
+    gws_signif,
     coi,
-    sigm,
-    variable.unit = "mm") {
+    signif_mask,
+    unit = "mm"
+) {
 
-  # ---------------------------------------------------------------------------
-  # Input checks
-  # ---------------------------------------------------------------------------
-  if (is.null(variable) || is.null(period) || is.null(POWER) ||
-      is.null(GWS) || is.null(GWS_signif) || is.null(coi) || is.null(sigm)) {
-    stop("All input arguments must be provided and non-null.", call. = FALSE)
-  }
-  if (!is.numeric(variable) || !is.vector(variable)) {
-    stop("'variable' must be a numeric vector.", call. = FALSE)
-  }
-
-  n_time <- length(variable)
-
-  if (!is.numeric(period) || !is.vector(period) || length(period) < 2L) {
-    stop("'period' must be a numeric vector of length >= 2.", call. = FALSE)
-  }
+  if (!is.numeric(series)) stop("'series' must be numeric.", call. = FALSE)
+  n_time <- length(series)
   n_period <- length(period)
 
-  if (!is.matrix(POWER) || nrow(POWER) != n_period || ncol(POWER) != n_time) {
-    stop("POWER must be a matrix with dim = length(period) x length(variable).", call. = FALSE)
+  if (!is.matrix(power) || nrow(power) != n_period || ncol(power) != n_time) {
+    stop("Invalid 'power' dimensions.", call. = FALSE)
   }
-  if (!is.matrix(sigm) || nrow(sigm) != n_period || ncol(sigm) != n_time) {
-    stop("sigm must be a matrix with dim = length(period) x length(variable).", call. = FALSE)
-  }
-  if (!is.numeric(GWS) || length(GWS) != n_period) {
-    stop("GWS must have length equal to length(period).", call. = FALSE)
-  }
-  if (!is.numeric(GWS_signif) || length(GWS_signif) != n_period) {
-    stop("GWS_signif must have length equal to length(period).", call. = FALSE)
-  }
-  if (!is.numeric(coi) || length(coi) != n_time) {
-    stop("coi must have length equal to length(variable).", call. = FALSE)
-  }
+  if (!is.matrix(signif_mask)) stop("'signif_mask' must be a matrix.", call. = FALSE)
 
-  # Ensure strictly increasing for boundary calculations
-  if (any(!is.finite(period))) stop("'period' contains non-finite values.", call. = FALSE)
-  if (is.unsorted(period, strictly = TRUE)) {
-    stop("'period' must be strictly increasing.", call. = FALSE)
-  }
+  time_axis <- if (is.null(time)) seq_len(n_time) else time
 
-  # ---------------------------------------------------------------------------
-  # Axes
-  # ---------------------------------------------------------------------------
-  time_year <- if (is.null(variable.year)) {
-    seq_len(n_time)
-  } else {
-    if (!is.numeric(variable.year) || length(variable.year) != n_time) {
-      stop("variable.year must be NULL or numeric with length equal to length(variable).", call. = FALSE)
-    }
-    if (is.unsorted(variable.year, strictly = TRUE)) {
-      stop("variable.year must be strictly increasing.", call. = FALSE)
-    }
-    variable.year
-  }
-
-  # ---------------------------------------------------------------------------
-  # Helper: compute cell boundaries for irregular grids
-  # ---------------------------------------------------------------------------
   .cell_bounds <- function(x) {
-    x <- as.numeric(x)
     mids <- (x[-1L] + x[-length(x)]) / 2
-    lower <- c(x[1L] - (mids[1L] - x[1L]), mids)
-    upper <- c(mids, x[length(x)] + (x[length(x)] - mids[length(mids)]))
-    list(lower = lower, upper = upper)
+    list(
+      lower = c(x[1L] - (mids[1L] - x[1L]), mids),
+      upper = c(mids, x[length(x)] + (x[length(x)] - mids[length(mids)]))
+    )
   }
 
-  xb <- .cell_bounds(time_year)
+  xb <- .cell_bounds(time_axis)
   yb <- .cell_bounds(period)
 
-  # ---------------------------------------------------------------------------
-  # Global Wavelet Spectrum data
-  # ---------------------------------------------------------------------------
-  GWS_df <- data.frame(
-    period = as.numeric(period),
-    GWS = as.numeric(GWS),
-    GWS_signif = as.numeric(GWS_signif),
-    stringsAsFactors = FALSE
-  )
+  power[!is.finite(power) | power <= 0] <- NA_real_
+  z <- log2(power)
 
-  # ---------------------------------------------------------------------------
-  # Power field (native grid; explicit tile extents)
-  # ---------------------------------------------------------------------------
-  POWER_use <- as.matrix(POWER)
-  POWER_use[!is.finite(POWER_use) | POWER_use <= 0] <- NA_real_
-  power_log2 <- log2(POWER_use)
-
-  # Build long dataframe with per-cell boundaries
-  # Use t() so vectorization matches x-fastest ordering
-  zvec <- as.vector(t(power_log2))  # length = n_time * n_period
   df_power <- data.frame(
-    x = rep(time_year, times = n_period),
+    x = rep(time_axis, times = n_period),
     y = rep(period, each = n_time),
     xmin = rep(xb$lower, times = n_period),
     xmax = rep(xb$upper, times = n_period),
     ymin = rep(yb$lower, each = n_time),
     ymax = rep(yb$upper, each = n_time),
-    z = zvec,
-    stringsAsFactors = FALSE
+    z = as.vector(t(z))
   )
-  df_power <- df_power[is.finite(df_power$z), , drop = FALSE]
-  if (nrow(df_power) == 0L) {
-    stop("All POWER values are non-finite or <= 0 after cleaning; cannot plot.", call. = FALSE)
-  }
+  df_power <- df_power[is.finite(df_power$z), ]
 
-  # Robust color limits
-  zlims <- as.numeric(stats::quantile(df_power$z, probs = c(0.05, 0.95), na.rm = TRUE))
-  if (!all(is.finite(zlims)) || zlims[1] >= zlims[2]) {
-    zf <- range(df_power$z, finite = TRUE)
-    zlims <- as.numeric(zf)
-  }
+  zlims <- quantile(df_power$z, c(0.05, 0.95), na.rm = TRUE)
 
-  # ---------------------------------------------------------------------------
-  # COI
-  # ---------------------------------------------------------------------------
-  coi_df <- data.frame(
-    x = time_year,
-    y = as.numeric(coi),
-    stringsAsFactors = FALSE
-  )
-  pmin <- min(period, na.rm = TRUE)
-  pmax <- max(period, na.rm = TRUE)
-  coi_df <- coi_df[is.finite(coi_df$y) & (coi_df$y >= pmin) & (coi_df$y <= pmax), , drop = FALSE]
-
-  # ---------------------------------------------------------------------------
-  # Significance contour (native grid, no interpolation)
-  # ---------------------------------------------------------------------------
-  sigm_use <- as.matrix(sigm)
-  sigm_use[!is.finite(sigm_use)] <- NA_real_
-
-  sigm_df <- data.frame(
-    x = rep(time_year, times = n_period),
-    y = rep(period, each = n_time),
-    z = as.vector(t(sigm_use)),
-    stringsAsFactors = FALSE
-  )
-  sigm_df <- sigm_df[is.finite(sigm_df$z), , drop = FALSE]
-
-  # ---------------------------------------------------------------------------
-  # Panel a: Spectrum (continuous tiles)
-  # ---------------------------------------------------------------------------
-  p_spectrum <- ggplot2::ggplot(df_power) +
-    ggplot2::theme_light() +
-    ggplot2::geom_rect(
-      ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = z),
-      colour = NA
-    ) +
-    ggplot2::scale_y_reverse(expand = c(0, 0)) +
-    ggplot2::scale_x_continuous(expand = c(0, 0)) +
-    ggplot2::scale_fill_viridis_c(
-      option = "C",
-      limits = zlims,
-      oob = scales::squish
-    ) +
-    ggplot2::labs(x = "Time (year)", y = "Period (years)") +
-    ggplot2::guides(fill = "none") +
-    ggplot2::geom_line(
-      data = coi_df,
-      ggplot2::aes(x = x, y = y),
-      linetype = "dashed",
-      color = "red",
-      linewidth = 0.85,
-      inherit.aes = FALSE
-    ) +
-    ggplot2::stat_contour(
-      data = sigm_df,
-      ggplot2::aes(x = x, y = y, z = z),
+  p_spectrum <- ggplot(df_power) +
+    theme_light() +
+    geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = z)) +
+    scale_y_reverse(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_fill_viridis_c(limits = zlims, oob = squish) +
+    labs(x = "Time", y = "Period (years)") +
+    guides(fill = "none") +
+    geom_line(data = data.frame(x = time_axis, y = coi),
+              aes(x = x, y = y),
+              linetype = "dashed", color = "red") +
+    stat_contour(
+      data = data.frame(
+        x = rep(time_axis, times = n_period),
+        y = rep(period, each = n_time),
+        z = as.vector(t(signif_mask))
+      ),
+      aes(x = x, y = y, z = z),
       breaks = 1,
-      color = "black",
-      inherit.aes = FALSE
+      color = "black"
     )
 
-  # ---------------------------------------------------------------------------
-  # Panel b: Global Wavelet Spectrum
-  # ---------------------------------------------------------------------------
-  y_limits <- c(pmin, pmax)
+  gws_df <- data.frame(period = period, gws = gws, signif = gws_signif)
 
-  p_gws <- ggplot2::ggplot(GWS_df, ggplot2::aes(x = period, y = GWS)) +
-    ggplot2::theme_light() +
-    ggplot2::geom_line() +
-    ggplot2::geom_point(shape = 19, size = 1) +
-    ggplot2::geom_line(
-      ggplot2::aes(x = period, y = GWS_signif),
-      color = "red",
-      linetype = "dashed",
-      linewidth = 0.85
-    ) +
-    ggplot2::scale_y_continuous(expand = c(0, 0)) +
-    ggplot2::scale_x_reverse(expand = c(0, 0), limits = y_limits) +
-    ggplot2::coord_flip() +
-    ggplot2::labs(y = bquote(Power ~ (.(variable.unit)^2)), x = "")
+  p_gws <- ggplot(gws_df, aes(x = period, y = gws)) +
+    theme_light() +
+    geom_line() +
+    geom_point(size = 1) +
+    geom_line(aes(y = signif), color = "red", linetype = "dashed") +
+    coord_flip() +
+    scale_x_reverse(limits = range(period)) +
+    labs(y = bquote(Power ~ (.(unit)^2)), x = "")
 
-  # ---------------------------------------------------------------------------
-  # Combine panels
-  # ---------------------------------------------------------------------------
-  p_spectrum + p_gws + patchwork::plot_layout(widths = c(3, 1.2))
+  p_spectrum + p_gws + plot_layout(widths = c(3, 1.2))
 }
-
 
 
 #' Plot Global Wavelet Spectrum
 #'
-#' Generates a publication quality plot of the global wavelet power spectrum.
-#' The function supports comparison between an observed spectrum and an ensemble
-#' of simulated spectra, displayed using an envelope and an ensemble mean.
-#'
-#' @param power.period Numeric vector. Fourier periods, for example in years,
-#'   corresponding to the wavelet scales used in the analysis.
-#' @param power.signif Numeric vector. Significance threshold for the global
-#'   wavelet power at each period, for example a 95 percent confidence level.
-#' @param power.obs Numeric vector. Observed global wavelet power spectrum.
-#' @param power.sim Optional numeric matrix. Simulated global wavelet spectra.
-#'   Rows correspond to periods and columns correspond to individual simulations.
-#'   When provided, the simulation range and ensemble mean are shown.
-#'
-#' @return A ggplot2 object representing the global wavelet power spectrum.
+#' @description
+#' Plots the global wavelet spectrum (time-averaged wavelet power by period)
+#' for an observed series, together with a period-wise significance threshold.
+#' Optionally overlays the ensemble mean of simulated global spectra.
 #'
 #' @details
-#' The global wavelet spectrum summarizes wavelet power across time for each
-#' Fourier period. This plot is commonly used to identify dominant variability
-#' scales and to compare observed behavior against stochastic or climate driven
-#' ensembles.
-#'
-#' Plot behavior is as follows:
+#' \strong{What this plot is for}
 #' \itemize{
-#'   \item The observed global wavelet spectrum and its significance threshold
-#'   are always plotted.
-#'   \item When simulated spectra are provided, the ensemble range is shown
-#'   as a ribbon and the ensemble mean is shown as a solid line.
+#'   \item Identify dominant variability scales (peaks in global power).
+#'   \item Compare observed spectral structure to a simulated ensemble.
+#'   \item Interpret variability relative to a significance threshold.
 #' }
 #'
-#' @section Aesthetics:
-#' \itemize{
-#'   \item Blue solid line: observed global wavelet spectrum
-#'   \item Red dashed line: significance threshold
-#'   \item Black solid line: ensemble mean, when provided
-#'   \item Gray ribbon: ensemble envelope defined by minimum and maximum values,
-#'   when provided
-#' }
+#' \strong{Ensemble behavior}
+#' When \code{sim_power} is provided, the function adds the ensemble mean as a solid line.
+#' This function intentionally keeps the default view simple; if you want an ensemble
+#' envelope (e.g., min/max or quantiles) add it outside this function.
+#'
+#' @param period Numeric vector of wavelet periods (scales), typically in years (or days).
+#'   Should be strictly increasing for meaningful interpretation.
+#' @param signif Numeric vector of length \code{length(period)} giving the global-spectrum
+#'   significance threshold at each period.
+#' @param obs_power Numeric vector of length \code{length(period)} giving the observed
+#'   global wavelet spectrum.
+#' @param sim_power Optional numeric matrix of simulated global spectra with
+#'   \code{nrow(sim_power) == length(period)} and one column per simulation.
+#'
+#' @return A \code{ggplot} object.
+#'
+#' @seealso
+#' \code{\link{plot_wavelet_power}} for a combined diagnostic plot including the time-period power field.
 #'
 #' @examples
 #' \dontrun{
-#' period <- seq(1, 64)
-#' signif <- rep(1500, length(period))
-#' obs <- 2000 * exp(-((period - 15) / 10)^2) + 1000
-#' simmat <- sapply(
-#'   1:30,
-#'   function(i) obs + rnorm(length(period), sd = 200)
-#' )
-#'
-#' p <- plot_global_wavelet_spectrum(
-#'   power.period = period,
-#'   power.signif = signif,
-#'   power.obs = obs,
-#'   power.sim = simmat
+#' p <- plot_wavelet_global_spectrum(
+#'   period   = w$period,
+#'   signif   = w$gws_signif,
+#'   obs_power = w$gws,
+#'   sim_power = w$gws_sim  # matrix: period x n_sim (optional)
 #' )
 #' print(p)
 #' }
 #'
+#' @export
 #' @import ggplot2
 #' @importFrom tibble tibble
-#' @export
-plot_global_wavelet_spectrum <- function(
-    power.period,
-    power.signif,
-    power.obs,
-    power.sim = NULL
+plot_wavelet_global_spectrum <- function(
+    period,
+    signif,
+    obs_power,
+    sim_power = NULL
 ) {
 
-  # -------------------------------------------------------------------------
-  # Input validation
-  # -------------------------------------------------------------------------
-  stopifnot(
-    is.numeric(power.period),
-    is.numeric(power.signif),
-    is.numeric(power.obs)
+  df_obs <- data.frame(
+    period = period,
+    obs = obs_power,
+    signif = signif
   )
 
-  n_period <- length(power.period)
-
-  # if (length(power.signif) != n_period ||
-  #     length(power.obs)    != n_period) {
-  #   stop(
-  #     "power.period, power.signif, and power.obs must have identical length.",
-  #     call. = FALSE
-  #   )
-  # }
-
-  if (!is.null(power.sim)) {
-    power.sim <- as.matrix(power.sim)
-  }
-
-  # -------------------------------------------------------------------------
-  # Construct plotting data
-  # -------------------------------------------------------------------------
-
-
-
-  obs_length <- length(power.obs)
-  sim_length <- nrow(power.sim)
-
-  df_obs <- data.frame(period = power.period[1:obs_length], obs = power.obs,
-                       signif = power.signif[1:obs_length], stringsAsFactors = FALSE)
-
-  # Base plot with observed spectrum and significance threshold
   p <- ggplot(df_obs, aes(x = period)) +
-    theme_light(base_size = 11) +
-    geom_line(aes(y = obs), color = "blue", linewidth = 0.6) +
-    geom_line(aes(y = signif), color = "red", linetype = "dashed",
-              linewidth = 0.6, na.rm = TRUE)
-
-
-  # Add simulation envelope if provided
-  if (!is.null(power.sim)) {
-
-
-    sim_mean <- rowMeans(power.sim, na.rm = TRUE)
-    sim_min  <- apply(power.sim, 1, min, na.rm = TRUE)
-    sim_max  <- apply(power.sim, 1, max, na.rm = TRUE)
-
-    # Create data frame for simulation data
-    df_sim <- tibble(period = power.period, signif = power.signif,
-                     sim = power.sim, sim_lo = sim_min, sim_hi = sim_max,
-                     sim_mu = sim_mean)
-
-    # Add simulation ribbon and mean line
-    p <- p +
-      #geom_ribbon(aes(x = period, ymin = sim_lo, ymax = sim_hi), data = df_sim,
-      #            fill = "grey60", alpha = 0.25, na.rm = TRUE) +
-      geom_line(aes(x = period, y = sim_mu), data = df_sim,
-                color = "black", linewidth = 0.6, na.rm = TRUE)
-  }
-
-  # Add scales and labels after all data layers
-  p <- p +
-    scale_y_continuous(expand = c(0, 0)) +
+    theme_light() +
+    geom_line(aes(y = obs), color = "blue") +
+    geom_line(aes(y = signif), color = "red", linetype = "dashed") +
     scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)) +
     labs(x = "Period (years)", y = expression(paste("Power (", mm^2, ")")))
+
+  if (!is.null(sim_power)) {
+    sim_mu <- rowMeans(sim_power, na.rm = TRUE)
+    p <- p + geom_line(
+      data = tibble(period = period, sim_mu = sim_mu),
+      aes(x = period, y = sim_mu),
+      color = "black"
+    )
+  }
 
   p
 }

@@ -2,11 +2,11 @@
 % Please edit documentation in R/evaluate_generator.R
 \name{prepare_plot_data}
 \alias{prepare_plot_data}
-\title{Prepare data for plotting}
+\title{Prepare data for diagnostic plotting (obs vs sim)}
 \usage{
-prepare_plot_data(obs.results, sim.results, variables, n_grids)
+prepare_plot_data(obs_results, sim_results, vars)
 }
 \description{
-Prepare data for plotting
+Prepare data for diagnostic plotting (obs vs sim)
 }
 \keyword{internal}

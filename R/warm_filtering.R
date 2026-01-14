@@ -1,253 +1,153 @@
-#' Filter and sample WARM simulations using distributional, tail, and wavelet criteria
+#' Filter and sample WARM realizations using distributional, tail, and wavelet criteria
 #'
 #' @description
-#' Filters a set of WARM realizations (simulated annual series) against an observed
-#' annual series using three tiers of checks:
+#' Filters an ensemble of WARM-generated annual realizations against an observed
+#' annual series using three criterion families:
 #' \itemize{
-#'   \item \strong{Distributional}: relative differences in mean and standard deviation,
-#'   \item \strong{Tail behavior}: lower/upper tail mass relative to observed quantile thresholds,
-#'   \item \strong{Spectral}: an observed-relevant global wavelet spectrum (GWS) filter.
+#'   \item \strong{Distributional}: relative differences in mean and standard deviation.
+#'   \item \strong{Tail behaviour}: lower/upper tail mass relative to observed quantile thresholds.
+#'   \item \strong{Spectral}: observed-relevant global wavelet spectrum (GWS) filtering.
 #' }
 #'
-#' If fewer than \code{sample.num} realizations pass, the function relaxes criteria
-#' iteratively (up to \code{bounds$relax.max.iter}) by loosening the currently
-#' most restrictive active filter. If still insufficient, a deterministic fallback
-#' returns the \code{sample.num} realizations with the smallest absolute relative
-#' mean difference.
+#' If fewer than \code{n_select} realizations pass, the function relaxes criteria
+#' iteratively (up to \code{filter_bounds$relax_max_iter}) by loosening the currently
+#' most restrictive active filter (lowest pass rate). If still insufficient, a
+#' deterministic fallback returns the \code{n_select} realizations with the smallest
+#' absolute relative mean difference.
 #'
-#' @param series.obs Numeric vector. Observed annual series (no missing values recommended).
-#' @param series.sim Numeric matrix. Simulated annual series with years in rows and
-#'   realizations in columns.
-#' @param sample.num Integer scalar. Number of realizations to return in \code{sampled}.
-#'   If greater than \code{ncol(series.sim)}, it is reduced to \code{ncol(series.sim)} with a warning.
-#' @param seed Optional integer. Random seed used for window selection (if lengths differ)
+#' @param obs_series Numeric vector. Observed annual series used as the reference.
+#' @param sim_series Numeric matrix. Simulated annual realizations with years in rows
+#'   and realizations in columns.
+#' @param n_select Integer scalar. Number of realizations to return in \code{selected}.
+#' @param seed Optional integer scalar. Random seed used for window selection (if lengths differ)
 #'   and for sampling from the final candidate pool.
-#' @param padding Logical scalar. If \code{TRUE}, expands the observed significant-period
-#'   set by one index on each side when assessing presence of observed-relevant signal
-#'   in simulated spectra.
-#' @param relax.order Character vector. Relaxation priority ordering for criteria.
+#' @param pad_periods Logical scalar. If \code{TRUE}, expands the observed significant-period
+#'   band by one index on each side when checking simulated presence in the observed-relevant band.
+#' @param relax_order Character vector. Relaxation priority ordering for criteria.
 #'   Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
-#'   When multiple filters have identical pass rates, this order is used to break ties.
-#' @param bounds Named list. Filtering thresholds and relaxation controls. Any entry
-#'   provided overrides the defaults. Common entries include:
-#'   \itemize{
-#'     \item \code{mean}, \code{sd}: relative-difference tolerances for mean and sd.
-#'     \item \code{tail.low.p}, \code{tail.high.p}: quantiles defining lower/upper tail thresholds.
-#'     \item \code{tail.tol.log}: tolerance on log-distance between simulated and observed tail mass.
-#'     \item \code{tail.eps}: epsilon added to tail mass before log transform for stability.
-#'     \item \code{sig.frac}: minimum fraction of observed-relevant regions required to pass the wavelet filter.
-#'     \item \code{wavelet.region.tol}, \code{wavelet.contrast.tol}: tolerances for regional power and contrast ratios.
-#'     \item \code{wavelet.require_presence}, \code{wavelet.presence.frac}: controls for requiring signal presence.
-#'     \item \code{relax.*}: relaxation step sizes and caps (including \code{relax.max.iter}).
-#'   }
-#' @param wavelet.pars Named list passed to \code{\link{wavelet_spectral_analysis}} for
-#'   observed and simulated series. Typical entries include \code{signif.level},
-#'   \code{noise.type}, \code{period.lower.limit}, and \code{detrend}.
-#' @param make.plots Logical scalar. If \code{TRUE}, returns diagnostic plots (time series overlay,
-#'   relative-difference summaries, and wavelet GWS diagnostics) in \code{plots}.
-#' @param verbose Logical scalar. If \code{TRUE}, logs per-iteration pass rates and relaxation steps
-#'   using \code{logger::.log_info()}.
-#'
-#' @details
-#' \strong{Length harmonization}:
-#' The evaluation is performed over \code{n_use = min(length(series.obs), nrow(series.sim))}.
-#' If the observed series is longer than \code{n_use}, one contiguous window of length \code{n_use}
-#' is sampled and used for all comparisons. If simulated realizations are longer than \code{n_use},
-#' each realization is evaluated on its own sampled contiguous window of length \code{n_use}.
-#' Returned series in \code{subsetted} and \code{sampled} always use the original rows from
-#' \code{series.sim} (no trimming in the outputs).
-#'
-#' \strong{Tail-mass metrics}:
-#' Lower and upper thresholds are defined by the observed quantiles at
-#' \code{bounds$tail.low.p} and \code{bounds$tail.high.p}. Tail behavior is summarized as
-#' normalized deficit/excess mass relative to those thresholds, and compared using a
-#' stabilized log-distance with \code{bounds$tail.eps}.
-#'
-#' \strong{Wavelet filter (observed-relevant GWS)}:
-#' The observed GWS is tested against its significance curve to identify significant periods,
-#' which are grouped into contiguous regions. For each realization, regional integrated power
-#' and region-to-background contrast are compared to the observed within the specified
-#' tolerances, requiring at least \code{bounds$sig.frac} of regions to pass. Optional
-#' presence checks ensure simulated power exceeds a minimum fraction of observed power in
-#' the observed-relevant band.
+#' @param filter_bounds Named list. Filtering thresholds and relaxation controls. Any entry
+#'   overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}, not \code{tail.low.p}).
+#' @param wavelet_args Named list passed to \code{\link{analyze_wavelet_spectrum}} for
+#'   observed and simulated series (e.g., \code{signif_level}, \code{noise_type}, \code{period_lower_limit}, \code{detrend}).
+#' @param make_plots Logical scalar. If \code{TRUE}, returns diagnostic plots in \code{plots}.
+#' @param verbose Logical scalar. If \code{TRUE}, logs per-iteration pass rates and relaxation steps.
 #'
 #' @return A list with:
 #' \describe{
-#'   \item{subsetted}{Numeric matrix. All realizations that remain in the final candidate pool
-#'     (columns subset of \code{series.sim}).}
-#'   \item{sampled}{Numeric matrix. \code{sample.num} realizations sampled from the final pool
-#'     (columns subset of \code{series.sim}).}
-#'   \item{filter_summary}{Data frame summarizing pass counts and pass rates by criterion, and the
-#'     final selection mode (tiered relaxation vs fallback).}
-#'   \item{diagnostics}{List containing window metadata, pool/sample indices, relaxation log, and
-#'     final parameter values used for filtering.}
-#'   \item{plots}{NULL or a named list of ggplot objects when \code{make.plots = TRUE}.}
+#'   \item{pool}{Numeric matrix. Final candidate pool (subset of columns from \code{sim_series}).}
+#'   \item{selected}{Numeric matrix. \code{n_select} realizations selected from the final pool.}
+#'   \item{summary}{Data frame summarising pass counts/rates and selection mode.}
+#'   \item{diagnostics}{List with window metadata, indices, relaxation log, and final bounds.}
+#'   \item{plots}{NULL or a named list of ggplot objects when \code{make_plots = TRUE}.}
 #' }
 #'
-#' @seealso \code{\link{wavelet_spectral_analysis}}
-#'
-#' @examples
-#' \dontrun{
-#' out <- filter_warm_simulations(
-#'   series.obs = obs,
-#'   series.sim = sim_mat,
-#'   sample.num = 5,
-#'   seed = 123,
-#'   make.plots = TRUE,
-#'   verbose = TRUE
-#' )
-#' out$filter_summary
-#' out$plots$wavelet_gws
-#' }
 #' @importFrom utils modifyList
 #' @importFrom stats acf median runif setNames
 #' @export
-filter_warm_simulations <- function(series.obs = NULL,
-                                    series.sim = NULL,
-                                    sample.num = 5,
-                                    seed = NULL,
-                                    padding = TRUE,
-                                    relax.order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
-                                    bounds = list(),
-                                    wavelet.pars = list(
-                                      signif.level = 0.80,
-                                      noise.type = "red",
-                                      period.lower.limit = 2,
-                                      detrend = TRUE),
-                                    make.plots = FALSE,
-                                    verbose = FALSE) {
+filter_warm_pool <- function(
+    obs_series = NULL,
+    sim_series = NULL,
+    n_select = 5,
+    seed = NULL,
+    pad_periods = TRUE,
+    relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+    filter_bounds = list(),
+    wavelet_args = list(
+      signif_level = 0.80,
+      noise_type = "red",
+      period_lower_limit = 2,
+      detrend = TRUE
+    ),
+    make_plots = FALSE,
+    verbose = FALSE
+) {
 
   # ---------------------------------------------------------------------------
   # Input validation
   # ---------------------------------------------------------------------------
-  if (is.null(series.obs) || !is.numeric(series.obs) || !is.vector(series.obs)) {
-    stop("'series.obs' must be a numeric vector.", call. = FALSE)
+  if (is.null(obs_series) || !is.numeric(obs_series) || !is.vector(obs_series)) {
+    stop("'obs_series' must be a numeric vector.", call. = FALSE)
   }
-  if (is.null(series.sim) || !is.matrix(series.sim) || !is.numeric(series.sim)) {
-    stop("'series.sim' must be a numeric matrix.", call. = FALSE)
+  if (is.null(sim_series) || !is.matrix(sim_series) || !is.numeric(sim_series)) {
+    stop("'sim_series' must be a numeric matrix.", call. = FALSE)
   }
-  if (!is.numeric(sample.num) || length(sample.num) != 1L || !is.finite(sample.num) || sample.num < 1) {
-    stop("'sample.num' must be a positive integer.", call. = FALSE)
+  if (!is.numeric(n_select) || length(n_select) != 1L || !is.finite(n_select) || n_select < 1) {
+    stop("'n_select' must be a positive integer.", call. = FALSE)
   }
-  sample.num <- as.integer(sample.num)
+  n_select <- as.integer(n_select)
 
-  if (!is.logical(padding) || length(padding) != 1L) stop("'padding' must be TRUE/FALSE.", call. = FALSE)
-  make.plots <- isTRUE(make.plots)
+  if (!is.logical(pad_periods) || length(pad_periods) != 1L) {
+    stop("'pad_periods' must be TRUE/FALSE.", call. = FALSE)
+  }
+  make_plots <- isTRUE(make_plots)
   verbose <- isTRUE(verbose)
 
-  n_years_obs0 <- length(series.obs)
-  n_years_sim0 <- nrow(series.sim)
-  n_realizations <- ncol(series.sim)
+  n_obs0 <- length(obs_series)
+  n_sim0 <- nrow(sim_series)
+  n_rlz  <- ncol(sim_series)
 
-  if (n_realizations < sample.num) {
-    warning("sample.num exceeds number of series; returning at most ncol(series.sim).", call. = FALSE)
-    sample.num <- n_realizations
+  if (n_rlz < n_select) {
+    warning("n_select exceeds number of series; returning at most ncol(sim_series).", call. = FALSE)
+    n_select <- n_rlz
   }
 
   # ---------------------------------------------------------------------------
-  # Relaxation order (NEW: user-configurable)
+  # Relaxation order
   # ---------------------------------------------------------------------------
   allowed <- c("mean", "sd", "tail_low", "tail_high", "wavelet")
-  if (is.null(relax.order) || !is.character(relax.order)) {
-    stop("'relax.order' must be a character vector.", call. = FALSE)
+  if (is.null(relax_order) || !is.character(relax_order)) {
+    stop("'relax_order' must be a character vector.", call. = FALSE)
   }
-  relax.order <- as.character(relax.order)
+  relax_order <- as.character(relax_order)
 
-  if (anyNA(relax.order) || any(!nzchar(relax.order))) {
-    stop("'relax.order' must not contain NA/empty strings.", call. = FALSE)
+  if (anyNA(relax_order) || any(!nzchar(relax_order))) {
+    stop("'relax_order' must not contain NA/empty strings.", call. = FALSE)
   }
-  if (any(duplicated(relax.order))) {
-    stop("'relax.order' must not contain duplicates.", call. = FALSE)
+  if (any(duplicated(relax_order))) {
+    stop("'relax_order' must not contain duplicates.", call. = FALSE)
   }
-  if (!all(relax.order %in% allowed)) {
-    bad <- setdiff(relax.order, allowed)
-    stop("Invalid entries in 'relax.order': ", paste(bad, collapse = ", "),
-         ". Allowed: ", paste(allowed, collapse = ", "), call. = FALSE)
-  }
-  if (!setequal(relax.order, allowed)) {
-    missing <- setdiff(allowed, relax.order)
-    extra   <- setdiff(relax.order, allowed)
-    msg <- character(0)
-    if (length(missing) > 0) msg <- c(msg, paste0("missing: ", paste(missing, collapse = ", ")))
-    if (length(extra) > 0)   msg <- c(msg, paste0("extra: ", paste(extra, collapse = ", ")))
-    stop("'relax.order' must contain exactly these filters once each: ",
-         paste(allowed, collapse = ", "), ". Problem: ", paste(msg, collapse = " | "),
-         call. = FALSE)
+  if (!all(relax_order %in% allowed) || !setequal(relax_order, allowed)) {
+    stop(
+      "'relax_order' must contain exactly these filters once each: ",
+      paste(allowed, collapse = ", "),
+      call. = FALSE
+    )
   }
 
-  RELAX_ORDER <- relax.order
+  RELAX_ORDER <- relax_order
 
   # ---------------------------------------------------------------------------
-  # Bounds defaults
+  # Bounds defaults (snake_case keys)
   # ---------------------------------------------------------------------------
-  b_list <- modifyList(list(
-    mean = 0.05,
-    sd   = 0.05,
-
-    tail.low.p  = 0.20,
-    tail.high.p = 0.80,
-    tail.tol.log = log(1.05),
-    tail.eps = 1e-5,
-
-    sig.frac = 0.60,
-    wavelet.region.tol = 0.50,
-    wavelet.contrast.tol = 0.30,
-    wavelet.min_bg = 1e-12,
-    wavelet.require_presence = TRUE,
-    wavelet.presence.frac = NULL,
-
-    plot.wavelet_q = c(0.50, 0.95),
-
-    relax.mult = 1.25,
-    relax.mean.max = 0.25,
-    relax.sd.max = 0.25,
-
-    relax.tail.tol.log.max = log(2.0),
-    relax.tail.p.step = 0.02,
-    relax.tail.p.low.max  = 0.40,
-    relax.tail.p.high.min = 0.40,
-
-    relax.wavelet.sig.frac.step = 0.05,
-    relax.wavelet.sig.frac.min = 0.30,
-    relax.wavelet.region.tol.step = 0.10,
-    relax.wavelet.region.tol.max = 1.00,
-    relax.wavelet.contrast.tol.step = 0.10,
-    relax.wavelet.contrast.tol.max = 1.00,
-
-    relax.max.iter = 20L
-  ), bounds)
-
+  b_list <- modifyList(filter_warm_bounds_defaults(), filter_bounds)
   b <- list2env(b_list, parent = environment())
-  b$relax.max.iter <- as.integer(b$relax.max.iter)
+  b$relax_max_iter <- as.integer(b$relax_max_iter)
 
-  # Validate tail parameters
-  b$tail.low.p  <- as.numeric(b$tail.low.p)
-  b$tail.high.p <- as.numeric(b$tail.high.p)
-  b$tail.tol.log <- as.numeric(b$tail.tol.log)
-  b$tail.eps <- as.numeric(b$tail.eps)
+  # Validate tail parameters (snake_case)
+  b$tail_low_p   <- as.numeric(b$tail_low_p)
+  b$tail_high_p  <- as.numeric(b$tail_high_p)
+  b$tail_tol_log <- as.numeric(b$tail_tol_log)
+  b$tail_eps     <- as.numeric(b$tail_eps)
 
-  if (!is.finite(b$tail.low.p) || b$tail.low.p <= 0 || b$tail.low.p >= 0.5) {
-    stop("bounds$tail.low.p must be in (0, 0.5).", call. = FALSE)
+  if (!is.finite(b$tail_low_p) || b$tail_low_p <= 0 || b$tail_low_p >= 0.5) {
+    stop("filter_bounds$tail_low_p must be in (0, 0.5).", call. = FALSE)
   }
-  if (!is.finite(b$tail.high.p) || b$tail.high.p <= 0.5 || b$tail.high.p >= 1) {
-    stop("bounds$tail.high.p must be in (0.5, 1).", call. = FALSE)
+  if (!is.finite(b$tail_high_p) || b$tail_high_p <= 0.5 || b$tail_high_p >= 1) {
+    stop("filter_bounds$tail_high_p must be in (0.5, 1).", call. = FALSE)
   }
-  if (!is.finite(b$tail.tol.log) || b$tail.tol.log <= 0) {
-    stop("bounds$tail.tol.log must be a positive finite number.", call. = FALSE)
+  if (!is.finite(b$tail_tol_log) || b$tail_tol_log <= 0) {
+    stop("filter_bounds$tail_tol_log must be a positive finite number.", call. = FALSE)
   }
-  if (!is.finite(b$tail.eps) || b$tail.eps <= 0) {
-    stop("bounds$tail.eps must be a positive finite number.", call. = FALSE)
+  if (!is.finite(b$tail_eps) || b$tail_eps <= 0) {
+    stop("filter_bounds$tail_eps must be a positive finite number.", call. = FALSE)
   }
 
-  # ---------------------------------------------------------------------------
-  # Display initial setup information
-  # ---------------------------------------------------------------------------
   if (verbose) {
-    log_filtering_setup(
-      n_obs = n_years_obs0,
-      n_sim = n_years_sim0,
-      n_realizations = n_realizations,
-      sample_num = sample.num,
+    log_filtering_start(
+      n_obs = n_obs0,
+      n_sim = n_sim0,
+      n_realizations = n_rlz,
+      sample_target = n_select,
       relax_priority = RELAX_ORDER
     )
   }
@@ -255,7 +155,6 @@ filter_warm_simulations <- function(series.obs = NULL,
   # ---------------------------------------------------------------------------
   # RNG management
   # ---------------------------------------------------------------------------
-
   if (!is.null(seed)) {
     if (exists(".Random.seed", envir = .GlobalEnv)) {
       old_seed <- .Random.seed
@@ -264,119 +163,117 @@ filter_warm_simulations <- function(series.obs = NULL,
       has_seed <- FALSE
     }
     on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
-    set.seed(seed)                    # Only set.seed() needed
+    set.seed(seed)
   }
 
   # ---------------------------------------------------------------------------
-  # Length harmonization
+  # Length harmonisation
   # ---------------------------------------------------------------------------
-  n_use <- min(n_years_obs0, n_years_sim0)
+  n_use <- min(n_obs0, n_sim0)
 
-  if (n_years_obs0 > n_use) {
-    max_start_obs <- n_years_obs0 - n_use + 1L
+  if (n_obs0 > n_use) {
+    max_start_obs <- n_obs0 - n_use + 1L
     start_obs <- sample.int(max_start_obs, size = 1L)
     end_obs <- start_obs + n_use - 1L
-    obs.use <- series.obs[start_obs:end_obs]
+    obs_use <- obs_series[start_obs:end_obs]
     obs_window <- c(start = start_obs, end = end_obs)
   } else {
-    obs.use <- series.obs
+    obs_use <- obs_series
     obs_window <- NULL
   }
 
-  if (n_years_sim0 > n_use) {
-    max_start_sim <- n_years_sim0 - n_use + 1L
-    starts <- sample.int(max_start_sim, size = n_realizations, replace = TRUE)
+  if (n_sim0 > n_use) {
+    max_start_sim <- n_sim0 - n_use + 1L
+    starts <- sample.int(max_start_sim, size = n_rlz, replace = TRUE)
     ends <- starts + n_use - 1L
-    window_index <- lapply(seq_len(n_realizations), function(j) c(start = starts[j], end = ends[j]))
+    window_index <- lapply(seq_len(n_rlz), function(j) c(start = starts[j], end = ends[j]))
 
-    series_sim_for_stats <- vapply(
-      seq_len(n_realizations),
-      FUN = function(j) series.sim[starts[j]:ends[j], j],
+    sim_use <- vapply(
+      seq_len(n_rlz),
+      FUN = function(j) sim_series[starts[j]:ends[j], j],
       FUN.VALUE = numeric(n_use)
     )
-    colnames(series_sim_for_stats) <- colnames(series.sim)
+    colnames(sim_use) <- colnames(sim_series)
   } else {
     window_index <- NULL
-    series_sim_for_stats <- series.sim
+    sim_use <- sim_series
   }
 
-  if (!is.matrix(series_sim_for_stats)) series_sim_for_stats <- as.matrix(series_sim_for_stats)
-  if (nrow(series_sim_for_stats) != n_use) stop("Internal error: series_sim_for_stats row mismatch.", call. = FALSE)
+  if (!is.matrix(sim_use)) sim_use <- as.matrix(sim_use)
+  if (nrow(sim_use) != n_use) stop("Internal error: sim_use row mismatch.", call. = FALSE)
 
   # ---------------------------------------------------------------------------
   # Base statistics
   # ---------------------------------------------------------------------------
-
   if (verbose) {
-    log_step("Computing ", sprintf("mean, sd, tail mass for observed and %d simulated series", n_realizations))
+    log_step("Computing", sprintf("mean, sd, tail mass for observed and %d simulated series", n_rlz))
   }
 
-  obs_mean <- mean(obs.use)
-  obs_sd   <- stats::sd(obs.use)
+  obs_mean <- mean(obs_use)
+  obs_sd   <- stats::sd(obs_use)
 
-  sim_means <- colMeans(series_sim_for_stats)
-  sim_sds   <- apply(series_sim_for_stats, 2, stats::sd)
+  sim_means <- colMeans(sim_use)
+  sim_sds   <- apply(sim_use, 2, stats::sd)
 
   eps0 <- 1e-10
   rel_diff_vec <- function(sim, obs) {
     if (!is.finite(obs) || abs(obs) < eps0) rep(0, length(sim)) else (sim - obs) / obs
   }
-  rel.diff.mean <- rel_diff_vec(sim_means, obs_mean)
-  rel.diff.sd   <- rel_diff_vec(sim_sds,   obs_sd)
+  mean_rel_diff <- rel_diff_vec(sim_means, obs_mean)
+  sd_rel_diff   <- rel_diff_vec(sim_sds,   obs_sd)
 
   # ---------------------------------------------------------------------------
-  # IMPROVEMENT 1: Use helper function for tail-mass metrics
+  # Tail metrics (snake_case args)
   # ---------------------------------------------------------------------------
-  tail_metrics <- compute_tailmass_metrics(
-    obs.use = obs.use,
-    series_sim_for_stats = series_sim_for_stats,
-    tail.low.p = b$tail.low.p,
-    tail.high.p = b$tail.high.p,
-    tail.eps = b$tail.eps
+  tail_stats <- compute_tailmass_metrics(
+    obs_use = obs_use,
+    sim_series_stats = sim_use,
+    tail_low_p = b$tail_low_p,
+    tail_high_p = b$tail_high_p,
+    tail_eps = b$tail_eps
   )
 
-  # For relaxation, we need to recompute tail metrics when tail.low.p/tail.high.p change
   .recompute_tailmass <- function() {
-    tail_metrics <<- compute_tailmass_metrics(
-      obs.use = obs.use,
-      series_sim_for_stats = series_sim_for_stats,
-      tail.low.p = b$tail.low.p,
-      tail.high.p = b$tail.high.p,
-      tail.eps = b$tail.eps
+    tail_stats <<- compute_tailmass_metrics(
+      obs_use = obs_use,
+      sim_series_stats = sim_use,
+      tail_low_p = b$tail_low_p,
+      tail_high_p = b$tail_high_p,
+      tail_eps = b$tail_eps
     )
   }
 
   # ---------------------------------------------------------------------------
-  # IMPROVEMENT 2: Use helper function for wavelet metrics + ALWAYS cache
+  # Wavelet metrics + caching (snake_case inside diagnostics)
   # ---------------------------------------------------------------------------
   if (verbose) {
-    log_step("Computing wavelet spectra for ", sprintf("observed and %d simulated series", n_realizations))
+    log_step("Computing wavelet spectra for", sprintf("observed and %d simulated series", n_rlz))
   }
 
   wavelet_results <- compute_wavelet_metrics(
-    obs.use = obs.use,
-    series_sim_for_stats = series_sim_for_stats,
-    wavelet.pars = wavelet.pars,
-    padding = padding,
-    min_bg = b$wavelet.min_bg
+    obs_use = obs_use,
+    sim_series_stats = sim_use,
+    wavelet_pars = wavelet_args,
+    padding = pad_periods,
+    min_bg = b$wavelet_min_bg
   )
 
   wavelet_active <- wavelet_results$active
   wavelet_diag <- wavelet_results$diagnostics
-  power.period <- wavelet_results$power.period
-  power.obs <- wavelet_results$power.obs
-  power.signif <- wavelet_results$power.signif
-  power.signif_unmasked <- wavelet_results$power.signif_unmasked
-  P_sim_reg <- wavelet_results$P_sim_reg
-  P_sim_bg <- wavelet_results$P_sim_bg
+
+  period <- wavelet_results$power_period
+  obs_power <- wavelet_results$power_obs
+  signif_unmasked <- wavelet_results$power_signif_unmasked
+
+  p_sim_reg <- wavelet_results$p_sim_reg
+  p_sim_bg <- wavelet_results$p_sim_bg
   presence_rpad <- wavelet_results$presence_rpad
-  gws_cache_mat <- wavelet_results$gws_cache
 
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
   .pool_from_pass <- function(pass_list) {
-    ok <- rep(TRUE, n_realizations)
+    ok <- rep(TRUE, n_rlz)
     for (nm in names(pass_list)) {
       v <- pass_list[[nm]]
       if (!is.null(v)) ok <- ok & as.logical(v)
@@ -393,59 +290,39 @@ filter_warm_simulations <- function(series.obs = NULL,
     )
   }
 
-  # ---------------------------------------------------------------------------
-  # Initial evaluation
-  # ---------------------------------------------------------------------------
-
-  # --- build pass vectors from currently-available diagnostics -----------------
-
   .pass_vectors_current <- function() {
-    # mean / sd
-    pass_mean <- abs(rel.diff.mean) <= b$mean
-    pass_sd   <- abs(rel.diff.sd)   <= b$sd
+    pass_mean <- abs(mean_rel_diff) <= b$mean
+    pass_sd   <- abs(sd_rel_diff)   <= b$sd
 
-    # tails: use the log-difference metrics already returned by compute_tailmass_metrics()
-    pass_tail_low  <- is.finite(tail_metrics$logdiff_low)  & (tail_metrics$logdiff_low  <= b$tail.tol.log)
-    pass_tail_high <- is.finite(tail_metrics$logdiff_high) & (tail_metrics$logdiff_high <= b$tail.tol.log)
+    pass_tail_low  <- is.finite(tail_stats$logdiff_low)  & (tail_stats$logdiff_low  <= b$tail_tol_log)
+    pass_tail_high <- is.finite(tail_stats$logdiff_high) & (tail_stats$logdiff_high <= b$tail_tol_log)
 
-    # wavelet
-    pass_wavelet <- rep(TRUE, n_realizations)
+    pass_wavelet <- rep(TRUE, n_rlz)
     if (isTRUE(wavelet_active)) {
-      # If your compute_wavelet_metrics() computed region metrics, use them.
-      # Otherwise (no significance) wavelet_active should be FALSE already.
       if (!is.null(wavelet_diag$regions) && length(wavelet_diag$regions) > 0 &&
-          !is.null(P_sim_reg) && !is.null(P_sim_bg) &&
-          !is.null(wavelet_diag$P_obs_reg) && length(wavelet_diag$P_obs_reg) == ncol(P_sim_reg)) {
+          !is.null(p_sim_reg) && !is.null(p_sim_bg) &&
+          !is.null(wavelet_diag$p_obs_reg) && length(wavelet_diag$p_obs_reg) == ncol(p_sim_reg)) {
 
-        P_obs_reg <- as.numeric(wavelet_diag$P_obs_reg)
-        P_obs_bg  <- max(sum(fill_nearest(as.numeric(wavelet_diag$power.obs))[wavelet_diag$bg_idx], na.rm = TRUE), b$wavelet.min_bg)
+        p_obs_reg <- as.numeric(wavelet_diag$p_obs_reg)
+        p_obs_bg  <- max(sum(fill_nearest(as.numeric(wavelet_diag$power_obs))[wavelet_diag$bg_idx], na.rm = TRUE), b$wavelet_min_bg)
 
-        # observed contrast per region
-        C_obs_reg <- P_obs_reg / P_obs_bg
+        c_obs_reg <- p_obs_reg / p_obs_bg
+        C_sim_reg <- p_sim_reg / pmax(p_sim_bg, b$wavelet_min_bg)
 
-        # sim contrast per region
-        C_sim_reg <- P_sim_reg / pmax(P_sim_bg, b$wavelet.min_bg)
+        reg_power_ok <- abs(p_sim_reg - rep(p_obs_reg, each = n_rlz)) <= (b$wavelet_region_tol * rep(p_obs_reg, each = n_rlz))
+        reg_power_ok <- matrix(reg_power_ok, nrow = n_rlz)
 
-        # region-wise pass: within tol for power AND contrast
-        # (use multiplicative bands; symmetric)
-        reg_power_ok <- abs(P_sim_reg - rep(P_obs_reg, each = n_realizations)) <= (b$wavelet.region.tol * rep(P_obs_reg, each = n_realizations))
-        reg_power_ok <- matrix(reg_power_ok, nrow = n_realizations)
-
-        reg_contrast_ok <- abs(C_sim_reg - matrix(rep(C_obs_reg, each = n_realizations), nrow = n_realizations)) <=
-          (b$wavelet.contrast.tol * matrix(rep(C_obs_reg, each = n_realizations), nrow = n_realizations))
+        reg_contrast_ok <- abs(C_sim_reg - matrix(rep(c_obs_reg, each = n_rlz), nrow = n_rlz)) <=
+          (b$wavelet_contrast_tol * matrix(rep(c_obs_reg, each = n_rlz), nrow = n_rlz))
 
         reg_ok <- reg_power_ok & reg_contrast_ok
-
         frac_ok <- rowMeans(reg_ok)
-        pass_wavelet <- frac_ok >= b$sig.frac
 
-        # optional presence requirement
-        if (isTRUE(b$wavelet.require_presence) && !is.null(presence_rpad)) {
+        pass_wavelet <- frac_ok >= b$sig_frac
+
+        if (isTRUE(b$wavelet_require_presence) && !is.null(presence_rpad)) {
           pass_wavelet <- pass_wavelet & as.logical(presence_rpad)
         }
-      } else {
-        # if wavelet_active TRUE but no region metrics exist, fail-safe: don't block
-        pass_wavelet <- rep(TRUE, n_realizations)
       }
     }
 
@@ -459,100 +336,90 @@ filter_warm_simulations <- function(series.obs = NULL,
   }
 
   passes <- .pass_vectors_current()
-  pool <- .pool_from_pass(passes)
-
-
-
+  pool_idx <- .pool_from_pass(passes)
 
   if (verbose) {
     log_filter_iteration(
       iter = 0L,
       passes = passes,
-      pool = pool,
-      n_total = n_realizations,
-      target = sample.num,
+      pool = pool_idx,
+      n_total = n_rlz,
+      target = n_select,
       bounds = b,
-      tail_metrics = tail_metrics,
+      tail_metrics = tail_stats,
       wavelet_active = wavelet_active,
-      wavelet_pars = wavelet.pars,
+      wavelet_pars = wavelet_args,
       note = "Initial evaluation."
     )
   }
 
   # ---------------------------------------------------------------------------
-  # SIMPLIFIED relaxation loop (deterministic ordering, no tie-breaking)
+  # Relaxation loop
   # ---------------------------------------------------------------------------
-  #if (verbose) {
-  #  log_step("Applying filter criteria",
-  #           sprintf("evaluating %d realizations against tolerance bounds", n_realizations))
-  #}
-
   relax_log <- character(0)
-  relaxation_level <- "tiered"
+  selection_mode <- "tiered"
 
   iter <- 0L
-  while (length(pool) < sample.num && iter < b$relax.max.iter) {
+  while (length(pool_idx) < n_select && iter < b$relax_max_iter) {
     iter <- iter + 1L
 
-    # Get active filters in priority order
     active <- names(passes)[!vapply(passes, is.null, logical(1))]
     active <- intersect(RELAX_ORDER, active)
-
     if (length(active) == 0) break
 
-    # Pick filter with lowest pass rate (ties broken by RELAX_ORDER)
     rates <- vapply(active, function(nm) mean(passes[[nm]]), numeric(1))
     filter_to_relax <- active[which.min(rates)]
 
-    before_pool <- length(pool)
+    before_pool <- length(pool_idx)
 
-    # Relax that filter
     rel <- .relax_one(filter_to_relax)
-    if (!isTRUE(rel$changed)) break  # All relaxation exhausted
+    if (!isTRUE(rel$changed)) break
 
-    # Recompute passes
     passes <- .pass_vectors_current()
-    pool <- .pool_from_pass(passes)
+    pool_idx <- .pool_from_pass(passes)
 
     note <- sprintf("Relaxed '%s': %s | pool %d -> %d",
-                    filter_to_relax, rel$msg, before_pool, length(pool))
+                    filter_to_relax, rel$msg, before_pool, length(pool_idx))
     relax_log <- c(relax_log, sprintf("Iteration %d: %s", iter, note))
 
     if (verbose) {
       log_filter_iteration(
         iter = iter,
         passes = passes,
-        pool = pool,
-        n_total = n_realizations,
-        target = sample.num,
+        pool = pool_idx,
+        n_total = n_rlz,
+        target = n_select,
         bounds = b,
-        tail_metrics = tail_metrics,
+        tail_metrics = tail_stats,
         wavelet_active = wavelet_active,
-        wavelet_pars = wavelet.pars,
+        wavelet_pars = wavelet_args,
         note = note
       )
     }
   }
 
+  # ---------------------------------------------------------------------------
   # Fallback if needed
-  if (length(pool) < sample.num) {
-    relaxation_level <- "closest_mean_fallback"
-    pool <- order(abs(rel.diff.mean))[seq_len(sample.num)]
+  # ---------------------------------------------------------------------------
+  if (length(pool_idx) < n_select) {
+    selection_mode <- "closest_mean_fallback"
+    pool_idx <- order(abs(mean_rel_diff))[seq_len(n_select)]
     if (verbose) {
       .log_info(sprintf(
         "Fallback activated: closest_mean to guarantee pool size = %d (from %d total).",
-        sample.num, n_realizations
+        n_select, n_rlz
       ))
     }
   }
 
-  # Sample from pool
+  # ---------------------------------------------------------------------------
+  # Select from pool
+  # ---------------------------------------------------------------------------
   if (verbose) {
-    log_step("Sampling series",
-             sprintf("selecting %d from pool of %d", sample.num, length(pool)))
+    log_step("Selecting series", sprintf("selecting %d from pool of %d", n_select, length(pool_idx)))
   }
 
-  idx_sampled <- if (length(pool) == sample.num) pool else sample(pool, size = sample.num, replace = FALSE)
+  idx_select <- if (length(pool_idx) == n_select) pool_idx else sample(pool_idx, size = n_select, replace = FALSE)
 
   # ---------------------------------------------------------------------------
   # Summary table
@@ -565,50 +432,48 @@ filter_warm_simulations <- function(series.obs = NULL,
     if (!is.null(passes[[nm]])) mean(passes[[nm]]) * 100 else NA_real_
   }, numeric(1))
 
-  filter_summary <- data.frame(
+  summary <- data.frame(
     filter = report_filters,
     n_passed = n_passed,
     pct_passed = pct_passed,
-    relaxation_level = relaxation_level,
+    selection_mode = selection_mode,
     stringsAsFactors = FALSE
   )
 
   if (verbose) {
     log_final_summary(
-      pool_size = length(pool),
-      n_total = n_realizations,
-      n_sampled = length(idx_sampled),
-      relaxation_level = relaxation_level
+      pool_size = length(pool_idx),
+      n_total = n_rlz,
+      n_sampled = length(idx_select),
+      relaxation_level = selection_mode
     )
   }
 
   # ---------------------------------------------------------------------------
-  # Helper function for plotting
+  # plots
   # ---------------------------------------------------------------------------
-
   plots_out <- NULL
-  if (make.plots) {
+  if (make_plots) {
     if (verbose) {
       log_step("Creating diagnostic plots", "time-series, statistics, and wavelet spectra")
     }
 
-    if (length(pool) < 1L) {
-      warning("make.plots=TRUE but final pool is empty; plots=NULL.", call. = FALSE)
-
-      } else {
+    if (length(pool_idx) < 1L) {
+      warning("make_plots=TRUE but final pool is empty; plots=NULL.", call. = FALSE)
+    } else {
 
       plots_out <- plot_filter_diagnostics(
-        obs.use = obs.use,
-        series_sim_for_stats = series_sim_for_stats,
-        pool = idx_sampled,
-        rel.diff.mean = rel.diff.mean,
-        rel.diff.sd = rel.diff.sd,
-        tail_metrics = tail_metrics,
-        power.period = power.period,
-        power.obs = power.obs,
-        power.signif = power.signif_unmasked,
-        gws_cache_mat = wavelet_results$gws_cache_unmasked,
-        wavelet_q = b$plot.wavelet_q
+        obs_series   = obs_use,
+        sim_series   = sim_use,
+        pool         = idx_select,
+        rel_diff_mean = mean_rel_diff,
+        rel_diff_sd   = sd_rel_diff,
+        tail_metrics  = tail_stats,
+        power_period  = period,
+        power_obs     = obs_power,
+        power_signif  = signif_unmasked,
+        gws_cache     = wavelet_results$gws_cache_unmasked,
+        wavelet_q     = b$plot_wavelet_q
       )
     }
   }
@@ -617,39 +482,37 @@ filter_warm_simulations <- function(series.obs = NULL,
   # Return
   # ---------------------------------------------------------------------------
   list(
-    subsetted = series.sim[, pool, drop = FALSE],
-    sampled = series.sim[, idx_sampled, drop = FALSE],
-    filter_summary = filter_summary,
+    pool = sim_series[, pool_idx, drop = FALSE],
+    selected = sim_series[, idx_select, drop = FALSE],
+    summary = summary,
     diagnostics = list(
-      n_years_obs_original = n_years_obs0,
-      n_years_sim_original = n_years_sim0,
+      n_obs_original = n_obs0,
+      n_sim_original = n_sim0,
       n_use = n_use,
-      n_periods = length(power.period),
+      n_periods = length(period),
       obs_window = obs_window,
       window_index = window_index,
-      idx_pool = pool,
-      idx_sampled = idx_sampled,
-      relaxation_log = relax_log,
-      final_params = as.list(b)
+      pool_idx = pool_idx,
+      selected_idx = idx_select,
+      relax_log = relax_log,
+      final_bounds = as.list(b)
     ),
     plots = plots_out
   )
 }
 
 
-
-
 # ==============================================================================
-# Helper Functions for filter_warm_simulations()
+# Helper Functions (snake_case keys + args)
 # ==============================================================================
 
 #' WARM filtering default bounds
 #'
 #' @description
-#' Internal defaults for filter_warm_simulations() bounds. Users should usually
-#' override only a few entries via generate_weather_series(warm.bounds = list(...)).
+#' Internal defaults for filter_warm_pool() bounds. Users should usually override
+#' only a few entries via filter_bounds = list(...).
 #'
-#' @return Named list of defaults.
+#' @return Named list of defaults (snake_case keys).
 #' @keywords internal
 filter_warm_bounds_defaults <- function() {
   list(
@@ -658,40 +521,40 @@ filter_warm_bounds_defaults <- function() {
     sd   = 0.05,
 
     # --- tail behaviour (quantile-defined tails + log-distance tol) ---
-    tail.low.p   = 0.20,
-    tail.high.p  = 0.80,
-    tail.tol.log = log(1.05),
-    tail.eps     = 1e-5,
+    tail_low_p   = 0.20,
+    tail_high_p  = 0.80,
+    tail_tol_log = log(1.05),
+    tail_eps     = 1e-5,
 
     # --- wavelet (observed-relevant regions) ---
-    sig.frac               = 0.60,
-    wavelet.region.tol     = 0.50,
-    wavelet.contrast.tol   = 0.30,
-    wavelet.min_bg         = 1e-12,
-    wavelet.require_presence = TRUE,
-    wavelet.presence.frac  = NULL,
+    sig_frac                = 0.60,
+    wavelet_region_tol      = 0.50,
+    wavelet_contrast_tol    = 0.30,
+    wavelet_min_bg          = 1e-12,
+    wavelet_require_presence = TRUE,
+    wavelet_presence_frac   = NULL,
 
     # --- plotting diagnostics ---
-    plot.wavelet_q = c(0.50, 0.95),
+    plot_wavelet_q = c(0.50, 0.95),
 
     # --- relaxation controls ---
-    relax.mult = 1.25,
-    relax.mean.max = 0.25,
-    relax.sd.max   = 0.25,
+    relax_mult = 1.25,
+    relax_mean_max = 0.25,
+    relax_sd_max   = 0.25,
 
-    relax.tail.tol.log.max = log(2.0),
-    relax.tail.p.step      = 0.02,
-    relax.tail.p.low.max   = 0.40,
-    relax.tail.p.high.min  = 0.40,
+    relax_tail_tol_log_max = log(2.0),
+    relax_tail_p_step      = 0.02,
+    relax_tail_p_low_max   = 0.40,
+    relax_tail_p_high_min  = 0.40,
 
-    relax.wavelet.sig.frac.step     = 0.05,
-    relax.wavelet.sig.frac.min      = 0.30,
-    relax.wavelet.region.tol.step   = 0.10,
-    relax.wavelet.region.tol.max    = 1.00,
-    relax.wavelet.contrast.tol.step = 0.10,
-    relax.wavelet.contrast.tol.max  = 1.00,
+    relax_wavelet_sig_frac_step     = 0.05,
+    relax_wavelet_sig_frac_min      = 0.30,
+    relax_wavelet_region_tol_step   = 0.10,
+    relax_wavelet_region_tol_max    = 1.00,
+    relax_wavelet_contrast_tol_step = 0.10,
+    relax_wavelet_contrast_tol_max  = 1.00,
 
-    relax.max.iter = 20L
+    relax_max_iter = 20L
   )
 }
 
@@ -702,44 +565,34 @@ filter_warm_bounds_defaults <- function() {
 #' Uses robust scale estimation (IQR -> MAD -> SD fallback) and normalizes
 #' tail deficit/excess masses by series length and scale.
 #'
-#' @param obs.use Numeric vector of observed values
-#' @param series_sim_for_stats Numeric matrix of simulated values (n_use x n_realizations)
-#' @param tail.low.p Lower tail quantile probability (e.g., 0.10)
-#' @param tail.high.p Upper tail quantile probability (e.g., 0.90)
-#' @param tail.eps Epsilon for log transform to avoid log(0)
+#' @param obs_use Numeric vector of observed values.
+#' @param sim_series_stats Numeric matrix of simulated values (n_use x n_realizations).
+#' @param tail_low_p Lower tail quantile probability (e.g., 0.10).
+#' @param tail_high_p Upper tail quantile probability (e.g., 0.90).
+#' @param tail_eps Epsilon for log transform to avoid log(0).
 #'
-#' @return List with elements:
-#' \itemize{
-#'   \item thr_low, thr_high: Observed quantile thresholds
-#'   \item scale_obs: Robust scale estimate
-#'   \item M_obs_low, M_obs_high: Observed tail masses
-#'   \item M_sim_low, M_sim_high: Simulated tail masses (vectors)
-#'   \item logdiff_low, logdiff_high: Log-distance metrics (vectors)
-#' }
-#'
+#' @return List with tail thresholds, scale, masses, and log-distance metrics.
 #' @keywords internal
 #' @export
-compute_tailmass_metrics <- function(obs.use, series_sim_for_stats,
-                                     tail.low.p, tail.high.p, tail.eps) {
+compute_tailmass_metrics <- function(obs_use, sim_series_stats,
+                                     tail_low_p, tail_high_p, tail_eps) {
 
-  n_use <- length(obs.use)
-  n_realizations <- ncol(series_sim_for_stats)
+  n_use <- length(obs_use)
+  n_realizations <- ncol(sim_series_stats)
 
   # Robust scale with fallback hierarchy: IQR -> MAD -> SD -> 1
-  scale_obs <- stats::IQR(obs.use, na.rm = TRUE, type = 7)
+  scale_obs <- stats::IQR(obs_use, na.rm = TRUE, type = 7)
   if (!is.finite(scale_obs) || scale_obs <= 0) {
-    scale_obs <- stats::mad(obs.use, constant = 1, na.rm = TRUE)
+    scale_obs <- stats::mad(obs_use, constant = 1, na.rm = TRUE)
   }
   if (!is.finite(scale_obs) || scale_obs <= 0) {
-    scale_obs <- stats::sd(obs.use, na.rm = TRUE)
+    scale_obs <- stats::sd(obs_use, na.rm = TRUE)
   }
   if (!is.finite(scale_obs) || scale_obs <= 0) scale_obs <- 1.0
 
-  # Compute thresholds
-  thr_low <- stats::quantile(obs.use, probs = tail.low.p, names = FALSE, type = 7, na.rm = TRUE)
-  thr_high <- stats::quantile(obs.use, probs = tail.high.p, names = FALSE, type = 7, na.rm = TRUE)
+  thr_low <- stats::quantile(obs_use, probs = tail_low_p, names = FALSE, type = 7, na.rm = TRUE)
+  thr_high <- stats::quantile(obs_use, probs = tail_high_p, names = FALSE, type = 7, na.rm = TRUE)
 
-  # Handle invalid cases
   if (!is.finite(thr_low) || !is.finite(thr_high) || !is.finite(scale_obs)) {
     return(list(
       thr_low = NA_real_, thr_high = NA_real_, scale_obs = NA_real_,
@@ -751,28 +604,25 @@ compute_tailmass_metrics <- function(obs.use, series_sim_for_stats,
     ))
   }
 
-  denom <- n_use * scale_obs
-  denom <- max(denom, 1e-12)
+  denom <- max(n_use * scale_obs, 1e-12)
 
-  # Lower-tail deficit mass (how much obs is below threshold vs sim)
-  X_low <- thr_low - series_sim_for_stats
+  # Lower-tail deficit mass
+  X_low <- thr_low - sim_series_stats
   S_sim_low <- colSums(pmax(X_low, 0), na.rm = TRUE)
-  S_obs_low <- sum(pmax(thr_low - obs.use, 0), na.rm = TRUE)
+  S_obs_low <- sum(pmax(thr_low - obs_use, 0), na.rm = TRUE)
 
-  # Upper-tail excess mass (how much obs is above threshold vs sim)
-  X_high <- series_sim_for_stats - thr_high
+  # Upper-tail excess mass
+  X_high <- sim_series_stats - thr_high
   S_sim_high <- colSums(pmax(X_high, 0), na.rm = TRUE)
-  S_obs_high <- sum(pmax(obs.use - thr_high, 0), na.rm = TRUE)
+  S_obs_high <- sum(pmax(obs_use - thr_high, 0), na.rm = TRUE)
 
-  # Normalize by length and scale
   M_obs_low <- S_obs_low / denom
   M_obs_high <- S_obs_high / denom
   M_sim_low <- S_sim_low / denom
   M_sim_high <- S_sim_high / denom
 
-  # Log differences for scale-invariant comparison
-  logdiff_low <- abs(log(M_sim_low + tail.eps) - log(M_obs_low + tail.eps))
-  logdiff_high <- abs(log(M_sim_high + tail.eps) - log(M_obs_high + tail.eps))
+  logdiff_low <- abs(log(M_sim_low + tail_eps) - log(M_obs_low + tail_eps))
+  logdiff_high <- abs(log(M_sim_high + tail_eps) - log(M_obs_high + tail_eps))
 
   list(
     thr_low = thr_low,
@@ -790,81 +640,66 @@ compute_tailmass_metrics <- function(obs.use, series_sim_for_stats,
 #' Compute wavelet metrics for all realizations
 #'
 #' @description
-#' Performs wavelet analysis on observed series and all simulated realizations.
+#' performs wavelet analysis on observed series and all simulated realizations.
 #' Identifies significant periods, computes regional power and contrast metrics,
-#' and ALWAYS caches both masked (for filtering) and unmasked (for plotting) GWS.
+#' and caches both masked (for filtering) and unmasked (for plotting) GWS.
 #'
-#' @param obs.use Numeric vector of observed values
-#' @param series_sim_for_stats Numeric matrix of simulated values
-#' @param wavelet.pars List of wavelet parameters (signif.level, noise.type, etc.)
-#' @param padding Logical for period padding
-#' @param min_bg Minimum background power threshold
+#' @param obs_use Numeric vector of observed values.
+#' @param sim_series_stats Numeric matrix of simulated values.
+#' @param wavelet_pars List of wavelet parameters (signif_level, noise_type, etc.).
+#' @param padding Logical for period padding.
+#' @param min_bg Minimum background power threshold.
 #'
-#' @return List with elements:
-#' \itemize{
-#'   \item active: Logical, whether wavelet filter is active
-#'   \item diagnostics: Detailed wavelet diagnostics
-#'   \item power.period, power.obs, power.signif: Period and power vectors
-#'   \item P_sim_reg: Regional power matrix (n_realizations x n_regions)
-#'   \item P_sim_bg: Background power vector (n_realizations)
-#'   \item presence_rpad: Presence indicators (n_realizations)
-#'   \item gws_cache: ALWAYS cached masked GWS matrix (n_periods x n_realizations) for filtering
-#'   \item gws_cache_unmasked: ALWAYS cached unmasked GWS matrix (n_periods x n_realizations) for plotting
-#' }
-#'
+#' @return List with wavelet filter diagnostics and cached spectra.
 #' @keywords internal
 #' @export
-compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
+compute_wavelet_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
                                     padding, min_bg) {
 
-  n_realizations <- ncol(series_sim_for_stats)
+  n_realizations <- ncol(sim_series_stats)
 
   # Observed wavelet analysis
-  wv_obs <- wavelet_spectral_analysis(
-    obs.use,
-    signif.level = wavelet.pars$signif.level,
-    noise.type = wavelet.pars$noise.type,
-    period.lower.limit = wavelet.pars$period.lower.limit,
-    detrend = isTRUE(wavelet.pars$detrend),
+  wv_obs <- analyze_wavelet_spectrum(
+    obs_use,
+    signif = wavelet_pars$signif_level,
+    noise = wavelet_pars$noise_type,
+    min_period = wavelet_pars$period_lower_limit,
+    detrend = isTRUE(wavelet_pars$detrend),
     mode = "fast"
   )
 
-  if (is.null(wv_obs$gws_period) || !is.numeric(wv_obs$gws_period)) {
-    stop("wavelet_spectral_analysis(obs) must return numeric $gws_period.", call. = FALSE)
+  if (is.null(wv_obs$period) || !is.numeric(wv_obs$period)) {
+    stop("analyze_wavelet_spectrum(obs) must return numeric $period.", call. = FALSE)
   }
   if (is.null(wv_obs$gws) || !is.numeric(wv_obs$gws)) {
-    stop("wavelet_spectral_analysis(obs) must return numeric $gws.", call. = FALSE)
+    stop("analyze_wavelet_spectrum(obs) must return numeric $gws.", call. = FALSE)
   }
 
-  power.period <- as.numeric(wv_obs$gws_period)
+  power_period <- as.numeric(wv_obs$period)
 
   # Use unmasked observed GWS when available
-  if (!is.null(wv_obs$gws_unmasked) && is.numeric(wv_obs$gws_unmasked)) {
-    power.obs <- as.numeric(wv_obs$gws_unmasked)
+  power_obs <- if (!is.null(wv_obs$gws_unmasked) && is.numeric(wv_obs$gws_unmasked)) {
+    as.numeric(wv_obs$gws_unmasked)
   } else {
-    power.obs <- as.numeric(wv_obs$gws)
+    as.numeric(wv_obs$gws)
   }
 
-  # Extract significance curves
-  power.signif <- wv_obs$gws_signif
-  power.signif_unmasked <- wv_obs$gws_signif_unmasked
+  power_signif <- wv_obs$gws_signif
+  power_signif_unmasked <- wv_obs$gws_signif_unmasked
 
-  # Regrid if needed
-  if (length(power.obs) != length(power.period)) {
-    power.obs <- gws_regrid(wv_obs, power.period, use_unmasked = TRUE)
+  if (length(power_obs) != length(power_period)) {
+    power_obs <- gws_regrid(wv_obs, power_period, use_unmasked = TRUE)
   }
-  if (length(power.signif) != length(power.period)) {
-    stop("Observed significance curve length does not match observed gws_period.", call. = FALSE)
+  if (length(power_signif) != length(power_period)) {
+    stop("Observed significance curve length does not match observed period.", call. = FALSE)
   }
 
-  signif_grid <- fill_nearest(as.numeric(power.signif))
-  gws_obs_grid <- fill_nearest(as.numeric(power.obs))
+  signif_grid <- fill_nearest(as.numeric(power_signif))
+  gws_obs_grid <- fill_nearest(as.numeric(power_obs))
 
-  # Identify significant periods
   R_obs <- gws_obs_grid / signif_grid
   periods_sig_core <- which(is.finite(R_obs) & (R_obs > 1))
 
-  # Split into contiguous regions
   split_regions <- function(idx) {
     idx <- sort(unique(as.integer(idx)))
     if (length(idx) == 0) return(list())
@@ -874,42 +709,37 @@ compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
 
   wavelet_active <- TRUE
   wavelet_diag <- list(
-    power.period = power.period,
-    power.obs = power.obs,
-    power.signif = power.signif,
+    power_period = power_period,
+    power_obs = power_obs,
+    power_signif = power_signif,
     periods_sig_core = periods_sig_core,
     regions = list(),
-    P_obs_reg = numeric(0),
-    C_obs_reg = numeric(0)
+    p_obs_reg = numeric(0),
+    c_obs_reg = numeric(0)
   )
 
-  P_sim_reg <- NULL
-  P_sim_bg  <- NULL
+  p_sim_reg <- NULL
+  p_sim_bg  <- NULL
   presence_rpad <- NULL
 
-  # -------------------------------------------------------------------------
-  # FIX: ALWAYS allocate and compute caches (independent of significance)
-  # -------------------------------------------------------------------------
-  gws_cache_mat <- matrix(NA_real_, nrow = length(power.period), ncol = n_realizations)
-  gws_cache_unmasked_mat <- matrix(NA_real_, nrow = length(power.period), ncol = n_realizations)
+  # ALWAYS cache
+  gws_cache <- matrix(NA_real_, nrow = length(power_period), ncol = n_realizations)
+  gws_cache_unmasked <- matrix(NA_real_, nrow = length(power_period), ncol = n_realizations)
 
   for (j in seq_len(n_realizations)) {
-    wv <- wavelet_spectral_analysis(
-      series_sim_for_stats[, j],
-      signif.level = wavelet.pars$signif.level,
-      noise.type = wavelet.pars$noise.type,
-      period.lower.limit = wavelet.pars$period.lower.limit,
-      detrend = isTRUE(wavelet.pars$detrend),
+    wv <- analyze_wavelet_spectrum(
+      sim_series_stats[, j],
+      signif = wavelet_pars$signif_level,
+      noise = wavelet_pars$noise_type,
+      min_period = wavelet_pars$period_lower_limit,
+      detrend = isTRUE(wavelet_pars$detrend),
       mode = "fast"
     )
 
-    gws_cache_mat[, j] <- gws_regrid(wv, power.period, use_unmasked = FALSE)
-    gws_cache_unmasked_mat[, j] <- gws_regrid(wv, power.period, use_unmasked = TRUE)
+    gws_cache[, j] <- gws_regrid(wv, power_period, use_unmasked = FALSE)
+    gws_cache_unmasked[, j] <- gws_regrid(wv, power_period, use_unmasked = TRUE)
   }
 
-  # -------------------------------------------------------------------------
-  # The rest: only compute region-based metrics if observed has significant signal
-  # -------------------------------------------------------------------------
   if (length(periods_sig_core) == 0) {
     wavelet_active <- FALSE
   } else {
@@ -917,18 +747,15 @@ compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
     n_regions <- length(regions)
 
     core_union <- sort(unique(unlist(regions, use.names = FALSE)))
-    bg_idx <- setdiff(seq_along(power.period), core_union)
+    bg_idx <- setdiff(seq_along(power_period), core_union)
 
-    # Observed regional power and contrast
-    P_obs_reg <- vapply(regions, function(ii) sum(gws_obs_grid[ii], na.rm = TRUE), FUN.VALUE = numeric(1))
-    P_obs_bg <- sum(gws_obs_grid[bg_idx], na.rm = TRUE)
-    P_obs_bg <- max(P_obs_bg, min_bg)
-    C_obs_reg <- P_obs_reg / P_obs_bg
+    p_obs_reg <- vapply(regions, function(ii) sum(gws_obs_grid[ii], na.rm = TRUE), FUN.VALUE = numeric(1))
+    p_obs_bg <- max(sum(gws_obs_grid[bg_idx], na.rm = TRUE), min_bg)
+    c_obs_reg <- p_obs_reg / p_obs_bg
 
-    # Padded periods for presence check
     periods_sig_pad <- periods_sig_core
     if (isTRUE(padding)) {
-      n_periods <- length(power.period)
+      n_periods <- length(power_period)
       periods_sig_pad <- unique(sort(c(
         pmax(periods_sig_core - 1L, 1L),
         periods_sig_core,
@@ -936,21 +763,18 @@ compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
       )))
     }
 
-    # Initialize storage
-    P_sim_reg <- matrix(NA_real_, nrow = n_realizations, ncol = n_regions)
-    P_sim_bg  <- rep(NA_real_, n_realizations)
+    p_sim_reg <- matrix(NA_real_, nrow = n_realizations, ncol = n_regions)
+    p_sim_bg  <- rep(NA_real_, n_realizations)
     presence_rpad <- rep(FALSE, n_realizations)
 
-    # Use the already-computed masked cache for metrics (no second wavelet call)
     for (j in seq_len(n_realizations)) {
-      gj_masked <- gws_cache_mat[, j]
+      gj_masked <- gws_cache[, j]
 
-      bg <- sum(gj_masked[bg_idx], na.rm = TRUE)
-      bg <- max(bg, min_bg)
-      P_sim_bg[j] <- bg
+      bg <- max(sum(gj_masked[bg_idx], na.rm = TRUE), min_bg)
+      p_sim_bg[j] <- bg
 
       for (r in seq_len(n_regions)) {
-        P_sim_reg[j, r] <- sum(gj_masked[regions[[r]]], na.rm = TRUE)
+        p_sim_reg[j, r] <- sum(gj_masked[regions[[r]]], na.rm = TRUE)
       }
 
       rpad <- gj_masked[periods_sig_pad] / signif_grid[periods_sig_pad]
@@ -958,8 +782,8 @@ compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
     }
 
     wavelet_diag$regions <- regions
-    wavelet_diag$P_obs_reg <- P_obs_reg
-    wavelet_diag$C_obs_reg <- C_obs_reg
+    wavelet_diag$p_obs_reg <- p_obs_reg
+    wavelet_diag$c_obs_reg <- c_obs_reg
     wavelet_diag$bg_idx <- bg_idx
     wavelet_diag$periods_sig_pad <- periods_sig_pad
   }
@@ -967,32 +791,29 @@ compute_wavelet_metrics <- function(obs.use, series_sim_for_stats, wavelet.pars,
   list(
     active = wavelet_active,
     diagnostics = wavelet_diag,
-    power.period = power.period,
-    power.obs = power.obs,
-    power.signif = power.signif,
-    power.signif_unmasked = power.signif_unmasked,
-    P_sim_reg = P_sim_reg,
-    P_sim_bg = P_sim_bg,
+    power_period = power_period,
+    power_obs = power_obs,
+    power_signif = power_signif,
+    power_signif_unmasked = power_signif_unmasked,
+    p_sim_reg = p_sim_reg,
+    p_sim_bg = p_sim_bg,
     presence_rpad = presence_rpad,
-    gws_cache = gws_cache_mat,
-    gws_cache_unmasked = gws_cache_unmasked_mat
+    gws_cache = gws_cache,
+    gws_cache_unmasked = gws_cache_unmasked
   )
 }
-
 
 #' Relax bounds for one filter
 #'
 #' @description
-#' Applies one relaxation step to a single filter. Updates bounds in place
-#' and returns status.
+#' Applies one relaxation step to a single filter. Updates bounds in place.
 #'
-#' @param filter_name Character. Name of filter to relax
-#' @param bounds_env Environment containing bounds
-#' @param wavelet_active_env Environment containing wavelet_active flag
-#' @param recompute_tailmass_fn Function to recompute tail mass when thresholds change
+#' @param filter_name Character. Name of filter to relax.
+#' @param bounds_env Environment containing bounds (snake_case keys).
+#' @param wavelet_active_env Environment containing wavelet_active flag.
+#' @param recompute_tailmass_fn Function to recompute tail mass when thresholds change.
 #'
-#' @return List with changed (logical) and msg (character)
-#'
+#' @return List with changed (logical) and msg (character).
 #' @keywords internal
 #' @export
 relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
@@ -1004,53 +825,47 @@ relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
 
   if (filter_name == "mean") {
     old <- b$mean
-    b$mean <- min(b$mean * b$relax.mult, b$relax.mean.max)
+    b$mean <- min(b$mean * b$relax_mult, b$relax_mean_max)
     changed <- (b$mean > old + 1e-15)
     msg <- sprintf("mean tol %.4f -> %.4f", old, b$mean)
   }
 
   if (filter_name == "sd") {
     old <- b$sd
-    b$sd <- min(b$sd * b$relax.mult, b$relax.sd.max)
+    b$sd <- min(b$sd * b$relax_mult, b$relax_sd_max)
     changed <- (b$sd > old + 1e-15)
     msg <- sprintf("sd tol %.4f -> %.4f", old, b$sd)
   }
 
   if (filter_name == "tail_low") {
-    # First try to relax tolerance
-    if (b$tail.tol.log < b$relax.tail.tol.log.max - 1e-15) {
-      old <- b$tail.tol.log
-      b$tail.tol.log <- min(b$tail.tol.log * b$relax.mult, b$relax.tail.tol.log.max)
+    if (b$tail_tol_log < b$relax_tail_tol_log_max - 1e-15) {
+      old <- b$tail_tol_log
+      b$tail_tol_log <- min(b$tail_tol_log * b$relax_mult, b$relax_tail_tol_log_max)
       changed <- TRUE
-      msg <- sprintf("tail.tol.log %.4f -> %.4f", old, b$tail.tol.log)
-    }
-    # Then try to relax threshold
-    else if (b$tail.low.p < b$relax.tail.p.low.max - 1e-15) {
-      old <- b$tail.low.p
-      b$tail.low.p <- min(b$tail.low.p + b$relax.tail.p.step, b$relax.tail.p.low.max)
+      msg <- sprintf("tail_tol_log %.4f -> %.4f", old, b$tail_tol_log)
+    } else if (b$tail_low_p < b$relax_tail_p_low_max - 1e-15) {
+      old <- b$tail_low_p
+      b$tail_low_p <- min(b$tail_low_p + b$relax_tail_p_step, b$relax_tail_p_low_max)
       recompute_tailmass_fn()
       changed <- TRUE
-      msg <- sprintf("tail.low.p %.2f -> %.2f (recompute)", old, b$tail.low.p)
+      msg <- sprintf("tail_low_p %.2f -> %.2f (recompute)", old, b$tail_low_p)
     } else {
       msg <- "tail_low at limit"
     }
   }
 
   if (filter_name == "tail_high") {
-    # First try to relax tolerance
-    if (b$tail.tol.log < b$relax.tail.tol.log.max - 1e-15) {
-      old <- b$tail.tol.log
-      b$tail.tol.log <- min(b$tail.tol.log * b$relax.mult, b$relax.tail.tol.log.max)
+    if (b$tail_tol_log < b$relax_tail_tol_log_max - 1e-15) {
+      old <- b$tail_tol_log
+      b$tail_tol_log <- min(b$tail_tol_log * b$relax_mult, b$relax_tail_tol_log_max)
       changed <- TRUE
-      msg <- sprintf("tail.tol.log %.4f -> %.4f", old, b$tail.tol.log)
-    }
-    # Then try to relax threshold
-    else if (b$tail.high.p > b$relax.tail.p.high.min + 1e-15) {
-      old <- b$tail.high.p
-      b$tail.high.p <- max(b$tail.high.p - b$relax.tail.p.step, b$relax.tail.p.high.min)
+      msg <- sprintf("tail_tol_log %.4f -> %.4f", old, b$tail_tol_log)
+    } else if (b$tail_high_p > b$relax_tail_p_high_min + 1e-15) {
+      old <- b$tail_high_p
+      b$tail_high_p <- max(b$tail_high_p - b$relax_tail_p_step, b$relax_tail_p_high_min)
       recompute_tailmass_fn()
       changed <- TRUE
-      msg <- sprintf("tail.high.p %.2f -> %.2f (recompute)", old, b$tail.high.p)
+      msg <- sprintf("tail_high_p %.2f -> %.2f (recompute)", old, b$tail_high_p)
     } else {
       msg <- "tail_high at limit"
     }
@@ -1061,38 +876,28 @@ relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
 
     if (!isTRUE(wavelet_active)) {
       msg <- "wavelet already inactive"
-    }
-    # Relax sig.frac
-    else if (b$sig.frac > b$relax.wavelet.sig.frac.min + 1e-15) {
-      old <- b$sig.frac
-      b$sig.frac <- max(b$sig.frac - b$relax.wavelet.sig.frac.step, b$relax.wavelet.sig.frac.min)
+    } else if (b$sig_frac > b$relax_wavelet_sig_frac_min + 1e-15) {
+      old <- b$sig_frac
+      b$sig_frac <- max(b$sig_frac - b$relax_wavelet_sig_frac_step, b$relax_wavelet_sig_frac_min)
       changed <- TRUE
-      msg <- sprintf("sig.frac %.2f -> %.2f", old, b$sig.frac)
-    }
-    # Relax region tolerance
-    else if (b$wavelet.region.tol < b$relax.wavelet.region.tol.max - 1e-15) {
-      old <- b$wavelet.region.tol
-      b$wavelet.region.tol <- min(b$wavelet.region.tol + b$relax.wavelet.region.tol.step,
-                                  b$relax.wavelet.region.tol.max)
+      msg <- sprintf("sig_frac %.2f -> %.2f", old, b$sig_frac)
+    } else if (b$wavelet_region_tol < b$relax_wavelet_region_tol_max - 1e-15) {
+      old <- b$wavelet_region_tol
+      b$wavelet_region_tol <- min(b$wavelet_region_tol + b$relax_wavelet_region_tol_step,
+                                  b$relax_wavelet_region_tol_max)
       changed <- TRUE
-      msg <- sprintf("wavelet.region.tol %.2f -> %.2f", old, b$wavelet.region.tol)
-    }
-    # Relax contrast tolerance
-    else if (b$wavelet.contrast.tol < b$relax.wavelet.contrast.tol.max - 1e-15) {
-      old <- b$wavelet.contrast.tol
-      b$wavelet.contrast.tol <- min(b$wavelet.contrast.tol + b$relax.wavelet.contrast.tol.step,
-                                    b$relax.wavelet.contrast.tol.max)
+      msg <- sprintf("wavelet_region_tol %.2f -> %.2f", old, b$wavelet_region_tol)
+    } else if (b$wavelet_contrast_tol < b$relax_wavelet_contrast_tol_max - 1e-15) {
+      old <- b$wavelet_contrast_tol
+      b$wavelet_contrast_tol <- min(b$wavelet_contrast_tol + b$relax_wavelet_contrast_tol_step,
+                                    b$relax_wavelet_contrast_tol_max)
       changed <- TRUE
-      msg <- sprintf("wavelet.contrast.tol %.2f -> %.2f", old, b$wavelet.contrast.tol)
-    }
-    # Disable presence requirement
-    else if (isTRUE(b$wavelet.require_presence)) {
-      b$wavelet.require_presence <- FALSE
+      msg <- sprintf("wavelet_contrast_tol %.2f -> %.2f", old, b$wavelet_contrast_tol)
+    } else if (isTRUE(b$wavelet_require_presence)) {
+      b$wavelet_require_presence <- FALSE
       changed <- TRUE
-      msg <- "wavelet.require_presence TRUE -> FALSE"
-    }
-    # Finally disable wavelet entirely
-    else {
+      msg <- "wavelet_require_presence TRUE -> FALSE"
+    } else {
       assign("wavelet_active", FALSE, envir = wavelet_active_env)
       changed <- TRUE
       msg <- "wavelet disabled"
@@ -1102,75 +907,106 @@ relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
   list(changed = changed, msg = msg)
 }
 
+# ==============================================================================
+# Logging helpers: only changed criteria_string_compact() to snake_case bounds keys
+# ==============================================================================
+
+#' Compact criteria string for a filter
+#'
+#' @keywords internal
+#' @export
+criteria_string_compact <- function(filter_name, bounds, tail_metrics,
+                                    wavelet_active, wavelet_pars) {
+
+  if (filter_name == "mean") return(sprintf("tol = %.4f", bounds$mean))
+  if (filter_name == "sd")   return(sprintf("tol = %.4f", bounds$sd))
+
+  if (filter_name == "tail_low") {
+    return(sprintf("p=%.2f, log.tol=%.4f", bounds$tail_low_p, bounds$tail_tol_log))
+  }
+
+  if (filter_name == "tail_high") {
+    return(sprintf("p=%.2f, log.tol=%.4f", bounds$tail_high_p, bounds$tail_tol_log))
+  }
+
+  if (filter_name == "wavelet") {
+    if (!isTRUE(wavelet_active)) return("inactive")
+    return(sprintf("sig_frac >= %.2f", bounds$sig_frac))
+  }
+
+  "NA"
+}
+
 
 # ==============================================================================
-# Logging Functions for filter_warm_simulations()
+# Logging helpers for filter_warm_pool()
 # ==============================================================================
 
 #' Log initial setup information
 #'
 #' @description
-#' Displays general information at the start of filtering.
+#' Internal helper. Displays general information at the start of filtering.
 #'
-#' @param n_obs Number of observations in observed series
-#' @param n_sim Number of years in simulated series
-#' @param n_realizations Number of realizations
-#' @param sample_num Target number to sample
-#' @param relax_priority Relaxation priority vector
+#' @param n_obs Integer scalar. Number of observations in observed series.
+#' @param n_sim Integer scalar. Number of years in simulated series used after windowing.
+#' @param n_realizations Integer scalar. Number of candidate realizations.
+#' @param sample_target Integer scalar. Target number to select.
+#' @param relax_priority Character vector. Relaxation priority vector.
 #'
+#' @return Invisibly returns NULL.
 #' @keywords internal
-#' @export
-log_filtering_setup <- function(n_obs, n_sim, n_realizations, sample_num, relax_priority) {
-  .log_info(strrep("=", 75))
-  .log_info("FILTERING SETUP")
-  .log_info(strrep("=", 75))
-  .log_info(sprintf("Observed series: %d years", n_obs))
-  .log_info(sprintf("Simulated series: %d years x %d realizations", n_sim, n_realizations))
-  .log_info(sprintf("Target: Sample %d realizations from pool", sample_num))
-  .log_info(sprintf("Relaxation priority: %s", paste(relax_priority, collapse = " > ")))
-  .log_info(sprintf("  Filters relax left-to-right: %s relaxes FIRST, %s relaxes LAST",
-                   relax_priority[1], relax_priority[length(relax_priority)]))
-  .log_info(strrep("=", 75))
-  .log_info("")
+log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, relax_priority) {
+
+  logger::log_info("[FILTERING] ===========================================================================")
+  logger::log_info("[FILTERING] FILTERING SETUP")
+  logger::log_info("[FILTERING] ===========================================================================")
+  logger::log_info("[FILTERING] Observed series: {n_obs} years")
+  logger::log_info("[FILTERING] Simulated series: {n_sim} years x {n_realizations} candidate realizations")
+  logger::log_info("[FILTERING] Target: select {sample_target} realizations from pool")
+  logger::log_info("[FILTERING] Relaxation priority: {paste(relax_priority, collapse = ' > ')}")
+  logger::log_info("[FILTERING] Filters relax left-to-right: {relax_priority[1]} relaxes FIRST, {relax_priority[length(relax_priority)]} relaxes LAST")
+  logger::log_info("[FILTERING] ===========================================================================")
+
+  invisible(NULL)
 }
 
 #' Log major step progress
 #'
 #' @description
-#' Displays progress message for major computational steps.
+#' Internal helper. Displays progress message for major computational steps.
 #'
-#' @param step_name Name of the step
-#' @param details Optional details string
+#' @param step_name Character scalar. Name of the step.
+#' @param details Optional character scalar. Details string.
 #'
+#' @return Invisibly returns NULL.
 #' @keywords internal
-#' @export
 log_step <- function(step_name, details = NULL) {
-  msg <- if (!is.null(details)) {
-    sprintf(" %s - %s", step_name, details)
+  if (!is.null(details)) {
+    logger::log_info("[FILTERING] {step_name} | {details}")
   } else {
-    sprintf(" %s", step_name)
+    logger::log_info("[FILTERING] {step_name}")
   }
-  .log_info(msg)
+  invisible(NULL)
 }
 
-#' Log filter iteration details with table format
+#' Log filter iteration details
 #'
 #' @description
-#' Prints iteration diagnostics in table format for all iterations.
+#' Internal helper. Prints iteration diagnostics in a compact table-like format.
 #'
-#' @param iter Iteration number
-#' @param passes List of pass vectors
-#' @param pool Vector of pool indices
-#' @param n_total Total number of realizations
-#' @param target Target pool size
-#' @param bounds Bounds environment or list
-#' @param tail_metrics Tail metrics list
-#' @param wavelet_active Logical
-#' @param wavelet_pars Wavelet parameters list
-#' @param note Optional note string
+#' @param iter Integer scalar. Iteration number.
+#' @param passes Named list of logical vectors. Per-filter pass vectors.
+#' @param pool Integer vector. Pool indices passing all active filters.
+#' @param n_total Integer scalar. Total number of realizations.
+#' @param target Integer scalar. Target pool size.
+#' @param bounds Environment or list of bounds.
+#' @param tail_metrics List. Tail metrics used for criteria display.
+#' @param wavelet_active Logical scalar.
+#' @param wavelet_pars List. Wavelet parameter list.
+#' @param note Optional character scalar.
 #'
+#' @return Invisibly returns NULL.
 #' @keywords internal
-#' @export
 log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
                                  tail_metrics, wavelet_active, wavelet_pars,
                                  note = NULL) {
@@ -1179,165 +1015,66 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
   pool_size <- length(pool)
   pool_pct <- if (n_total > 0) 100 * pool_size / n_total else 0
 
-  # Determine status
-  if (pool_size >= target) {
-    status <- "TARGET REACHED"
-    status_icon <- "[OK]"
-  } else {
-    status <- "Need more candidates"
-    status_icon <- "[>>]"
-  }
-
-  # Iteration header
   if (iter == 0L) {
-    .log_info(strrep("-", 75))
-    .log_info(sprintf("ITERATION %d - Initial Evaluation", iter))
+    logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
+    logger::log_info("[FILTERING] ITERATION {iter} | Initial evaluation")
   } else {
-    .log_info("")
-    .log_info(strrep("-", 75))
-    .log_info(sprintf("ITERATION %d - %s", iter, note))
+    logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
+    if (!is.null(note)) {
+      logger::log_info("[FILTERING] ITERATION {iter} | {note}")
+    } else {
+      logger::log_info("[FILTERING] ITERATION {iter}")
+    }
   }
-  .log_info(strrep("-", 75))
+  logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
 
-  # Show filter table
   filter_order <- c("mean", "sd", "tail_low", "tail_high", "wavelet")
   show_filters <- intersect(filter_order, active)
 
   if (length(show_filters) > 0) {
-    # Table header
-    .log_info(sprintf("%-12s %10s %8s  %-30s", "Filter", "Passed", "Rate", "Criteria"))
-    .log_info(strrep("-", 75))
+    logger::log_info("[FILTERING] {sprintf('%-12s %10s %8s  %-30s', 'Filter', 'Passed', 'Rate', 'Criteria')}")
+    logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
 
-    # Table rows
     for (nm in show_filters) {
-      if (!is.null(passes[[nm]])) {
-        n_pass <- sum(passes[[nm]])
-        rate <- sprintf("%.1f%%", 100 * mean(passes[[nm]]))
-        crit <- criteria_string_compact(nm, bounds, tail_metrics, wavelet_active, wavelet_pars)
-
-        .log_info(sprintf("%-12s %10d %8s  %-30s", nm, n_pass, rate, crit))
-      }
+      n_pass <- sum(passes[[nm]])
+      rate <- 100 * mean(passes[[nm]])
+      crit <- criteria_string_compact(nm, bounds, tail_metrics, wavelet_active, wavelet_pars)
+      logger::log_info("[FILTERING] {sprintf('%-12s %10d %7.1f%%  %-30s', nm, n_pass, rate, crit)}")
     }
-    .log_info(strrep("-", 75))
+    logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
   }
 
-  # Status line
-  .log_info(sprintf("%s Pool: %d / %d (%.1f%%) | Need: %d | Status: %s",
-                   status_icon, pool_size, n_total, pool_pct, target, status))
+  status_icon <- if (pool_size >= target) "[OK]" else "[>>]"
+  status_txt  <- if (pool_size >= target) "TARGET REACHED" else "Need more candidates"
 
-  if (pool_size >= target) {
-    .log_info(strrep("=", 75))
-  }
+  logger::log_info("[FILTERING] {status_icon} Pool: {pool_size} / {n_total} ({sprintf('%.1f', pool_pct)}%) | Need: {target} | Status: {status_txt}")
 
   invisible(NULL)
 }
 
-#' Log final summary
+#' Log final filtering summary
 #'
 #' @description
-#' Displays final filtering results.
+#' Internal helper. Displays final filtering results.
 #'
-#' @param pool_size Final pool size
-#' @param n_total Total realizations
-#' @param n_sampled Number sampled
-#' @param relaxation_level Relaxation level reached
+#' @param pool_size Integer scalar. Final pool size.
+#' @param n_total Integer scalar. Total realizations.
+#' @param n_sampled Integer scalar. Number sampled.
+#' @param relaxation_level Character scalar. Selection mode / relaxation level reached.
 #'
+#' @return Invisibly returns NULL.
 #' @keywords internal
-#' @export
 log_final_summary <- function(pool_size, n_total, n_sampled, relaxation_level) {
-  .log_info("")
-  .log_info(strrep("=", 75))
-  .log_info("FILTERING COMPLETE")
-  .log_info(strrep("=", 75))
-  .log_info(sprintf("Final pool: %d / %d realizations (%.1f%%)",
-                   pool_size, n_total, 100 * pool_size / n_total))
-  .log_info(sprintf("Sampled: %d realizations", n_sampled))
-  .log_info(sprintf("Relaxation level: %s", relaxation_level))
-  .log_info(strrep("=", 75))
+
+  pct <- if (n_total > 0) 100 * pool_size / n_total else NA_real_
+
+  logger::log_info("[FILTERING] ===========================================================================")
+  logger::log_info("[FILTERING] FILTERING COMPLETE")
+  logger::log_info("[FILTERING] ===========================================================================")
+  logger::log_info("[FILTERING] Final pool: {pool_size} / {n_total} ({sprintf('%.1f', pct)}%)")
+  logger::log_info("[FILTERING] Sampled: {n_sampled} realizations")
+  logger::log_info("[FILTERING] Selection mode: {relaxation_level}")
+  logger::log_info("[FILTERING] ===========================================================================")
+
+  invisible(NULL)
 }
-
-#' Compact criteria string for a filter
-#'
-#' @description
-#' Creates a compact human-readable string describing current filter criteria.
-#'
-#' @param filter_name Character filter name
-#' @param bounds Bounds environment or list
-#' @param tail_metrics Tail metrics list
-#' @param wavelet_active Logical
-#' @param wavelet_pars Wavelet parameters
-#'
-#' @return Character string (compact)
-#'
-#' @keywords internal
-#' @export
-criteria_string_compact <- function(filter_name, bounds, tail_metrics,
-                                    wavelet_active, wavelet_pars) {
-
-  if (filter_name == "mean") {
-    return(sprintf("tol = %.4f", bounds$mean))
-  }
-
-  if (filter_name == "sd") {
-    return(sprintf("tol = %.4f", bounds$sd))
-  }
-
-  if (filter_name == "tail_low") {
-    return(sprintf("p=%.2f, log.tol=%.4f", bounds$tail.low.p, bounds$tail.tol.log))
-  }
-
-  if (filter_name == "tail_high") {
-    return(sprintf("p=%.2f, log.tol=%.4f", bounds$tail.high.p, bounds$tail.tol.log))
-  }
-
-  if (filter_name == "wavelet") {
-    if (!isTRUE(wavelet_active)) return("inactive")
-    return(sprintf("sig.frac >= %.2f", bounds$sig.frac))
-  }
-
-  "NA"
-}
-
-#' Format numeric with specified digits
-#'
-#' @param x Numeric value
-#' @param digits Number of decimal places
-#'
-#' @return Character string
-#'
-#' @keywords internal
-#' @export
-fmt_num <- function(x, digits = 4L) {
-  if (is.null(x) || length(x) == 0L || any(!is.finite(x))) return("NA")
-  formatC(x, format = "f", digits = digits)
-}
-
-#' Format percentage
-#'
-#' @param x Numeric proportion (0 to 1)
-#' @param digits Number of decimal places
-#'
-#' @return Character string with percent sign
-#'
-#' @keywords internal
-#' @export
-fmt_pct <- function(x, digits = 1L) {
-  sprintf(paste0("%.", digits, "f%%"), 100 * x)
-}
-
-#' Pad string to the right
-#'
-#' @param x Character string
-#' @param width Target width
-#'
-#' @return Padded character string
-#'
-#' @keywords internal
-#' @export
-pad_right <- function(x, width) {
-  x <- as.character(x)
-  n <- nchar(x, type = "width")
-  ifelse(n >= width, substr(x, 1, width), paste0(x, strrep(" ", width - n)))
-}
-
-

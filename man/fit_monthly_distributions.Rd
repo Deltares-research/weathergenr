@@ -4,7 +4,7 @@
 \alias{fit_monthly_distributions}
 \title{Fit gamma distributions for each month}
 \usage{
-fit_monthly_distributions(value.nz, mon.nz, valid.months, fit.method, verbose)
+fit_monthly_distributions(prcp_wet, month_wet, months_ok, fit_method, verbose)
 }
 \description{
 Fit gamma distributions for each month

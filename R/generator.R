@@ -32,8 +32,8 @@
 #'     KNN matching and Markov chain sequencing.
 #'   \item \strong{Annual WARM simulation:} Aggregate historical daily data to annual
 #'     means (by water year if applicable), run wavelet analysis on the annual
-#'     series, simulate candidate annual traces via \code{\link{wavelet_arima}},
-#'     and subset traces using \code{\link{filter_warm_simulations}}.
+#'     series, simulate candidate annual traces via \code{\link{simulate_warm}},
+#'     and subset traces using \code{\link{filter_warm_pool}}.
 #'   \item \strong{Daily disaggregation:} For each realization, call
 #'     \code{\link{resample_weather_dates}} to generate a simulated sequence of
 #'     historical analogue dates (in the internal 365-day calendar).
@@ -155,6 +155,8 @@ generate_weather <- function(
     n_cores = NULL,
     verbose = FALSE
 ) {
+
+
   start_time <- Sys.time()
   verbose <- isTRUE(verbose)
 
@@ -237,7 +239,7 @@ generate_weather <- function(
   # ---------------------------------------------------------------------------
   # Calendar normalization (enforce 365-day calendar)
   # ---------------------------------------------------------------------------
-  leap_idx <- find_leap_days(obs_dates)
+  leap_idx <- find_leap_day_indices(obs_dates)
   if (!is.null(leap_idx) && length(leap_idx) > 0L) {
     obs_dates_old <- obs_dates
     obs_dates <- obs_dates[-leap_idx]
@@ -257,7 +259,7 @@ generate_weather <- function(
   # Historical date table (internal time axis)
   # ---------------------------------------------------------------------------
   his_date  <- obs_dates
-  his_wyear <- get_water_year(his_date, year_start_month)
+  his_wyear <- compute_water_year(his_date, year_start_month)
 
   dates_d <- tibble::tibble(
     dateo = his_date,
@@ -349,7 +351,7 @@ generate_weather <- function(
   sim_dates_d <- tibble::tibble(
     dateo = sim_date_ini,
     year  = as.integer(format(sim_date_ini, "%Y")),
-    wyear = get_water_year(sim_date_ini, year_start_month),
+    wyear = compute_water_year(sim_date_ini, year_start_month),
     month = as.integer(format(sim_date_ini, "%m")),
     day   = as.integer(format(sim_date_ini, "%d"))
   ) |>
@@ -371,61 +373,62 @@ generate_weather <- function(
   detrend <- TRUE
   warm_series_obs <- climate_a_aavg[[warm_var]]
 
-  warm_power <- wavelet_spectral_analysis(
-    variable = warm_series_obs,
-    signif.level = warm_signif,
-    period.lower.limit = 2,
+  warm_power <- analyze_wavelet_spectrum(
+    series = warm_series_obs,
+    signif = warm_signif,
+    noise = "red",
+    min_period = 2,
     detrend = detrend,
     mode = "complete"
   )
 
-  p <- plot_wavelet_spectra(
-    variable = warm_series_obs,
-    variable.year = climate_a_aavg$wyear,
-    period = warm_power$gws_period,
-    POWER = warm_power$power,
-    GWS = warm_power$gws_unmasked,
-    GWS_signif = warm_power$gws_signif_unmasked,
+  p <- plot_wavelet_power(
+    series = warm_series_obs,
+    time = climate_a_aavg$wyear,
+    period = warm_power$period,
+    power = warm_power$power,
+    gws = warm_power$gws_unmasked,
+    gws_signif = warm_power$gws_signif_unmasked,
     coi = warm_power$coi,
-    sigm = warm_power$sigm
+    signif_mask = warm_power$sigm
   )
-
   tryCatch(
-    ggplot2::ggsave(file.path(out_dir, "global_wavelet_power_spectrum.png"), p, width = 8, height = 5),
+    ggsave(file.path(out_dir, "global_wavelet_power_spectrum.png"), p, width = 8, height = 5),
     error = function(e) logger::log_warn("Failed to save wavelet spectrum plot: {e$message}")
   )
 
   if (any(!is.na(warm_power$signif_periods))) {
     .log("Significant low-frequency components detected: {length(warm_power$comps_names) - 1}", tag = "WARM")
     .log(
-      "Detected periodicity (years): {paste(round(warm_power$gws_period[warm_power$signif_periods], 2), collapse = ', ')}",
+      "Detected periodicity (years): {paste(round(warm_power$period[warm_power$signif_periods], 2), collapse = ', ')}",
       tag = "WARM"
     )
   } else {
     .log("No low-frequency signals detected", tag = "WARM")
   }
 
-  sim_annual <- wavelet_arima(
-    wavelet.components = warm_power$comps,
-    sim.year.num = n_years,
-    sim.num = warm_pool_size,
+  sim_annual <- simulate_warm(
+    components = warm_power$comps,
+    n = n_years,
+    n_sim = warm_pool_size,
     seed = warm_seed,
-    match.variance = TRUE
+    match_variance = TRUE,
+    verbose = verbose
   )
 
-  sim_annual_sub <- filter_warm_simulations(
-    series.obs = warm_series_obs,
-    series.sim = sim_annual,
-    sample.num = n_realizations,
+  sim_annual_sub <- filter_warm_pool(
+    obs_series = warm_series_obs,
+    sim_series = sim_annual,
+    n_select = n_realizations,
     seed = warm_seed + 1L,
-    padding = TRUE,
-    bounds = list(),
-    relax.order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
-    make.plots = TRUE,
-    wavelet.pars = list(
-      signif.level = warm_signif,
-      noise.type = "red",
-      period.lower.limit = 2,
+    pad_periods = TRUE,
+    filter_bounds = list(),
+    relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+    make_plots = TRUE,
+    wavelet_args = list(
+      signif_level = warm_signif,
+      noise_type = "red",
+      period_lower_limit = 2,
       detrend = detrend
     ),
     verbose = verbose
@@ -433,9 +436,9 @@ generate_weather <- function(
 
   tryCatch(
     {
-      ggplot2::ggsave(file.path(out_dir, "warm_annual_series.png"), sim_annual_sub$plots[[1]], width = 8, height = 5)
-      ggplot2::ggsave(file.path(out_dir, "warm_annual_statistics.png"), sim_annual_sub$plots[[2]], width = 8, height = 5)
-      ggplot2::ggsave(file.path(out_dir, "warm_annual_wavelet.png"), sim_annual_sub$plots[[3]], width = 8, height = 5)
+      ggsave(file.path(out_dir, "warm_annual_series.png"), sim_annual_sub$plots[[1]], width = 8, height = 5)
+      ggsave(file.path(out_dir, "warm_annual_statistics.png"), sim_annual_sub$plots[[2]], width = 8, height = 5)
+      ggsave(file.path(out_dir, "warm_annual_wavelet.png"), sim_annual_sub$plots[[3]], width = 8, height = 5)
     },
     error = function(e) logger::log_warn("Failed to save warm plots: {e$message}")
   )
@@ -453,15 +456,15 @@ generate_weather <- function(
 
   resampled_ini <- foreach::foreach(n = seq_len(n_realizations)) %d% {
     resample_weather_dates(
-      annual_prcp_sim = sim_annual_sub$sampled[, n],
-      annual_prcp_obs = warm_series_obs,
-      daily_prcp_obs  = climate_d_aavg$precip,
-      daily_temp_obs  = climate_d_aavg$temp,
-      sim_start_year  = start_year,
-      realization_id  = n,
-      n_sim_years     = n_years,
-      obs_dates_table = dates_d,
-      sim_dates_table = sim_dates_d,
+      sim_annual_prcp = sim_annual_sub$selected[, n],
+      obs_annual_prcp = warm_series_obs,
+      obs_daily_prcp  = climate_d_aavg$precip,
+      obs_daily_temp  = climate_d_aavg$temp,
+      year_start  = start_year,
+      realization_idx  = n,
+      n_years     = n_years,
+      obs_dates_df = dates_d,
+      sim_dates_df = sim_dates_d,
       annual_knn_n    = annual_knn_n,
       year_start_month = year_start_month,
       wet_q           = wet_q,
@@ -501,4 +504,3 @@ generate_weather <- function(
 
   list(resampled = resampled_dates, dates = sim_dates_d$dateo)
 }
-

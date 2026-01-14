@@ -2,17 +2,32 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{create_monthly_cycle_plot}
 \alias{create_monthly_cycle_plot}
-\title{Create monthly cycle plot}
+\title{Create monthly cycle diagnostic plot}
 \usage{
 create_monthly_cycle_plot(
-  daily.stats.season,
-  plot.config,
-  show.title,
-  save.plots,
-  output.path
+  daily_stats_season,
+  plot_config,
+  show_title,
+  save_plots,
+  out_dir
 )
 }
+\arguments{
+\item{daily_stats_season}{Data frame of daily seasonal statistics including mean values.}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+ggplot object (returned invisibly by \code{export_multipanel_plot()}).
+}
 \description{
-Create monthly cycle plot
+Plots annual cycles by month for each variable: simulated cycles are shown for all
+realizations, while the observed cycle is shown as a single reference line.
 }
 \keyword{internal}

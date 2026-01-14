@@ -4,30 +4,9 @@
 \alias{compute_spell_diagnostics}
 \title{Compute wet and dry spell-length diagnostics}
 \usage{
-compute_spell_diagnostics(value.original, value.adjusted, threshold)
-}
-\arguments{
-\item{value.original}{Numeric vector. Original precipitation values.}
-
-\item{value.adjusted}{Numeric vector. Adjusted precipitation values, same length as
-\code{value.original}.}
-
-\item{threshold}{Numeric scalar. Wet-day threshold; values < threshold are classified as dry
-and values >= threshold as wet.}
-}
-\value{
-A data.frame with two rows (\code{"dry"}, \code{"wet"}) and columns:
-\code{original.mean}, \code{adjusted.mean}, \code{original.max}, \code{adjusted.max},
-\code{original.sd}, \code{adjusted.sd}, \code{mean.ratio}, \code{max.ratio}, \code{sd.ratio},
-and \code{assessment}.
+compute_spell_diagnostics(prcp_ref, prcp_adj, wet_thresh)
 }
 \description{
-Summarizes persistence characteristics by comparing dry- and wet-spell lengths between
-original and adjusted series using a user-defined wet-day threshold.
-}
-\details{
-Spell lengths are computed using \code{\link{compute_spell_lengths}} for dry spells
-(\code{below = TRUE}) and wet spells (\code{below = FALSE}). The function reports mean,
-maximum, and standard deviation of spell lengths and their ratios (adjusted/original).
+Compute wet and dry spell-length diagnostics
 }
 \keyword{internal}

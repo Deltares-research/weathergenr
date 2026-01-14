@@ -4,16 +4,16 @@
 \alias{expand_indices}
 \title{Expand Index Positions by Fixed Offsets}
 \usage{
-expand_indices(idx, offsets, max_len)
+expand_indices(base_idx, offset_vec, n_max)
 }
 \arguments{
-\item{idx}{Integer vector of base index positions to be expanded.}
+\item{base_idx}{Integer vector of base index positions to be expanded.}
 
-\item{offsets}{Integer vector of offsets to apply to each element of
-\code{idx}. Offsets may be positive, negative, or zero.}
+\item{offset_vec}{Integer vector of offsets to apply to each element of
+\code{base_idx}. Offsets may be positive, negative, or zero.}
 
-\item{max_len}{Integer. Maximum allowable index length; expanded indices are
-constrained to the range \code{1:(max_len - 1)}.}
+\item{n_max}{Integer. Maximum allowable index length; expanded indices are
+constrained to the range \code{1:(n_max - 1)}.}
 }
 \value{
 Integer vector of expanded index positions that satisfy the validity
@@ -26,15 +26,15 @@ typically used to generate moving windows or neighborhood indices around
 reference positions (e.g., expanding event days to adjacent days).
 }
 \details{
-For each element in \code{idx}, all values in \code{offsets} are added.
+For each element in \code{base_idx}, all values in \code{offset_vec} are added.
 Resulting indices that are less than or equal to zero, or for which
-\code{index + 1 > max_len}, are discarded. The function does not enforce
+\code{index + 1 > n_max}, are discarded. The function does not enforce
 uniqueness or sorting of the output.
 }
 \examples{
-idx <- c(5, 10)
-offsets <- -1:1
-expand_indices(idx, offsets, max_len = 15)
+base_idx <- c(5, 10)
+offset_vec <- -1:1
+expand_indices(base_idx, offset_vec, n_max = 15)
 
 }
 \keyword{internal}

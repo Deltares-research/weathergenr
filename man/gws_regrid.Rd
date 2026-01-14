@@ -2,22 +2,23 @@
 % Please edit documentation in R/wavelet.R
 \name{gws_regrid}
 \alias{gws_regrid}
-\title{Regrid GWS to target period vector}
+\title{Regrid Global Wavelet Spectrum to a Target Period Grid}
 \usage{
-gws_regrid(wv, target_period, use_unmasked = FALSE)
+gws_regrid(wavelet, target_period, use_unmasked = FALSE)
 }
 \arguments{
-\item{wv}{List output from wavelet_spectral_analysis()}
+\item{wavelet}{List output from \code{\link{analyze_wavelet_spectrum}}.}
 
-\item{target_period}{Numeric vector of target periods}
+\item{target_period}{Numeric vector. Target periods for interpolation.}
 
-\item{use_unmasked}{Logical. If TRUE and available, use gws_unmasked}
+\item{use_unmasked}{Logical. If \code{TRUE} and available, uses \code{wavelet$gws_unmasked};
+otherwise uses \code{wavelet$gws}.}
 }
 \value{
-Numeric vector of GWS values on target_period grid
+Numeric vector of interpolated GWS values on \code{target_period}.
 }
 \description{
-Interpolates GWS from wavelet analysis onto a target period grid.
-Uses linear interpolation and fills edge NAs.
+Linearly interpolates the global wavelet spectrum from a wavelet analysis output onto
+a target period grid and fills edge values using nearest-neighbor filling.
 }
 \keyword{internal}

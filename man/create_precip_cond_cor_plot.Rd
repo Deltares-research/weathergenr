@@ -2,17 +2,35 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{create_precip_cond_cor_plot}
 \alias{create_precip_cond_cor_plot}
-\title{Create inter-grid correlation plot conditional on precipitation}
+\title{Create conditional precipitation correlation diagnostic plot}
 \usage{
 create_precip_cond_cor_plot(
-  stats.precip_cor_cond,
-  plot.config,
-  show.title,
-  save.plots,
-  output.path
+  stats_precip_cor_cond,
+  plot_config,
+  show_title,
+  save_plots,
+  out_dir
 )
 }
+\arguments{
+\item{stats_precip_cor_cond}{Data frame of conditional correlation summaries with columns
+\code{variable1}, \code{variable2}, \code{id1}, \code{id2}, \code{regime},
+\code{Observed}, and \code{Simulated}.}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+ggplot object (returned invisibly by \code{export_multipanel_plot()}).
+}
 \description{
-Create inter-grid correlation plot conditional on precipitation
+Observed-vs-simulated within-grid correlations between precipitation and other vars,
+stratified by precipitation regime (e.g., all/wet/dry). Faceted by regime (rows) and
+variable pair (columns).
 }
 \keyword{internal}

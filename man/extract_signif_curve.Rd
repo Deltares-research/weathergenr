@@ -2,18 +2,19 @@
 % Please edit documentation in R/wavelet.R
 \name{extract_signif_curve}
 \alias{extract_signif_curve}
-\title{Extract significance curve from wavelet analysis result}
+\title{Extract Global-Spectrum Significance Curve}
 \usage{
-extract_signif_curve(wv)
+extract_signif_curve(wavelet)
 }
 \arguments{
-\item{wv}{List output from wavelet_spectral_analysis()}
+\item{wavelet}{List output from \code{\link{analyze_wavelet_spectrum}}.}
 }
 \value{
-Numeric vector of significance values, or NULL if not found
+Numeric vector of significance values, or \code{NULL} if not found.
 }
 \description{
-Searches for GWS significance curve in wavelet analysis output.
-Tries multiple possible field names.
+Extracts a global-spectrum significance curve from a wavelet analysis output list.
+Intended as a small compatibility helper for downstream code that expects a single
+numeric vector. If not found, returns \code{NULL}.
 }
 \keyword{internal}

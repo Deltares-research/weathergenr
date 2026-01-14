@@ -1,23 +1,23 @@
 # ==============================================================================
-# Internal Plotting Function for filter_warm_simulations()
+# Internal Plotting Function for filter_warm_pool()
 # ==============================================================================
 
 #' Create diagnostic plots for filtered pool
 #'
 #' @description
-#' Internal function used by filter_warm_simulations() to create diagnostic plots.
+#' Internal function used by filter_warm_pool() to create diagnostic plots.
 #' Shows time series, statistics scatter, and wavelet GWS comparisons.
 #'
-#' @param obs.use Numeric vector of observed values
-#' @param series_sim_for_stats Numeric matrix of simulated values
+#' @param obs_series Numeric vector of observed values
+#' @param sim_series Numeric matrix of simulated values
 #' @param pool Integer vector of pool indices
-#' @param rel.diff.mean Relative differences in mean
-#' @param rel.diff.sd Relative differences in SD
+#' @param rel_diff_mean Relative differences in mean
+#' @param rel_diff_sd Relative differences in SD
 #' @param tail_metrics Tail metrics list
-#' @param power.period Wavelet periods
-#' @param power.obs Observed GWS
-#' @param power.signif Significance curve
-#' @param gws_cache_mat Cached GWS matrix (n_periods x n_realizations)
+#' @param power_period Wavelet periods
+#' @param power_obs Observed GWS
+#' @param power_signif Significance curve
+#' @param gws_cache Cached GWS matrix (n_periods x n_realizations)
 #' @param wavelet_q Two quantiles for ribbon (e.g., c(0.50, 0.95))
 #'
 #' @return List of ggplot objects (timeseries, stats, wavelet_gws)
@@ -26,10 +26,10 @@
 #' @import ggplot2
 #' @importFrom stats quantile
 #' @export
-plot_filter_diagnostics <- function(obs.use, series_sim_for_stats, pool,
-                                           rel.diff.mean, rel.diff.sd, tail_metrics,
-                                           power.period, power.obs, power.signif,
-                                           gws_cache_mat, wavelet_q = c(0.05, 0.95)) {
+plot_filter_diagnostics <- function(obs_series, sim_series, pool,
+                                    rel_diff_mean, rel_diff_sd, tail_metrics,
+                                    power_period, power_obs, power_signif,
+                                    gws_cache, wavelet_q = c(0.05, 0.95)) {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' required for plotting.", call. = FALSE)
@@ -39,14 +39,14 @@ plot_filter_diagnostics <- function(obs.use, series_sim_for_stats, pool,
   }
 
   # Validate inputs
-  if (!is.numeric(obs.use) || !is.vector(obs.use)) {
-    stop("obs.use must be numeric vector.", call. = FALSE)
+  if (!is.numeric(obs_series) || !is.vector(obs_series)) {
+    stop("obs_series must be numeric vector.", call. = FALSE)
   }
-  if (!is.matrix(series_sim_for_stats) || !is.numeric(series_sim_for_stats)) {
-    stop("series_sim_for_stats must be numeric matrix.", call. = FALSE)
+  if (!is.matrix(sim_series) || !is.numeric(sim_series)) {
+    stop("sim_series must be numeric matrix.", call. = FALSE)
   }
-  if (nrow(series_sim_for_stats) != length(obs.use)) {
-    stop("series_sim_for_stats rows must match length(obs.use).", call. = FALSE)
+  if (nrow(sim_series) != length(obs_series)) {
+    stop("sim_series rows must match length(obs_series).", call. = FALSE)
   }
   if (!is.numeric(wavelet_q) || length(wavelet_q) != 2L ||
       any(!is.finite(wavelet_q)) || any(wavelet_q <= 0) || any(wavelet_q >= 1) ||
@@ -57,8 +57,8 @@ plot_filter_diagnostics <- function(obs.use, series_sim_for_stats, pool,
   n_pool <- length(pool)
 
   # Extract pool data
-  sim.pool <- series_sim_for_stats[, pool, drop = FALSE]
-  if (is.null(colnames(sim.pool))) colnames(sim.pool) <- paste0("rlz_", pool)
+  sim_pool <- sim_series[, pool, drop = FALSE]
+  if (is.null(colnames(sim_pool))) colnames(sim_pool) <- paste0("rlz_", pool)
 
   # Compute approximate relative differences for plotting
   # Convert log-ratio back to percentage for readability
@@ -68,36 +68,36 @@ plot_filter_diagnostics <- function(obs.use, series_sim_for_stats, pool,
   lr_low  <- log((tail_metrics$M_sim_low[pool]  + e) / (tail_metrics$M_obs_low  + e))
   lr_high <- log((tail_metrics$M_sim_high[pool] + e) / (tail_metrics$M_obs_high + e))
 
-  stats_df <- data.frame(idx = pool, mean = rel.diff.mean[pool] * 100,
-    sd   = rel.diff.sd[pool]   * 100, tail_low  = (exp(lr_low)  - 1) * 100,
-    tail_high = (exp(lr_high) - 1) * 100)
+  stats_df <- data.frame(idx = pool, mean = rel_diff_mean[pool] * 100,
+                         sd   = rel_diff_sd[pool]   * 100, tail_low  = (exp(lr_low)  - 1) * 100,
+                         tail_high = (exp(lr_high) - 1) * 100)
 
-  stats.pool.long <- stats_df |>
+  stats_pool_long <- stats_df |>
     tidyr::pivot_longer(cols = -idx, names_to = "par", values_to = "value")
 
   # Extract pool GWS from cache
-  gws_pool_mat <- gws_cache_mat[, pool, drop = FALSE]
-  gws.pool.mean <- fill_nearest(rowMeans(gws_pool_mat, na.rm = TRUE))
-  gws.pool.q.lo <- fill_nearest(apply(gws_pool_mat, 1, stats::quantile,
-    probs = wavelet_q[1], na.rm = TRUE, names = FALSE, type = 4))
-  gws.pool.q.hi <- fill_nearest(apply(gws_pool_mat, 1, stats::quantile,
-    probs = wavelet_q[2], na.rm = TRUE, names = FALSE, type = 4))
+  gws_pool_mat <- gws_cache[, pool, drop = FALSE]
+  gws_pool_mean <- fill_nearest(rowMeans(gws_pool_mat, na.rm = TRUE))
+  gws_pool_q_lo <- fill_nearest(apply(gws_pool_mat, 1, stats::quantile,
+                                      probs = wavelet_q[1], na.rm = TRUE, names = FALSE, type = 4))
+  gws_pool_q_hi <- fill_nearest(apply(gws_pool_mat, 1, stats::quantile,
+                                      probs = wavelet_q[2], na.rm = TRUE, names = FALSE, type = 4))
 
   # ===========================================================================
   # Time series plot
   # ===========================================================================
 
   df_ts_sim_long <- data.frame(
-    year = seq_len(length(obs.use)),
-    as.data.frame(sim.pool, check.names = FALSE),
+    year = seq_len(length(obs_series)),
+    as.data.frame(sim_pool, check.names = FALSE),
     check.names = FALSE) |>
     tidyr::pivot_longer(cols = -year, names_to = "series", values_to = "value")
 
-  df_ts_obs <- data.frame(year = seq_len(length(obs.use)), value = obs.use)
+  df_ts_obs <- data.frame(year = seq_len(length(obs_series)), value = obs_series)
 
   p_timeseries <- ggplot() + theme_light() +
     geom_line(data = df_ts_sim_long, aes(x = year, y = value, group = series),
-      linewidth = 0.7, alpha = 0.20) +
+              linewidth = 0.7, alpha = 0.20) +
     geom_line(data = df_ts_obs, aes(x = year, y = value),
               color = "blue", linewidth = 0.9) +
     labs(x = "Year index", y = "Value")
@@ -106,9 +106,9 @@ plot_filter_diagnostics <- function(obs.use, series_sim_for_stats, pool,
   # Statistics scatter plot
   # ===========================================================================
   par_labels <- c(mean = "Mean", sd = "Standard\nDeviation",
-    tail_low = "Dry extremes\n(lower-tail mass)", tail_high = "Wet extremes\n(upper-tail mass)")
+                  tail_low = "Dry extremes\n(lower-tail mass)", tail_high = "Wet extremes\n(upper-tail mass)")
 
-  stats_plot <- stats.pool.long |>
+  stats_plot <- stats_pool_long |>
     dplyr::mutate(par = factor(.data$par, levels = c("mean", "sd", "tail_low", "tail_high")))
 
 
@@ -125,11 +125,11 @@ plot_filter_diagnostics <- function(obs.use, series_sim_for_stats, pool,
   # Wavelet GWS plot
   # ===========================================================================
 
-  df_gws_sum <- data.frame(period = power.period, mean = gws.pool.mean, lo = gws.pool.q.lo,
-    hi = gws.pool.q.hi)
+  df_gws_sum <- data.frame(period = power_period, mean = gws_pool_mean, lo = gws_pool_q_lo,
+                           hi = gws_pool_q_hi)
 
-  df_gws_lines <- data.frame(period = power.period, obs = as.numeric(power.obs),
-    signif = as.numeric(power.signif), curve = "Significance")
+  df_gws_lines <- data.frame(period = power_period, obs = as.numeric(power_obs),
+                             signif = as.numeric(power_signif), curve = "Significance")
 
   p_gws <- ggplot() + theme_light() +
     geom_ribbon(aes(x = period, ymin = lo, ymax = hi), df_gws_sum, alpha = 0.20) +

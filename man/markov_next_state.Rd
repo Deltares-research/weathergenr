@@ -4,12 +4,12 @@
 \alias{markov_next_state}
 \title{Determine Next State in a First-Order Markov Chain}
 \usage{
-markov_next_state(prev_state, rn, idx, p00, p01, p10, p11, p20, p21)
+markov_next_state(state_prev, u_rand, idx, p00, p01, p10, p11, p20, p21)
 }
 \arguments{
-\item{prev_state}{Integer. The current (previous) state (0, 1, or 2).}
+\item{state_prev}{Integer. The current (previous) state (0, 1, or 2).}
 
-\item{rn}{Numeric. A random number in [0, 1] used to sample the next state.}
+\item{u_rand}{Numeric. A random number in [0, 1] used to sample the next state.}
 
 \item{idx}{Integer. Index for selecting transition probabilities (e.g., time step or spatial location).}
 
@@ -29,7 +29,7 @@ markov_next_state(prev_state, rn, idx, p00, p01, p10, p11, p20, p21)
 Integer. The next state (0, 1, or 2).
 }
 \description{
-Given the previous state and a random number `rn`, this function returns the next
+Given the previous state and a random number `u_rand`, this function returns the next
 state in a 3-state first-order Markov chain. The transition probabilities are
 state- and index-specific.
 }
@@ -43,12 +43,11 @@ The transition is determined using cumulative probabilities for the transitions
 to state 0 and 1. Any remaining probability is assigned to state 2.
 }
 \examples{
-# Suppose we're at time step 5 with current state = 1
 set.seed(123)
-rn <- runif(1)
+u_rand <- runif(1)
 markov_next_state(
-  prev_state = 1,
-  rn = rn,
+  state_prev = 1,
+  u_rand = u_rand,
   idx = 5,
   p00 = rep(0.7, 10),
   p01 = rep(0.2, 10),

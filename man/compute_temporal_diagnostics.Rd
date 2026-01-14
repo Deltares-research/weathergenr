@@ -4,39 +4,9 @@
 \alias{compute_temporal_diagnostics}
 \title{Compute temporal diagnostics for quantile-mapped precipitation}
 \usage{
-compute_temporal_diagnostics(
-  value.original,
-  value.adjusted,
-  mon.ts,
-  year.ts,
-  nonzero.mask
-)
-}
-\arguments{
-\item{value.original}{Numeric vector. Original precipitation values.}
-
-\item{value.adjusted}{Numeric vector. Adjusted precipitation values, same length as
-\code{value.original}.}
-
-\item{mon.ts}{Integer vector. Month index (1--12) for each observation.}
-
-\item{year.ts}{Integer vector. Year index for each observation (same length as values).}
-
-\item{nonzero.mask}{Logical vector. Mask applied to both series before aggregation
-and autocorrelation calculations.}
-}
-\value{
-A data.frame with columns \code{metric}, \code{value}, and \code{assessment}.
-The \code{assessment} field is populated for correlation and autocorrelation-preservation
-diagnostics and set to \code{NA} for raw autocorrelation values.
+compute_temporal_diagnostics(prcp_ref, prcp_adj, month, year, mask)
 }
 \description{
-Quantifies preservation of temporal structure by comparing annual and monthly means,
-their correlations, and lag-1 autocorrelation of the (masked) daily series.
-}
-\details{
-Annual and monthly means are computed via \code{tapply(..., mean, na.rm = TRUE)} on
-the masked values. Correlations compare original vs adjusted aggregated series.
-Lag-1 autocorrelation is computed using \code{stats::acf(..., lag.max = 1, plot = FALSE)}.
+Compute temporal diagnostics for quantile-mapped precipitation
 }
 \keyword{internal}

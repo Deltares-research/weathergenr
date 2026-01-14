@@ -5,33 +5,26 @@
 \title{Compute tail-mass metrics for filtering}
 \usage{
 compute_tailmass_metrics(
-  obs.use,
-  series_sim_for_stats,
-  tail.low.p,
-  tail.high.p,
-  tail.eps
+  obs_use,
+  sim_series_stats,
+  tail_low_p,
+  tail_high_p,
+  tail_eps
 )
 }
 \arguments{
-\item{obs.use}{Numeric vector of observed values}
+\item{obs_use}{Numeric vector of observed values.}
 
-\item{series_sim_for_stats}{Numeric matrix of simulated values (n_use x n_realizations)}
+\item{sim_series_stats}{Numeric matrix of simulated values (n_use x n_realizations).}
 
-\item{tail.low.p}{Lower tail quantile probability (e.g., 0.10)}
+\item{tail_low_p}{Lower tail quantile probability (e.g., 0.10).}
 
-\item{tail.high.p}{Upper tail quantile probability (e.g., 0.90)}
+\item{tail_high_p}{Upper tail quantile probability (e.g., 0.90).}
 
-\item{tail.eps}{Epsilon for log transform to avoid log(0)}
+\item{tail_eps}{Epsilon for log transform to avoid log(0).}
 }
 \value{
-List with elements:
-\itemize{
-  \item thr_low, thr_high: Observed quantile thresholds
-  \item scale_obs: Robust scale estimate
-  \item M_obs_low, M_obs_high: Observed tail masses
-  \item M_sim_low, M_sim_high: Simulated tail masses (vectors)
-  \item logdiff_low, logdiff_high: Log-distance metrics (vectors)
-}
+List with tail thresholds, scale, masses, and log-distance metrics.
 }
 \description{
 Computes tail-mass metrics based on lower and upper tail quantile thresholds.

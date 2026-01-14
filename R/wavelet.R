@@ -1,160 +1,117 @@
 #' Continuous Wavelet Spectral Analysis with COI-Aware Significance
 #'
 #' @description
-#' Performs continuous wavelet transform (CWT) analysis using the Morlet mother
-#' wavelet following Torrence & Compo (1998), with extensions for:
+#' Performs continuous wavelet transform (CWT) analysis using a Morlet mother wavelet
+#' (Torrence & Compo, 1998) and returns wavelet power, cone of influence (COI),
+#' global wavelet spectrum (GWS), and significance thresholds. The implementation includes:
 #' \itemize{
-#'   \item cone-of-influence (COI) aware global spectrum estimation,
-#'   \item effective sample size (neff)-based significance testing,
-#'   \item defensible AR(1) red-noise background estimation,
-#'   \item stable and complete signal reconstruction from significant scales.
+#'   \item COI-aware global spectrum estimation,
+#'   \item effective sample size (\code{neff}) based significance testing,
+#'   \item AR(1) red-noise background estimation (Yule-Walker),
+#'   \item optional scale-component reconstruction in \code{mode = "complete"}.
 #' }
 #'
-#' The function is designed for **detection and diagnostic analysis of dominant
-#' time scales**, not for producing orthogonal components. Reconstructed components
-#' are scale-localized but not independent.
+#' This function is intended for detection and diagnostic analysis of dominant
+#' time scales. Reconstructed scale components are additive but not orthogonal.
 #'
-#' @param variable Numeric vector. Input time series (regularly spaced, no missing
-#'   values). Minimum length is 16 observations.
-#' @param signif.level Numeric scalar in (0, 1). Significance level for wavelet
-#'   power and global wavelet spectrum tests. Default is 0.90.
-#' @param noise.type Character. Background noise model for significance testing.
-#'   One of \code{"white"} or \code{"red"} (default). For red noise, an AR(1) model
-#'   is estimated using Yule-Walker.
-#' @param period.lower.limit Numeric scalar. Minimum Fourier period (in time units)
-#'   to consider when identifying significant scales. Default is 2.
-#' @param detrend Logical. If \code{TRUE}, removes a linear trend **slope only**
-#'   (preserves the series mean level) before wavelet analysis. Default is \code{FALSE}.
-#' @param mode Character. Computation mode: \code{"fast"} (default) for speed-optimized
-#'   filtering with essential outputs only, or \code{"complete"} for comprehensive analysis
-#'   including reconstruction and diagnostics. Fast mode returns 9 outputs (~50 KB),
-#'   complete mode returns 18+ outputs (~5 MB). Fast mode is ~3x faster by skipping
-#'   signal reconstruction and detailed diagnostics.
-#' @param return_diagnostics Logical. DEPRECATED. Use \code{mode = "complete"} instead.
-#'   If \code{TRUE}, forces complete mode and returns internal diagnostic quantities.
-#' @param return_recon_error Logical. If \code{TRUE}, returns scalar reconstruction
-#'   error metrics verifying closure of reconstructed components.
-#' @param lag1_ci Logical. If \code{TRUE}, computes a bootstrap confidence interval
-#'   for the AR(1) coefficient (diagnostic only; does not affect inference).
-#' @param lag1_ci_level Numeric scalar in (0, 1). Confidence level for the AR(1)
-#'   bootstrap interval. Default is 0.95.
-#' @param lag1_boot_n Integer. Number of bootstrap replicates used to estimate the
-#'   AR(1) confidence interval. Default is 500.
-#' @param seed Optional numeric scalar. Random seed for reproducible bootstrap
-#'   diagnostics. Default is \code{NULL}.
-#' @param warn_neff Logical. If \code{TRUE} (default), emits a warning when the
-#'   effective sample size is small for most scales.
-#' @param neff_warn_min Numeric scalar. Threshold below which neff is considered
-#'   small. Default is 5.
-#' @param neff_warn_frac Numeric scalar in (0, 1). Fraction of scales with
-#'   \code{neff < neff_warn_min} required to trigger a warning. Default is 0.60.
+#' @param series Numeric vector. Input time series (regularly spaced, no missing values).
+#'   Minimum length is 16 observations.
+#' @param signif Numeric scalar in (0, 1). Significance level for wavelet power and GWS
+#'   tests. Default is 0.90.
+#' @param noise Character. Background noise model for significance testing. One of
+#'   \code{"white"} or \code{"red"} (default). For red noise, an AR(1) model is estimated.
+#' @param min_period Numeric scalar. Minimum Fourier period (in time units) used when
+#'   identifying significant scales (default: 2).
+#' @param detrend Logical. If \code{TRUE}, removes a linear-trend slope only (mean preserved)
+#'   prior to analysis (default: \code{FALSE}).
+#' @param mode Character. \code{"fast"} (default) returns essential outputs only; \code{"complete"}
+#'   additionally returns pointwise significance and (optionally) reconstruction products.
+#' @param diagnostics Logical. If \code{TRUE}, returns an additional \code{diagnostics} list.
+#'   When \code{mode = "complete"}, diagnostics also include reconstruction error metrics
+#'   when reconstructed components are computed.
+#' @param lag1_ci Logical. If \code{TRUE}, computes a bootstrap confidence interval for the AR(1)
+#'   coefficient (diagnostic only; does not affect inference).
+#' @param lag1_ci_level Numeric scalar in (0, 1). Confidence level for the AR(1) bootstrap interval.
+#' @param lag1_boot_n Integer. Number of bootstrap replicates for the AR(1) interval (>= 50).
+#' @param seed Optional numeric scalar. Random seed used for bootstrap diagnostics.
+#' @param warn_neff Logical. If \code{TRUE}, warns when effective sample size is small for
+#'   most scales.
+#' @param neff_warn_min Numeric scalar. Threshold below which neff is considered small.
+#' @param neff_warn_frac Numeric scalar in (0, 1). Fraction of scales with \code{neff < neff_warn_min}
+#'   required to trigger a warning.
 #'
-#' @details
-#' The implementation follows Torrence & Compo (1998) for the Morlet wavelet,
-#' with the following methodological refinements:
-#' \itemize{
-#'   \item two-sided (TC98-consistent) wavelet normalization,
-#'   \item COI-masked global wavelet spectrum,
-#'   \item effective degrees of freedom based on wavelet decorrelation time,
-#'   \item separation of inference curves from plotting curves.
-#' }
-#'
-#' Reconstructed components correspond to **individual wavelet scales** and are
-#' additive but not orthogonal. They should not be interpreted as independent
-#' stochastic modes.
-#'
-#' @return A list with outputs depending on mode:
-#'
-#' \strong{Fast mode (9 outputs):}
+#' @return A list. Always includes (at minimum):
 #' \describe{
 #'   \item{gws}{Numeric vector. COI-masked global wavelet spectrum.}
 #'   \item{gws_unmasked}{Numeric vector. Unmasked global wavelet spectrum (plotting only).}
-#'   \item{gws_period}{Numeric vector. Fourier periods corresponding to wavelet scales.}
-#'   \item{gws_signif}{Numeric vector. COI- and neff-corrected significance threshold (inference).}
-#'   \item{gws_signif_unmasked}{Numeric vector. Unmasked significance threshold (plotting only).}
-#'   \item{has_significance}{Logical. Indicates whether any significant scales were found.}
-#'   \item{signif_periods}{Integer vector. Indices of significant wavelet scales.}
+#'   \item{period}{Numeric vector. Fourier periods corresponding to wavelet scales.}
+#'   \item{gws_signif}{Numeric vector. COI- and neff-corrected GWS significance threshold (inference).}
+#'   \item{gws_signif_unmasked}{Numeric vector. Unmasked GWS significance threshold (plotting only).}
+#'   \item{has_significance}{Logical. Whether any significant scales were detected.}
+#'   \item{signif_periods}{Integer vector. Indices of significant scales retained (one per contiguous band).}
 #'   \item{coi}{Numeric vector. Cone of influence in time units.}
-#'   \item{power}{Numeric matrix. Wavelet power spectrum (for basic plotting).}
+#'   \item{power}{Numeric matrix. Wavelet power spectrum (scales x time).}
 #' }
 #'
-#' \strong{Complete mode (additional 10+ outputs):}
+#' In \code{mode = "complete"}, additional fields may include:
 #' \describe{
 #'   \item{power_coi}{Numeric matrix. COI-masked wavelet power.}
-#'   \item{sigm}{Numeric matrix. Pointwise significance ratio (unmasked).}
+#'   \item{sigm}{Numeric matrix. Pointwise significance ratio.}
 #'   \item{sigm_coi}{Numeric matrix. COI-masked pointwise significance ratio.}
 #'   \item{power_signif_coi}{Logical matrix. COI-masked pointwise significance mask.}
 #'   \item{wave}{Complex matrix. Wavelet coefficients (scales x time).}
-#'   \item{comps}{Numeric matrix. Reconstructed components at significant scales plus residual.}
-#'   \item{comps_names}{Character vector. Column names of comps.}
-#'   \item{gws_n_coi}{Numeric vector. Number of time points inside the COI per scale.}
-#'   \item{gws_neff}{Numeric vector. Effective sample size per scale (masked).}
-#'   \item{gws_neff_unmasked}{Numeric vector. Effective sample size per scale (unmasked).}
-#'   \item{diagnostics}{List. Returned only if \code{return_diagnostics = TRUE}.}
-#'   \item{reconstruction_error}{List. Returned only if \code{return_recon_error = TRUE}.}
+#'   \item{comps}{Numeric matrix. Reconstructed significant-scale components plus residual (if computed).}
+#'   \item{comps_names}{Character vector. Component names.}
+#'   \item{gws_n_coi}{Numeric vector. Number of time points inside COI per scale.}
+#'   \item{neff}{Numeric vector. Effective sample size per scale (masked).}
+#'   \item{neff_unmasked}{Numeric vector. Effective sample size per scale (unmasked).}
+#'   \item{diagnostics}{List. Returned only when \code{diagnostics = TRUE}.}
 #' }
 #'
 #' @references
 #' Torrence, C., & Compo, G. P. (1998). A practical guide to wavelet analysis.
 #' \emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
 #'
-#' @seealso
-#' \code{\link{morlet_wavelet}}, \code{\link{extract_wavelet_components}}
+#' @seealso \code{\link{morlet_wavelet}}, \code{\link{extract_wavelet_components}},
+#'   \code{\link{plot_wavelet_power}}, \code{\link{plot_wavelet_global_spectrum}}
 #'
 #' @export
-wavelet_spectral_analysis <- function(variable,
-                                      signif.level = 0.90,
-                                      noise.type = "red",
-                                      period.lower.limit = 2,
-                                      detrend = FALSE,
-                                      mode = c("fast", "complete"),
-                                      return_diagnostics = TRUE,
-                                      return_recon_error = FALSE,
-                                      lag1_ci = FALSE,
-                                      lag1_ci_level = 0.95,
-                                      lag1_boot_n = 500,
-                                      seed = NULL,
-                                      warn_neff = FALSE,
-                                      neff_warn_min = 5,
-                                      neff_warn_frac = 0.60) {
+analyze_wavelet_spectrum <- function(
+    series,
+    signif = 0.90,
+    noise = "red",
+    min_period = 2,
+    detrend = FALSE,
+    mode = c("fast", "complete"),
+    diagnostics = FALSE,
+    lag1_ci = FALSE,
+    lag1_ci_level = 0.95,
+    lag1_boot_n = 500,
+    seed = NULL,
+    warn_neff = FALSE,
+    neff_warn_min = 5,
+    neff_warn_frac = 0.60
+) {
 
   # --- Input Validation ---
-  if (!is.numeric(variable)) stop("variable must be numeric")
-  if (anyNA(variable)) stop("variable contains missing values")
-  if (length(variable) < 16) stop("variable must have at least 16 observations")
+  if (!is.numeric(series)) stop("series must be numeric")
+  if (anyNA(series)) stop("series contains missing values")
+  if (length(series) < 16) stop("series must have at least 16 observations")
 
-  # --- Mode validation and backward compatibility ---
   mode <- match.arg(mode)
 
-  # Backward compatibility: return_diagnostics forces complete mode
-  if (isTRUE(return_diagnostics)) {
-    mode <- "complete"
-    if (!missing(return_diagnostics)) {
-      warning("'return_diagnostics' is deprecated. Use mode='complete' instead.",
-              call. = FALSE)
-    }
+  if (!(noise %in% c("white", "red"))) stop("noise must be 'white' or 'red'")
+
+  if (!is.numeric(signif) || length(signif) != 1L || signif <= 0 || signif >= 1) {
+    stop("signif must be between 0 and 1")
   }
 
-  compute_full <- (mode == "complete")
-
-  if (!(noise.type %in% c("white", "red"))) stop("noise.type must be 'white' or 'red'")
-
-  if (!is.numeric(signif.level) || length(signif.level) != 1L ||
-      signif.level <= 0 || signif.level >= 1) {
-    stop("signif.level must be between 0 and 1")
+  if (!is.numeric(min_period) || length(min_period) != 1L || min_period < 0) {
+    stop("min_period must be a non-negative number")
   }
 
-  if (!is.numeric(period.lower.limit) || length(period.lower.limit) != 1L ||
-      period.lower.limit < 0) {
-    stop("period.lower.limit must be a non-negative number")
-  }
-
-  if (!is.logical(return_diagnostics) || length(return_diagnostics) != 1L) {
-    stop("return_diagnostics must be TRUE/FALSE")
-  }
-
-  if (!is.logical(return_recon_error) || length(return_recon_error) != 1L) {
-    stop("return_recon_error must be TRUE/FALSE")
+  if (!is.logical(diagnostics) || length(diagnostics) != 1L) {
+    stop("diagnostics must be TRUE/FALSE")
   }
 
   if (!is.logical(lag1_ci) || length(lag1_ci) != 1L) stop("lag1_ci must be TRUE/FALSE")
@@ -178,32 +135,34 @@ wavelet_spectral_analysis <- function(variable,
     stop("neff_warn_frac must be between 0 and 1")
   }
 
+  compute_full <- (mode == "complete")
+
   # --- Wavelet Transform Analysis ---
-  variable_org <- as.numeric(variable)
+  series_org <- as.numeric(series)
 
   if (isTRUE(detrend)) {
-    tt <- seq_along(variable_org)
-    fit <- stats::lm(variable_org ~ tt)
+    tt <- seq_along(series_org)
+    fit <- stats::lm(series_org ~ tt)
     b <- stats::coef(fit)[2]
     if (!is.finite(b)) b <- 0
-    variable_org <- variable_org - b * (tt - mean(tt))
+    series_org <- series_org - b * (tt - mean(tt))
   }
 
-  variance1 <- stats::var(variable_org)
-  n1 <- length(variable_org)
+  variance1 <- stats::var(series_org)
+  n1 <- length(series_org)
 
-  sdx <- stats::sd(variable_org)
-  if (!is.finite(sdx) || sdx <= 0) stop("variable has zero or non-finite standard deviation")
+  sdx <- stats::sd(series_org)
+  if (!is.finite(sdx) || sdx <= 0) stop("series has zero or non-finite standard deviation")
 
-  variable_mean <- mean(variable_org)
+  series_mean <- mean(series_org)
 
   # Standardize (for transform only)
-  variable_std <- (variable_org - variable_mean) / sdx
+  series_std <- (series_org - series_mean) / sdx
 
   # Zero-pad
   base2 <- floor(log2(n1) + 0.4999)
-  variable_pad <- c(variable_std, rep(0, (2^(base2 + 1) - n1)))
-  n <- length(variable_pad)
+  series_pad <- c(series_std, rep(0, (2^(base2 + 1) - n1)))
+  n <- length(series_pad)
 
   dt <- 1
   dj <- 0.25
@@ -212,7 +171,7 @@ wavelet_spectral_analysis <- function(variable,
   scale <- s0 * 2^((0:J) * dj)
 
   k <- c(0:(floor(n / 2)), -rev(1:floor((n - 1) / 2))) * ((2 * pi) / (n * dt))
-  f <- stats::fft(variable_pad)
+  f <- stats::fft(series_pad)
 
   params <- morlet_parameters(k0 = 6)
   fourier_factor <- params["fourier_factor"]
@@ -236,7 +195,7 @@ wavelet_spectral_analysis <- function(variable,
   wave <- wave[, 1:n1, drop = FALSE]
   power <- abs(wave)^2
 
-  # --- COI mask (used by gws + plotting masks) ---
+  # --- COI mask ---
   coi_mask <- outer(period, coi, FUN = "<=")
   n_coi <- rowSums(coi_mask)
 
@@ -245,10 +204,10 @@ wavelet_spectral_analysis <- function(variable,
   dofmin <- empir[1]
   gamma_fac <- empir[3]
 
-  # --- Lag1 estimation (reuse centered variable) ---
-  x_centered <- variable_org - mean(variable_org)
+  # --- Lag1 estimation ---
+  x_centered <- series_org - mean(series_org)
 
-  if (noise.type == "white") {
+  if (noise == "white") {
     lag1 <- 0
   } else {
     lag1 <- tryCatch({
@@ -264,9 +223,8 @@ wavelet_spectral_analysis <- function(variable,
 
   # --- Optional lag1 uncertainty (diagnostic only) ---
   lag1_ci_out <- NULL
-  if (lag1_ci && noise.type == "red") {
+  if (lag1_ci && noise == "red") {
 
-    # RNG state management
     if (!is.null(seed)) {
       if (exists(".Random.seed", envir = .GlobalEnv)) {
         old_seed_lag1 <- .Random.seed
@@ -320,9 +278,9 @@ wavelet_spectral_analysis <- function(variable,
   power_signif_coi <- NULL
 
   if (compute_full) {
-    chisquare <- stats::qchisq(signif.level, dofmin) / dofmin
-    signif <- fft_theor * chisquare
-    sigm <- sweep(power, 1, signif, FUN = "/")
+    chisquare <- stats::qchisq(signif, dofmin) / dofmin
+    signif_pt <- fft_theor * chisquare
+    sigm <- sweep(power, 1, signif_pt, FUN = "/")
 
     sigm_coi <- sigm
     sigm_coi[!coi_mask] <- NA_real_
@@ -339,12 +297,11 @@ wavelet_spectral_analysis <- function(variable,
   gws_unmasked[!is.finite(gws_unmasked)] <- mean(gws_unmasked[is.finite(gws_unmasked)], na.rm = TRUE)
   gws <- variance1 * mean_power_coi
 
-  # --- COI-consistent neff (decorrelation-adjusted; inference curve) ---
+  # --- COI-consistent neff ---
   neff <- (n_coi * dt) / (gamma_fac * scale)
   neff[neff < 1] <- NA_real_
   neff[!is.finite(neff)] <- NA_real_
 
-  # --- Short-record / small-neff warnings ---
   if (warn_neff) {
     ok_neff <- is.finite(neff)
     frac_small <- if (any(ok_neff)) mean(neff[ok_neff] < neff_warn_min) else 1
@@ -365,7 +322,7 @@ wavelet_spectral_analysis <- function(variable,
 
   chisq <- rep(NA_real_, length(dof))
   ok <- is.finite(dof) & dof > 0
-  chisq[ok] <- stats::qchisq(signif.level, dof[ok]) / dof[ok]
+  chisq[ok] <- stats::qchisq(signif, dof[ok]) / dof[ok]
 
   gws_signif <- rep(NA_real_, length(dof))
   gws_signif[ok] <- fft_theor[ok] * variance1 * chisq[ok]
@@ -380,7 +337,7 @@ wavelet_spectral_analysis <- function(variable,
 
   chisq_unmasked <- rep(NA_real_, length(dof_unmasked))
   ok_u <- is.finite(dof_unmasked) & dof_unmasked > 0
-  chisq_unmasked[ok_u] <- stats::qchisq(signif.level, dof_unmasked[ok_u]) / dof_unmasked[ok_u]
+  chisq_unmasked[ok_u] <- stats::qchisq(signif, dof_unmasked[ok_u]) / dof_unmasked[ok_u]
   chisq_unmasked[!ok_u] <- 1
 
   gws_signif_unmasked <- rep(NA_real_, length(dof_unmasked))
@@ -390,78 +347,76 @@ wavelet_spectral_analysis <- function(variable,
   # --- Identify Significant Periods (use inference curves only) ---
   sig_periods <- which(
     is.finite(gws) & is.finite(gws_signif) &
-      (gws > gws_signif) & (period > period.lower.limit)
+      (gws > gws_signif) & (period > min_period)
   )
 
-  out_recon_err <- NULL
+  # --- Reconstruction (only in complete mode); diagnostics include recon error ---
+  comps <- NULL
+  comps_names <- NULL
+  recon_err <- NULL
 
-  if (length(sig_periods) == 0) {
+  if (compute_full) {
 
-    signif_periods <- integer(0)
+    if (length(sig_periods) == 0) {
+      signif_periods <- integer(0)
+      comps <- matrix(series_org, ncol = 1)
+      colnames(comps) <- "noise"
 
-    comps <- matrix(variable_org, ncol = 1)
-    colnames(comps) <- "noise"
+      recon_err <- list(recon_max_abs = 0, recon_rmse = 0)
 
-    if (return_recon_error) {
-      out_recon_err <- list(recon_max_abs = 0, recon_rmse = 0)
-    }
+    } else {
 
-  } else {
+      sig_periods_grp <- split(sig_periods, cumsum(c(1, diff(sig_periods) != 1)))
+      signif_periods <- as.integer(unlist(
+        lapply(sig_periods_grp, function(x) x[which.max(gws[x])]),
+        use.names = FALSE
+      ))
 
-    sig_periods_grp <- split(sig_periods, cumsum(c(1, diff(sig_periods) != 1)))
-    signif_periods <- as.integer(unlist(
-      lapply(sig_periods_grp, function(x) x[which.max(gws[x])]),
-      use.names = FALSE
-    ))
-
-    # RECONSTRUCTION: Only in complete mode (skip in fast mode for speed)
-    if (compute_full) {
       comps_tb <- extract_wavelet_components(
         wave = wave,
         signif_periods = signif_periods,
         scale = scale,
         dj = dj,
         dt = dt,
-        variable_sd = sdx,
-        variable_mean = variable_mean,
+        series_sd = sdx,
+        series_mean = series_mean,
         Cdelta = 0.776,
         w0_0 = pi^(-1/4),
         include_residual = TRUE
       )
 
       comps_mat <- as.matrix(comps_tb)
-
-      period_labels <- round(period[signif_periods], 2)
-      comp_names <- paste0("period_", period_labels)
-
       if (ncol(comps_mat) != (length(signif_periods) + 1L)) {
         stop("Internal error: unexpected number of reconstructed component columns.")
       }
 
+      period_labels <- round(period[signif_periods], 2)
+      comp_names <- paste0("period_", period_labels)
       colnames(comps_mat) <- c(comp_names, "noise")
       comps <- comps_mat
 
-      if (return_recon_error) {
-        recon_vec <- variable_org - rowSums(comps)
-        out_recon_err <- list(
-          recon_max_abs = max(abs(recon_vec)),
-          recon_rmse = sqrt(mean(recon_vec^2))
-        )
-      }
-    } else {
-      comps <- NULL
+      recon_vec <- series_org - rowSums(comps)
+      recon_err <- list(
+        recon_max_abs = max(abs(recon_vec)),
+        recon_rmse = sqrt(mean(recon_vec^2))
+      )
     }
+
+    comps_names <- if (!is.null(comps)) colnames(comps) else NULL
+
+  } else {
+    signif_periods <- integer(0)
   }
 
   signif_periods <- as.integer(signif_periods)
   has_significance <- length(signif_periods) > 0
 
-  # Build return list based on mode
+  # --- Build return ---
   if (mode == "fast") {
     out <- list(
       gws = gws,
       gws_unmasked = gws_unmasked,
-      gws_period = period,
+      period = period,
       gws_signif = gws_signif,
       gws_signif_unmasked = gws_signif_unmasked,
       has_significance = has_significance,
@@ -473,7 +428,7 @@ wavelet_spectral_analysis <- function(variable,
     out <- list(
       gws = gws,
       gws_unmasked = gws_unmasked,
-      gws_period = period,
+      period = period,
       gws_signif = gws_signif,
       gws_signif_unmasked = gws_signif_unmasked,
       has_significance = has_significance,
@@ -486,17 +441,13 @@ wavelet_spectral_analysis <- function(variable,
       power_signif_coi = power_signif_coi,
       wave = wave,
       comps = comps,
-      comps_names = if (!is.null(comps)) colnames(comps) else NULL,
+      comps_names = comps_names,
       gws_n_coi = n_coi,
-      gws_neff = neff,
-      gws_neff_unmasked = neff_unmasked
+      neff = neff,
+      neff_unmasked = neff_unmasked
     )
 
-    if (return_recon_error && !is.null(comps)) {
-      out$reconstruction_error <- out_recon_err
-    }
-
-    if (return_diagnostics) {
+    if (diagnostics) {
       out$diagnostics <- list(
         lag1 = lag1,
         lag1_ci = lag1_ci_out,
@@ -508,8 +459,9 @@ wavelet_spectral_analysis <- function(variable,
         scale = scale,
         fourier_factor = fourier_factor,
         n_coi = n_coi,
-        gws_neff = neff,
-        gws_neff_unmasked = neff_unmasked
+        neff = neff,
+        neff_unmasked = neff_unmasked,
+        reconstruction_error = recon_err
       )
     }
   }
@@ -517,128 +469,123 @@ wavelet_spectral_analysis <- function(variable,
   out
 }
 
-
 # ==============================================================================
 # Wavelet Utility Functions
 # ==============================================================================
-# This file contains utility functions for wavelet analysis and filtering.
-# New additions for filter_warm_simulations support:
-# - fill_nearest()
-# - extract_signif_curve()
-# - gws_regrid()
-# ==============================================================================
 
-#' Fill NA values with nearest non-NA value
+#' Fill NA Values with the Nearest Non-NA Neighbor
 #'
 #' @description
-#' Forward and backward fills NA values in a vector using the nearest
-#' non-NA value. Useful for handling edge effects in interpolated data.
+#' Fills missing values in a numeric vector by propagating the nearest available
+#' non-missing value. This is a deterministic forward-fill followed by a backward-fill.
+#' It is mainly used to stabilize curves after interpolation (e.g., regridded spectra).
 #'
-#' @param v Numeric vector possibly containing NAs
+#' @param x Numeric vector possibly containing \code{NA}.
 #'
-#' @return Numeric vector with NAs filled
+#' @return Numeric vector with missing values filled. If \code{x} is all \code{NA},
+#'   it is returned unchanged.
 #'
 #' @keywords internal
 #' @export
-fill_nearest <- function(v) {
-  if (all(is.na(v))) return(v)
+fill_nearest <- function(x) {
+  if (all(is.na(x))) return(x)
 
-  # Forward fill from first non-NA
-  if (is.na(v[1])) {
-    first <- which(!is.na(v))[1]
-    if (!is.na(first)) v[1:(first - 1)] <- v[first]
+  if (is.na(x[1])) {
+    first <- which(!is.na(x))[1]
+    if (!is.na(first)) x[1:(first - 1)] <- x[first]
   }
 
-  # Forward fill
-  for (i in 2:length(v)) {
-    if (is.na(v[i])) v[i] <- v[i - 1]
+  for (i in 2:length(x)) {
+    if (is.na(x[i])) x[i] <- x[i - 1]
   }
 
-  # Backward fill
-  for (i in (length(v) - 1):1) {
-    if (is.na(v[i])) v[i] <- v[i + 1]
+  for (i in (length(x) - 1):1) {
+    if (is.na(x[i])) x[i] <- x[i + 1]
   }
 
-  v
+  x
 }
 
-#' Extract significance curve from wavelet analysis result
+#' Extract Global-Spectrum Significance Curve
 #'
 #' @description
-#' Searches for GWS significance curve in wavelet analysis output.
-#' Tries multiple possible field names.
+#' Extracts a global-spectrum significance curve from a wavelet analysis output list.
+#' Intended as a small compatibility helper for downstream code that expects a single
+#' numeric vector. If not found, returns \code{NULL}.
 #'
-#' @param wv List output from wavelet_spectral_analysis()
+#' @param wavelet List output from \code{\link{analyze_wavelet_spectrum}}.
 #'
-#' @return Numeric vector of significance values, or NULL if not found
+#' @return Numeric vector of significance values, or \code{NULL} if not found.
 #'
 #' @keywords internal
 #' @export
-extract_signif_curve <- function(wv) {
-  # Try multiple possible names
-  cand <- c("gws_signif", "gws_sig", "signif_gws", "signif_gws_curve",
-            "gws_significance", "signif")
+extract_signif_curve <- function(wavelet) {
+  cand <- c(
+    "gws_signif",
+    "gws_sig",
+    "signif_gws",
+    "signif_gws_curve",
+    "gws_significance",
+    "signif"
+  )
 
   for (nm in cand) {
-    if (!is.null(wv[[nm]]) && is.numeric(wv[[nm]])) {
-      return(as.numeric(wv[[nm]]))
+    if (!is.null(wavelet[[nm]]) && is.numeric(wavelet[[nm]])) {
+      return(as.numeric(wavelet[[nm]]))
     }
   }
 
   NULL
 }
 
-#' Regrid GWS to target period vector
+#' Regrid Global Wavelet Spectrum to a Target Period Grid
 #'
 #' @description
-#' Interpolates GWS from wavelet analysis onto a target period grid.
-#' Uses linear interpolation and fills edge NAs.
+#' Linearly interpolates the global wavelet spectrum from a wavelet analysis output onto
+#' a target period grid and fills edge values using nearest-neighbor filling.
 #'
-#' @param wv List output from wavelet_spectral_analysis()
-#' @param target_period Numeric vector of target periods
-#' @param use_unmasked Logical. If TRUE and available, use gws_unmasked
+#' @param wavelet List output from \code{\link{analyze_wavelet_spectrum}}.
+#' @param target_period Numeric vector. Target periods for interpolation.
+#' @param use_unmasked Logical. If \code{TRUE} and available, uses \code{wavelet$gws_unmasked};
+#'   otherwise uses \code{wavelet$gws}.
 #'
-#' @return Numeric vector of GWS values on target_period grid
+#' @return Numeric vector of interpolated GWS values on \code{target_period}.
 #'
 #' @keywords internal
 #' @export
-gws_regrid <- function(wv, target_period, use_unmasked = FALSE) {
-  # Get GWS
-  g <- if (isTRUE(use_unmasked) && !is.null(wv$gws_unmasked)) {
-    wv$gws_unmasked
+gws_regrid <- function(wavelet, target_period, use_unmasked = FALSE) {
+
+  g <- if (isTRUE(use_unmasked) && !is.null(wavelet$gws_unmasked)) {
+    wavelet$gws_unmasked
   } else {
-    wv$gws
+    wavelet$gws
   }
 
-  # Get period
-  p <- wv$gws_period
+  p <- wavelet$period
 
-  # Validate
   if (is.null(g) || !is.numeric(g)) {
-    stop("wavelet_spectral_analysis() missing numeric $gws.", call. = FALSE)
+    stop("analyze_wavelet_spectrum() output missing numeric $gws.", call. = FALSE)
   }
   if (is.null(p) || !is.numeric(p)) {
-    stop("wavelet_spectral_analysis() missing numeric $gws_period.", call. = FALSE)
+    stop("analyze_wavelet_spectrum() output missing numeric $period.", call. = FALSE)
   }
 
   g <- as.numeric(g)
   p <- as.numeric(p)
 
-  # Remove non-finite values
   ok <- is.finite(p) & is.finite(g)
   p <- p[ok]
   g <- g[ok]
 
-  # Handle edge case: too few points
   if (length(g) < 2L) {
     out <- rep(if (length(g) == 1L) g[1] else NA_real_, length(target_period))
     return(fill_nearest(out))
   }
 
-  # Interpolate
   out <- stats::approx(x = p, y = g, xout = target_period, rule = 2)$y
   fill_nearest(out)
 }
+
 
 # ==============================================================================
 # Original wavelet_helpers.R functions below
@@ -647,37 +594,21 @@ gws_regrid <- function(wv, target_period, use_unmasked = FALSE) {
 #' Morlet Wavelet in Fourier Domain
 #'
 #' @description
-#' Computes the Morlet wavelet function in Fourier space for a given scale.
-#' This is the "daughter" wavelet used in continuous wavelet transform analysis.
-#' The function applies normalization following Torrence & Compo (1998).
+#' Computes the Morlet wavelet "daughter" in Fourier space for a given scale.
+#' Normalization follows Torrence & Compo (1998).
 #'
-#' @param k Numeric vector. Wave number vector (angular frequency).
-#' @param s Numeric scalar. Scale parameter (inverse of frequency).
-#' @param k0 Numeric scalar. Omega0 parameter for the Morlet wavelet (default = 6).
-#'   This value balances time and frequency localization.
+#' @param k Numeric vector. Angular frequencies in FFT ordering.
+#' @param scale Numeric scalar. Wavelet scale (inverse frequency), must be positive.
+#' @param k0 Numeric scalar. Morlet nondimensional frequency (default: 6).
 #'
-#' @return Numeric vector (complex). The Morlet wavelet in Fourier space,
-#'   with length equal to length(k).
-#'
-#' @details
-#' The Morlet wavelet is defined in Fourier space as:
-#' psi(s k) = pi^(-1/4) * sqrt(s k_2 n) * exp(-(s k - k_0)^2 / 2)
-#' where the exponential term is applied only to positive frequencies.
-#'
-#' The normalization factor ensures energy conservation and proper inverse
-#' transform reconstruction.
-#'
-#' @references
-#' Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-#' Bulletin of the American Meteorological Society, 79(1), 61-78.
+#' @return Numeric vector (complex). Morlet wavelet in Fourier space.
 #'
 #' @keywords internal
 #' @export
-morlet_wavelet <- function(k, s, k0 = 6) {
+morlet_wavelet <- function(k, scale, k0 = 6) {
 
-  # Basic validation
-  if (!is.numeric(k) || !is.numeric(s) || !is.numeric(k0)) stop("All inputs must be numeric")
-  if (length(s) != 1 || s <= 0) stop("'s' must be a positive scalar")
+  if (!is.numeric(k) || !is.numeric(scale) || !is.numeric(k0)) stop("All inputs must be numeric")
+  if (length(scale) != 1 || scale <= 0) stop("'scale' must be a positive scalar")
   if (length(k0) != 1 || k0 <= 0) stop("'k0' must be a positive scalar")
   if (length(k) < 2) stop("'k' must have length >= 2")
 
@@ -687,356 +618,227 @@ morlet_wavelet <- function(k, s, k0 = 6) {
 
   nn <- length(k)
   z <- as.numeric(k > 0)
-  expnt <- -((s * k - k0)^2 / 2) * z
+  expnt <- -((scale * k - k0)^2 / 2) * z
 
-  # TC98 Eq. 4 normalization (TWO-SIDED / standard)
-  norm <- sqrt(s * k[2]) * (pi^(-0.25)) * sqrt(nn)
-
-  daughter <- norm * exp(expnt) * z
-  daughter
+  norm <- sqrt(scale * k[2]) * (pi^(-0.25)) * sqrt(nn)
+  norm * exp(expnt) * z
 }
 
 #' Compute Morlet Wavelet Parameters
 #'
 #' @description
-#' Calculates key parameters for the Morlet wavelet transform, including
-#' the Fourier factor (scale-to-period conversion), cone of influence (COI),
-#' and minimum degrees of freedom.
+#' Computes key parameters for Morlet wavelets: Fourier factor (scale->period),
+#' cone-of-influence (COI) e-folding time, and minimum degrees of freedom.
 #'
-#' @param k0 Numeric scalar. Omega0 parameter for the Morlet wavelet (default = 6).
-#'   Standard choice is 6, which gives ~6 oscillations per wavelet.
+#' @param k0 Numeric scalar. Morlet nondimensional frequency (default: 6).
 #'
-#' @return Named numeric vector with three elements:
-#'   fourier_factor: Conversion factor from wavelet scale to Fourier period
-#'   coi: Cone of influence e-folding time
-#'   dofmin: Minimum degrees of freedom (2 for Morlet)
-#'
-#' @details
-#' The Fourier factor allows conversion between wavelet scale s and
-#' equivalent Fourier period T:
-#' T = (4*pi / (k_0 + sqrt(2 + k_0^2))) * s
-#'
-#' The cone of influence (COI) defines the e-folding time for edge effects:
-#' COI = fourier_factor / sqrt(2)
-#'
-#' Values outside the COI are subject to edge artifacts and should be
-#' interpreted with caution.
-#'
-#' @references
-#' Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-#' Bulletin of the American Meteorological Society, 79(1), 61-78.
-#' See Table 1 and Section 3f.
-#'
-#' @examples
-#' # Standard Morlet wavelet parameters
-#' params <- morlet_parameters(k0 = 6)
-#' print(params)
-#' # fourier_factor: 1.03
-#' # coi: 0.73
-#' # dofmin: 2
+#' @return Named numeric vector: \code{fourier_factor}, \code{coi}, \code{dofmin}.
 #'
 #' @keywords internal
 #' @export
 morlet_parameters <- function(k0 = 6) {
 
-  # Input validation
   if (!is.numeric(k0) || length(k0) != 1 || k0 <= 0) {
     stop("'k0' must be a positive numeric scalar")
   }
 
-  # Fourier factor: converts scale to period (TC98 Table 1)
   fourier_factor <- (4 * pi) / (k0 + sqrt(2 + k0^2))
-
-  # Cone of influence e-folding time (TC98 Table 1)
   coi <- fourier_factor / sqrt(2)
-
-  # Degrees of freedom for Morlet wavelet (TC98 Table 1)
   dofmin <- 2
 
-  return(c(
-    fourier_factor = fourier_factor,
-    coi = coi,
-    dofmin = dofmin
-  ))
+  c(fourier_factor = fourier_factor, coi = coi, dofmin = dofmin)
 }
 
-#' Extract and Reconstruct Wavelet Components from Significant Periods
+#' Reconstruct Wavelet Components from Selected Scales
 #'
 #' @description
-#' Reconstructs time series components from the wavelet transform for
-#' user-specified significant periods. Optionally includes a residual component
-#' representing all non-significant scales, ensuring complete signal decomposition.
+#' Reconstructs time-domain components from selected wavelet scales using the
+#' Torrence & Compo (1998) inverse transform approximation. Optionally adds a residual
+#' component representing non-selected scales to ensure additive closure.
 #'
-#' @param wave Complex matrix. Wavelet transform coefficients with dimensions
-#'   (scales x time). Output from continuous wavelet transform.
-#' @param signif_periods Integer vector. Indices of significant period scales
-#'   to reconstruct. Each index corresponds to a row in wave.
-#' @param scale Numeric vector. Scale values corresponding to rows of wave.
-#' @param dj Numeric scalar. Scale resolution parameter used in wavelet transform
-#'   (default = 0.25). Smaller values give finer resolution.
-#' @param dt Numeric scalar. Time step of the original series (default = 1).
-#' @param variable_sd Numeric scalar. Standard deviation of the original time series
-#'   before standardization. Used to restore original units.
-#' @param variable_mean Numeric scalar. Mean of the original time series
-#'   before standardization (default = 0). Added back to noise component to ensure
-#'   complete reconstruction: rowSums(output) = original_signal.
-#' @param Cdelta Numeric scalar. Reconstruction constant for Morlet wavelet
-#'   (default = 0.776). Depends on wavelet type; see Torrence & Compo (1998) Table 2.
-#' @param w0_0 Numeric scalar. Normalization constant psi_0(0) = pi^(-1/4)
-#'   for Morlet wavelet (default = pi^(-1/4)).
-#' @param include_residual Logical. If TRUE (default), includes a "Noise" component
-#'   representing the sum of all non-significant scales, ensuring complete
-#'   signal decomposition where rowSums(output) equals the reconstructed signal.
+#' @param wave Complex matrix (scales x time). Wavelet coefficients.
+#' @param signif_periods Integer vector. Scale indices to reconstruct.
+#' @param scale Numeric vector. Scale values aligned with \code{nrow(wave)}.
+#' @param dj Numeric scalar. Scale resolution used in the transform.
+#' @param dt Numeric scalar. Time step of the series.
+#' @param series_sd Numeric scalar. Standard deviation of the original series (pre-standardization).
+#' @param series_mean Numeric scalar. Mean of the original series; added back to residual.
+#' @param Cdelta Numeric scalar. Morlet reconstruction constant (default: 0.776).
+#' @param w0_0 Numeric scalar. \eqn{\psi_0(0)} constant (default: \eqn{\pi^{-1/4}}).
+#' @param include_residual Logical. If \code{TRUE}, adds a residual (non-selected) component.
 #'
-#' @return A matrix with columns:
-#'   Component_1, Component_2, ...: One column per significant period
-#'   Noise: (if include_residual = TRUE) Sum of all non-significant scales
-#'   Number of rows equals the length of the original time series.
-#'   Property: rowSums(output) approximately equals the original signal.
-#'
-#' @details
-#' The reconstruction formula (Torrence & Compo 1998, Eq. 11) is:
-#'
-#' x_n = (delta_j * sqrt(delta_t)) / (C_delta * psi_0(0)) *
-#'       sum over j of Re(W_n(s_j)) / sqrt(s_j)
-#'
-#' This function performs a complete wavelet decomposition by:
-#' 1. Extracting each significant period as a separate component
-#' 2. Summing all remaining (non-significant) scales into a "Noise" component
-#' 3. Ensuring: original_signal = sum(significant_components) + Noise
-#'
-#' This differs from partial reconstruction, which would only sum significant
-#' scales and lose information from non-significant scales.
-#'
-#' @references
-#' Torrence, C. and Compo, G.P. (1998). A Practical Guide to Wavelet Analysis.
-#' Bulletin of the American Meteorological Society, 79(1), 61-78.
-#' See Section 3i and Table 2.
-#'
-#' @examples
-#' \dontrun{
-#' # After performing wavelet analysis
-#' components <- extract_wavelet_components(
-#'   wave = wave_transform,
-#'   signif_periods = c(5, 10, 20),  # indices of significant scales
-#'   scale = scale_vector,
-#'   dj = 0.25,
-#'   dt = 1,
-#'   variable_sd = sd(original_data),
-#'   variable_mean = mean(original_data),
-#'   Cdelta = 0.776,
-#'   include_residual = TRUE
-#' )
-#'
-#' # Verify complete reconstruction
-#' reconstructed <- rowSums(components)
-#' plot(original_data)
-#' lines(reconstructed, col = "red")
-#'
-#' # Components include:
-#' # - Component_1: First significant period
-#' # - Component_2: Second significant period
-#' # - Component_3: Third significant period
-#' # - Noise: All non-significant scales combined + mean
-#' }
+#' @return Numeric matrix with one column per selected component and, if requested,
+#'   a final \code{"Noise"} residual column.
 #'
 #' @keywords internal
 #' @export
-extract_wavelet_components <- function(wave,
-                                       signif_periods,
-                                       scale,
-                                       dj = 0.25,
-                                       dt = 1,
-                                       variable_sd,
-                                       variable_mean = 0,
-                                       Cdelta = 0.776,
-                                       w0_0 = pi^(-1/4),
-                                       include_residual = TRUE) {
+extract_wavelet_components <- function(
+    wave,
+    signif_periods,
+    scale,
+    dj = 0.25,
+    dt = 1,
+    series_sd,
+    series_mean = 0,
+    Cdelta = 0.776,
+    w0_0 = pi^(-1/4),
+    include_residual = TRUE
+) {
 
   if (!is.matrix(wave) && !is.array(wave)) stop("'wave' must be a matrix or array")
-  if (!is.numeric(signif_periods) || length(signif_periods) == 0) stop("'signif_periods' must be a non-empty numeric vector")
+  if (!is.numeric(signif_periods) || length(signif_periods) == 0) stop("'signif_periods' must be non-empty")
   if (!all(signif_periods == as.integer(signif_periods))) stop("'signif_periods' must contain integer indices")
-  if (any(signif_periods < 1) || any(signif_periods > nrow(wave))) stop("'signif_periods' indices must be between 1 and nrow(wave)")
+  if (any(signif_periods < 1) || any(signif_periods > nrow(wave))) stop("'signif_periods' out of bounds")
   if (anyDuplicated(signif_periods)) {
-    warning("'signif_periods' contains duplicate indices; duplicates will be removed")
+    warning("'signif_periods' contains duplicates; duplicates removed", call. = FALSE)
     signif_periods <- unique(signif_periods)
   }
 
-  if (!is.numeric(scale) || length(scale) != nrow(wave)) stop("'scale' must be numeric with length equal to nrow(wave)")
-  if (!is.numeric(dj) || length(dj) != 1 || dj <= 0) stop("'dj' must be a positive scalar")
-  if (!is.numeric(dt) || length(dt) != 1 || dt <= 0) stop("'dt' must be a positive scalar")
-  if (!is.numeric(variable_sd) || length(variable_sd) != 1 || variable_sd <= 0) stop("'variable_sd' must be a positive scalar")
-  if (!is.numeric(variable_mean) || length(variable_mean) != 1) stop("'variable_mean' must be a numeric scalar")
-  if (!is.numeric(Cdelta) || length(Cdelta) != 1 || Cdelta <= 0) stop("'Cdelta' must be a positive scalar")
-  if (!is.numeric(w0_0) || length(w0_0) != 1 || w0_0 <= 0) stop("'w0_0' must be a positive scalar")
-  if (!is.logical(include_residual) || length(include_residual) != 1) stop("'include_residual' must be a single logical value")
+  if (!is.numeric(scale) || length(scale) != nrow(wave)) stop("'scale' must match nrow(wave)")
+  if (!is.numeric(dj) || length(dj) != 1 || dj <= 0) stop("'dj' must be positive")
+  if (!is.numeric(dt) || length(dt) != 1 || dt <= 0) stop("'dt' must be positive")
+  if (!is.numeric(series_sd) || length(series_sd) != 1 || series_sd <= 0) stop("'series_sd' must be positive")
+  if (!is.numeric(series_mean) || length(series_mean) != 1) stop("'series_mean' must be scalar")
+  if (!is.numeric(Cdelta) || length(Cdelta) != 1 || Cdelta <= 0) stop("'Cdelta' must be positive")
+  if (!is.numeric(w0_0) || length(w0_0) != 1 || w0_0 <= 0) stop("'w0_0' must be positive")
+  if (!is.logical(include_residual) || length(include_residual) != 1) stop("'include_residual' must be logical scalar")
 
   num_periods <- length(signif_periods)
   n_time <- ncol(wave)
   n_scales <- nrow(wave)
 
   n_components <- num_periods + (if (include_residual) 1L else 0L)
-  COMPS <- matrix(0, nrow = n_time, ncol = n_components)
+  comps <- matrix(0, nrow = n_time, ncol = n_components)
 
-  # TC98 Eq. 11 reconstruction factor (TWO-SIDED / standard)
-  recon_fac <- variable_sd * (dj * sqrt(dt) / (Cdelta * w0_0))
+  recon_fac <- series_sd * (dj * sqrt(dt) / (Cdelta * w0_0))
 
   inv_sqrt_scale <- 1 / sqrt(scale)
   Ww_all <- Re(wave) * inv_sqrt_scale
 
   for (i in seq_len(num_periods)) {
     j <- signif_periods[i]
-    COMPS[, i] <- recon_fac * Ww_all[j, ]
+    comps[, i] <- recon_fac * Ww_all[j, ]
   }
 
   if (include_residual) {
     nonsig_idx <- setdiff(seq_len(n_scales), signif_periods)
 
     if (length(nonsig_idx) > 0) {
-      COMPS[, num_periods + 1L] <- recon_fac * colSums(Ww_all[nonsig_idx, , drop = FALSE])
+      comps[, num_periods + 1L] <- recon_fac * colSums(Ww_all[nonsig_idx, , drop = FALSE])
     } else {
-      COMPS[, num_periods + 1L] <- 0
-      warning("All scales are marked as significant; residual component will be zero.")
+      comps[, num_periods + 1L] <- 0
+      warning("All scales are marked significant; residual component is zero.", call. = FALSE)
     }
 
-    COMPS[, num_periods + 1L] <- COMPS[, num_periods + 1L] + variable_mean
+    comps[, num_periods + 1L] <- comps[, num_periods + 1L] + series_mean
   }
 
-  colnames(COMPS) <- c(
+  colnames(comps) <- c(
     paste0("Component_", seq_len(num_periods)),
     if (include_residual) "Noise" else NULL
   )
 
-  attr(COMPS, "signif_periods") <- signif_periods
-  attr(COMPS, "n_scales") <- n_scales
-  attr(COMPS, "n_significant") <- num_periods
-  attr(COMPS, "reconstruction_complete") <- include_residual
+  attr(comps, "signif_periods") <- signif_periods
+  attr(comps, "n_scales") <- n_scales
+  attr(comps, "n_significant") <- num_periods
+  attr(comps, "reconstruction_complete") <- include_residual
 
-  COMPS
+  comps
 }
 
 
 #' Wavelet Autoregressive Modeling (WARM)
 #'
-#' Simulates synthetic time series by modeling each wavelet component (signal or noise)
-#' with an ARIMA model, and then summing the simulated components. Optionally enforces
-#' variance matching to preserve statistical properties of the original components.
+#' @description
+#' Simulates synthetic series by modeling each wavelet component with an ARIMA model,
+#' simulating each component forward, and summing across components. Optionally rescales
+#' simulated components to match the observed component variance.
 #'
-#' @param wavelet.components A list or matrix where each column (or list element) is a
-#'   numeric vector corresponding to a wavelet component (low-frequency signal or noise).
-#' @param sim.year.num Integer. Desired length (number of years or timesteps) of each
-#'   simulated series.
-#' @param sim.num Integer. Number of synthetic series to produce. Default: 1000.
-#' @param seed Optional. Integer random seed for reproducibility.
-#' @param match.variance Logical. If TRUE, rescale simulated components to match the
-#'   variance of the original components (default: TRUE). Recommended for preserving
-#'   statistical properties.
-#' @param variance.tolerance Numeric. Relative tolerance for variance matching
-#'   (default: 0.1 = 10\%). Only applies if match.variance = TRUE.
-#' @param check.diagnostics Logical. If TRUE, perform basic ARIMA model diagnostics
-#'   and issue warnings if models appear inadequate (default: FALSE).
-#' @param verbose Logical. If TRUE, emit informative logger::log_info() messages
-#'   (default: TRUE). If FALSE, suppresses all logger::log_info() output from this function.
+#' @param components Matrix, data.frame, or list of numeric vectors. Wavelet components,
+#'   typically produced by \code{\link{extract_wavelet_components}}.
+#' @param n Integer. Length of each simulated series.
+#' @param n_sim Integer. Number of realizations to generate.
+#' @param seed Optional integer. Base RNG seed for reproducibility.
+#' @param match_variance Logical. If \code{TRUE}, rescales each simulated component to match
+#'   the observed component standard deviation.
+#' @param var_tol Numeric in [0, 1]. Relative tolerance used to trigger variance rescaling.
+#' @param check_diagnostics Logical. If \code{TRUE}, runs simple ARIMA diagnostics and warns on issues.
+#' @param verbose Logical. If \code{TRUE}, emits informational logs (via \code{logger::log_info} when available).
 #'
-#' @return A matrix of dimension \code{sim.year.num} x \code{sim.num}, where each
-#'   column is a synthetic time series realization.
+#' @return Numeric matrix of dimension \code{n x n_sim}. Each column is a simulated realization.
 #'
-#' @importFrom stats sd simulate
+#' @importFrom stats sd simulate Box.test
 #' @importFrom forecast auto.arima
 #' @export
-wavelet_arima <- function(wavelet.components = NULL,
-                          sim.year.num = NULL,
-                          sim.num = 1000,
-                          seed = NULL,
-                          match.variance = TRUE,
-                          variance.tolerance = 0.1,
-                          check.diagnostics = FALSE,
-                          verbose = TRUE) {
+simulate_warm <- function(
+    components = NULL,
+    n = NULL,
+    n_sim = 1000,
+    seed = NULL,
+    match_variance = TRUE,
+    var_tol = 0.1,
+    check_diagnostics = FALSE,
+    verbose = TRUE
+) {
 
-  # ============================================================================
-  # Input Validation
-  # ============================================================================
+  if (is.null(components)) stop("Input 'components' must not be NULL.")
+  if (is.null(n)) stop("Input 'n' must be specified.")
 
-  if (is.null(wavelet.components)) {
-    stop("Input 'wavelet.components' must not be NULL.")
+  if (!is.logical(verbose) || length(verbose) != 1L) stop("'verbose' must be TRUE/FALSE.")
+  if (!.is_int_scalar(n) || n < 1L) stop("'n' must be a positive integer.", call. = FALSE)
+  n <- as.integer(n)
+
+  if (!.is_int_scalar(n_sim) || n_sim < 1L) stop("'n_sim' must be a positive integer.", call. = FALSE)
+  n_sim <- as.integer(n_sim)
+
+  if (!is.logical(match_variance) || length(match_variance) != 1L) {
+    stop("'match_variance' must be TRUE/FALSE.", call. = FALSE)
   }
 
-  if (is.null(sim.year.num)) {
-    stop("Input 'sim.year.num' must be specified.")
+  if (!is.numeric(var_tol) || length(var_tol) != 1L || !is.finite(var_tol) || var_tol < 0 || var_tol > 1) {
+    stop("'var_tol' must be between 0 and 1.", call. = FALSE)
   }
 
-  if (!is.logical(verbose) || length(verbose) != 1L) {
-    stop("'verbose' must be logical (TRUE/FALSE).")
+  if (!is.logical(check_diagnostics) || length(check_diagnostics) != 1L) {
+    stop("'check_diagnostics' must be TRUE/FALSE.", call. = FALSE)
   }
 
-  if (!.is_int_scalar(sim.year.num) || sim.year.num < 1L) {
-    stop("'sim.year.num' must be a positive integer.")
-  }
-  sim.year.num <- as.integer(sim.year.num)
-
-  if (!.is_int_scalar(sim.num) || sim.num < 1L) {
-    stop("'sim.num' must be a positive integer.")
-  }
-  sim.num <- as.integer(sim.num)
-
-  if (!is.logical(match.variance) || length(match.variance) != 1L) {
-    stop("'match.variance' must be logical (TRUE/FALSE).")
-  }
-
-  if (!is.numeric(variance.tolerance) || length(variance.tolerance) != 1L ||
-      !is.finite(variance.tolerance) || variance.tolerance < 0 || variance.tolerance > 1) {
-    stop("'variance.tolerance' must be between 0 and 1.")
-  }
-
-  if (!is.logical(check.diagnostics) || length(check.diagnostics) != 1L) {
-    stop("'check.diagnostics' must be logical (TRUE/FALSE).")
-  }
-
-  # ============================================================================
   # Efficient component list conversion
-  # ============================================================================
-
-  if (is.matrix(wavelet.components)) {
-    if (!is.numeric(wavelet.components)) {
-      stop("Matrix 'wavelet.components' must be numeric.")
-    }
-    ncomp <- ncol(wavelet.components)
+  if (is.matrix(components)) {
+    if (!is.numeric(components)) stop("Matrix 'components' must be numeric.")
+    ncomp <- ncol(components)
     comp_list <- vector("list", ncomp)
-    for (k in seq_len(ncomp)) comp_list[[k]] <- wavelet.components[, k]
+    for (k in seq_len(ncomp)) comp_list[[k]] <- components[, k]
 
-  } else if (is.data.frame(wavelet.components)) {
-    col_types <- vapply(wavelet.components, is.numeric, logical(1))
-    if (!all(col_types)) stop("All columns of 'wavelet.components' must be numeric.")
-    ncomp <- ncol(wavelet.components)
+  } else if (is.data.frame(components)) {
+    col_types <- vapply(components, is.numeric, logical(1))
+    if (!all(col_types)) stop("All columns of 'components' must be numeric.")
+    ncomp <- ncol(components)
     comp_list <- vector("list", ncomp)
-    for (k in seq_len(ncomp)) comp_list[[k]] <- wavelet.components[[k]]
+    for (k in seq_len(ncomp)) comp_list[[k]] <- components[[k]]
 
-  } else if (is.list(wavelet.components)) {
-    elem_types <- vapply(wavelet.components, is.numeric, logical(1))
-    if (!all(elem_types)) stop("All elements of 'wavelet.components' must be numeric vectors.")
-    ncomp <- length(wavelet.components)
-    comp_list <- wavelet.components
+  } else if (is.list(components)) {
+    elem_types <- vapply(components, is.numeric, logical(1))
+    if (!all(elem_types)) stop("All elements of 'components' must be numeric vectors.")
+    ncomp <- length(components)
+    comp_list <- components
 
   } else {
-    stop("'wavelet.components' must be a matrix, data.frame, or list of numeric vectors.")
+    stop("'components' must be a matrix, data.frame, or list of numeric vectors.")
   }
 
-  # --- FIX 2: explicit NA check inside each component vector (before sd/mean)
   na_comp <- vapply(comp_list, function(x) anyNA(x), logical(1))
   if (any(na_comp)) {
     bad <- which(na_comp)
     stop(
-      "Missing values detected in wavelet component(s): ",
+      "Missing values detected in component(s): ",
       paste(bad, collapse = ", "),
-      ". Remove/impute NAs before calling wavelet_arima().",
+      ". Remove/impute NAs before calling simulate_warm().",
       call. = FALSE
     )
   }
 
-  # ============================================================================
-  # RNG State Management
-  # ============================================================================
-
+  # RNG state management
   if (!is.null(seed)) {
     if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed)) {
       stop("'seed' must be NULL or a single finite number.", call. = FALSE)
@@ -1054,16 +856,8 @@ wavelet_arima <- function(wavelet.components = NULL,
     }, add = TRUE)
   }
 
-  # ============================================================================
-  # Pre-allocate output matrix
-  # ============================================================================
-
-  output <- matrix(0, nrow = sim.year.num, ncol = sim.num)
+  output <- matrix(0, nrow = n, ncol = n_sim)
   variance_corrections <- logical(ncomp)
-
-  # ============================================================================
-  # Component Simulation Loop
-  # ============================================================================
 
   for (k in seq_len(ncomp)) {
 
@@ -1071,14 +865,11 @@ wavelet_arima <- function(wavelet.components = NULL,
     n_obs <- length(component)
 
     comp_sd <- stats::sd(component)
-    if (!is.finite(comp_sd)) {
-      stop("Component ", k, " has non-finite standard deviation.", call. = FALSE)
-    }
+    if (!is.finite(comp_sd)) stop("Component ", k, " has non-finite standard deviation.", call. = FALSE)
 
     if (comp_sd < 1e-10) {
       warning(
-        "Component ", k, " is essentially constant. ",
-        "Returning constant values without ARIMA modeling.",
+        "Component ", k, " is essentially constant. Returning constant values without ARIMA modeling.",
         call. = FALSE
       )
       output <- output + mean(component)
@@ -1087,8 +878,7 @@ wavelet_arima <- function(wavelet.components = NULL,
 
     if (n_obs < 10) {
       warning(
-        "Component ", k, " has only ", n_obs,
-        " observations. ARIMA modeling may be unreliable.",
+        "Component ", k, " has only ", n_obs, " observations. ARIMA modeling may be unreliable.",
         call. = FALSE
       )
     }
@@ -1124,13 +914,13 @@ wavelet_arima <- function(wavelet.components = NULL,
     )
 
     if (is.null(MODEL)) {
-      for (j in seq_len(sim.num)) {
-        output[, j] <- output[, j] + sample(component, sim.year.num, replace = TRUE)
+      for (j in seq_len(n_sim)) {
+        output[, j] <- output[, j] + sample(component, n, replace = TRUE)
       }
       next
     }
 
-    if (check.diagnostics) {
+    if (check_diagnostics) {
       if (!is.null(MODEL$convergence) && MODEL$convergence != 0) {
         warning("ARIMA model for component ", k, " did not converge properly.", call. = FALSE)
       }
@@ -1145,8 +935,7 @@ wavelet_arima <- function(wavelet.components = NULL,
         if (!is.null(ljung_test) && is.finite(ljung_test$p.value) && ljung_test$p.value < 0.05) {
           warning(
             "Component ", k, ": Residuals show significant autocorrelation ",
-            "(Ljung-Box p = ", round(ljung_test$p.value, 4), "). ",
-            "Model may be inadequate.",
+            "(Ljung-Box p = ", round(ljung_test$p.value, 4), "). Model may be inadequate.",
             call. = FALSE
           )
         }
@@ -1161,19 +950,17 @@ wavelet_arima <- function(wavelet.components = NULL,
     }
 
     model_sd <- sqrt(MODEL$sigma2)
-    needs_variance_check <- isTRUE(match.variance)
+    needs_variance_check <- isTRUE(match_variance)
 
-    for (j in seq_len(sim.num)) {
+    for (j in seq_len(n_sim)) {
 
-      simulated <- as.numeric(stats::simulate(MODEL, sim.year.num, sd = model_sd)) +
-        intercept + comp_mean
+      simulated <- as.numeric(stats::simulate(MODEL, n, sd = model_sd)) + intercept + comp_mean
 
       if (needs_variance_check) {
         sim_sd <- stats::sd(simulated)
-
         if (is.finite(sim_sd) && sim_sd > 0) {
           relative_diff <- abs(sim_sd - target_sd) / target_sd
-          if (relative_diff > variance.tolerance) {
+          if (relative_diff > var_tol) {
             sim_mean <- mean(simulated)
             simulated <- comp_mean + (simulated - sim_mean) * (target_sd / sim_sd)
             if (!variance_corrections[k]) variance_corrections[k] <- TRUE
@@ -1185,11 +972,10 @@ wavelet_arima <- function(wavelet.components = NULL,
     }
   }
 
-  if (verbose && match.variance && any(variance_corrections) &&
+  if (verbose && match_variance && any(variance_corrections) &&
       requireNamespace("logger", quietly = TRUE)) {
     logger::log_info("[WARM] Variance correction applied to component(s)")
   }
 
   output
 }
-

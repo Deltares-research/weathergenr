@@ -4,35 +4,9 @@
 \alias{compute_moment_diagnostics}
 \title{Compute moment diagnostics for quantile-mapped precipitation}
 \usage{
-compute_moment_diagnostics(value.original, value.adjusted, nonzero.mask)
-}
-\arguments{
-\item{value.original}{Numeric vector. Original precipitation values.}
-
-\item{value.adjusted}{Numeric vector. Adjusted precipitation values. Must be the same length
-as \code{value.original}.}
-
-\item{nonzero.mask}{Logical vector. Subset mask applied to both series before computing
-statistics (e.g., \code{value.original > 0 & value.adjusted > 0}).}
-}
-\value{
-A data.frame with one row per metric and columns:
-\itemize{
-  \item \code{metric}: Metric name.
-  \item \code{original}, \code{adjusted}: Metric values.
-  \item \code{ratio}, \code{diff}, \code{pct.change}: Relative/absolute change diagnostics.
-  \item \code{assessment}: Qualitative assessment (see \code{\link{assess_moment_changes}}).
-}
+compute_moment_diagnostics(prcp_ref, prcp_adj, mask)
 }
 \description{
-Computes distribution moment statistics for original and adjusted series over a
-user-specified subset (typically days where both series are non-zero).
-Returns absolute and relative changes and assigns a qualitative assessment per metric.
-}
-\details{
-Metrics computed on the masked series are: mean, standard deviation, variance,
-coefficient of variation (CV), skewness, and excess kurtosis. Ratio, difference,
-and percent change are computed as \code{adjusted/original}, \code{adjusted-original},
-and \code{(ratio - 1) * 100}.
+Compute moment diagnostics for quantile-mapped precipitation
 }
 \keyword{internal}

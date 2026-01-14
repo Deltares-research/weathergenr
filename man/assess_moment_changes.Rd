@@ -4,14 +4,14 @@
 \alias{assess_moment_changes}
 \title{Assign qualitative assessments for moment preservation}
 \usage{
-assess_moment_changes(moments.df)
+assess_moment_changes(moments_df)
 }
 \arguments{
-\item{moments.df}{Data.frame. Output from \code{\link{compute_moment_diagnostics}} containing
-at least \code{metric} and \code{pct.change}.}
+\item{moments_df}{Data.frame. Output from \code{\link{compute_moment_diagnostics}} containing
+at least \code{metric} and \code{pct_change}.}
 }
 \value{
-Character vector of length \code{nrow(moments.df)} with assessment labels.
+Character vector of length \code{nrow(moments_df)} with assessment labels.
 }
 \description{
 Classifies moment changes based on absolute percent change thresholds that differ by metric.

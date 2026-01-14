@@ -6,7 +6,25 @@
 \usage{
 filter_correlations(cor_data, same_var, same_id, allowed_pairs, pair_type)
 }
+\arguments{
+\item{cor_data}{data.frame. Correlation data with columns id1, id2, variable1, variable2.}
+
+\item{same_var}{Logical. Keep rows where variable1 == variable2 (TRUE) or != (FALSE).}
+
+\item{same_id}{Logical. Keep rows where id1 == id2 (TRUE) or != (FALSE).}
+
+\item{allowed_pairs}{Character vector of order-invariant pair keys.
+For pair_type="id": "min(id1,id2):max(id1,id2)"
+For pair_type="variable": "min(var1,var2):max(var1,var2)"}
+
+\item{pair_type}{Character. Either "id" or "variable".}
+}
+\value{
+Filtered data.frame.
+}
 \description{
-Filter correlations by type (cross-grid or inter-variable)
+Internal helper to subset correlation data into the intended pairing type:
+- cross-grid correlations: same variable, different grid ids
+- inter-variable correlations: different variables, same grid id
 }
 \keyword{internal}

@@ -2,72 +2,83 @@
 % Please edit documentation in R/climate_perturbations.R
 \name{apply_climate_perturbations}
 \alias{apply_climate_perturbations}
-\title{Apply climate-change perturbations to gridded daily weather data}
+\title{Apply monthly climate perturbations to gridded daily weather series}
 \usage{
 apply_climate_perturbations(
-  climate.data = NULL,
-  climate.grid = NULL,
-  sim.dates = NULL,
-  change.factor.precip.mean = NULL,
-  change.factor.precip.variance = NULL,
-  change.factor.temp.mean = NULL,
-  transient.temp.change = TRUE,
-  transient.precip.change = TRUE,
-  calculate.pet = TRUE,
-  fit.method = "mme",
+  data = NULL,
+  grid = NULL,
+  date = NULL,
+  prcp_mean_factor = NULL,
+  prcp_var_factor = NULL,
+  temp_delta = NULL,
+  temp_transient = TRUE,
+  prcp_transient = TRUE,
+  compute_pet = TRUE,
+  pet_method = "hargreaves",
+  qm_fit_method = "mme",
   verbose = FALSE
 )
 }
 \arguments{
-\item{climate.data}{List of data.frames, one per grid cell. Each data.frame must
-contain columns \code{precip}, \code{temp}, \code{temp_min}, \code{temp_max}.
-If \code{calculate.pet = TRUE}, \code{pet} will be (re)computed and added/overwritten.}
+\item{data}{List of data.frames, one per grid cell. Each data.frame must contain:
+\itemize{
+  \item \code{prcp} (daily precipitation)
+  \item \code{temp} (daily mean temperature)
+  \item \code{temp_min} (daily minimum temperature)
+  \item \code{temp_max} (daily maximum temperature)
+}
+If \code{compute_pet = TRUE}, \code{pet} is added or overwritten.}
 
-\item{climate.grid}{data.frame of grid metadata. Must have \code{nrow(climate.grid) == length(climate.data)}
-and include column \code{y} (latitude in decimal degrees).}
+\item{grid}{data.frame of grid metadata with \code{nrow(grid) == length(data)}.
+Must include column \code{lat} (latitude in decimal degrees).}
 
-\item{sim.dates}{Date vector of length \code{nrow(climate.data[[i]])} for all cells.}
+\item{date}{Date vector of length \code{nrow(data[[i]])} (identical across cells).}
 
-\item{change.factor.precip.mean}{Numeric vector length 12. Monthly multiplicative factors
-for precipitation mean (target mean change over the simulation period).}
+\item{prcp_mean_factor}{Numeric vector length 12. Monthly multiplicative factors
+for precipitation mean.}
 
-\item{change.factor.precip.variance}{Numeric vector length 12. Monthly multiplicative factors
+\item{prcp_var_factor}{Numeric vector length 12. Monthly multiplicative factors
 for precipitation variance.}
 
-\item{change.factor.temp.mean}{Numeric vector length 12. Monthly additive temperature deltas (°C).}
+\item{temp_delta}{Numeric vector length 12. Monthly additive temperature deltas (degC)
+applied to \code{temp}, \code{temp_min}, and \code{temp_max}.}
 
-\item{transient.temp.change}{Logical. If TRUE, temperature deltas ramp linearly from 0 to
-\code{2 * change.factor.temp.mean} over years (so the average over years equals the specified delta).
-If FALSE, applies step deltas (constant over years).}
+\item{temp_transient}{Logical. If \code{TRUE}, temperature deltas ramp linearly
+from 0 to \code{2 * temp_delta} over years (mean equals \code{temp_delta}).}
 
-\item{transient.precip.change}{Logical. If TRUE, precipitation factors ramp linearly from 1 to
-\code{(factor - 1) * 2 + 1} over years (so the average over years equals the specified factor).
-If FALSE, applies step factors (constant over years).}
+\item{prcp_transient}{Logical. If \code{TRUE}, precipitation factors ramp linearly
+from 1 to \code{(factor - 1) * 2 + 1} over years.}
 
-\item{calculate.pet}{Logical. If TRUE, recompute PET using \code{\link{pet_hargreaves}} from perturbed temperatures.}
+\item{compute_pet}{Logical. If \code{TRUE}, recompute PET using
+\code{\link{calculate_monthly_pet}}.}
 
-\item{fit.method}{Character. Distribution fitting method passed to \code{\link{quantile_mapping}}.}
+\item{pet_method}{Character. PET method passed to
+\code{\link{calculate_monthly_pet}} (default: \code{"hargreaves"}).}
 
-\item{verbose}{Logical scalar. If TRUE, emit progress logs via \code{.log_info()}.}
+\item{qm_fit_method}{Character. Distribution-fitting method for
+\code{perturb_prcp_qm()}.}
+
+\item{verbose}{Logical. Emit progress logs.}
 }
 \value{
-List of data.frames, same length and row counts as \code{climate.data}, containing perturbed variables.
+List of data.frames with perturbed variables.
 }
 \description{
-Applies monthly climate-change perturbations to gridded daily weather data by:
+Applies **monthly** climate perturbations to **daily** gridded weather series:
 \itemize{
-  \item adjusting precipitation via quantile mapping with monthly mean/variance factors, and
-  \item shifting temperature (mean/min/max) via monthly additive deltas.
+  \item **Precipitation** is perturbed using quantile mapping with monthly
+  mean and variance factors via \code{perturb_prcp_qm()}.
+  \item **Temperature** (\code{temp}, \code{temp_min}, \code{temp_max}) is perturbed
+  using monthly additive deltas (step or transient).
+  \item **Potential evapotranspiration (PET)** can be recomputed from perturbed
+  temperatures using \code{calculate_monthly_pet()}.
 }
 
-Perturbations can be applied as a step change (constant over time) or a transient
-change (linearly ramping over years) while preserving the same *mean* change over
-the simulation period.
-}
-\details{
-Transient precipitation factors are constrained to be at least 0.01 to avoid numerical issues.
-After perturbations, any \code{Inf} or \code{NaN} values are replaced with 0 (for all columns).
+Perturbations can be applied as a **step change** (constant in time) or as a
+**transient change** (linearly ramping over years) while preserving the same
+*mean* change over the simulation period.
 }
 \seealso{
-\code{\link{quantile_mapping}}, \code{\link{pet_hargreaves}}
+\code{\link{perturb_prcp_qm}}, \code{\link{diagnose_prcp_qm}},
+  \code{\link{calculate_monthly_pet}}
 }
