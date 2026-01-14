@@ -5,40 +5,30 @@
 \title{Compute wavelet metrics for all realizations}
 \usage{
 compute_wavelet_metrics(
-  obs.use,
-  series_sim_for_stats,
-  wavelet.pars,
+  obs_use,
+  sim_series_stats,
+  wavelet_pars,
   padding,
   min_bg
 )
 }
 \arguments{
-\item{obs.use}{Numeric vector of observed values}
+\item{obs_use}{Numeric vector of observed values.}
 
-\item{series_sim_for_stats}{Numeric matrix of simulated values}
+\item{sim_series_stats}{Numeric matrix of simulated values.}
 
-\item{wavelet.pars}{List of wavelet parameters (signif.level, noise.type, etc.)}
+\item{wavelet_pars}{List of wavelet parameters (signif_level, noise_type, etc.).}
 
-\item{padding}{Logical for period padding}
+\item{padding}{Logical for period padding.}
 
-\item{min_bg}{Minimum background power threshold}
+\item{min_bg}{Minimum background power threshold.}
 }
 \value{
-List with elements:
-\itemize{
-  \item active: Logical, whether wavelet filter is active
-  \item diagnostics: Detailed wavelet diagnostics
-  \item power.period, power.obs, power.signif: Period and power vectors
-  \item P_sim_reg: Regional power matrix (n_realizations x n_regions)
-  \item P_sim_bg: Background power vector (n_realizations)
-  \item presence_rpad: Presence indicators (n_realizations)
-  \item gws_cache: ALWAYS cached masked GWS matrix (n_periods x n_realizations) for filtering
-  \item gws_cache_unmasked: ALWAYS cached unmasked GWS matrix (n_periods x n_realizations) for plotting
-}
+List with wavelet filter diagnostics and cached spectra.
 }
 \description{
-Performs wavelet analysis on observed series and all simulated realizations.
+performs wavelet analysis on observed series and all simulated realizations.
 Identifies significant periods, computes regional power and contrast metrics,
-and ALWAYS caches both masked (for filtering) and unmasked (for plotting) GWS.
+and caches both masked (for filtering) and unmasked (for plotting) GWS.
 }
 \keyword{internal}

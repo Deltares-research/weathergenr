@@ -1,106 +1,104 @@
-#' @title Estimate Monthly Potential Evapotranspiration (Hargreaves Method)
+#' @title Calculate Monthly Potential Evapotranspiration (PET)
 #'
 #' @description
-#' Computes monthly mean potential evapotranspiration (PET) using the
-#' Hargreaves temperature-based method. PET is estimated from mean air
-#' temperature, diurnal temperature range, and extraterrestrial radiation
-#' derived from latitude and time of year.
+#' Calculates monthly potential evapotranspiration (PET) using a selected method.
+#' Currently supports the Hargreaves temperature-based method.
 #'
-#' The implementation follows the FAO-56 formulation and returns PET
-#' in units of millimeters per day (mm/day).
+#' @param month Integer vector (1-12). Calendar month for each PET estimate.
+#' @param temp Numeric vector. Mean monthly air temperature (degC).
+#' @param temp_range Numeric vector. Monthly diurnal temperature range (Tmax - Tmin, degC).
+#'   Must be non-negative.
+#' @param lat_deg Numeric scalar. Latitude in decimal degrees (positive north).
+#' @param method Character scalar. PET method. Currently \code{"hargreaves"}.
 #'
-#' @param months Integer vector (1-12). Calendar months corresponding
-#'   to each PET estimate.
-#' @param temp Numeric vector. Mean monthly air temperature (degrees C).
-#' @param tdiff Numeric vector. Monthly diurnal temperature range
-#'   (Tmax ??? Tmin, degrees C). Must be non-negative.
-#' @param lat Numeric scalar. Latitude in decimal degrees
-#'   (positive north, negative south).
-#'
-#' @return
-#' Numeric vector of monthly potential evapotranspiration values
-#' in mm/day, with length equal to `length(months)`.
-#'
-#' @details
-#' Extraterrestrial radiation is computed using a fixed representative
-#' day of year for the middle of each month. Radiation is converted from
-#' MJ m^2/day to equivalent evaporation depth using the FAO conversion
-#' factor of 0.408.
-#'
-#' The Hargreaves equation is:
-#' \deqn{
-#' PET = 0.0023 * Ra * (T + 17.8) * sqrt(Tmax - Tmin)
-#' }
-#' where Ra is extraterrestrial radiation.
-#'
-#' @references
-#' Hargreaves, G.H. and Samani, Z.A. (1985).
-#' Reference crop evapotranspiration from temperature.
-#' Applied Engineering in Agriculture, 1(2), 96-99.
-#'
-#' FAO (1998). Crop Evapotranspiration (FAO Irrigation and Drainage Paper 56).
+#' @return Numeric vector of monthly PET values in mm/day (length \code{length(month)}).
 #'
 #' @export
-pet_hargreaves <- function(months, temp, tdiff, lat) {
+calculate_monthly_pet <- function(
+    month,
+    temp,
+    temp_range,
+    lat_deg,
+    method = "hargreaves"
+) {
 
-  ## ----------------------------
-  ## Input validation
-  ## ----------------------------
-  if (!is.numeric(months)) {
-    stop("'months' must be numeric")
+  # ---------------------------------------------------------------------------
+  # Method dispatch
+  # ---------------------------------------------------------------------------
+  if (!is.character(method) || length(method) != 1L || is.na(method)) {
+    stop("'method' must be a single non-missing character value", call. = FALSE)
+  }
+  method <- tolower(method)
+
+  if (!method %in% c("hargreaves")) {
+    stop(
+      "'method' must be one of: ",
+      paste(c("hargreaves"), collapse = ", "),
+      call. = FALSE
+    )
   }
 
-  months <- as.integer(months)
-  if (anyNA(months) || any(months < 1 | months > 12)) {
-    stop("'months' must contain integers between 1 and 12")
+  # ---------------------------------------------------------------------------
+  # Shared input validation (applies to all methods)
+  # ---------------------------------------------------------------------------
+  if (!is.numeric(month)) stop("'month' must be numeric", call. = FALSE)
+  month <- as.integer(month)
+  if (anyNA(month) || any(month < 1L | month > 12L)) {
+    stop("'month' must contain integers between 1 and 12", call. = FALSE)
   }
 
-  n <- length(months)
-  if (length(temp) != n || length(tdiff) != n) {
-    stop("'months', 'temp', and 'tdiff' must have the same length")
+  n <- length(month)
+  if (length(temp) != n || length(temp_range) != n) {
+    stop("'month', 'temp', and 'temp_range' must have the same length", call. = FALSE)
   }
 
   if (!is.numeric(temp) || any(!is.finite(temp))) {
-    stop("'temp' must contain finite numeric values")
+    stop("'temp' must contain finite numeric values", call. = FALSE)
   }
 
-  if (!is.numeric(tdiff) || any(tdiff < 0, na.rm = TRUE)) {
-    stop("'tdiff' must be non-negative")
+  if (!is.numeric(temp_range) || any(!is.finite(temp_range)) || any(temp_range < 0)) {
+    stop("'temp_range' must contain finite non-negative numeric values", call. = FALSE)
   }
 
-  if (!is.numeric(lat) || length(lat) != 1L || !is.finite(lat) ||
-      lat < -90 || lat > 90) {
-    stop("'lat' must be a finite numeric value between -90 and 90")
+  if (!is.numeric(lat_deg) || length(lat_deg) != 1L || !is.finite(lat_deg) ||
+      lat_deg < -90 || lat_deg > 90) {
+    stop("'lat_deg' must be a finite numeric value between -90 and 90", call. = FALSE)
   }
 
-  ## ----------------------------
-  ## Day-of-year approximation
-  ## ----------------------------
-  doy_mid_month <- c(15, 46, 75, 106, 136, 167,
-                     197, 228, 259, 289, 320, 350)
-  doy <- doy_mid_month[months]
+  # ---------------------------------------------------------------------------
+  # Dispatch to implementation
+  # ---------------------------------------------------------------------------
+  if (method == "hargreaves") {
+    return(.pet_monthly_hargreaves(
+      month = month,
+      temp = temp,
+      temp_range = temp_range,
+      lat_deg = lat_deg
+    ))
+  }
 
-  ## ----------------------------
-  ## Solar geometry
-  ## ----------------------------
-  lat_rad <- lat * pi / 180
-
-  inv_rel_dist <- 1 + 0.033 * cos(2 * pi * doy / 365)
-  solar_decl   <- 0.409 * sin(2 * pi * doy / 365 - 1.39)
-  sunset_angle <- acos(-tan(lat_rad) * tan(solar_decl))
-
-  ## Extraterrestrial radiation (MJ m-2 day-1)
-  ra <- (24 * 60 / pi) * 0.082 * inv_rel_dist *
-    (sunset_angle * sin(lat_rad) * sin(solar_decl) +
-       cos(lat_rad) * cos(solar_decl) * sin(sunset_angle))
-
-  ## Convert radiation to equivalent evaporation (mm/day)
-  ra_mm <- 0.408 * ra
-
-  ## ----------------------------
-  ## Hargreaves PET
-  ## ----------------------------
-  0.0023 * ra_mm * (temp + 17.8) * sqrt(tdiff)
-
+  stop("Internal error: unsupported 'method' dispatch", call. = FALSE)
 }
 
+
+#' Monthly PET via Hargreaves (FAO-56)
+#' @keywords internal
+.pet_monthly_hargreaves <- function(month, temp, temp_range, lat_deg) {
+
+  doy_mid <- c(15, 46, 75, 106, 136, 167, 197, 228, 259, 289, 320, 350)
+  doy <- doy_mid[month]
+
+  lat_rad <- lat_deg * pi / 180
+
+  dr <- 1 + 0.033 * cos(2 * pi * doy / 365)
+  delta <- 0.409 * sin(2 * pi * doy / 365 - 1.39)
+  omega_s <- acos(-tan(lat_rad) * tan(delta))
+
+  ra_mj_m2_day <- (24 * 60 / pi) * 0.082 * dr *
+    (omega_s * sin(lat_rad) * sin(delta) +
+       cos(lat_rad) * cos(delta) * sin(omega_s))
+
+  ra_mm_day <- 0.408 * ra_mj_m2_day
+
+  0.0023 * ra_mm_day * (temp + 17.8) * sqrt(temp_range)
+}

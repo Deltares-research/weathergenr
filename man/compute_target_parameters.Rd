@@ -5,11 +5,11 @@
 \title{Compute target distribution parameters from base params and change factors}
 \usage{
 compute_target_parameters(
-  base.params,
-  mean.change,
-  var.change,
-  valid.months,
-  ymax
+  base_gamma,
+  mean_factor,
+  var_factor,
+  months_ok,
+  n_years
 )
 }
 \description{

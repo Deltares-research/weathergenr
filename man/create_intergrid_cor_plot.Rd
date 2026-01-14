@@ -2,17 +2,33 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{create_intergrid_cor_plot}
 \alias{create_intergrid_cor_plot}
-\title{Create inter-grid correlation plot}
+\title{Create inter-variable correlation diagnostic plot}
 \usage{
 create_intergrid_cor_plot(
-  stats.intercor,
-  plot.config,
-  show.title,
-  save.plots,
-  output.path
+  stats_intercor,
+  plot_config,
+  show_title,
+  save_plots,
+  out_dir
 )
 }
+\arguments{
+\item{stats_intercor}{Data frame of inter-variable correlation summaries with columns
+\code{Observed}, \code{Simulated}, and \code{variable}.}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+ggplot object (returned invisibly by \code{export_multipanel_plot()}).
+}
 \description{
-Create inter-grid correlation plot
+Observed-vs-simulated comparison of inter-variable correlations, faceted by variable.
+Uses dummy points to enforce symmetric axes per facet.
 }
 \keyword{internal}

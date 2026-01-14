@@ -1,3 +1,7 @@
+# ==============================================================================
+# DATE / CALENDAR HELPERS
+# ==============================================================================
+
 #' Generate a no-leap (365-day) daily date sequence
 #'
 #' Constructs a continuous sequence of dates starting from a given start date,
@@ -7,127 +11,130 @@
 #' @param start_date Date or character coercible to Date.
 #'   The first date of the sequence. If the date is February 29, it is mapped to
 #'   February 28 because the no-leap template does not include Feb 29.
-#' @param n_dates Integer. Total number of dates to generate.
+#' @param n_days Integer. Total number of dates to generate.
 #'
-#' @return A vector of class \code{Date} with length \code{n_dates}, following
+#' @return A vector of class \code{Date} with length \code{n_days}, following
 #'   a no-leap (365-day) calendar.
 #'
 #' @examples
-#' make_noleap_dates("1980-01-01", 365)
-#' make_noleap_dates(as.Date("1995-02-28"), 1000)
+#' generate_noleap_dates("1980-01-01", 365)
+#' generate_noleap_dates(as.Date("1995-02-28"), 1000)
 #'
 #' @export
-make_noleap_dates <- function(start_date, n_dates) {
+generate_noleap_dates <- function(start_date, n_days) {
 
   start_date <- as.Date(start_date)
 
-  # Build no-leap template of 365 day-of-year ??? MM-DD
-  tpl <- seq.Date(as.Date("2001-01-01"), as.Date("2001-12-31"), by = "day")
-  tpl <- tpl[format(tpl, "%m-%d") != "02-29"]
-  md <- format(tpl, "%m-%d")               # vector of length 365
+  if (!inherits(start_date, "Date") || length(start_date) != 1L || is.na(start_date)) {
+    stop("'start_date' must be a valid Date (or coercible to Date).", call. = FALSE)
+  }
 
-  # Identify start MD (normalize Feb 29 ??? Feb 28)
-  start_md <- format(start_date, "%m-%d")
-  if (start_md == "02-29") start_md <- "02-28"
+  if (!is.numeric(n_days) || length(n_days) != 1L || !is.finite(n_days) ||
+      n_days < 1 || (n_days %% 1) != 0) {
+    stop("'n_days' must be a positive integer.", call. = FALSE)
+  }
+  n_days <- as.integer(n_days)
 
-  start_doy <- match(start_md, md)         # synthetic DOY
+  # Build no-leap month-day template (365 entries; excludes Feb 29)
+  noleap_template <- seq.Date(
+    as.Date("2001-01-01"),
+    as.Date("2001-12-31"),
+    by = "day"
+  )
+  noleap_template <- noleap_template[format(noleap_template, "%m-%d") != "02-29"]
+  month_day <- format(noleap_template, "%m-%d")  # length 365
 
-  # Synthetic DOY sequence
-  seq_doy <- ((start_doy - 1 + seq_len(n_dates) - 1) %% 365) + 1
+  # Normalize start month-day (Feb 29 -> Feb 28)
+  start_month_day <- format(start_date, "%m-%d")
+  if (start_month_day == "02-29") start_month_day <- "02-28"
 
-  # Detect where DOY wraps from 365 ??? 1
-  wraps <- c(FALSE, seq_doy[-1] < seq_doy[-length(seq_doy)])
+  start_doy_noleap <- match(start_month_day, month_day)
 
-  # Cumulative year increments
-  year_inc <- cumsum(wraps)
+  # Synthetic DOY sequence on no-leap calendar
+  doy_seq <- ((start_doy_noleap - 1 + seq_len(n_days) - 1) %% 365) + 1
 
-  # Base year
-  years <- as.integer(format(start_date, "%Y")) + year_inc
+  # Detect where DOY wraps from 365 -> 1 (year increment)
+  year_wrap <- c(FALSE, doy_seq[-1] < doy_seq[-length(doy_seq)])
+  year_offset <- cumsum(year_wrap)
 
-  # Construct dates
-  out <- as.Date(paste0(years, "-", md[seq_doy]), format = "%Y-%m-%d")
+  base_year <- as.integer(format(start_date, "%Y"))
+  years <- base_year + year_offset
 
-  out
+  dates_out <- as.Date(
+    paste0(years, "-", month_day[doy_seq]),
+    format = "%Y-%m-%d"
+  )
+
+  dates_out
 }
 
 
 
-#' @title Calculate Water Year from Date Vector
+#' Calculate water year from a date vector
 #'
-#' @description
-#' Assigns a water year to each date in a vector based on a custom starting month.
-#' Common in hydrology, a water year groups months across calendar years (e.g., Oct-Sep).
+#' Assigns a water year to each date based on a custom starting month.
+#' A water year groups months across calendar years (e.g., Oct-Sep).
 #'
-#' @param date A vector of `Date` objects.
-#' @param water.year.first.month Integer (1-12) indicating the first month of the water year.
-#' For example, `10` for October or `6` for June.
+#' @param date A vector of \code{Date} objects.
+#' @param water_year_start_month Integer (1-12) indicating the first month of the water year.
+#'   For example, \code{10} for October or \code{6} for June. Default is \code{1} (calendar year).
 #'
-#' @return An integer vector of the same length as `date`, giving the water year of each date.
-#'
-#' #' @examples
-#' # Water year starting in October (common in US hydrology)
-#' dates <- as.Date(c("2022-09-30", "2022-10-01", "2023-06-15"))
-#' get_water_year(dates, water.year.first.month = 10)
-#' # [1] 2022 2023 2023
-#'
-#' # Water year starting in June (e.g., for monsoon-driven systems)
-#' dates <- as.Date(c("2023-05-31", "2023-06-01", "2023-12-01"))
-#' get_water_year(dates, water.year.first.month = 6)
-#' # [1] 2023 2024 2024
-#'
-#' # Default: calendar year (Jan-Dec)
-#' dates <- as.Date(c("2024-01-01", "2024-12-31"))
-#' get_water_year(dates)
-#' # [1] 2024 2024#'
-#' @export
-get_water_year <- function(date, water.year.first.month = 1) {
-  # Input validation
-  if (!inherits(date, "Date")) {
-    stop("'date' must be of class Date")
-  }
-
-  if (!is.numeric(water.year.first.month) || water.year.first.month < 1 || water.year.first.month > 12) {
-    stop("'water.year.first.month' must be an integer between 1 and 12")
-  }
-
-  # Get calendar year and month
-  year <- as.integer(format(date, "%Y"))
-  month <- as.integer(format(date, "%m"))
-
-  # Adjust year for months >= start of water year
-  water_year <- year
-  if (water.year.first.month > 1) {
-    water_year[month >= water.year.first.month] <- water_year[month >= water.year.first.month] + 1
-  }
-  return(as.integer(water_year))
-}
-
-#' Find leap-day positions (Feb 29) in a date vector
-#'
-#' Scans a vector of dates and returns the integer indices of all elements that
-#' correspond to February 29. If the vector contains no leap days, the function
-#' returns \code{NULL}.
-#'
-#' @param dates A vector coercible to \code{Date}.
-#'
-#' @return Integer vector of indices where dates equal February 29, or
-#'   \code{NULL} if no leap days are present.
+#' @return An integer vector of the same length as \code{date}, giving the water year of each date.
 #'
 #' @examples
-#' find_leap_days(as.Date(c("1980-02-28", "1980-02-29", "1981-01-01")))
-#' # Returns: 2
-#'
-#' find_leap_days(as.Date(c("2001-01-01", "2001-12-31")))
-#' # Returns: NULL
+#' dates <- as.Date(c("2022-09-30", "2022-10-01", "2023-06-15"))
+#' compute_water_year(dates, water_year_start_month = 10)
 #'
 #' @export
-find_leap_days <- function(dates) {
-  dates <- as.Date(dates)
-  idx <- which(format(dates, "%m-%d") == "02-29")
+compute_water_year <- function(date, water_year_start_month = 1) {
 
-  if (length(idx) == 0) {
-    return(NULL)
-  } else {
-    return(idx)
+  if (!inherits(date, "Date")) {
+    stop("'date' must be of class Date", call. = FALSE)
   }
+
+  if (!is.numeric(water_year_start_month) || length(water_year_start_month) != 1L ||
+      !is.finite(water_year_start_month) || water_year_start_month < 1 ||
+      water_year_start_month > 12 || (water_year_start_month %% 1) != 0) {
+    stop("'water_year_start_month' must be an integer between 1 and 12", call. = FALSE)
+  }
+  water_year_start_month <- as.integer(water_year_start_month)
+
+  cal_year  <- as.integer(format(date, "%Y"))
+  cal_month <- as.integer(format(date, "%m"))
+
+  water_year_out <- cal_year
+  if (water_year_start_month > 1L) {
+    idx <- cal_month >= water_year_start_month
+    water_year_out[idx] <- water_year_out[idx] + 1L
+  }
+
+  as.integer(water_year_out)
+}
+
+
+
+#' Find leap-day (Feb 29) indices in a date vector
+#'
+#' Scans a vector of dates and returns the integer indices of all elements that
+#' correspond to February 29. If the vector contains no leap days, returns \code{NULL}.
+#'
+#' @param date A vector coercible to \code{Date}.
+#'
+#' @return Integer vector of indices where dates equal February 29, or \code{NULL} if none.
+#'
+#' @examples
+#' find_leap_day_indices(as.Date(c("1980-02-28", "1980-02-29", "1981-01-01")))
+#' find_leap_day_indices(as.Date(c("2001-01-01", "2001-12-31")))
+#'
+#' @export
+find_leap_day_indices <- function(date) {
+
+  date <- as.Date(date)
+  if (anyNA(date)) {
+    stop("'date' must be coercible to Date with no NA values.", call. = FALSE)
+  }
+
+  leap_idx <- which(format(date, "%m-%d") == "02-29")
+
+  if (length(leap_idx) == 0L) NULL else leap_idx
 }

@@ -138,8 +138,8 @@ All downstream processing and outputs therefore use a 365-day calendar.
     KNN matching and Markov chain sequencing.
   \item \strong{Annual WARM simulation:} Aggregate historical daily data to annual
     means (by water year if applicable), run wavelet analysis on the annual
-    series, simulate candidate annual traces via \code{\link{wavelet_arima}},
-    and subset traces using \code{\link{filter_warm_simulations}}.
+    series, simulate candidate annual traces via \code{\link{simulate_warm}},
+    and subset traces using \code{\link{filter_warm_pool}}.
   \item \strong{Daily disaggregation:} For each realization, call
     \code{\link{resample_weather_dates}} to generate a simulated sequence of
     historical analogue dates (in the internal 365-day calendar).

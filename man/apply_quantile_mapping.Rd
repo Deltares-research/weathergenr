@@ -4,7 +4,7 @@
 \alias{apply_quantile_mapping}
 \title{Apply quantile mapping transformation}
 \usage{
-apply_quantile_mapping(value, mon, year, base.params, target.params)
+apply_quantile_mapping(prcp, mon, year, base_gamma, target_gamma)
 }
 \description{
 Apply quantile mapping transformation

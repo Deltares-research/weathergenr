@@ -4,7 +4,7 @@
 \alias{get_full_year_block}
 \title{Find full (365-day) years after leap-day removal and return longest contiguous block}
 \usage{
-get_full_year_block(dates)
+get_full_year_block(date)
 }
 \description{
 Find full (365-day) years after leap-day removal and return longest contiguous block

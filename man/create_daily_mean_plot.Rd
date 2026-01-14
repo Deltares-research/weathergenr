@@ -2,17 +2,33 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{create_daily_mean_plot}
 \alias{create_daily_mean_plot}
-\title{Create daily mean plot}
+\title{Create daily mean diagnostic plot}
 \usage{
 create_daily_mean_plot(
-  daily.stats.season,
-  plot.config,
-  show.title,
-  save.plots,
-  output.path
+  daily_stats_season,
+  plot_config,
+  show_title,
+  save_plots,
+  out_dir
 )
 }
+\arguments{
+\item{daily_stats_season}{Data frame of seasonal daily statistics including columns
+\code{stat}, \code{Observed}, \code{Simulated}, and \code{variable}.}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+ggplot object (returned invisibly by \code{export_multipanel_plot()}).
+}
 \description{
-Create daily mean plot
+Faceted observed-vs-simulated comparison of daily mean values by variable, using
+summary ranges and medians across grid cells/months. Optionally saves the plot.
 }
 \keyword{internal}

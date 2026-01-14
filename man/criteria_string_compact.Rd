@@ -12,21 +12,7 @@ criteria_string_compact(
   wavelet_pars
 )
 }
-\arguments{
-\item{filter_name}{Character filter name}
-
-\item{bounds}{Bounds environment or list}
-
-\item{tail_metrics}{Tail metrics list}
-
-\item{wavelet_active}{Logical}
-
-\item{wavelet_pars}{Wavelet parameters}
-}
-\value{
-Character string (compact)
-}
 \description{
-Creates a compact human-readable string describing current filter criteria.
+Compact criteria string for a filter
 }
 \keyword{internal}

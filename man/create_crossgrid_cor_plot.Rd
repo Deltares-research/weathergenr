@@ -2,17 +2,33 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{create_crossgrid_cor_plot}
 \alias{create_crossgrid_cor_plot}
-\title{Create cross-grid correlation plot}
+\title{Create cross-grid correlation diagnostic plot}
 \usage{
 create_crossgrid_cor_plot(
-  stats.crosscor,
-  plot.config,
-  show.title,
-  save.plots,
-  output.path
+  stats_crosscor,
+  plot_config,
+  show_title,
+  save_plots,
+  out_dir
 )
 }
+\arguments{
+\item{stats_crosscor}{Data frame of cross-grid correlation summaries with columns
+\code{Observed}, \code{Simulated}, and \code{variable1}.}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+ggplot object (returned invisibly by \code{export_multipanel_plot()}).
+}
 \description{
-Create cross-grid correlation plot
+Observed-vs-simulated comparison of cross-grid correlations, faceted by the first
+variable in each correlation pair. Uses dummy points to enforce symmetric axes.
 }
 \keyword{internal}

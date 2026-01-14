@@ -7,10 +7,10 @@
 filter_warm_bounds_defaults()
 }
 \value{
-Named list of defaults.
+Named list of defaults (snake_case keys).
 }
 \description{
-Internal defaults for filter_warm_simulations() bounds. Users should usually
-override only a few entries via generate_weather_series(warm.bounds = list(...)).
+Internal defaults for filter_warm_pool() bounds. Users should usually override
+only a few entries via filter_bounds = list(...).
 }
 \keyword{internal}

@@ -5,37 +5,36 @@
 \title{Read NetCDF variables into tidy data frames}
 \usage{
 read_netcdf(
-  nc.file,
-  variables = NULL,
-  var_rename = NULL,
-  leap.days = TRUE,
-  omit.empty = TRUE,
-  spatial.ref = "spatial_ref",
-  signif.digits = NULL,
+  nc_path,
+  var = NULL,
+  var_name = NULL,
+  keep_leap_day = TRUE,
+  drop_all_na = TRUE,
+  spatial_ref = "spatial_ref",
+  signif_digits = NULL,
   verbose = FALSE
 )
 }
 \arguments{
-\item{nc.file}{Character. Path to NetCDF file.}
+\item{nc_path}{Character. Path to NetCDF file.}
 
-\item{variables}{Character vector or NULL. Variables to read. If NULL, reads all
-non-coordinate variables (and excludes `spatial.ref` if present).}
+\item{var}{Character vector or NULL. Variables to read. If NULL, reads all
+non-coordinate variables (and excludes `spatial_ref` if present).}
 
-\item{var_rename}{NULL, or named character vector, or character vector.
+\item{var_name}{NULL, or named character vector.
 - If named: names are original variable names and values are new names.
-- If unnamed: must be same length/order as `variables` and will be treated as new names.
 Renaming applies to output list names and the value-column name.}
 
-\item{leap.days}{Logical. If FALSE and time is convertible to Date, removes Feb 29 rows.}
+\item{keep_leap_day}{Logical. If FALSE and time is convertible to Date, removes Feb 29 rows.}
 
-\item{omit.empty}{Logical. If TRUE, drop variables whose values are all NA
+\item{drop_all_na}{Logical. If TRUE, drop variables whose values are all NA
 after applying _FillValue/missing_value handling.}
 
-\item{spatial.ref}{Character. Name of a spatial reference variable to ignore
+\item{spatial_ref}{Character. Name of a spatial reference variable to ignore
 when auto-selecting variables (common in CF/CRS-encoded files).}
 
-\item{signif.digits}{Integer or NULL. If provided, rounds numeric values via
-signif(x, signif.digits).}
+\item{signif_digits}{Integer or NULL. If provided, rounds numeric values via
+signif(x, signif_digits).}
 
 \item{verbose}{Logical. If TRUE, prints basic progress messages.}
 }

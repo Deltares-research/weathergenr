@@ -1,34 +1,46 @@
-#' Evaluate Stochastic Weather Generator Performance
+#' Evaluate stochastic weather generator performance (multi-grid, multi-realization)
 #'
-#' Comprehensive diagnostic evaluation comparing synthetic weather simulations
-#' against historical observations across multiple grid cells. Computes summary
-#' statistics, wet/dry day counts, spell lengths, and inter-site correlations,
-#' and generates diagnostic plots to assess stochastic weather generator performance.
+#' @description
+#' Comprehensive diagnostic evaluation comparing **synthetic daily simulations** against
+#' **historical daily observations** across multiple grid cells. The workflow:
+#' \itemize{
+#'   \item standardizes obs/sim periods to **full 365-day years** (leap days removed) and
+#'         matches lengths via random contiguous windows,
+#'   \item computes summary statistics (mean/sd/skewness), wet/dry day counts, wet/dry spell
+#'         lengths, and correlation diagnostics,
+#'   \item generates diagnostic plots and an overall fit summary across realizations.
+#' }
 #'
-#' @param daily.sim List of simulated weather realizations. Each element should be
-#'   a list of data frames (one per grid cell), containing daily values and a `date` column.
-#' @param daily.obs List of observed weather data frames (one per grid cell). Each
-#'   should contain a `date` column and the variables specified in `variables`.
-#' @param variables Character vector of variable names to evaluate (e.g., `c("precip", "temp")`).
-#'   Must include "precip" for wet/dry spell analysis.
-#' @param variable.labels Optional character vector of variable labels for plots.
-#'   Defaults to `variables` if `NULL`.
-#' @param realization.num Integer. Number of synthetic realizations in `daily.sim`.
-#' @param wet.quantile Numeric between 0 and 1. Quantile threshold for wet days
-#'   (default = 0.2).
-#' @param extreme.quantile Numeric between 0 and 1. Quantile threshold for extremely
-#'   wet days (default = 0.8).
-#' @param output.path Character. Directory path to save generated plots. If `NULL`,
-#'   plots are not saved to disk.
-#' @param save.plots Logical. Whether to save plots to `output.path` (default = `TRUE`).
-#' @param show.title Logical. Whether to display titles in plots (default = `TRUE`).
-#' @param max.grids Integer. Maximum number of grid cells to evaluate (default = 25).
-#'   If more grids are provided, a random subsample is used to control memory.
-#' @param seed Optional integer. Random seed for reproducible grid subsampling and
-#'   year window selection. If NULL, results will vary between runs.
+#' Variable naming is aligned with the package API:
+#' precipitation is expected as \code{precip}; temperature variables can be evaluated as
+#' \code{temp}, \code{temp_min}, \code{temp_max}, etc.
 #'
-#' @return A named list of `ggplot2` plot objects with class "weather_assessment".
-#'   The returned object also contains fit summary metrics stored as attributes.
+#' @param sim_data List of synthetic realizations. Each element is a list of data.frames
+#'   (one per grid cell). Each grid data.frame must include a \code{date} column and
+#'   the variables listed in \code{vars}.
+#' @param obs_data List of observed grid data.frames (one per grid cell). Each must include
+#'   a \code{date} column and the variables listed in \code{vars}.
+#' @param vars Character vector of variables to evaluate (e.g., \code{c("precip", "temp")}).
+#'   Must include \code{"precip"} to enable wet/dry day and spell diagnostics.
+#' @param n_realizations Integer. Number of realizations in \code{sim_data}. Must equal \code{length(sim_data)}.
+#' @param wet_q Numeric in (0, 1). Monthly quantile threshold to define wet days from positive
+#'   precipitation values (default = 0.2).
+#' @param extreme_q Numeric in (0, 1). Monthly quantile threshold to define extremely wet days
+#'   from positive precipitation values (default = 0.8). Must be > \code{wet_q}.
+#' @param out_dir Character. Directory to save plots. If \code{NULL}, plots are not saved.
+#' @param save_plot Logical. If \code{TRUE}, save plots to \code{out_dir}.
+#' @param show_title Logical. If \code{TRUE}, include plot titles.
+#' @param max_grid Integer. Maximum number of grid cells to evaluate (default = 25).
+#'   If \code{length(obs_data) > max_grid}, a random subset is used to control memory.
+#' @param seed Optional integer. If provided, ensures reproducible grid subsampling and
+#'   year-window selection.
+#'
+#' @return A named list of \code{ggplot2} objects with class \code{"weather_assessment"}.
+#'   The object includes attributes:
+#'   \itemize{
+#'     \item \code{fit_summary}: per-realization metrics and overall ranking
+#'     \item \code{metadata}: run configuration summary
+#'   }
 #'
 #' @import dplyr
 #' @import tidyr
@@ -38,50 +50,37 @@
 #' @importFrom utils combn
 #' @export
 evaluate_weather_generator <- function(
-    daily.sim = NULL,
-    daily.obs = NULL,
-    variables = NULL,
-    variable.labels = NULL,
-    realization.num = NULL,
-    wet.quantile = 0.2,
-    extreme.quantile = 0.8,
-    output.path = NULL,
-    save.plots = TRUE,
-    show.title = TRUE,
-    max.grids = 25,
+    sim_data = NULL,
+    obs_data = NULL,
+    vars = NULL,
+    n_realizations = NULL,
+    wet_q = 0.2,
+    extreme_q = 0.8,
+    out_dir = NULL,
+    save_plot = TRUE,
+    show_title = TRUE,
+    max_grid = 25,
     seed = NULL
 ) {
 
-  # ============================================================================
-  # INPUT VALIDATION
-  # ============================================================================
-
-  validate_inputs(
-    daily.sim = daily.sim,
-    daily.obs = daily.obs,
-    variables = variables,
-    realization.num = realization.num,
-    wet.quantile = wet.quantile,
-    extreme.quantile = extreme.quantile
+  # ---------------------------------------------------------------------------
+  # Input validation
+  # ---------------------------------------------------------------------------
+  validate_weather_generator_inputs(
+    sim_data = sim_data,
+    obs_data = obs_data,
+    vars = vars,
+    n_realizations = n_realizations,
+    wet_q = wet_q,
+    extreme_q = extreme_q,
+    max_grid = max_grid,
+    seed = seed
   )
 
-  if (!is.numeric(max.grids) ||
-      length(max.grids) != 1L ||
-      is.na(max.grids) ||
-      !is.finite(max.grids) ||
-      max.grids < 1 ||
-      max.grids != as.integer(max.grids)) {
-    stop("'max.grids' must be a positive integer", call. = FALSE)
-  }
-
-  # ============================================================================
-  # RNG STATE MANAGEMENT
-  # ============================================================================
-
+  # ---------------------------------------------------------------------------
+  # RNG state management (only if seed provided)
+  # ---------------------------------------------------------------------------
   if (!is.null(seed)) {
-    if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed)) {
-      stop("'seed' must be NULL or a single finite number", call. = FALSE)
-    }
     if (exists(".Random.seed", envir = .GlobalEnv)) {
       old_seed <- .Random.seed
       has_seed <- TRUE
@@ -89,227 +88,855 @@ evaluate_weather_generator <- function(
       has_seed <- FALSE
     }
     on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
-    set.seed(seed)
+    set.seed(as.integer(seed))
   }
 
-  # ============================================================================
-  # SETUP
-  # ============================================================================
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info(
-      paste0(
-        "[Assessment] Start | grids = {length(daily.obs)} | ",
-        "realizations = {realization.num} | ")
-    )
+  # ---------------------------------------------------------------------------
+  # Logging helper
+  # ---------------------------------------------------------------------------
+  .log <- function(level = c("info", "warn"), msg) {
+    level <- match.arg(level)
+    if (!requireNamespace("logger", quietly = TRUE)) return(invisible(NULL))
+    if (level == "info") logger::log_info(msg) else logger::log_warn(msg)
+    invisible(NULL)
   }
 
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info(
-      paste0(
-        "[Assessment] variables = {paste(variables, collapse = ',')} | ")
-    )
-  }
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info(
-      paste0("[Assessment] Parameters: wet.q = { wet.quantile} | extreme.q = { extreme.quantile}")
-    )
-  }
-
-
-  if (is.null(variable.labels)) variable.labels <- variables
-
-  if (!is.null(output.path)) {
-    if (!dir.exists(output.path)) {
-      dir.create(output.path, recursive = TRUE, showWarnings = FALSE)
-    }
+  # ---------------------------------------------------------------------------
+  # Setup
+  # ---------------------------------------------------------------------------
+  if (!is.null(out_dir)) {
+    if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
   } else {
-    save.plots <- FALSE
+    save_plot <- FALSE
   }
 
-  options(dplyr.summarise.inform = FALSE, tidyverse.quiet = TRUE)
+  options(dplyr.summarise.inform = FALSE)
 
-  plot.config <- list(
-    subtitle = "Value range and median from all simulations shown against observed",
+  plot_config <- list(
+    subtitle = "Observed vs simulated distributions (all realizations)",
     alpha = 0.4,
-    colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated")),
-    theme = ggplot2::theme_bw(base_size = 12) +
-      ggplot2::theme(
-        plot.title = ggplot2::element_text(size = 14),
-        plot.subtitle = ggplot2::element_text(size = 10)
+    colors = c(Observed = "blue", Simulated = "gray40"),
+    theme = theme_bw(base_size = 12) +
+      theme(
+        plot.title = element_text(size = 14),
+        plot.subtitle = element_text(size = 10)
       )
   )
 
-  plots <- list()
+  .log("info", sprintf("[ASSESS] Start | grids=%d | realizations=%d | vars=%s",
+                       length(obs_data), n_realizations, paste(vars, collapse = ", ")))
+  .log("info", sprintf("[ASSESS] Parameters | wet_q=%.3f | extreme_q=%.3f | max_grid=%d",
+                       wet_q, extreme_q, max_grid))
 
-  # ============================================================================
-  # GRID SUBSAMPLING TO CONTROL MEMORY USE
-  # ============================================================================
-
-  n_grids <- length(daily.obs)
-  n_grids_org <- n_grids
-
-  if (n_grids > max.grids) {
-
-    sel.grids <- sort(sample(seq_len(n_grids), max.grids))
-
-    daily.obs <- daily.obs[sel.grids]
-    daily.sim <- lapply(daily.sim, function(rlz) rlz[sel.grids])
-
-    n_grids <- length(daily.obs)
-
-    if (requireNamespace("logger", quietly = TRUE)) {
-      logger::log_warn(
-        "[Assessment] Grid count reduced from {n_grids_org} to {n_grids} for memory control"
-      )
-    }
+  # ---------------------------------------------------------------------------
+  # Grid subsampling (memory control)
+  # ---------------------------------------------------------------------------
+  n_grid_org <- length(obs_data)
+  if (n_grid_org > max_grid) {
+    sel <- sort(sample.int(n_grid_org, size = max_grid))
+    obs_data <- obs_data[sel]
+    sim_data <- lapply(sim_data, function(rlz) rlz[sel])
+    .log("warn", sprintf("[ASSESS] Grid count reduced from %d to %d for memory control",
+                         n_grid_org, length(obs_data)))
   }
+  n_grid <- length(obs_data)
 
-
-  # ============================================================================
-  # STANDARDIZE PERIODS (FULL YEARS + MATCH LENGTH VIA RANDOM WINDOW)
-  # ============================================================================
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Standardizing obs/sim periods to full years and equal length")
-  }
-
+  # ---------------------------------------------------------------------------
+  # Standardize periods: remove leap days + match full-year windows
+  # ---------------------------------------------------------------------------
+  .log("info", "[ASSESS] Standardizing obs/sim periods to full years (365-day) and equal length")
   std <- standardize_obs_sim_periods(
-    daily.obs = daily.obs,
-    daily.sim = daily.sim,
-    realization.num = realization.num,
-    variables = variables
+    obs_data = obs_data,
+    sim_data = sim_data,
+    n_realizations = n_realizations
+  )
+  obs_data <- std$obs_data
+  sim_data <- std$sim_data
+
+  .log("info", sprintf("[ASSESS] Standardized period | Obs=%d-%d | Sim=%d-%d | years=%d",
+                       std$obs_year_start, std$obs_year_end,
+                       std$sim_year_start, std$sim_year_end,
+                       std$n_year))
+
+  # ---------------------------------------------------------------------------
+  # Process observed
+  # ---------------------------------------------------------------------------
+  .log("info", "[ASSESS] Processing observed data")
+  obs_res <- process_observed_data(
+    obs_data = obs_data,
+    vars = vars,
+    n_grid = n_grid,
+    wet_q = wet_q,
+    extreme_q = extreme_q
   )
 
-  daily.obs <- std$daily.obs
-  daily.sim <- std$daily.sim
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info(
-      paste0(
-        "[Assessment] Standardized period | ",
-        "Obs = ", std$obs_year_start, "-", std$obs_year_end, " | ",
-        "Sim = ", std$sim_year_start, "-", std$sim_year_end
-      )
-    )
-  }
-
-  # ============================================================================
-  # PROCESS OBSERVED DATA
-  # ============================================================================
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Processing observed data")
-  }
-
-  obs.results <- process_observed_data(
-    daily.obs = daily.obs,
-    variables = variables,
-    n_grids = n_grids,
-    wet.quantile = wet.quantile,
-    extreme.quantile = extreme.quantile
+  # ---------------------------------------------------------------------------
+  # Process simulated
+  # ---------------------------------------------------------------------------
+  .log("info", sprintf("[ASSESS] Processing simulated data (%d realizations)", n_realizations))
+  sim_res <- process_simulated_data(
+    sim_data = sim_data,
+    n_realizations = n_realizations,
+    vars = vars,
+    mc_thresholds = obs_res$mc_thresholds
   )
 
-  # ============================================================================
-  # PROCESS SIMULATED DATA
-  # ============================================================================
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Processing simulated data ({realization.num} realizations)")
-  }
-
-  sim.results <- process_simulated_data(
-    daily.sim = daily.sim,
-    realization.num = realization.num,
-    variables = variables,
-    mc.thresholds = obs.results$mc.thresholds
+  # ---------------------------------------------------------------------------
+  # Merge for plotting
+  # ---------------------------------------------------------------------------
+  .log("info", "[ASSESS] Preparing diagnostic data for plotting")
+  plot_dat <- prepare_plot_data(
+    obs_results = obs_res,
+    sim_results = sim_res,
+    vars = vars
   )
 
-  # ============================================================================
-  # MERGE AND PREPARE PLOT DATA
-  # ============================================================================
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Preparing diagnostic data for plotting")
-  }
-
-  plot.data <- prepare_plot_data(
-    obs.results = obs.results,
-    sim.results = sim.results,
-    variables = variables,
-    n_grids = n_grids
-  )
-
-  # ============================================================================
-  # GENERATE DIAGNOSTIC PLOTS
-  # ============================================================================
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Generating diagnostic plots")
-  }
-
+  # ---------------------------------------------------------------------------
+  # Plots
+  # NOTE: This expects your existing plotting factory to exist as-is.
+  # ---------------------------------------------------------------------------
+  .log("info", "[ASSESS] Generating diagnostic plots")
   plots <- create_all_diagnostic_plots(
-    plot.data = plot.data,
-    plot.config = plot.config,
-    variables = variables,
-    variable.labels = variable.labels,
-    show.title = show.title,
-    save.plots = save.plots,
-    output.path = output.path
+    plot_data = plot_dat,
+    plot_config = plot_config,
+    vars = vars,
+    show_title = show_title,
+    save_plot = save_plot,
+    out_dir = out_dir
   )
 
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Generated {length(plots)} diagnostic plots")
-    if (save.plots) {
-      logger::log_info("[Assessment] Plots saved to: {output.path}")
-    }
-  }
+  .log("info", sprintf("[ASSESS] Generated %d diagnostic plots", length(plots)))
+  if (isTRUE(save_plot)) .log("info", sprintf("[ASSESS] Plots saved to: %s", out_dir))
 
-  # ============================================================================
-  # COMPUTE FIT METRICS SUMMARY TABLE
-  # ============================================================================
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Computing fit metrics for all realizations")
-  }
-
+  # ---------------------------------------------------------------------------
+  # Fit summary
+  # ---------------------------------------------------------------------------
+  .log("info", "[ASSESS] Computing fit metrics for all realizations")
   fit_summary <- compute_realization_fit_metrics(
-    obs.results = obs.results,
-    sim.results = sim.results,
-    variables = variables
+    obs_results = obs_res,
+    sim_results = sim_res,
+    vars = vars
   )
 
-  # ============================================================================
-  # DISPLAY FIT SUMMARY TABLE
-  # ============================================================================
+  .log("info", "[ASSESS] Displaying fit assessment summary")
+  display_fit_summary_table(fit_summary, vars)
 
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Displaying fit assessment summary")
-  }
-
-  display_fit_summary_table(fit_summary, variables)
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[Assessment] Assessment completed successfully")
-  }
+  .log("info", "[ASSESS] Completed")
 
   structure(
     plots,
     class = c("weather_assessment", "list"),
     fit_summary = fit_summary,
     metadata = list(
-      n_grids = n_grids,
-      realization.num = realization.num,
-      variables = variables,
-      assessment.date = Sys.Date()
+      n_grid = n_grid,
+      n_realizations = n_realizations,
+      vars = vars,
+      assessment_date = Sys.Date()
     )
   )
 }
 
 # ==============================================================================
-# FIT SUMMARY DISPLAY
+# INPUT VALIDATION
 # ==============================================================================
+
+#' Validate inputs for evaluate_weather_generator()
+#' @keywords internal
+validate_weather_generator_inputs <- function(sim_data, obs_data, vars, n_realizations,
+                                              wet_q, extreme_q, max_grid, seed) {
+
+  if (is.null(sim_data)) stop("'sim_data' must not be NULL", call. = FALSE)
+  if (is.null(obs_data)) stop("'obs_data' must not be NULL", call. = FALSE)
+  if (is.null(vars)) stop("'vars' must not be NULL", call. = FALSE)
+  if (is.null(n_realizations)) stop("'n_realizations' must not be NULL", call. = FALSE)
+
+  if (!is.list(sim_data)) stop("'sim_data' must be a list", call. = FALSE)
+  if (!is.list(obs_data)) stop("'obs_data' must be a list", call. = FALSE)
+  if (!is.character(vars) || length(vars) < 1L) stop("'vars' must be a character vector", call. = FALSE)
+
+  if (!is.numeric(n_realizations) || length(n_realizations) != 1L || !is.finite(n_realizations) ||
+      n_realizations < 1 || (n_realizations %% 1) != 0) {
+    stop("'n_realizations' must be a positive integer", call. = FALSE)
+  }
+  n_realizations <- as.integer(n_realizations)
+
+  if (length(sim_data) != n_realizations) {
+    stop("Length of 'sim_data' must equal 'n_realizations'", call. = FALSE)
+  }
+  if (length(obs_data) < 1L) stop("'obs_data' must contain at least one grid cell", call. = FALSE)
+
+  # Required for wet/dry diagnostics
+  if (!"precip" %in% vars) stop("'vars' must include 'precip' for wet/dry spell analysis", call. = FALSE)
+
+  # date column existence
+  if (!"date" %in% names(obs_data[[1]])) stop("'obs_data' must contain a 'date' column", call. = FALSE)
+  if (!"date" %in% names(sim_data[[1]][[1]])) stop("'sim_data' must contain a 'date' column", call. = FALSE)
+
+  # variable existence (check only first grid; assumes consistent schema)
+  miss <- setdiff(vars, names(obs_data[[1]]))
+  if (length(miss) > 0) stop("Variables not found in obs_data: ", paste(miss, collapse = ", "), call. = FALSE)
+
+  if (!is.numeric(wet_q) || length(wet_q) != 1L || !is.finite(wet_q) || wet_q <= 0 || wet_q >= 1) {
+    stop("'wet_q' must be between 0 and 1", call. = FALSE)
+  }
+  if (!is.numeric(extreme_q) || length(extreme_q) != 1L || !is.finite(extreme_q) || extreme_q <= 0 || extreme_q >= 1) {
+    stop("'extreme_q' must be between 0 and 1", call. = FALSE)
+  }
+  if (extreme_q <= wet_q) stop("'extreme_q' must be greater than 'wet_q'", call. = FALSE)
+
+  if (!is.numeric(max_grid) || length(max_grid) != 1L || !is.finite(max_grid) ||
+      max_grid < 1 || (max_grid %% 1) != 0) {
+    stop("'max_grid' must be a positive integer", call. = FALSE)
+  }
+
+  if (!is.null(seed)) {
+    if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed) || (seed %% 1) != 0) {
+      stop("'seed' must be NULL or a single integer", call. = FALSE)
+    }
+  }
+
+  invisible(TRUE)
+}
+
+# ==============================================================================
+# PERIOD STANDARDIZATION (365-day years)
+# ==============================================================================
+
+#' Find full (365-day) years after leap-day removal and return longest contiguous block
+#' @keywords internal
+get_full_year_block <- function(date) {
+  if (!inherits(date, "Date")) stop("date must be Date", call. = FALSE)
+
+  yr <- as.integer(format(date, "%Y"))
+  tab <- dplyr::tibble(date = date, year = yr) %>%
+    dplyr::count(.data$year, name = "n_day") %>%
+    dplyr::filter(.data$n_day == 365) %>%
+    dplyr::arrange(.data$year)
+
+  if (nrow(tab) == 0) return(list(year = integer(0)))
+
+  years_full <- tab$year
+  run_id <- cumsum(c(TRUE, diff(years_full) != 1L))
+  runs <- split(years_full, run_id)
+  best <- runs[[which.max(vapply(runs, length, integer(1)))]]
+
+  list(year = as.integer(best))
+}
+
+#' Pick a random contiguous window of years of length n_year
+#' @keywords internal
+pick_year_window <- function(year, n_year) {
+  year <- as.integer(year)
+  if (length(year) < n_year) stop("Not enough full years to pick window.", call. = FALSE)
+  if (n_year == length(year)) return(year)
+
+  start_idx <- sample.int(length(year) - n_year + 1L, size = 1L)
+  year[start_idx:(start_idx + n_year - 1L)]
+}
+
+#' Filter a single grid data.frame to selected years
+#' @keywords internal
+filter_df_to_years <- function(df, year_keep) {
+  if (!("date" %in% names(df))) stop("df must contain 'date'", call. = FALSE)
+  yr <- as.integer(format(df$date, "%Y"))
+  df[yr %in% year_keep, , drop = FALSE]
+}
+
+#' Standardize obs and sim to same full-year length via random windowing
+#' @keywords internal
+standardize_obs_sim_periods <- function(obs_data, sim_data, n_realizations) {
+
+  # Remove leap days from obs
+  obs_leap <- find_leap_day_indices(obs_data[[1]]$date)
+  if (!is.null(obs_leap)) obs_data <- lapply(obs_data, function(df) df[-obs_leap, , drop = FALSE])
+
+  # Remove leap days from sim (each realization)
+  sim_leap <- find_leap_day_indices(sim_data[[1]][[1]]$date)
+  if (!is.null(sim_leap)) {
+    sim_data <- lapply(sim_data, function(rlz) lapply(rlz, function(df) df[-sim_leap, , drop = FALSE]))
+  }
+
+  obs_years <- get_full_year_block(obs_data[[1]]$date)$year
+  sim_years <- get_full_year_block(sim_data[[1]][[1]]$date)$year
+
+  if (length(obs_years) == 0) stop("Observed series has no complete 365-day years after leap-day removal.", call. = FALSE)
+  if (length(sim_years) == 0) stop("Simulated series has no complete 365-day years after leap-day removal.", call. = FALSE)
+
+  n_year <- min(length(obs_years), length(sim_years))
+  obs_keep <- pick_year_window(obs_years, n_year)
+  sim_keep <- pick_year_window(sim_years, n_year)
+
+  obs_data2 <- lapply(obs_data, filter_df_to_years, year_keep = obs_keep)
+  sim_data2 <- lapply(seq_len(n_realizations), function(i) lapply(sim_data[[i]], filter_df_to_years, year_keep = sim_keep))
+
+  obs_n <- nrow(obs_data2[[1]])
+  sim_n <- nrow(sim_data2[[1]][[1]])
+  if (obs_n != sim_n) {
+    stop(sprintf("Period standardization failed: obs_n=%d sim_n=%d", obs_n, sim_n), call. = FALSE)
+  }
+
+  list(
+    obs_data = obs_data2,
+    sim_data = sim_data2,
+    n_year = n_year,
+    obs_year_start = min(obs_keep),
+    obs_year_end = max(obs_keep),
+    sim_year_start = min(sim_keep),
+    sim_year_end = max(sim_keep)
+  )
+}
+
+# ==============================================================================
+# OBS / SIM PROCESSING
+# ==============================================================================
+
+#' Process observed weather data
+#' @keywords internal
+process_observed_data <- function(obs_data, vars, n_grid, wet_q, extreme_q) {
+
+  date <- obs_data[[1]]$date
+
+  obs_key <- dplyr::tibble(
+    date = date,
+    year = as.integer(format(date, "%Y")),
+    mon  = as.integer(format(date, "%m")),
+    day  = as.integer(format(date, "%d"))
+  )
+
+  obs_long <- lapply(seq_len(n_grid), function(i) {
+    df <- obs_data[[i]][, vars, drop = FALSE]
+    dplyr::bind_cols(obs_key, df)
+  }) %>%
+    dplyr::bind_rows(.id = "id") %>%
+    dplyr::mutate(id = as.integer(.data$id))
+
+  mc_thresholds <- obs_long %>%
+    dplyr::group_by(.data$id, .data$mon) %>%
+    dplyr::summarize(
+      wet_th = {
+        ppos <- .data$precip[is.finite(.data$precip) & .data$precip > 0]
+        if (length(ppos) >= 5) stats::quantile(ppos, wet_q, names = FALSE, na.rm = TRUE) else 0
+      },
+      extreme_th = {
+        ppos <- .data$precip[is.finite(.data$precip) & .data$precip > 0]
+        if (length(ppos) >= 5) stats::quantile(ppos, extreme_q, names = FALSE, na.rm = TRUE) else 0
+      },
+      .groups = "drop"
+    )
+
+  obs_stats <- compute_timeseries_statistics(
+    data = obs_long,
+    vars = vars,
+    mc_thresholds = mc_thresholds
+  )
+
+  list(
+    data = obs_long,
+    datemat = obs_key,
+    mc_thresholds = mc_thresholds,
+    stats_season = obs_stats$stats_season %>% dplyr::rename(Observed = .data$value),
+    stats_mon_aavg = obs_stats$stats_mon_aavg %>% dplyr::rename(Observed = .data$value),
+    stats_annual_aavg = obs_stats$stats_annual_aavg %>% dplyr::rename(Observed = .data$value),
+    wetdry = obs_stats$wetdry %>% dplyr::rename(Observed = .data$value),
+    cor = obs_stats$cor %>% dplyr::rename(Observed = .data$value),
+    cor_cond = obs_stats$cor_cond %>% dplyr::rename(Observed = .data$value)
+  )
+}
+
+#' Process simulated weather data
+#' @keywords internal
+process_simulated_data <- function(sim_data, n_realizations, vars, mc_thresholds) {
+
+  sim_key <- dplyr::tibble(
+    date = sim_data[[1]][[1]]$date,
+    year = as.integer(format(date, "%Y")),
+    mon  = as.integer(format(date, "%m")),
+    day  = as.integer(format(date, "%d"))
+  )
+
+  sim_long <- lapply(seq_len(n_realizations), function(i) {
+    sim_data[[i]] %>%
+      dplyr::bind_rows(.id = "id") %>%
+      dplyr::mutate(id = as.integer(.data$id)) %>%
+      dplyr::left_join(sim_key, by = "date")
+  })
+
+  sim_stats_list <- lapply(seq_len(n_realizations), function(i) {
+    compute_timeseries_statistics(
+      data = sim_long[[i]],
+      vars = vars,
+      mc_thresholds = mc_thresholds
+    )
+  })
+
+  list(
+    stats_season = dplyr::bind_rows(lapply(sim_stats_list, `[[`, "stats_season"), .id = "rlz") %>%
+      dplyr::mutate(id = as.numeric(.data$id)) %>%
+      dplyr::rename(Simulated = .data$value),
+
+    stats_mon_aavg = dplyr::bind_rows(lapply(sim_stats_list, `[[`, "stats_mon_aavg"), .id = "rlz") %>%
+      dplyr::rename(Simulated = .data$value),
+
+    stats_annual_aavg = dplyr::bind_rows(lapply(sim_stats_list, `[[`, "stats_annual_aavg"), .id = "rlz") %>%
+      dplyr::mutate(year = .data$year - min(.data$year) + 1) %>%
+      dplyr::rename(Simulated = .data$value),
+
+    cor = dplyr::bind_rows(lapply(sim_stats_list, `[[`, "cor"), .id = "rlz") %>%
+      dplyr::rename(Simulated = .data$value),
+
+    wetdry = dplyr::bind_rows(lapply(sim_stats_list, `[[`, "wetdry"), .id = "rlz") %>%
+      dplyr::mutate(id = as.numeric(.data$id)) %>%
+      dplyr::rename(Simulated = .data$value),
+
+    cor_cond = dplyr::bind_rows(lapply(sim_stats_list, `[[`, "cor_cond"), .id = "rlz") %>%
+      dplyr::rename(Simulated = .data$value)
+  )
+}
+
+# ==============================================================================
+# STATISTICS CORE (aligned to precip)
+# ==============================================================================
+
+#' Compute fit metrics for each realization
+#'
+#' Computes Mean Absolute Error (MAE) for all key metrics.
+#' MAE measures the average magnitude of errors between simulated and observed values.
+#' Lower MAE indicates better fit.
+#'
+#' @param obs_results Observed data results from process_observed_data
+#' @param sim_results Simulated data results from process_simulated_data
+#' @param variables Character vector of variable names
+#'
+#' @keywords internal
+compute_realization_fit_metrics <- function(obs_results, sim_results, vars) {
+
+  metrics_list <- list()
+
+  # --- 1. MAE for means (by variable, across all grid-months) ---
+  mae_mean <- sim_results$stats_season %>%
+    dplyr::filter(.data$stat == "mean") %>%
+    dplyr::left_join(
+      obs_results$stats_season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
+      by = c("id", "mon", "variable")
+    ) %>%
+    dplyr::group_by(.data$rlz, .data$variable) %>%
+    dplyr::summarize(
+      mae_mean = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_mean, names_prefix = "mae_mean_")
+
+  # --- 2. MAE for SDs ---
+  mae_sd <- sim_results$stats_season %>%
+    dplyr::filter(.data$stat == "sd") %>%
+    dplyr::left_join(
+      obs_results$stats_season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
+      by = c("id", "mon", "variable")
+    ) %>%
+    dplyr::group_by(.data$rlz, .data$variable) %>%
+    dplyr::summarize(
+      mae_sd = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_sd, names_prefix = "mae_sd_")
+
+  # --- 3. MAE for wet/dry day counts ---
+  mae_wetdry_days <- sim_results$wetdry %>%
+    dplyr::filter(.data$type == "days") %>%
+    dplyr::left_join(
+      obs_results$wetdry %>% dplyr::select(.data$id, .data$mon, .data$stat, Observed),
+      by = c("id", "mon", "stat")
+    ) %>%
+    dplyr::group_by(.data$rlz, .data$stat) %>%
+    dplyr::summarize(
+      mae = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_days_")
+
+  # --- 4. MAE for spell lengths ---
+  mae_spells <- sim_results$wetdry %>%
+    dplyr::filter(.data$type == "spells") %>%
+    dplyr::left_join(
+      obs_results$wetdry %>% dplyr::select(.data$id, .data$mon, .data$stat, Observed),
+      by = c("id", "mon", "stat")
+    ) %>%
+    dplyr::group_by(.data$rlz, .data$stat) %>%
+    dplyr::summarize(
+      mae = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_spell_")
+
+  # --- 5. MAE for cross-grid correlations ---
+  mae_cor_crossgrid <- sim_results$cor %>%
+    dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
+    dplyr::left_join(
+      obs_results$cor %>%
+        dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
+        dplyr::select(.data$id1, .data$variable1, .data$id2, .data$variable2, Observed),
+      by = c("id1", "variable1", "id2", "variable2")
+    ) %>%
+    dplyr::group_by(.data$rlz) %>%
+    dplyr::summarize(
+      mae_cor_crossgrid = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  # --- 6. MAE for inter-variable correlations ---
+  mae_cor_intervariable <- sim_results$cor %>%
+    dplyr::filter(.data$id1 == .data$id2, .data$variable1 != .data$variable2) %>%
+    dplyr::left_join(
+      obs_results$cor %>%
+        dplyr::filter(.data$id1 == .data$id2, .data$variable1 != .data$variable2) %>%
+        dplyr::select(.data$id1, .data$variable1, .data$id2, .data$variable2, Observed),
+      by = c("id1", "variable1", "id2", "variable2")
+    ) %>%
+    dplyr::group_by(.data$rlz) %>%
+    dplyr::summarize(
+      mae_cor_intervariable = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  # --- 7. Merge all metrics ---
+  summary_df <- mae_mean %>%
+    dplyr::left_join(mae_sd, by = "rlz") %>%
+    dplyr::left_join(mae_wetdry_days, by = "rlz") %>%
+    dplyr::left_join(mae_spells, by = "rlz") %>%
+    dplyr::left_join(mae_cor_crossgrid, by = "rlz") %>%
+    dplyr::left_join(mae_cor_intervariable, by = "rlz")
+
+  # --- 8. Compute overall score (normalized, lower = better) ---
+  # Normalize all MAE metrics to 0-1 scale for fair weighting when combining
+  metric_cols <- setdiff(names(summary_df), "rlz")
+
+  summary_df <- summary_df %>%
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::all_of(metric_cols),
+        ~ {
+          rng <- range(.x, na.rm = TRUE)
+          den <- rng[2] - rng[1]
+          if (!is.finite(den) || den == 0) {
+            # constant / all-NA column -> neutral 0 (won't affect means with na.rm=TRUE)
+            return(rep(0, length(.x)))
+          }
+          (.x - rng[1]) / den
+        },
+        .names = "norm_{.col}"
+      )
+    )
+
+  norm_cols <- grep("^norm_", names(summary_df), value = TRUE)
+
+  summary_df <- summary_df %>%
+    dplyr::mutate(
+      overall_score = rowMeans(dplyr::across(dplyr::all_of(norm_cols)), na.rm = TRUE)
+    ) %>%
+    dplyr::select(-dplyr::all_of(norm_cols)) %>%
+    dplyr::arrange(.data$overall_score) %>%
+    dplyr::mutate(rank = dplyr::row_number()) %>%
+    dplyr::select(.data$rlz, .data$rank, .data$overall_score, dplyr::everything())
+
+  summary_df
+}
+
+#' Compute time series statistics used by the assessment
+#' @keywords internal
+compute_timeseries_statistics <- function(data, vars, mc_thresholds) {
+
+  stat_funs <- list(mean = mean, sd = stats::sd, skewness = e1071::skewness)
+  year_n <- length(unique(format(data$date, "%Y")))
+
+  stats_season <- compute_grouped_statistics(
+    df = data,
+    vars = vars,
+    group_var = c("id", "mon"),
+    stat_funs = stat_funs
+  )
+
+  stats_mon_aavg <- compute_grouped_statistics(
+    df = data,
+    vars = vars,
+    group_var = c("year", "mon"),
+    stat_funs = stat_funs
+  )
+
+  stats_annual_aavg <- compute_grouped_statistics(
+    df = data,
+    vars = vars,
+    group_var = "year",
+    stat_funs = stat_funs
+  ) %>%
+    dplyr::mutate(year = .data$year - min(.data$year) + 1)
+
+  wetdry <- data %>%
+    dplyr::left_join(mc_thresholds, by = c("id", "mon")) %>%
+    dplyr::group_by(.data$id, .data$mon) %>%
+    dplyr::summarize(
+      Wet_days = {
+        th <- .data$wet_th[1]
+        if (!is.finite(th) || th <= 0) sum(.data$precip > 0, na.rm = TRUE) / year_n
+        else sum(.data$precip > th, na.rm = TRUE) / year_n
+      },
+      Dry_days = {
+        th <- .data$wet_th[1]
+        if (!is.finite(th) || th <= 0) sum(.data$precip <= 0, na.rm = TRUE) / year_n
+        else sum(.data$precip <= th, na.rm = TRUE) / year_n
+      },
+      Dry_spells = {
+        th <- .data$wet_th[1]
+        thr <- if (!is.finite(th) || th <= 0) 0 else th
+        lens <- compute_spell_lengths(.data$precip, threshold = thr, below = TRUE)
+        if (length(lens) == 0) 0 else mean(lens)
+      },
+      Wet_spells = {
+        th <- .data$wet_th[1]
+        thr <- if (!is.finite(th) || th <= 0) 0 else th
+        lens <- compute_spell_lengths(.data$precip, threshold = thr, below = FALSE)
+        if (length(lens) == 0) 0 else mean(lens)
+      },
+      .groups = "drop"
+    ) %>%
+    tidyr::pivot_longer(
+      cols = c(.data$Wet_days, .data$Dry_days, .data$Dry_spells, .data$Wet_spells),
+      names_to = "stat_full",
+      values_to = "value"
+    ) %>%
+    tidyr::separate(.data$stat_full, into = c("stat", "type"), sep = "_") %>%
+    dplyr::mutate(variable = "precip", .after = .data$mon)
+
+  cor <- compute_correlation_matrix_anom(data, vars)
+
+  cor_cond <- compute_conditional_precip_cor(
+    data = data,
+    vars = vars,
+    mc_thresholds = mc_thresholds,
+    wet_def = "monthly_quantile",
+    use_anom = TRUE,
+    use_log_precip_on_wet = TRUE,
+    method = "pearson",
+    min_pairs = 50
+  )
+
+  list(
+    stats_season = stats_season,
+    stats_mon_aavg = stats_mon_aavg,
+    stats_annual_aavg = stats_annual_aavg,
+    wetdry = wetdry,
+    cor = cor,
+    cor_cond = cor_cond
+  )
+}
+
+#' Compute grouped statistics (long-form output)
+#' @keywords internal
+compute_grouped_statistics <- function(df, vars, group_var, stat_funs) {
+
+  df %>%
+    dplyr::group_by(dplyr::across(dplyr::all_of(group_var))) %>%
+    dplyr::summarize(
+      dplyr::across(dplyr::all_of(vars), stat_funs, .names = "{.col}:{.fn}"),
+      .groups = "drop"
+    ) %>%
+    tidyr::pivot_longer(
+      cols = -dplyr::all_of(group_var),
+      names_to = "variable",
+      values_to = "value"
+    ) %>%
+    tidyr::separate(.data$variable, into = c("variable", "stat"), sep = ":") %>%
+    dplyr::mutate(
+      stat = factor(.data$stat, levels = names(stat_funs)),
+      variable = as.character(.data$variable)
+    )
+}
+
+#' Compute correlation matrix on monthly anomalies (grid:variable pairs)
+#' @keywords internal
+compute_correlation_matrix_anom <- function(data, vars) {
+
+  dat2 <- data %>%
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(vars),
+      names_to = "variable",
+      values_to = "value"
+    ) %>%
+    dplyr::group_by(.data$id, .data$mon, .data$variable) %>%
+    dplyr::mutate(value = value - mean(value, na.rm = TRUE)) %>%
+    dplyr::ungroup() %>%
+    tidyr::unite("id_variable", .data$id, .data$variable, sep = ":") %>%
+    dplyr::select(.data$date, .data$id_variable, .data$value) %>%
+    tidyr::pivot_wider(names_from = .data$id_variable, values_from = .data$value) %>%
+    dplyr::arrange(.data$date)
+
+  mat <- as.matrix(dat2 %>% dplyr::select(-.data$date))
+  cmat <- stats::cor(mat, use = "pairwise.complete.obs", method = "pearson")
+  tri <- upper.tri(cmat, diag = FALSE)
+
+  dplyr::tibble(
+    id_variable1 = colnames(cmat)[row(cmat)[tri]],
+    id_variable2 = colnames(cmat)[col(cmat)[tri]],
+    value = cmat[tri]
+  ) %>%
+    tidyr::separate(.data$id_variable1, c("id1", "variable1"), sep = ":") %>%
+    tidyr::separate(.data$id_variable2, c("id2", "variable2"), sep = ":")
+}
+
+#' Conditional precip–X correlations within each grid
+#' @keywords internal
+compute_conditional_precip_cor <- function(data,
+                                         vars,
+                                         mc_thresholds = NULL,
+                                         wet_def = c("gt0", "monthly_quantile"),
+                                         use_anom = TRUE,
+                                         use_log_precip_on_wet = TRUE,
+                                         method = "pearson",
+                                         min_pairs = 50) {
+
+  wet_def <- match.arg(wet_def)
+
+  if (!("precip" %in% vars)) stop("vars must include 'precip'", call. = FALSE)
+  targets <- setdiff(vars, "precip")
+  if (length(targets) == 0) {
+    return(dplyr::tibble(
+      id1 = integer(), variable1 = character(),
+      id2 = integer(), variable2 = character(),
+      regime = character(), transform = character(),
+      value = numeric(), n = integer()
+    ))
+  }
+
+  dat <- data %>%
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(c("precip", targets)),
+      names_to = "variable",
+      values_to = "value"
+    )
+
+  if (use_anom) {
+    dat <- dat %>%
+      dplyr::group_by(.data$id, .data$mon, .data$variable) %>%
+      dplyr::mutate(value = value - mean(value, na.rm = TRUE)) %>%
+      dplyr::ungroup()
+  }
+
+  dat_wide <- dat %>%
+    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$value)
+
+  if (wet_def == "monthly_quantile") {
+    if (is.null(mc_thresholds)) stop("mc_thresholds required when wet_def='monthly_quantile'", call. = FALSE)
+    dat_wide <- dat_wide %>% dplyr::left_join(mc_thresholds, by = c("id", "mon"))
+  }
+
+  .safe_cor <- function(x, y) {
+    ok <- is.finite(x) & is.finite(y)
+    n <- sum(ok)
+    if (n < min_pairs) return(c(value = NA_real_, n = n))
+    c(value = stats::cor(x[ok], y[ok], method = method), n = n)
+  }
+
+  by_id <- split(dat_wide, dat_wide$id)
+
+  out <- lapply(by_id, function(df_id) {
+
+    wet_flag <- if (wet_def == "monthly_quantile") {
+      df_id$precip >= df_id$wet_th
+    } else {
+      df_id$precip > 0
+    }
+    dry_flag <- !wet_flag & !is.na(df_id$precip)
+
+    lapply(targets, function(v) {
+
+      res_all <- .safe_cor(df_id$precip, df_id[[v]])
+
+      if (use_log_precip_on_wet) {
+        p_wet <- log1p(pmax(df_id$precip, 0))
+        res_wet <- .safe_cor(p_wet[wet_flag], df_id[[v]][wet_flag])
+        tr_wet <- "log1p_precip"
+      } else {
+        res_wet <- .safe_cor(df_id$precip[wet_flag], df_id[[v]][wet_flag])
+        tr_wet <- "precip"
+      }
+
+      res_dry <- .safe_cor(df_id$precip[dry_flag], df_id[[v]][dry_flag])
+
+      dplyr::tibble(
+        id1 = df_id$id[1],
+        variable1 = "precip",
+        id2 = df_id$id[1],
+        variable2 = v,
+        regime = c("all", "wet", "dry"),
+        transform = c("precip", tr_wet, "precip"),
+        value = c(res_all["value"], res_wet["value"], res_dry["value"]),
+        n = c(as.integer(res_all["n"]), as.integer(res_wet["n"]), as.integer(res_dry["n"]))
+      )
+    }) %>% dplyr::bind_rows()
+
+  }) %>% dplyr::bind_rows()
+
+  out
+}
+
+
+#' Filter correlations by type (cross-grid or inter-variable)
+#'
+#' Internal helper to subset correlation data into the intended pairing type:
+#' - cross-grid correlations: same variable, different grid ids
+#' - inter-variable correlations: different variables, same grid id
+#'
+#' @param cor_data data.frame. Correlation data with columns id1, id2, variable1, variable2.
+#' @param same_var Logical. Keep rows where variable1 == variable2 (TRUE) or != (FALSE).
+#' @param same_id Logical. Keep rows where id1 == id2 (TRUE) or != (FALSE).
+#' @param allowed_pairs Character vector of order-invariant pair keys.
+#'   For pair_type="id": "min(id1,id2):max(id1,id2)"
+#'   For pair_type="variable": "min(var1,var2):max(var1,var2)"
+#' @param pair_type Character. Either "id" or "variable".
+#'
+#' @return Filtered data.frame.
+#' @keywords internal
+filter_correlations <- function(cor_data, same_var, same_id, allowed_pairs, pair_type) {
+
+  if (!is.data.frame(cor_data)) stop("cor_data must be a data.frame", call. = FALSE)
+  req <- c("id1", "id2", "variable1", "variable2")
+  miss <- setdiff(req, names(cor_data))
+  if (length(miss) > 0) {
+    stop("cor_data is missing required columns: ", paste(miss, collapse = ", "), call. = FALSE)
+  }
+  if (!pair_type %in% c("id", "variable")) stop("pair_type must be 'id' or 'variable'", call. = FALSE)
+
+  out <- cor_data %>%
+    dplyr::filter(
+      (.data$variable1 == .data$variable2) == same_var,
+      (.data$id1 == .data$id2) == same_id
+    )
+
+  if (length(out) == 0) return(out)
+
+  if (pair_type == "id") {
+    out <- out %>%
+      dplyr::mutate(
+        pair = paste(pmin(.data$id1, .data$id2), pmax(.data$id1, .data$id2), sep = ":")
+      ) %>%
+      dplyr::filter(.data$pair %in% allowed_pairs) %>%
+      dplyr::select(-.data$pair)
+  } else {
+    out <- out %>%
+      dplyr::mutate(
+        pair = paste(
+          pmin(.data$variable1, .data$variable2),
+          pmax(.data$variable1, .data$variable2),
+          sep = ":"
+        ),
+        variable = .data$pair
+      ) %>%
+      dplyr::filter(.data$pair %in% allowed_pairs) %>%
+      dplyr::select(-.data$pair)
+  }
+
+  out
+}
+
 
 #' Display fit summary table for all realizations
 #' @keywords internal
@@ -470,876 +1097,69 @@ display_fit_summary_table <- function(fit_summary, variables) {
   invisible(fit_summary)
 }
 
+
 # ==============================================================================
-# HELPERS
+# PLOT DATA PREP
 # ==============================================================================
 
-#' Find full (365-day) years after leap-day removal and return longest contiguous block
+#' Prepare data for diagnostic plotting (obs vs sim)
 #' @keywords internal
-get_full_year_block <- function(dates) {
+prepare_plot_data <- function(obs_results, sim_results, vars) {
 
-  if (!inherits(dates, "Date")) stop("dates must be Date", call. = FALSE)
+  stat_funs <- list(mean = mean, sd = stats::sd, skewness = e1071::skewness)
 
-  yrs <- as.integer(format(dates, "%Y"))
-  tab <- dplyr::tibble(date = dates, year = yrs) %>%
-    dplyr::count(.data$year, name = "n_days") %>%
-    dplyr::filter(.data$n_days == 365) %>%
-    dplyr::arrange(.data$year)
-
-  if (nrow(tab) == 0) {
-    return(list(years = integer(0)))
-  }
-
-  years_full <- tab$year
-  # Build contiguous runs
-  run_id <- cumsum(c(TRUE, diff(years_full) != 1L))
-  runs <- split(years_full, run_id)
-
-  # Take the longest run; if tie, take the first
-  lens <- vapply(runs, length, integer(1))
-  best <- runs[[which.max(lens)]]
-
-  list(years = as.integer(best))
-}
-
-#' Pick a random contiguous window of years of length n_years from a year vector
-#' @keywords internal
-pick_year_window <- function(years, n_years) {
-
-  years <- as.integer(years)
-  if (length(years) < n_years) stop("Not enough full years to pick window.", call. = FALSE)
-  if (n_years == length(years)) return(years)
-
-  start_idx <- sample.int(length(years) - n_years + 1L, size = 1L)
-  years[start_idx:(start_idx + n_years - 1L)]
-}
-
-#' Filter a single grid df to selected years (keeps original columns)
-#' @keywords internal
-filter_df_to_years <- function(df, years_keep) {
-
-  if (!("date" %in% names(df))) stop("df must contain 'date'", call. = FALSE)
-
-  yrs <- as.integer(format(df$date, "%Y"))
-  df[yrs %in% years_keep, , drop = FALSE]
-}
-
-#' Standardize obs and sim to same full-year length via random windowing
-#' Applies the chosen window consistently across all grids and all realizations.
-#' @keywords internal
-standardize_obs_sim_periods <- function(daily.obs, daily.sim, realization.num, variables) {
-
-  # 1) Remove leap days consistently (based on each series' date vector)
-  #    Assumption: all grids share the same date vector within obs and within each realization.
-  obs_dates <- daily.obs[[1]]$date
-  sim_dates <- daily.sim[[1]][[1]]$date
-
-  obs_leap <- find_leap_days(obs_dates)
-  sim_leap <- find_leap_days(sim_dates)
-
-  if (!is.null(obs_leap)) {
-    daily.obs <- lapply(daily.obs, function(df) df[-obs_leap, , drop = FALSE])
-    obs_dates <- daily.obs[[1]]$date
-  }
-
-  if (!is.null(sim_leap)) {
-    daily.sim <- lapply(daily.sim, function(rlz) {
-      lapply(rlz, function(df) df[-sim_leap, , drop = FALSE])
-    })
-    sim_dates <- daily.sim[[1]][[1]]$date
-  }
-
-  # 2) Identify longest contiguous full-year blocks
-  obs_block <- get_full_year_block(obs_dates)$years
-  sim_block <- get_full_year_block(sim_dates)$years
-
-  if (length(obs_block) == 0) stop("Observed series has no complete 365-day years after leap-day removal.", call. = FALSE)
-  if (length(sim_block) == 0) stop("Simulated series has no complete 365-day years after leap-day removal.", call. = FALSE)
-
-  n_years <- min(length(obs_block), length(sim_block))
-
-  # 3) Pick windows (randomly within each block if longer than needed)
-  obs_years_keep <- pick_year_window(obs_block, n_years)
-  sim_years_keep <- pick_year_window(sim_block, n_years)
-
-  # 4) Apply year filtering
-  daily.obs2 <- lapply(daily.obs, filter_df_to_years, years_keep = obs_years_keep)
-
-  daily.sim2 <- lapply(seq_len(realization.num), function(i) {
-    lapply(daily.sim[[i]], filter_df_to_years, years_keep = sim_years_keep)
-  })
-
-  # Basic integrity check: after filtering, all grids should have same nrow within obs and sim
-  obs_n <- nrow(daily.obs2[[1]])
-  sim_n <- nrow(daily.sim2[[1]][[1]])
-
-  if (obs_n != sim_n) {
-    stop(
-      "Period standardization failed: obs and sim window lengths differ after filtering. ",
-      "obs_n=", obs_n, " sim_n=", sim_n,
-      call. = FALSE
-    )
-  }
-
-  list(
-    daily.obs = daily.obs2,
-    daily.sim = daily.sim2,
-    n_years = n_years,
-    obs_year_start = min(obs_years_keep),
-    obs_year_end = max(obs_years_keep),
-    sim_year_start = min(sim_years_keep),
-    sim_year_end = max(sim_years_keep)
-  )
-}
-
-#' Validate inputs for weather assessment
-#' @keywords internal
-validate_inputs <- function(daily.sim, daily.obs, variables, realization.num,
-                            wet.quantile, extreme.quantile) {
-
-  if (is.null(daily.sim)) stop("'daily.sim' must not be NULL")
-  if (is.null(daily.obs)) stop("'daily.obs' must not be NULL")
-  if (is.null(variables)) stop("'variables' must not be NULL")
-  if (is.null(realization.num)) stop("'realization.num' must not be NULL")
-
-  if (!is.list(daily.sim)) stop("'daily.sim' must be a list")
-  if (!is.list(daily.obs)) stop("'daily.obs' must be a list")
-  if (!is.character(variables)) stop("'variables' must be a character vector")
-  if (!is.numeric(realization.num) || realization.num < 1) {
-    stop("'realization.num' must be a positive integer")
-  }
-
-  if (length(daily.sim) != realization.num) {
-    stop("Length of 'daily.sim' must equal 'realization.num'")
-  }
-
-  if (length(daily.obs) == 0) {
-    stop("'daily.obs' must contain at least one grid cell")
-  }
-
-  if (!"precip" %in% variables) {
-    stop("'variables' must include 'precip' for wet/dry spell analysis")
-  }
-
-  missing.vars <- setdiff(variables, names(daily.obs[[1]]))
-  if (length(missing.vars) > 0) {
-    stop("Variables not found in daily.obs: ", paste(missing.vars, collapse = ", "))
-  }
-
-  if (!"date" %in% names(daily.obs[[1]])) stop("'daily.obs' must contain a 'date' column")
-  if (!"date" %in% names(daily.sim[[1]][[1]])) stop("'daily.sim' must contain a 'date' column")
-
-  if (!is.numeric(wet.quantile) || wet.quantile <= 0 || wet.quantile >= 1) {
-    stop("'wet.quantile' must be between 0 and 1")
-  }
-
-  if (!is.numeric(extreme.quantile) || extreme.quantile <= 0 || extreme.quantile >= 1) {
-    stop("'extreme.quantile' must be between 0 and 1")
-  }
-
-  if (extreme.quantile <= wet.quantile) {
-    stop("'extreme.quantile' must be greater than 'wet.quantile'")
-  }
-
-  invisible(TRUE)
-}
-
-#' Process observed weather data
-#' @keywords internal
-process_observed_data <- function(daily.obs, variables, n_grids,
-                                  wet.quantile, extreme.quantile) {
-
-  his.date <- daily.obs[[1]]$date
-
-  his.datemat <- dplyr::tibble(
-    date = his.date,
-    year = as.integer(format(date, "%Y")),
-    mon = as.integer(format(date, "%m")),
-    day = as.integer(format(date, "%d")))
-
-  his <- lapply(seq_len(n_grids), function(i) {
-    df <- daily.obs[[i]][, variables, drop = FALSE]
-    dplyr::bind_cols(his.datemat, df)
-  }) %>%
-    dplyr::bind_rows(.id = "id") %>%
-    dplyr::mutate(id = as.integer(.data$id))
-
-  mc.thresholds <- his %>%
-    dplyr::group_by(.data$id, .data$mon) %>%
-    dplyr::summarize(
-      wet.th = {
-        ppos <- .data$precip[is.finite(.data$precip) & .data$precip > 0]
-        if (length(ppos) >= 5) stats::quantile(ppos, wet.quantile, names = FALSE, na.rm = TRUE) else 0
-      },
-      extreme.th = {
-        ppos <- .data$precip[is.finite(.data$precip) & .data$precip > 0]
-        if (length(ppos) >= 5) stats::quantile(ppos, extreme.quantile, names = FALSE, na.rm = TRUE) else 0
-      },
-      .groups = "drop")
-
-
-  his.stats <- compute_timeseries_statistics(
-    data = his,
-    variables = variables,
-    mc.thresholds = mc.thresholds
-  )
-
-  list(
-    data = his,
-    datemat = his.datemat,
-    mc.thresholds = mc.thresholds,
-    stats.season = his.stats$stats.season %>% dplyr::rename(Observed = .data$value),
-    stats.mon.aavg = his.stats$stats.mon.aavg %>% dplyr::rename(Observed = .data$value),
-    stats.annual.aavg = his.stats$stats.annual.aavg %>% dplyr::rename(Observed = .data$value),
-    wetdry = his.stats$wetdry %>% dplyr::rename(Observed = .data$value),
-    cor = his.stats$cor %>% dplyr::rename(Observed = .data$value),
-    cor.cond = his.stats$cor.cond %>% dplyr::rename(Observed = .data$value)
-  )
-}
-
-#' Process simulated weather data
-#' @keywords internal
-process_simulated_data <- function(daily.sim, realization.num, variables, mc.thresholds) {
-
-  sim.datemat <- dplyr::tibble(
-    date = daily.sim[[1]][[1]]$date,
-    year = as.integer(format(date, "%Y")),
-    mon = as.integer(format(date, "%m")),
-    day = as.integer(format(date, "%d"))
-  )
-
-  sim <- lapply(seq_len(realization.num), function(i) {
-    daily.sim[[i]] %>%
-      dplyr::bind_rows(.id = "id") %>%
-      dplyr::mutate(id = as.integer(.data$id)) %>%
-      dplyr::left_join(sim.datemat, by = "date")
-  })
-
-  sim.stats.list <- lapply(seq_len(realization.num), function(i) {
-    compute_timeseries_statistics(
-      data = sim[[i]],
-      variables = variables,
-      mc.thresholds = mc.thresholds
-    )
-  })
-
-  list(
-    stats.season = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.season"), .id = "rlz") %>%
-      dplyr::mutate(id = as.numeric(.data$id)) %>%
-      dplyr::rename(Simulated = .data$value),
-
-    stats.mon.aavg = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.mon.aavg"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value),
-
-    stats.annual.aavg = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.annual.aavg"), .id = "rlz") %>%
-      dplyr::mutate(year = .data$year - min(.data$year) + 1) %>%
-      dplyr::rename(Simulated = .data$value),
-
-    cor = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "cor"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value),
-
-    wetdry = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "wetdry"), .id = "rlz") %>%
-      dplyr::mutate(id = as.numeric(.data$id)) %>%
-      dplyr::rename(Simulated = .data$value),
-
-    cor.cond = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "cor.cond"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value)
-  )
-}
-
-#' Compute fit metrics for each realization
-#'
-#' Computes Mean Absolute Error (MAE) for all key metrics.
-#' MAE measures the average magnitude of errors between simulated and observed values.
-#' Lower MAE indicates better fit.
-#'
-#' @param obs.results Observed data results from process_observed_data
-#' @param sim.results Simulated data results from process_simulated_data
-#' @param variables Character vector of variable names
-#'
-#' @keywords internal
-compute_realization_fit_metrics <- function(obs.results, sim.results, variables) {
-
-  metrics_list <- list()
-
-  # --- 1. MAE for means (by variable, across all grid-months) ---
-  mae_mean <- sim.results$stats.season %>%
-    dplyr::filter(.data$stat == "mean") %>%
-    dplyr::left_join(
-      obs.results$stats.season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
-      by = c("id", "mon", "variable")
-    ) %>%
-    dplyr::group_by(.data$rlz, .data$variable) %>%
-    dplyr::summarize(
-      mae_mean = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_mean, names_prefix = "mae_mean_")
-
-  # --- 2. MAE for SDs ---
-  mae_sd <- sim.results$stats.season %>%
-    dplyr::filter(.data$stat == "sd") %>%
-    dplyr::left_join(
-      obs.results$stats.season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
-      by = c("id", "mon", "variable")
-    ) %>%
-    dplyr::group_by(.data$rlz, .data$variable) %>%
-    dplyr::summarize(
-      mae_sd = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_sd, names_prefix = "mae_sd_")
-
-  # --- 3. MAE for wet/dry day counts ---
-  mae_wetdry_days <- sim.results$wetdry %>%
-    dplyr::filter(.data$type == "days") %>%
-    dplyr::left_join(
-      obs.results$wetdry %>% dplyr::select(.data$id, .data$mon, .data$stat, Observed),
-      by = c("id", "mon", "stat")
-    ) %>%
-    dplyr::group_by(.data$rlz, .data$stat) %>%
-    dplyr::summarize(
-      mae = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_days_")
-
-  # --- 4. MAE for spell lengths ---
-  mae_spells <- sim.results$wetdry %>%
-    dplyr::filter(.data$type == "spells") %>%
-    dplyr::left_join(
-      obs.results$wetdry %>% dplyr::select(.data$id, .data$mon, .data$stat, Observed),
-      by = c("id", "mon", "stat")
-    ) %>%
-    dplyr::group_by(.data$rlz, .data$stat) %>%
-    dplyr::summarize(
-      mae = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_spell_")
-
-  # --- 5. MAE for cross-grid correlations ---
-  mae_cor_crossgrid <- sim.results$cor %>%
-    dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
-    dplyr::left_join(
-      obs.results$cor %>%
-        dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
-        dplyr::select(.data$id1, .data$variable1, .data$id2, .data$variable2, Observed),
-      by = c("id1", "variable1", "id2", "variable2")
-    ) %>%
-    dplyr::group_by(.data$rlz) %>%
-    dplyr::summarize(
-      mae_cor_crossgrid = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
-      .groups = "drop"
-    )
-
-  # --- 6. MAE for inter-variable correlations ---
-  mae_cor_intervariable <- sim.results$cor %>%
-    dplyr::filter(.data$id1 == .data$id2, .data$variable1 != .data$variable2) %>%
-    dplyr::left_join(
-      obs.results$cor %>%
-        dplyr::filter(.data$id1 == .data$id2, .data$variable1 != .data$variable2) %>%
-        dplyr::select(.data$id1, .data$variable1, .data$id2, .data$variable2, Observed),
-      by = c("id1", "variable1", "id2", "variable2")
-    ) %>%
-    dplyr::group_by(.data$rlz) %>%
-    dplyr::summarize(
-      mae_cor_intervariable = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
-      .groups = "drop"
-    )
-
-  # --- 7. Merge all metrics ---
-  summary_df <- mae_mean %>%
-    dplyr::left_join(mae_sd, by = "rlz") %>%
-    dplyr::left_join(mae_wetdry_days, by = "rlz") %>%
-    dplyr::left_join(mae_spells, by = "rlz") %>%
-    dplyr::left_join(mae_cor_crossgrid, by = "rlz") %>%
-    dplyr::left_join(mae_cor_intervariable, by = "rlz")
-
-  # --- 8. Compute overall score (normalized, lower = better) ---
-  # Normalize all MAE metrics to 0-1 scale for fair weighting when combining
-  metric_cols <- setdiff(names(summary_df), "rlz")
-
-  summary_df <- summary_df %>%
-    dplyr::mutate(
-      dplyr::across(
-        dplyr::all_of(metric_cols),
-        ~ {
-          rng <- range(.x, na.rm = TRUE)
-          den <- rng[2] - rng[1]
-          if (!is.finite(den) || den == 0) {
-            # constant / all-NA column -> neutral 0 (won't affect means with na.rm=TRUE)
-            return(rep(0, length(.x)))
-          }
-          (.x - rng[1]) / den
-        },
-        .names = "norm_{.col}"
-      )
-    )
-
-  norm_cols <- grep("^norm_", names(summary_df), value = TRUE)
-
-  summary_df <- summary_df %>%
-    dplyr::mutate(
-      overall_score = rowMeans(dplyr::across(dplyr::all_of(norm_cols)), na.rm = TRUE)
-    ) %>%
-    dplyr::select(-dplyr::all_of(norm_cols)) %>%
-    dplyr::arrange(.data$overall_score) %>%
-    dplyr::mutate(rank = dplyr::row_number()) %>%
-    dplyr::select(.data$rlz, .data$rank, .data$overall_score, dplyr::everything())
-
-  summary_df
-}
-
-
-#' Compute time series statistics
-#' @keywords internal
-compute_timeseries_statistics <- function(data, variables, mc.thresholds) {
-
-  stat.funs <- list(mean = mean, sd = stats::sd, skewness = e1071::skewness)
-  year.num <- length(unique(format(data$date, "%Y")))
-
-  stats.season <- compute_grouped_statistics(
-    df = data,
-    variables = variables,
-    group.vars = c("id", "mon"),
-    stat.funs = stat.funs
-  )
-
-  stats.mon.aavg <- compute_grouped_statistics(
-    df = data,
-    variables = variables,
-    group.vars = c("year", "mon"),
-    stat.funs = stat.funs
-  )
-
-  stats.annual.aavg <- compute_grouped_statistics(
-    df = data,
-    variables = variables,
-    group.vars = "year",
-    stat.funs = stat.funs
-  ) %>%
-    dplyr::mutate(year = .data$year - min(.data$year) + 1)
-
-  wetdry <- data %>%
-    dplyr::left_join(mc.thresholds, by = c("id", "mon")) %>%
-    dplyr::group_by(.data$id, .data$mon) %>%
-    dplyr::summarize(
-      Wet_days = {
-        th <- .data$wet.th[1]
-        # If threshold is 0 (fallback or quantile result), treat wet as strictly > 0
-        if (!is.finite(th) || th <= 0) sum(.data$precip > 0, na.rm = TRUE) / year.num
-        else sum(.data$precip > th, na.rm = TRUE) / year.num
-      },
-      Dry_days = {
-        th <- .data$wet.th[1]
-        if (!is.finite(th) || th <= 0) sum(.data$precip <= 0, na.rm = TRUE) / year.num
-        else sum(.data$precip <= th, na.rm = TRUE) / year.num
-      },
-      Dry_spells = {
-        th <- .data$wet.th[1]
-        if (!is.finite(th) || th <= 0) mean_spell_length(.data$precip, threshold = 0, below = TRUE)
-        else mean_spell_length(.data$precip, threshold = th, below = TRUE)
-      },
-      Wet_spells = {
-        th <- .data$wet.th[1]
-        if (!is.finite(th) || th <= 0) mean_spell_length(.data$precip, threshold = 0, below = FALSE)
-        else mean_spell_length(.data$precip, threshold = th, below = FALSE)
-      },
-      .groups = "drop"
-    ) %>%
-    tidyr::pivot_longer(
-      cols = c(.data$Wet_days, .data$Dry_days, .data$Dry_spells, .data$Wet_spells),
-      names_to = "stat.full",
-      values_to = "value"
-    ) %>%
-    tidyr::separate(.data$stat.full, into = c("stat", "type"), sep = "_") %>%
-    dplyr::mutate(variable = "precip", .after = .data$mon)
-
-
-  cor.data <- compute_correlation_matrix_anom(data, variables)
-
-  cor.cond <- compute_conditional_precip_cor(
-    data = data,
-    variables = variables,
-    mc.thresholds = mc.thresholds,
-    wet_def = "monthly_quantile",
-    use_anom = TRUE,
-    use_log_precip_on_wet = TRUE,
-    method = "pearson",
-    min_pairs = 50
-  )
-
-  list(
-    stats.season = stats.season,
-    stats.mon.aavg = stats.mon.aavg,
-    stats.annual.aavg = stats.annual.aavg,
-    wetdry = wetdry,
-    cor = cor.data,
-    cor.cond = cor.cond
-  )
-}
-
-#' Compute grouped statistics
-#' @keywords internal
-compute_grouped_statistics <- function(df, variables, group.vars, stat.funs) {
-
-  df %>%
-    dplyr::group_by(dplyr::across(dplyr::all_of(group.vars))) %>%
-    dplyr::summarize(
-      dplyr::across(dplyr::all_of(variables), stat.funs, .names = "{.col}:{.fn}"),
-      .groups = "drop"
-    ) %>%
-    tidyr::pivot_longer(
-      cols = -dplyr::all_of(group.vars),
-      names_to = "variable",
-      values_to = "value"
-    ) %>%
-    tidyr::separate(.data$variable, into = c("variable", "stat"), sep = ":") %>%
-    dplyr::mutate(
-      stat = factor(.data$stat, levels = names(stat.funs)),
-      variable = as.character(.data$variable)
-    )
-}
-
-#' Compute correlation matrix on monthly anomalies
-#' @keywords internal
-compute_correlation_matrix_anom <- function(data, variables) {
-
-  dat2 <- data %>%
-    tidyr::pivot_longer(
-      cols = dplyr::all_of(variables),
-      names_to = "variable",
-      values_to = "value"
-    ) %>%
-    dplyr::group_by(.data$id, .data$mon, .data$variable) %>%
-    dplyr::mutate(value = value - mean(value, na.rm = TRUE)) %>%
-    dplyr::ungroup() %>%
-    tidyr::unite("id.variable", .data$id, .data$variable, sep = ":") %>%
-    dplyr::select(.data$date, .data$id.variable, .data$value) %>%
-    tidyr::pivot_wider(names_from = .data$id.variable, values_from = .data$value) %>%
-    dplyr::arrange(.data$date)
-
-  mat <- as.matrix(dat2 %>% dplyr::select(-.data$date))
-  cmat <- stats::cor(mat, use = "pairwise.complete.obs", method = "pearson")
-
-  tri <- upper.tri(cmat, diag = FALSE)
-
-  dplyr::tibble(
-    id.variable1 = colnames(cmat)[row(cmat)[tri]],
-    id.variable2 = colnames(cmat)[col(cmat)[tri]],
-    value = cmat[tri]
-  ) %>%
-    tidyr::separate(.data$id.variable1, c("id1", "variable1"), sep = ":") %>%
-    tidyr::separate(.data$id.variable2, c("id2", "variable2"), sep = ":")
-}
-
-#' Conditional precip-X correlations within each grid
-#' @keywords internal
-compute_conditional_precip_cor <- function(data,
-                                           variables,
-                                           mc.thresholds = NULL,
-                                           wet_def = c("gt0", "monthly_quantile"),
-                                           use_anom = TRUE,
-                                           use_log_precip_on_wet = TRUE,
-                                           method = "pearson",
-                                           min_pairs = 50) {
-
-  wet_def <- match.arg(wet_def)
-
-  # keep only variables we actually have
-  if (!("precip" %in% variables)) stop("variables must include 'precip'", call. = FALSE)
-  targets <- setdiff(variables, "precip")
-  if (length(targets) == 0) {
-    return(dplyr::tibble(
-      id1 = integer(), variable1 = character(),
-      id2 = integer(), variable2 = character(),
-      regime = character(), transform = character(),
-      value = numeric(), n = integer()
-    ))
-  }
-
-  # Optionally de-seasonalize (monthly mean anomalies) for all variables
-  dat <- data %>%
-    tidyr::pivot_longer(
-      cols = dplyr::all_of(c("precip", targets)),
-      names_to = "variable",
-      values_to = "value"
-    )
-
-  if (use_anom) {
-    dat <- dat %>%
-      dplyr::group_by(.data$id, .data$mon, .data$variable) %>%
-      dplyr::mutate(value = value - mean(value, na.rm = TRUE)) %>%
-      dplyr::ungroup()
-  }
-
-  # Wide format back (per grid) to compute pairwise cor easily with filtering
-  dat_wide <- dat %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$value)
-
-  # Join wet thresholds if needed
-  if (wet_def == "monthly_quantile") {
-    if (is.null(mc.thresholds)) stop("mc.thresholds required when wet_def='monthly_quantile'", call. = FALSE)
-    dat_wide <- dat_wide %>% dplyr::left_join(mc.thresholds, by = c("id", "mon"))
-    wet_flag <- dat_wide$precip >= dat_wide$wet.th
-  } else {
-    wet_flag <- dat_wide$precip > 0
-  }
-  dry_flag <- !wet_flag & !is.na(dat_wide$precip)
-
-  # Build results
-  out <- lapply(targets, function(v) {
-
-    # all days (raw/anom precip)
-    res_all <- .safe_cor(dat_wide$precip, dat_wide[[v]])
-
-    # wet days (optionally log1p on precip)
-    if (use_log_precip_on_wet) {
-      p_wet <- log1p(pmax(dat_wide$precip, 0))
-      res_wet <- .safe_cor(p_wet[wet_flag], dat_wide[[v]][wet_flag])
-      tr_wet <- "log1p_precip"
-    } else {
-      res_wet <- .safe_cor(dat_wide$precip[wet_flag], dat_wide[[v]][wet_flag])
-      tr_wet <- "precip"
-    }
-
-    # dry days (precip is ~0; correlation often meaningless for precip itself, but can be informative if precip anomalies exist)
-    res_dry <- .safe_cor(dat_wide$precip[dry_flag], dat_wide[[v]][dry_flag])
-
-    dplyr::tibble(
-      id1 = dat_wide$id[1],  # placeholder, fixed below
-      variable1 = "precip",
-      id2 = dat_wide$id[1],  # placeholder, fixed below
-      variable2 = v,
-      regime = c("all", "wet", "dry"),
-      transform = c("precip", tr_wet, "precip"),
-      value = c(res_all["value"], res_wet["value"], res_dry["value"]),
-      n = c(as.integer(res_all["n"]), as.integer(res_wet["n"]), as.integer(res_dry["n"]))
-    )
-  }) %>%
-    dplyr::bind_rows()
-
-  # Fix id columns per-grid: compute per id properly
-  # We need per-grid computation, not collapsing all ids.
-  # So do it by splitting dat_wide by id:
-  by_id <- split(dat_wide, dat_wide$id)
-
-  out2 <- lapply(by_id, function(df_id) {
-
-    if (wet_def == "monthly_quantile") {
-      wet_flag <- df_id$precip >= df_id$wet.th
-    } else {
-      wet_flag <- df_id$precip > 0
-    }
-    dry_flag <- !wet_flag & !is.na(df_id$precip)
-
-    .safe_cor <- function(x, y) {
-      ok <- is.finite(x) & is.finite(y)
-      n <- sum(ok)
-      if (n < min_pairs) return(c(value = NA_real_, n = n))
-      c(value = stats::cor(x[ok], y[ok], method = method), n = n)
-    }
-
-    lapply(targets, function(v) {
-
-      res_all <- .safe_cor(df_id$precip, df_id[[v]])
-
-      if (use_log_precip_on_wet) {
-        p_wet <- log1p(pmax(df_id$precip, 0))
-        res_wet <- .safe_cor(p_wet[wet_flag], df_id[[v]][wet_flag])
-        tr_wet <- "log1p_precip"
-      } else {
-        res_wet <- .safe_cor(df_id$precip[wet_flag], df_id[[v]][wet_flag])
-        tr_wet <- "precip"
-      }
-
-      res_dry <- .safe_cor(df_id$precip[dry_flag], df_id[[v]][dry_flag])
-
-      dplyr::tibble(
-        id1 = df_id$id[1],
-        variable1 = "precip",
-        id2 = df_id$id[1],
-        variable2 = v,
-        regime = c("all", "wet", "dry"),
-        transform = c("precip", tr_wet, "precip"),
-        value = c(res_all["value"], res_wet["value"], res_dry["value"]),
-        n = c(as.integer(res_all["n"]), as.integer(res_wet["n"]), as.integer(res_dry["n"]))
-      )
-    }) %>% dplyr::bind_rows()
-
-  }) %>% dplyr::bind_rows()
-
-  out2
-}
-
-
-#' Generate symmetric dummy points for equal axis scaling
-#' @keywords internal
-generate_symmetric_dummy_points <- function(df, facet.var = "variable",
-                                            x.col = "Observed", y.col = "Simulated") {
-
-  df %>%
-    dplyr::filter(
-      !is.na(.data[[x.col]]),
-      !is.na(.data[[y.col]]),
-      is.finite(.data[[x.col]]),
-      is.finite(.data[[y.col]])
-    ) %>%
-    dplyr::mutate(
-      max.val = pmax(.data[[x.col]], .data[[y.col]]),
-      min.val = pmin(.data[[x.col]], .data[[y.col]])
-    ) %>%
-    dplyr::group_by(.data[[facet.var]]) %>%
-    dplyr::summarize(
-      minlim = min(.data$min.val, na.rm = TRUE),
-      maxlim = max(.data$max.val, na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    tidyr::expand_grid(lim = c("min", "max")) %>%
-    dplyr::mutate(
-      Observed = ifelse(.data$lim == "min", .data$minlim, .data$maxlim),
-      Simulated = ifelse(.data$lim == "min", .data$minlim, .data$maxlim)
-    ) %>%
-    dplyr::select(dplyr::all_of(facet.var), .data$Observed, .data$Simulated)
-}
-
-
-#' Filter correlations by type (cross-grid or inter-variable)
-#' @keywords internal
-filter_correlations <- function(cor_data, same_var, same_id, allowed_pairs, pair_type) {
-
-  result <- cor_data %>%
-    dplyr::filter(
-      (.data$variable1 == .data$variable2) == same_var,
-      (.data$id1 == .data$id2) == same_id
-    )
-
-  if (pair_type == "id") {
-    result <- result %>%
-      dplyr::mutate(
-        pair = paste(pmin(.data$id1, .data$id2), pmax(.data$id1, .data$id2), sep = ":")
-      ) %>%
-      dplyr::filter(.data$pair %in% allowed_pairs) %>%
-      dplyr::select(-.data$pair)
-
-  } else if (pair_type == "variable") {
-    result <- result %>%
-      dplyr::mutate(
-        pair = paste(pmin(.data$variable1, .data$variable2),
-                     pmax(.data$variable1, .data$variable2), sep = ":"),
-        variable = .data$pair
-      ) %>%
-      dplyr::filter(.data$pair %in% allowed_pairs) %>%
-      dplyr::select(-.data$pair)
-  }
-
-  result
-}
-
-#' Prepare data for plotting
-#' @keywords internal
-prepare_plot_data <- function(obs.results, sim.results, variables, n_grids) {
-
-  # Define statistical functions for reference
-  stat.funs <- list(mean = mean, sd = stats::sd, skewness = e1071::skewness)
-
-  # Merge seasonal statistics
-  daily.stats.season <- sim.results$stats.season %>%
-    dplyr::left_join(
-      obs.results$stats.season,
-      by = c("id", "mon", "variable", "stat")
-    ) %>%
+  daily_stats_season <- sim_results$stats_season %>%
+    dplyr::left_join(obs_results$stats_season, by = c("id", "mon", "variable", "stat")) %>%
     dplyr::mutate(
       variable = factor(.data$variable),
-      stat = factor(.data$stat, levels = names(stat.funs))
+      stat = factor(.data$stat, levels = names(stat_funs))
     )
 
-  # Merge correlations (unconditional anomalies)
-  stats.allcor <- sim.results$cor %>%
-    dplyr::left_join(
-      obs.results$cor,
-      by = c("id1", "variable1", "id2", "variable2")
-    )
+  stats_allcor <- sim_results$cor %>%
+    dplyr::left_join(obs_results$cor, by = c("id1", "variable1", "id2", "variable2"))
 
-  # Merge conditional precip correlations (within-grid; new)
-  stats.allcor.cond <- sim.results$cor.cond %>%
-    dplyr::left_join(
-      obs.results$cor.cond,
-      by = c("id1", "variable1", "id2", "variable2", "regime", "transform")
-    )
+  stats_allcor_cond <- sim_results$cor_cond %>%
+    dplyr::left_join(obs_results$cor_cond, by = c("id1", "variable1", "id2", "variable2", "regime", "transform"))
 
-  # ---------------------------------------------------------------------------
-  # Robust ID + variable pairing without assuming ids are 1..n
-  # ---------------------------------------------------------------------------
+  ids <- sort(unique(obs_results$data$id))
+  id_pairs_allowed <- if (length(ids) >= 2) {
+    apply(utils::combn(ids, 2), 2, function(x) paste(x[1], x[2], sep = ":"))
+  } else character(0)
 
-  # Prefer IDs from the observed long data if available; otherwise infer from correlations
-  ids_from_obs <- NULL
-  if (!is.null(obs.results$data) && "id" %in% names(obs.results$data)) {
-    ids_from_obs <- sort(unique(obs.results$data$id))
-  }
+  vars_use <- sort(unique(as.character(vars)))
+  var_pairs_allowed <- if (length(vars_use) >= 2) {
+    apply(utils::combn(vars_use, 2), 2, function(x) paste(x[1], x[2], sep = ":"))
+  } else character(0)
 
-  ids_from_cor <- NULL
-  if (nrow(stats.allcor) > 0) {
-    ids_from_cor <- sort(unique(c(stats.allcor$id1, stats.allcor$id2)))
-  }
+  stats_crosscor <- filter_correlations(
+    cor_data = stats_allcor,
+    same_var = TRUE,
+    same_id = FALSE,
+    allowed_pairs = id_pairs_allowed,
+    pair_type = "id"
+  )
 
-  ids <- ids_from_obs
-  if (is.null(ids) || length(ids) == 0) ids <- ids_from_cor
-  if (is.null(ids) || length(ids) < 2) {
-    # no meaningful cross-grid pairs can be formed
-    ids <- unique(ids)
-  }
+  stats_intercor <- filter_correlations(
+    cor_data = stats_allcor,
+    same_var = FALSE,
+    same_id = TRUE,
+    allowed_pairs = var_pairs_allowed,
+    pair_type = "variable"
+  )
 
-  # Allowed grid-pair keys (order-invariant)
-  id_pairs_allowed <- character(0)
-  if (!is.null(ids) && length(ids) >= 2) {
-    id_pairs_allowed <- apply(utils::combn(ids, 2), 2, function(x) paste(x[1], x[2], sep = ":"))
-  }
-
-  # Allowed variable-pair keys (order-invariant)
-  vars_use <- unique(as.character(variables))
-  var_pairs_allowed <- character(0)
-  if (length(vars_use) >= 2) {
-    var_pairs_allowed <- apply(utils::combn(sort(vars_use), 2), 2, function(x) paste(x[1], x[2], sep = ":"))
-  }
-
-  # ---------------------------------------------------------------------------
-  # Cross-grid correlations: same variable, different grids
-  # ---------------------------------------------------------------------------
-
-  stats.crosscor <- filter_correlations(cor_data = stats.allcor,
-                                        same_var = TRUE, same_id = FALSE, allowed_pairs = id_pairs_allowed,
-                                        pair_type = "id")
-
-  # ---------------------------------------------------------------------------
-  # Inter-variable correlations: same grid, different variables
-  # ---------------------------------------------------------------------------
-
-  stats.intercor <- filter_correlations(cor_data = stats.allcor,
-                                        same_var = FALSE, same_id = TRUE, allowed_pairs = var_pairs_allowed,
-                                        pair_type = "variable")
-
-  # ---------------------------------------------------------------------------
-  # Wet/dry statistics
-  # ---------------------------------------------------------------------------
-
-  stats.wetdry <- sim.results$wetdry %>%
-    dplyr::left_join(
-      obs.results$wetdry,
-      by = c("id", "mon", "variable", "stat", "type")
-    ) %>%
+  stats_wetdry <- sim_results$wetdry %>%
+    dplyr::left_join(obs_results$wetdry, by = c("id", "mon", "variable", "stat", "type")) %>%
     dplyr::mutate(stat = factor(.data$stat, levels = c("Dry", "Wet")))
 
   list(
-    daily.stats.season = daily.stats.season,
-    stats.mon.aavg.sim = sim.results$stats.mon.aavg,
-    stats.mon.aavg.obs = obs.results$stats.mon.aavg,
-    stats.annual.aavg.sim = sim.results$stats.annual.aavg,
-    stats.annual.aavg.obs = obs.results$stats.annual.aavg,
-    stats.crosscor = stats.crosscor,
-    stats.intercor = stats.intercor,
-    stats.wetdry = stats.wetdry,
-    stats.precip_cor_cond = stats.allcor.cond
+    daily_stats_season = daily_stats_season,
+    stats_mon_aavg_sim = sim_results$stats_mon_aavg,
+    stats_mon_aavg_obs = obs_results$stats_mon_aavg,
+    stats_annual_aavg_sim = sim_results$stats_annual_aavg,
+    stats_annual_aavg_obs = obs_results$stats_annual_aavg,
+    stats_crosscor = stats_crosscor,
+    stats_intercor = stats_intercor,
+    stats_wetdry = stats_wetdry,
+    stats_precip_cor_cond = stats_allcor_cond
   )
 }

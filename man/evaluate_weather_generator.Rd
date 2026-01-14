@@ -2,64 +2,73 @@
 % Please edit documentation in R/evaluate_generator.R
 \name{evaluate_weather_generator}
 \alias{evaluate_weather_generator}
-\title{Evaluate Stochastic Weather Generator Performance}
+\title{Evaluate stochastic weather generator performance (multi-grid, multi-realization)}
 \usage{
 evaluate_weather_generator(
-  daily.sim = NULL,
-  daily.obs = NULL,
-  variables = NULL,
-  variable.labels = NULL,
-  realization.num = NULL,
-  wet.quantile = 0.2,
-  extreme.quantile = 0.8,
-  output.path = NULL,
-  save.plots = TRUE,
-  show.title = TRUE,
-  max.grids = 25,
+  sim_data = NULL,
+  obs_data = NULL,
+  vars = NULL,
+  n_realizations = NULL,
+  wet_q = 0.2,
+  extreme_q = 0.8,
+  out_dir = NULL,
+  save_plot = TRUE,
+  show_title = TRUE,
+  max_grid = 25,
   seed = NULL
 )
 }
 \arguments{
-\item{daily.sim}{List of simulated weather realizations. Each element should be
-a list of data frames (one per grid cell), containing daily values and a `date` column.}
+\item{sim_data}{List of synthetic realizations. Each element is a list of data.frames
+(one per grid cell). Each grid data.frame must include a \code{date} column and
+the variables listed in \code{vars}.}
 
-\item{daily.obs}{List of observed weather data frames (one per grid cell). Each
-should contain a `date` column and the variables specified in `variables`.}
+\item{obs_data}{List of observed grid data.frames (one per grid cell). Each must include
+a \code{date} column and the variables listed in \code{vars}.}
 
-\item{variables}{Character vector of variable names to evaluate (e.g., `c("precip", "temp")`).
-Must include "precip" for wet/dry spell analysis.}
+\item{vars}{Character vector of variables to evaluate (e.g., \code{c("prcp", "temp")}).
+Must include \code{"prcp"} to enable wet/dry day and spell diagnostics.}
 
-\item{variable.labels}{Optional character vector of variable labels for plots.
-Defaults to `variables` if `NULL`.}
+\item{n_realizations}{Integer. Number of realizations in \code{sim_data}. Must equal \code{length(sim_data)}.}
 
-\item{realization.num}{Integer. Number of synthetic realizations in `daily.sim`.}
+\item{wet_q}{Numeric in (0, 1). Monthly quantile threshold to define wet days from positive
+precipitation values (default = 0.2).}
 
-\item{wet.quantile}{Numeric between 0 and 1. Quantile threshold for wet days
-(default = 0.2).}
+\item{extreme_q}{Numeric in (0, 1). Monthly quantile threshold to define extremely wet days
+from positive precipitation values (default = 0.8). Must be > \code{wet_q}.}
 
-\item{extreme.quantile}{Numeric between 0 and 1. Quantile threshold for extremely
-wet days (default = 0.8).}
+\item{out_dir}{Character. Directory to save plots. If \code{NULL}, plots are not saved.}
 
-\item{output.path}{Character. Directory path to save generated plots. If `NULL`,
-plots are not saved to disk.}
+\item{save_plot}{Logical. If \code{TRUE}, save plots to \code{out_dir}.}
 
-\item{save.plots}{Logical. Whether to save plots to `output.path` (default = `TRUE`).}
+\item{show_title}{Logical. If \code{TRUE}, include plot titles.}
 
-\item{show.title}{Logical. Whether to display titles in plots (default = `TRUE`).}
+\item{max_grid}{Integer. Maximum number of grid cells to evaluate (default = 25).
+If \code{length(obs_data) > max_grid}, a random subset is used to control memory.}
 
-\item{max.grids}{Integer. Maximum number of grid cells to evaluate (default = 25).
-If more grids are provided, a random subsample is used to control memory.}
-
-\item{seed}{Optional integer. Random seed for reproducible grid subsampling and
-year window selection. If NULL, results will vary between runs.}
+\item{seed}{Optional integer. If provided, ensures reproducible grid subsampling and
+year-window selection.}
 }
 \value{
-A named list of `ggplot2` plot objects with class "weather_assessment".
-  The returned object also contains fit summary metrics stored as attributes.
+A named list of \code{ggplot2} objects with class \code{"weather_assessment"}.
+  The object includes attributes:
+  \itemize{
+    \item \code{fit_summary}: per-realization metrics and overall ranking
+    \item \code{metadata}: run configuration summary
+  }
 }
 \description{
-Comprehensive diagnostic evaluation comparing synthetic weather simulations
-against historical observations across multiple grid cells. Computes summary
-statistics, wet/dry day counts, spell lengths, and inter-site correlations,
-and generates diagnostic plots to assess stochastic weather generator performance.
+Comprehensive diagnostic evaluation comparing **synthetic daily simulations** against
+**historical daily observations** across multiple grid cells. The workflow:
+\itemize{
+  \item standardizes obs/sim periods to **full 365-day years** (leap days removed) and
+        matches lengths via random contiguous windows,
+  \item computes summary statistics (mean/sd/skewness), wet/dry day counts, wet/dry spell
+        lengths, and correlation diagnostics,
+  \item generates diagnostic plots and an overall fit summary across realizations.
+}
+
+Variable naming is aligned with the package API:
+precipitation is expected as \code{prcp}; temperature variables can be evaluated as
+\code{temp}, \code{temp_min}, \code{temp_max}, etc.
 }

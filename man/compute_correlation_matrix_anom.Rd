@@ -2,11 +2,11 @@
 % Please edit documentation in R/evaluate_generator.R
 \name{compute_correlation_matrix_anom}
 \alias{compute_correlation_matrix_anom}
-\title{Compute correlation matrix on monthly anomalies}
+\title{Compute correlation matrix on monthly anomalies (grid:variable pairs)}
 \usage{
-compute_correlation_matrix_anom(data, variables)
+compute_correlation_matrix_anom(data, vars)
 }
 \description{
-Compute correlation matrix on monthly anomalies
+Compute correlation matrix on monthly anomalies (grid:variable pairs)
 }
 \keyword{internal}

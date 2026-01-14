@@ -2,11 +2,11 @@
 % Please edit documentation in R/evaluate_generator.R
 \name{filter_df_to_years}
 \alias{filter_df_to_years}
-\title{Filter a single grid df to selected years (keeps original columns)}
+\title{Filter a single grid data.frame to selected years}
 \usage{
-filter_df_to_years(df, years_keep)
+filter_df_to_years(df, year_keep)
 }
 \description{
-Filter a single grid df to selected years (keeps original columns)
+Filter a single grid data.frame to selected years
 }
 \keyword{internal}

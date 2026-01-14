@@ -2,17 +2,32 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{create_wetdry_days_plot}
 \alias{create_wetdry_days_plot}
-\title{Create wet/dry days count plot}
+\title{Create wet/dry day count diagnostic plot}
 \usage{
 create_wetdry_days_plot(
-  stats.wetdry,
-  plot.config,
-  show.title,
-  save.plots,
-  output.path
+  stats_wetdry,
+  plot_config,
+  show_title,
+  save_plots,
+  out_dir
 )
 }
+\arguments{
+\item{stats_wetdry}{Data frame of wet/dry diagnostics including day-count statistics.}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+ggplot object (returned invisibly by \code{export_multipanel_plot()}).
+}
 \description{
-Create wet/dry days count plot
+Observed-vs-simulated comparison of average monthly wet and dry day counts, faceted
+by statistic. Uses dummy points to enforce symmetric axes per facet.
 }
 \keyword{internal}

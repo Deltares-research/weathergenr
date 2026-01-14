@@ -4,33 +4,9 @@
 \alias{compute_quantile_diagnostics}
 \title{Compute quantile diagnostics for quantile-mapped precipitation}
 \usage{
-compute_quantile_diagnostics(value.original, value.adjusted, quantiles)
-}
-\arguments{
-\item{value.original}{Numeric vector. Original precipitation values (typically filtered
-to non-zero or wet days upstream).}
-
-\item{value.adjusted}{Numeric vector. Adjusted precipitation values, same length as
-\code{value.original}.}
-
-\item{quantiles}{Numeric vector in [0, 1]. Quantile probabilities to evaluate.}
-}
-\value{
-A data.frame with one row per requested probability and columns:
-\code{quantile}, \code{original}, \code{adjusted}, \code{ratio}, \code{diff},
-\code{pct.change}, \code{abs.error}, \code{assessment}.
+compute_quantile_diagnostics(prcp_ref, prcp_adj, probs)
 }
 \description{
-Compares specified quantiles between original and adjusted series and reports
-relative and absolute differences with a simple qualitative assessment.
-}
-\details{
-Quantiles are computed with \code{stats::quantile(..., na.rm = TRUE)}. Percent change
-is computed from the ratio \code{adjusted/original}. Assessment thresholds currently are:
-\itemize{
-  \item \code{"good"}: |pct.change| < 5
-  \item \code{"acceptable"}: 5 <= |pct.change| < 15
-  \item \code{"poor"}: |pct.change| >= 15
-}
+Compute quantile diagnostics for quantile-mapped precipitation
 }
 \keyword{internal}

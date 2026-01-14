@@ -1,7 +1,6 @@
 # ==============================================================================
-# UNIT TESTS FOR quantile_mapping()
+# UNIT TESTS FOR perturb_prcp_qm()
 # ==============================================================================
-
 
 # ==============================================================================
 # TEST FIXTURES AND HELPER FUNCTIONS
@@ -26,16 +25,16 @@ generate_test_precip <- function(n_years = 2, seed = 123) {
   seasonal_mean <- c(8, 7, 6, 4, 3, 2, 2, 3, 4, 5, 6, 7)[month_idx]
 
   # Generate gamma-distributed precipitation
-  precip <- rgamma(n_days, shape = 2, scale = seasonal_mean / 2)
+  prcp <- rgamma(n_days, shape = 2, scale = seasonal_mean / 2)
 
   # Add some dry days (~30%)
   dry_days <- sample(n_days, size = floor(n_days * 0.3))
-  precip[dry_days] <- 0
+  prcp[dry_days] <- 0
 
   list(
-    value = precip,
-    mon.ts = month_idx,
-    year.ts = year_idx,
+    prcp = prcp,
+    month = month_idx,
+    year = year_idx,
     n_days = n_days,
     n_years = n_years
   )
@@ -46,8 +45,8 @@ generate_test_precip <- function(n_years = 2, seed = 123) {
 #' @keywords internal
 create_change_factors <- function(n_years, mean_factor = 1.1, var_factor = 1.2) {
   list(
-    mean.change = matrix(mean_factor, nrow = n_years, ncol = 12),
-    var.change = matrix(var_factor, nrow = n_years, ncol = 12)
+    mean_factor = matrix(mean_factor, nrow = n_years, ncol = 12),
+    var_factor  = matrix(var_factor,  nrow = n_years, ncol = 12)
   )
 }
 
@@ -56,96 +55,92 @@ create_change_factors <- function(n_years, mean_factor = 1.1, var_factor = 1.2) 
 # BASIC FUNCTIONALITY TESTS
 # ==============================================================================
 
-test_that("quantile_mapping returns correct length output", {
+test_that("perturb_prcp_qm returns correct length output", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  expect_equal(length(result), length(data$value))
+  expect_equal(length(result), length(data$prcp))
   expect_type(result, "double")
 })
 
 
-test_that("quantile_mapping preserves zeros (dry days)", {
+test_that("perturb_prcp_qm preserves zeros (dry days)", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Zeros should remain zeros
-  expect_equal(sum(data$value == 0), sum(result == 0))
-  expect_true(all(result[data$value == 0] == 0))
+  expect_equal(sum(data$prcp == 0), sum(result == 0))
+  expect_true(all(result[data$prcp == 0] == 0))
 })
 
 
-test_that("quantile_mapping increases mean when mean.change > 1", {
+test_that("perturb_prcp_qm increases mean when mean_factor > 1", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2, mean_factor = 1.5, var_factor = 1.0)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Mean should increase (excluding zeros)
-  nonzero_original <- data$value[data$value > 0]
+  nonzero_original <- data$prcp[data$prcp > 0]
   nonzero_result <- result[result > 0]
 
   expect_true(mean(nonzero_result) > mean(nonzero_original))
 })
 
 
-test_that("quantile_mapping increases variance when var.change > 1", {
+test_that("perturb_prcp_qm increases variance when var_factor > 1", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2, mean_factor = 1.0, var_factor = 2.0)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Variance should increase (excluding zeros)
-  nonzero_original <- data$value[data$value > 0]
+  nonzero_original <- data$prcp[data$prcp > 0]
   nonzero_result <- result[result > 0]
 
   expect_true(var(nonzero_result) > var(nonzero_original))
 })
 
 
-test_that("quantile_mapping with no change returns similar distribution", {
+test_that("perturb_prcp_qm with no change returns similar distribution", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2, mean_factor = 1.0, var_factor = 1.0)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Should be very similar (within 5% due to numerical precision)
-  nonzero_idx <- data$value > 0
-  relative_diff <- abs(result[nonzero_idx] - data$value[nonzero_idx]) / data$value[nonzero_idx]
+  nonzero_idx <- data$prcp > 0
+  relative_diff <- abs(result[nonzero_idx] - data$prcp[nonzero_idx]) / data$prcp[nonzero_idx]
 
   expect_true(median(relative_diff) < 0.05)
 })
@@ -155,162 +150,164 @@ test_that("quantile_mapping with no change returns similar distribution", {
 # INPUT VALIDATION TESTS
 # ==============================================================================
 
-test_that("quantile_mapping rejects NULL inputs", {
+test_that("perturb_prcp_qm rejects NULL inputs", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
   expect_error(
-    quantile_mapping(
-      value = NULL,
-      mean.change = changes$mean.change,
-      var.change = changes$var.change,
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = NULL,
+      mean_factor = changes$mean_factor,
+      var_factor = changes$var_factor,
+      month = data$month,
+      year = data$year
     ),
-    "'value' must not be NULL"
+    "'prcp' must not be NULL"
   )
 
   expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = NULL,
-      var.change = changes$var.change,
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = NULL,
+      var_factor = changes$var_factor,
+      month = data$month,
+      year = data$year
     ),
-    "'mean.change' must not be NULL"
+    "'mean_factor' must not be NULL"
   )
 })
 
 
-test_that("quantile_mapping rejects mismatched lengths", {
+test_that("perturb_prcp_qm rejects mismatched lengths", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
   expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = changes$mean.change,
-      var.change = changes$var.change,
-      mon.ts = data$mon.ts[1:100],  # Wrong length
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = changes$mean_factor,
+      var_factor = changes$var_factor,
+      month = data$month[1:100],  # wrong length
+      year = data$year
     ),
-    "'mon.ts' must have same length as 'value'"
+    "'month' must have same length as 'prcp'"
   )
 })
 
 
-test_that("quantile_mapping rejects negative precipitation", {
+test_that("perturb_prcp_qm rejects negative precipitation", {
   data <- generate_test_precip(n_years = 2)
-  data$value[1] <- -1  # Invalid
+  data$prcp[1] <- -1
   changes <- create_change_factors(n_years = 2)
 
   expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = changes$mean.change,
-      var.change = changes$var.change,
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = changes$mean_factor,
+      var_factor = changes$var_factor,
+      month = data$month,
+      year = data$year
     ),
-    "'value' must be non-negative"
+    "'prcp' must be non-negative"
   )
 })
 
 
-test_that("quantile_mapping rejects invalid month indices", {
+test_that("perturb_prcp_qm rejects invalid month indices", {
   data <- generate_test_precip(n_years = 2)
-  data$mon.ts[1] <- 13  # Invalid month
+  data$month[1] <- 13
   changes <- create_change_factors(n_years = 2)
 
   expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = changes$mean.change,
-      var.change = changes$var.change,
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = changes$mean_factor,
+      var_factor = changes$var_factor,
+      month = data$month,
+      year = data$year
     ),
-    "'mon.ts' must contain integers between 1 and 12"
+    "'month' must contain integers between 1 and 12"
   )
 })
 
 
-test_that("quantile_mapping rejects non-matrix change factors", {
+test_that("perturb_prcp_qm rejects non-matrix change factors", {
   data <- generate_test_precip(n_years = 2)
 
   expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = rep(1.1, 24),  # Vector, not matrix
-      var.change = matrix(1.2, nrow = 2, ncol = 12),
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = rep(1.1, 24),  # vector, not matrix
+      var_factor = matrix(1.2, nrow = 2, ncol = 12),
+      month = data$month,
+      year = data$year
     ),
-    "'mean.change' must be a matrix"
+    "'mean_factor' must be a matrix with nrow = n_years, ncol = 12"
   )
 })
 
 
-test_that("quantile_mapping rejects wrong matrix dimensions", {
+test_that("perturb_prcp_qm rejects wrong matrix dimensions", {
   data <- generate_test_precip(n_years = 2)
 
   expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = matrix(1.1, nrow = 2, ncol = 6),  # Wrong number of columns
-      var.change = matrix(1.2, nrow = 2, ncol = 12),
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = matrix(1.1, nrow = 2, ncol = 6),  # wrong columns
+      var_factor = matrix(1.2, nrow = 2, ncol = 12),
+      month = data$month,
+      year = data$year
     ),
-    "'mean.change' must have 12 columns"
+    "'mean_factor' must have 12 columns \\(one per month\\)"
   )
 
   expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = matrix(1.1, nrow = 3, ncol = 12),  # Wrong number of rows
-      var.change = matrix(1.2, nrow = 3, ncol = 12),
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = matrix(1.1, nrow = 3, ncol = 12), # wrong rows (n_years = 2)
+      var_factor = matrix(1.2, nrow = 3, ncol = 12),
+      month = data$month,
+      year = data$year
     ),
-    "'mean.change' must have 2 rows"
+    "'mean_factor' must have 2 rows \\(one per year\\)"
   )
 })
 
 
-test_that("quantile_mapping rejects negative change factors", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-  changes$mean.change[1, 1] <- -0.5  # Negative factor
-
-  expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = changes$mean.change,
-      var.change = changes$var.change,
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
-    ),
-    "'mean.change' must contain positive values"
-  )
-})
 
 
-test_that("quantile_mapping rejects zero change factors", {
+test_that("perturb_prcp_qm rejects negative change factors", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
-  changes$var.change[1, 1] <- 0  # Zero factor
+  changes$mean_factor[1, 1] <- -0.5
 
   expect_error(
-    quantile_mapping(
-      value = data$value,
-      mean.change = changes$mean.change,
-      var.change = changes$var.change,
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = changes$mean_factor,
+      var_factor = changes$var_factor,
+      month = data$month,
+      year = data$year
     ),
-    "'var.change' must contain positive values"
+    "'mean_factor' must contain positive values"
+  )
+})
+
+
+test_that("perturb_prcp_qm rejects zero change factors", {
+  data <- generate_test_precip(n_years = 2)
+  changes <- create_change_factors(n_years = 2)
+  changes$var_factor[1, 1] <- 0
+
+  expect_error(
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = changes$mean_factor,
+      var_factor = changes$var_factor,
+      month = data$month,
+      year = data$year
+    ),
+    "'var_factor' must contain positive values"
   )
 })
 
@@ -319,148 +316,138 @@ test_that("quantile_mapping rejects zero change factors", {
 # EDGE CASES AND ROBUSTNESS TESTS
 # ==============================================================================
 
-test_that("quantile_mapping handles all-zero input", {
+test_that("perturb_prcp_qm handles all-zero input", {
   data <- generate_test_precip(n_years = 2)
-  data$value[] <- 0  # All zeros
+  data$prcp[] <- 0
   changes <- create_change_factors(n_years = 2)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts,
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year,
     verbose = FALSE
   )
 
-  expect_equal(result, data$value)
+  expect_equal(result, data$prcp)
   expect_true(all(result == 0))
 })
 
 
-test_that("quantile_mapping handles insufficient data in some months", {
+test_that("perturb_prcp_qm handles insufficient data in some months", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  # Make January almost all zeros (< 10 non-zero events)
-  jan_idx <- which(data$mon.ts == 1)
-  data$value[jan_idx[1:55]] <- 0
+  jan_idx <- which(data$month == 1)
+  data$prcp[jan_idx[1:55]] <- 0
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts,
-    min.events = 10,
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year,
+    min_events = 10,
     verbose = FALSE
   )
 
-  # Should still return valid output
-  expect_equal(length(result), length(data$value))
+  expect_equal(length(result), length(data$prcp))
 
-  # Check that January was skipped
   skipped <- attr(result, "skipped_months")
   expect_true(1 %in% skipped)
 })
 
 
-test_that("quantile_mapping handles very small precipitation values", {
+test_that("perturb_prcp_qm handles very small precipitation values", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  # Add some very small values
-  small_idx <- sample(which(data$value > 0), 50)
-  data$value[small_idx] <- runif(50, 0.001, 0.01)
+  small_idx <- sample(which(data$prcp > 0), 50)
+  data$prcp[small_idx] <- runif(50, 0.001, 0.01)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Should handle without errors
-  expect_equal(length(result), length(data$value))
+  expect_equal(length(result), length(data$prcp))
   expect_true(all(is.finite(result)))
 })
 
 
-test_that("quantile_mapping handles extreme change factors", {
+test_that("perturb_prcp_qm handles extreme change factors", {
   data <- generate_test_precip(n_years = 2)
 
-  # Very large increase
   changes_large <- create_change_factors(n_years = 2, mean_factor = 5.0, var_factor = 10.0)
 
-  result_large <- quantile_mapping(
-    value = data$value,
-    mean.change = changes_large$mean.change,
-    var.change = changes_large$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result_large <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes_large$mean_factor,
+    var_factor = changes_large$var_factor,
+    month = data$month,
+    year = data$year
   )
 
   expect_true(all(is.finite(result_large)))
-  expect_true(mean(result_large) > mean(data$value))
+  expect_true(mean(result_large) > mean(data$prcp))
 
-  # Very small decrease
   changes_small <- create_change_factors(n_years = 2, mean_factor = 0.2, var_factor = 0.5)
 
-  result_small <- quantile_mapping(
-    value = data$value,
-    mean.change = changes_small$mean.change,
-    var.change = changes_small$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result_small <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes_small$mean_factor,
+    var_factor = changes_small$var_factor,
+    month = data$month,
+    year = data$year
   )
 
   expect_true(all(is.finite(result_small)))
-  expect_true(mean(result_small[result_small > 0]) < mean(data$value[data$value > 0]))
+  expect_true(mean(result_small[result_small > 0]) < mean(data$prcp[data$prcp > 0]))
 })
 
 
-test_that("quantile_mapping handles single year data", {
+test_that("perturb_prcp_qm handles single year data", {
   data <- generate_test_precip(n_years = 1)
   changes <- create_change_factors(n_years = 1)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  expect_equal(length(result), length(data$value))
+  expect_equal(length(result), length(data$prcp))
   expect_true(all(is.finite(result)))
 })
 
 
-test_that("quantile_mapping handles varying change factors by year", {
+test_that("perturb_prcp_qm handles varying change factors by year", {
   data <- generate_test_precip(n_years = 3)
 
-  # Create time-varying changes (increasing over years)
-  mean.change <- matrix(NA, nrow = 3, ncol = 12)
-  var.change <- matrix(NA, nrow = 3, ncol = 12)
+  mean_factor <- matrix(NA_real_, nrow = 3, ncol = 12)
+  var_factor  <- matrix(NA_real_, nrow = 3, ncol = 12)
 
   for (y in 1:3) {
-    mean.change[y, ] <- 1.0 + (y - 1) * 0.05  # 1.0, 1.05, 1.10
-    var.change[y, ] <- 1.0 + (y - 1) * 0.10   # 1.0, 1.10, 1.20
+    mean_factor[y, ] <- 1.0 + (y - 1) * 0.05
+    var_factor[y, ]  <- 1.0 + (y - 1) * 0.10
   }
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = mean.change,
-    var.change = var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Calculate mean by year
-  year_means <- tapply(result[result > 0], data$year.ts[result > 0], mean)
+  year_means <- tapply(result[result > 0], data$year[result > 0], mean)
 
-  # Means should increase over years
   expect_true(year_means[2] > year_means[1])
   expect_true(year_means[3] > year_means[2])
 })
@@ -470,16 +457,16 @@ test_that("quantile_mapping handles varying change factors by year", {
 # ATTRIBUTE AND DIAGNOSTIC TESTS
 # ==============================================================================
 
-test_that("quantile_mapping returns diagnostic attributes", {
+test_that("perturb_prcp_qm returns diagnostic attributes", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
   expect_true(!is.null(attr(result, "perturbed_months")))
@@ -492,21 +479,20 @@ test_that("quantile_mapping returns diagnostic attributes", {
 })
 
 
-test_that("quantile_mapping verbose mode produces messages", {
+test_that("perturb_prcp_qm verbose mode produces messages", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  # Force insufficient data in one month
-  jan_idx <- which(data$mon.ts == 1)
-  data$value[jan_idx[1:58]] <- 0
+  jan_idx <- which(data$month == 1)
+  data$prcp[jan_idx[1:58]] <- 0
 
   expect_message(
-    quantile_mapping(
-      value = data$value,
-      mean.change = changes$mean.change,
-      var.change = changes$var.change,
-      mon.ts = data$mon.ts,
-      year.ts = data$year.ts,
+    perturb_prcp_qm(
+      prcp = data$prcp,
+      mean_factor = changes$mean_factor,
+      var_factor = changes$var_factor,
+      month = data$month,
+      year = data$year,
       verbose = TRUE
     ),
     "Skipping months"
@@ -518,57 +504,52 @@ test_that("quantile_mapping verbose mode produces messages", {
 # STATISTICAL PROPERTIES TESTS
 # ==============================================================================
 
-test_that("quantile_mapping preserves distribution shape (relative)", {
+test_that("perturb_prcp_qm preserves distribution shape (relative)", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2, mean_factor = 1.5, var_factor = 1.5)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Check coefficient of variation (CV) is similar
-  # CV = sd / mean should be approximately preserved with proportional changes
-  nonzero_original <- data$value[data$value > 0]
+  nonzero_original <- data$prcp[data$prcp > 0]
   nonzero_result <- result[result > 0]
 
   cv_original <- sd(nonzero_original) / mean(nonzero_original)
   cv_result <- sd(nonzero_result) / mean(nonzero_result)
 
-  # Should be within 20% (allowing for sampling variability)
   expect_true(abs(cv_result - cv_original) / cv_original < 0.2)
 })
 
 
-test_that("quantile_mapping maintains monthly patterns", {
+test_that("perturb_prcp_qm maintains monthly patterns", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2, mean_factor = 1.2, var_factor = 1.2)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Calculate monthly means (excluding zeros)
   monthly_means_original <- tapply(
-    data$value[data$value > 0],
-    data$mon.ts[data$value > 0],
+    data$prcp[data$prcp > 0],
+    data$month[data$prcp > 0],
     mean
   )
 
   monthly_means_result <- tapply(
     result[result > 0],
-    data$mon.ts[result > 0],
+    data$month[result > 0],
     mean
   )
 
-  # Correlation between monthly means should be high
   cor_monthly <- cor(monthly_means_original, monthly_means_result, use = "complete.obs")
   expect_true(cor_monthly > 0.95)
 })
@@ -578,36 +559,32 @@ test_that("quantile_mapping maintains monthly patterns", {
 # FITTING METHOD TESTS
 # ==============================================================================
 
-test_that("quantile_mapping works with different fitting methods", {
+test_that("perturb_prcp_qm works with different fitting methods", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  # Method of moments (default)
-  result_mme <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts,
-    fit.method = "mme"
+  result_mme <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year,
+    fit_method = "mme"
   )
 
-  # Maximum likelihood
-  result_mle <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts,
-    fit.method = "mle"
+  result_mle <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year,
+    fit_method = "mle"
   )
 
-  # Both should produce valid results
   expect_true(all(is.finite(result_mme)))
   expect_true(all(is.finite(result_mle)))
 
-  # Results should be similar but not identical
-  nonzero_idx <- data$value > 0
+  nonzero_idx <- data$prcp > 0
   cor_methods <- cor(result_mme[nonzero_idx], result_mle[nonzero_idx])
   expect_true(cor_methods > 0.99)
 })
@@ -617,39 +594,37 @@ test_that("quantile_mapping works with different fitting methods", {
 # VALIDATION FEATURE TESTS
 # ==============================================================================
 
-test_that("quantile_mapping validates output by default", {
+test_that("perturb_prcp_qm validates output by default", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts,
-    validate.output = TRUE
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year,
+    validate_output = TRUE
   )
 
-  # Should have no NaN or Inf values
   expect_true(all(is.finite(result)))
 })
 
 
-test_that("quantile_mapping can disable output validation", {
+test_that("perturb_prcp_qm can disable output validation", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  # This should not error even if validation is off
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts,
-    validate.output = FALSE
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year,
+    validate_output = FALSE
   )
 
-  expect_equal(length(result), length(data$value))
+  expect_equal(length(result), length(data$prcp))
 })
 
 
@@ -657,48 +632,47 @@ test_that("quantile_mapping can disable output validation", {
 # PERFORMANCE AND STRESS TESTS
 # ==============================================================================
 
-test_that("quantile_mapping handles large datasets efficiently", {
-  skip_on_cran()  # Skip on CRAN to avoid long test times
+test_that("perturb_prcp_qm handles large datasets efficiently", {
+  skip_on_cran()
 
   data <- generate_test_precip(n_years = 10)
   changes <- create_change_factors(n_years = 10)
 
-  # Should complete in reasonable time (< 5 seconds)
   expect_lt(
     system.time({
-      result <- quantile_mapping(
-        value = data$value,
-        mean.change = changes$mean.change,
-        var.change = changes$var.change,
-        mon.ts = data$mon.ts,
-        year.ts = data$year.ts
+      result <- perturb_prcp_qm(
+        prcp = data$prcp,
+        mean_factor = changes$mean_factor,
+        var_factor = changes$var_factor,
+        month = data$month,
+        year = data$year
       )
     })["elapsed"],
     5.0
   )
 
-  expect_equal(length(result), length(data$value))
+  expect_equal(length(result), length(data$prcp))
 })
 
 
-test_that("quantile_mapping is deterministic with same input", {
+test_that("perturb_prcp_qm is deterministic with same input", {
   data <- generate_test_precip(n_years = 2, seed = 456)
   changes <- create_change_factors(n_years = 2)
 
-  result1 <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result1 <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  result2 <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result2 <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
   expect_equal(result1, result2)
@@ -706,119 +680,71 @@ test_that("quantile_mapping is deterministic with same input", {
 
 
 # ==============================================================================
-# INTEGRATION TESTS
-# ==============================================================================
-
-# ==============================================================================
 # INTEGRATION TESTS (REVISED)
 # ==============================================================================
 
-test_that("quantile_mapping integrates with real-world workflow", {
-  # Simulate a realistic climate change scenario
-  set.seed(98765)  # Use a different seed that works better
+test_that("perturb_prcp_qm integrates with real-world workflow", {
+  set.seed(98765)
   data <- generate_test_precip(n_years = 5, seed = 98765)
 
-  # Create realistic change factors (gradual increase over years)
-  mean.change <- matrix(NA, nrow = 5, ncol = 12)
-  var.change <- matrix(NA, nrow = 5, ncol = 12)
+  mean_factor <- matrix(NA_real_, nrow = 5, ncol = 12)
+  var_factor  <- matrix(NA_real_, nrow = 5, ncol = 12)
 
   for (y in 1:5) {
-    # Mean increases by 3% per year
-    mean.change[y, ] <- 1.0 + (y - 1) * 0.03
+    mean_factor[y, ] <- 1.0 + (y - 1) * 0.03
+    var_factor[y, ]  <- 1.0 + (y - 1) * 0.05
 
-    # Variance increases by 5% per year
-    var.change[y, ] <- 1.0 + (y - 1) * 0.05
-
-    # Winter months (12, 1, 2) have larger increases
     winter_months <- c(12, 1, 2)
-    mean.change[y, winter_months] <- mean.change[y, winter_months] * 1.1
-    var.change[y, winter_months] <- var.change[y, winter_months] * 1.2
+    mean_factor[y, winter_months] <- mean_factor[y, winter_months] * 1.1
+    var_factor[y, winter_months]  <- var_factor[y, winter_months] * 1.2
   }
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = mean.change,
-    var.change = var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # ============================================================================
-  # TEST 1: Basic output validation
-  # ============================================================================
   expect_true(all(is.finite(result)))
   expect_true(all(result >= 0))
-  expect_equal(length(result), length(data$value))
+  expect_equal(length(result), length(data$prcp))
 
-  # ============================================================================
-  # TEST 2: Dry day frequency preservation
-  # ============================================================================
-  expect_equal(sum(data$value == 0), sum(result == 0))
+  expect_equal(sum(data$prcp == 0), sum(result == 0))
 
-  # ============================================================================
-  # TEST 3: Overall mean increase (most robust test)
-  # ============================================================================
-  # With all change factors >= 1.0, overall mean MUST increase
-  overall_mean_original <- mean(data$value[data$value > 0])
+  overall_mean_original <- mean(data$prcp[data$prcp > 0])
   overall_mean_result <- mean(result[result > 0])
   expect_true(overall_mean_result > overall_mean_original)
 
-  # ============================================================================
-  # TEST 4: Overall variance increase
-  # ============================================================================
-  # With all variance change factors >= 1.0, overall variance should increase
-  overall_var_original <- var(data$value[data$value > 0])
+  overall_var_original <- var(data$prcp[data$prcp > 0])
   overall_var_result <- var(result[result > 0])
   expect_true(overall_var_result > overall_var_original)
 
-  # ============================================================================
-  # TEST 5: Year 1 vs Year 5 comparison (direct test of time-varying factors)
-  # ============================================================================
-  # Year 5 has 12% higher mean change factor than Year 1
-  # So Year 5 should have noticeably higher mean
-  year1_values <- result[result > 0 & data$year.ts == 1]
-  year5_values <- result[result > 0 & data$year.ts == 5]
+  year1_values <- result[result > 0 & data$year == 1]
+  year5_values <- result[result > 0 & data$year == 5]
 
   year1_mean <- mean(year1_values)
   year5_mean <- mean(year5_values)
 
-  # Year 5 should be at least 8% higher than Year 1
-  # (conservative estimate accounting for stochastic variability)
   expect_true(year5_mean > year1_mean * 1.08)
 
-  # ============================================================================
-  # TEST 6: Month-specific changes (winter months should increase more)
-  # ============================================================================
-  # Winter months in Year 5 should have higher values due to extra multiplier
-  winter_idx <- data$mon.ts %in% c(12, 1, 2) & data$year.ts == 5 & result > 0
-  summer_idx <- data$mon.ts %in% c(6, 7, 8) & data$year.ts == 5 & result > 0
+  winter_idx <- data$month %in% c(12, 1, 2) & data$year == 5 & result > 0
+  summer_idx <- data$month %in% c(6, 7, 8) & data$year == 5 & result > 0
 
   if (sum(winter_idx) > 10 && sum(summer_idx) > 10) {
     winter_mean <- mean(result[winter_idx])
     summer_mean <- mean(result[summer_idx])
-
-    # Winter should have higher values (due to larger change factors)
-    # This tests that month-specific factors are being applied
     expect_true(winter_mean > summer_mean)
   }
 
-  # ============================================================================
-  # TEST 7: Verify function actually modified the data
-  # ============================================================================
-  # At least 80% of non-zero values should have changed
-  nonzero_idx <- data$value > 0
-  changed <- result[nonzero_idx] != data$value[nonzero_idx]
+  nonzero_idx <- data$prcp > 0
+  changed <- result[nonzero_idx] != data$prcp[nonzero_idx]
   expect_true(mean(changed) > 0.8)
 
-  # ============================================================================
-  # TEST 8: Rank preservation within month-year combinations
-  # ============================================================================
-  # Quantile mapping should preserve ranks within each month-year
-  # Test for Month 6, Year 3 (arbitrary choice with likely enough data)
-  test_idx <- data$mon.ts == 6 & data$year.ts == 3 & data$value > 0
-
+  test_idx <- data$month == 6 & data$year == 3 & data$prcp > 0
   if (sum(test_idx) > 5) {
-    original_ranks <- rank(data$value[test_idx])
+    original_ranks <- rank(data$prcp[test_idx])
     result_ranks <- rank(result[test_idx])
     expect_equal(original_ranks, result_ranks)
   }
@@ -829,42 +755,39 @@ test_that("quantile_mapping integrates with real-world workflow", {
 # COMPARISON WITH ORIGINAL VALUES TESTS
 # ==============================================================================
 
-test_that("quantile_mapping with extreme decrease doesn't create negative values", {
+test_that("perturb_prcp_qm with extreme decrease doesn't create negative values", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2, mean_factor = 0.1, var_factor = 0.1)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
   expect_true(all(result >= 0))
 })
 
 
-test_that("quantile_mapping rank preservation within months", {
+test_that("perturb_prcp_qm rank preservation within months", {
   data <- generate_test_precip(n_years = 2)
   changes <- create_change_factors(n_years = 2)
 
-  result <- quantile_mapping(
-    value = data$value,
-    mean.change = changes$mean.change,
-    var.change = changes$var.change,
-    mon.ts = data$mon.ts,
-    year.ts = data$year.ts
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year
   )
 
-  # Check rank preservation for a specific month
-  month_idx <- which(data$mon.ts == 6 & data$value > 0)
+  month_idx <- which(data$month == 6 & data$prcp > 0)
 
   if (length(month_idx) > 5) {
-    original_ranks <- rank(data$value[month_idx])
+    original_ranks <- rank(data$prcp[month_idx])
     result_ranks <- rank(result[month_idx])
-
-    # Ranks should be identical (quantile mapping preserves order)
     expect_equal(original_ranks, result_ranks)
   }
 })

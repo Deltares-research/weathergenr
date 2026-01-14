@@ -4,29 +4,9 @@
 \alias{compute_dryday_diagnostics}
 \title{Compute dry-day and wet-day frequency diagnostics}
 \usage{
-compute_dryday_diagnostics(value.original, value.adjusted, threshold)
-}
-\arguments{
-\item{value.original}{Numeric vector. Original precipitation values.}
-
-\item{value.adjusted}{Numeric vector. Adjusted precipitation values, same length as
-\code{value.original}.}
-
-\item{threshold}{Numeric scalar. Wet-day threshold; values < threshold are classified as dry
-and values >= threshold as wet.}
-}
-\value{
-A data.frame with four rows (dry/wet counts and frequencies) and columns:
-\code{category}, \code{original}, \code{adjusted}, \code{difference}, \code{pct.change},
-\code{assessment}.
+compute_dryday_diagnostics(prcp_ref, prcp_adj, wet_thresh)
 }
 \description{
-Compares dry and wet day counts and frequencies between original and adjusted series
-given a wet-day threshold.
-}
-\details{
-The function reports both counts and frequencies (count divided by total length).
-Percent change is computed as \code{adjusted/original - 1}. If original counts are zero
-(edge case), percent change may be \code{Inf} or \code{NaN}.
+Compute dry-day and wet-day frequency diagnostics
 }
 \keyword{internal}

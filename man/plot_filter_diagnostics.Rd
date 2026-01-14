@@ -5,39 +5,39 @@
 \title{Create diagnostic plots for filtered pool}
 \usage{
 plot_filter_diagnostics(
-  obs.use,
-  series_sim_for_stats,
+  obs_series,
+  sim_series,
   pool,
-  rel.diff.mean,
-  rel.diff.sd,
+  rel_diff_mean,
+  rel_diff_sd,
   tail_metrics,
-  power.period,
-  power.obs,
-  power.signif,
-  gws_cache_mat,
+  power_period,
+  power_obs,
+  power_signif,
+  gws_cache,
   wavelet_q = c(0.05, 0.95)
 )
 }
 \arguments{
-\item{obs.use}{Numeric vector of observed values}
+\item{obs_series}{Numeric vector of observed values}
 
-\item{series_sim_for_stats}{Numeric matrix of simulated values}
+\item{sim_series}{Numeric matrix of simulated values}
 
 \item{pool}{Integer vector of pool indices}
 
-\item{rel.diff.mean}{Relative differences in mean}
+\item{rel_diff_mean}{Relative differences in mean}
 
-\item{rel.diff.sd}{Relative differences in SD}
+\item{rel_diff_sd}{Relative differences in SD}
 
 \item{tail_metrics}{Tail metrics list}
 
-\item{power.period}{Wavelet periods}
+\item{power_period}{Wavelet periods}
 
-\item{power.obs}{Observed GWS}
+\item{power_obs}{Observed GWS}
 
-\item{power.signif}{Significance curve}
+\item{power_signif}{Significance curve}
 
-\item{gws_cache_mat}{Cached GWS matrix (n_periods x n_realizations)}
+\item{gws_cache}{Cached GWS matrix (n_periods x n_realizations)}
 
 \item{wavelet_q}{Two quantiles for ribbon (e.g., c(0.50, 0.95))}
 }
@@ -45,7 +45,7 @@ plot_filter_diagnostics(
 List of ggplot objects (timeseries, stats, wavelet_gws)
 }
 \description{
-Internal function used by filter_warm_simulations() to create diagnostic plots.
+Internal function used by filter_warm_pool() to create diagnostic plots.
 Shows time series, statistics scatter, and wavelet GWS comparisons.
 }
 \keyword{internal}

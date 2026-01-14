@@ -12,19 +12,18 @@ relax_bounds_one_filter(
 )
 }
 \arguments{
-\item{filter_name}{Character. Name of filter to relax}
+\item{filter_name}{Character. Name of filter to relax.}
 
-\item{bounds_env}{Environment containing bounds}
+\item{bounds_env}{Environment containing bounds (snake_case keys).}
 
-\item{wavelet_active_env}{Environment containing wavelet_active flag}
+\item{wavelet_active_env}{Environment containing wavelet_active flag.}
 
-\item{recompute_tailmass_fn}{Function to recompute tail mass when thresholds change}
+\item{recompute_tailmass_fn}{Function to recompute tail mass when thresholds change.}
 }
 \value{
-List with changed (logical) and msg (character)
+List with changed (logical) and msg (character).
 }
 \description{
-Applies one relaxation step to a single filter. Updates bounds in place
-and returns status.
+Applies one relaxation step to a single filter. Updates bounds in place.
 }
 \keyword{internal}

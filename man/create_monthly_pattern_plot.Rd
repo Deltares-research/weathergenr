@@ -5,17 +5,35 @@
 \title{Create monthly pattern plot for a single variable}
 \usage{
 create_monthly_pattern_plot(
-  stats.mon.aavg.sim,
-  stats.mon.aavg.obs,
+  stats_mon_aavg_sim,
+  stats_mon_aavg_obs,
   variable,
-  variable.label,
-  plot.config,
-  show.title,
-  save.plots,
-  output.path
+  plot_config,
+  show_title,
+  save_plots,
+  out_dir
 )
 }
+\arguments{
+\item{stats_mon_aavg_sim}{Data frame of simulated monthly aggregated statistics.}
+
+\item{stats_mon_aavg_obs}{Data frame of observed monthly aggregated statistics.}
+
+\item{variable}{Character; variable name to plot (must exist in the inputs).}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, colors, subtitle, etc.).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+ggplot object (returned invisibly by \code{export_multipanel_plot()}).
+}
 \description{
-Create monthly pattern plot for a single variable
+Compares observed and simulated monthly distributions (boxplots) for a given variable,
+faceted by statistic. Simulated distributions are shown across realizations.
 }
 \keyword{internal}

@@ -4,7 +4,7 @@
 \alias{process_simulated_data}
 \title{Process simulated weather data}
 \usage{
-process_simulated_data(daily.sim, realization.num, variables, mc.thresholds)
+process_simulated_data(sim_data, n_realizations, vars, mc_thresholds)
 }
 \description{
 Process simulated weather data

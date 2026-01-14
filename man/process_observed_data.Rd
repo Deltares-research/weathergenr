@@ -4,13 +4,7 @@
 \alias{process_observed_data}
 \title{Process observed weather data}
 \usage{
-process_observed_data(
-  daily.obs,
-  variables,
-  n_grids,
-  wet.quantile,
-  extreme.quantile
-)
+process_observed_data(obs_data, vars, n_grid, wet_q, extreme_q)
 }
 \description{
 Process observed weather data

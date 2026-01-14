@@ -2,13 +2,11 @@
 % Please edit documentation in R/evaluate_generator.R
 \name{standardize_obs_sim_periods}
 \alias{standardize_obs_sim_periods}
-\title{Standardize obs and sim to same full-year length via random windowing
-Applies the chosen window consistently across all grids and all realizations.}
+\title{Standardize obs and sim to same full-year length via random windowing}
 \usage{
-standardize_obs_sim_periods(daily.obs, daily.sim, realization.num, variables)
+standardize_obs_sim_periods(obs_data, sim_data, n_realizations)
 }
 \description{
 Standardize obs and sim to same full-year length via random windowing
-Applies the chosen window consistently across all grids and all realizations.
 }
 \keyword{internal}

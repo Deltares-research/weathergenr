@@ -2,11 +2,11 @@
 % Please edit documentation in R/evaluate_generator.R
 \name{pick_year_window}
 \alias{pick_year_window}
-\title{Pick a random contiguous window of years of length n_years from a year vector}
+\title{Pick a random contiguous window of years of length n_year}
 \usage{
-pick_year_window(years, n_years)
+pick_year_window(year, n_year)
 }
 \description{
-Pick a random contiguous window of years of length n_years from a year vector
+Pick a random contiguous window of years of length n_year
 }
 \keyword{internal}

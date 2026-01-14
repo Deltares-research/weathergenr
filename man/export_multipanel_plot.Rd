@@ -2,19 +2,38 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{export_multipanel_plot}
 \alias{export_multipanel_plot}
-\title{Export multi-panel plot}
+\title{Export a faceted (multi-panel) ggplot}
 \usage{
 export_multipanel_plot(
   p,
   filename,
-  show.title,
-  save.plots,
+  show_title,
+  save_plots,
   title = NULL,
   subtitle = NULL,
-  output.path
+  out_dir
 )
 }
+\arguments{
+\item{p}{ggplot object, typically faceted via \code{facet_wrap()} or \code{facet_grid()}.}
+
+\item{filename}{Character; output filename (e.g., \code{"daily_mean.png"}).}
+
+\item{show_title}{Logical; if \code{TRUE}, adds \code{title}/\code{subtitle} via \code{labs()}.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
+
+\item{title}{Character; plot title (only used when \code{show_title = TRUE}).}
+
+\item{subtitle}{Character; plot subtitle (only used when \code{show_title = TRUE}).}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+The ggplot object \code{p}, returned invisibly.
+}
 \description{
-Export multi-panel plot
+Adds title/subtitle (optional) and saves the plot to disk (optional), using
+facet layout to infer width/height. Returns the plot invisibly.
 }
 \keyword{internal}

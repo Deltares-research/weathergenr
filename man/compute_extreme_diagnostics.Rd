@@ -4,33 +4,9 @@
 \alias{compute_extreme_diagnostics}
 \title{Compute extreme-value diagnostics for quantile-mapped precipitation}
 \usage{
-compute_extreme_diagnostics(value.original, value.adjusted)
-}
-\arguments{
-\item{value.original}{Numeric vector. Original precipitation values (typically filtered
-to non-zero or wet days upstream).}
-
-\item{value.adjusted}{Numeric vector. Adjusted precipitation values, same length as
-\code{value.original}.}
-}
-\value{
-A data.frame with one row per threshold probability and columns:
-\itemize{
-  \item \code{threshold}: Probability used for \code{quantile()}.
-  \item \code{original.threshold}, \code{adjusted.threshold}: Exceedance cutoffs.
-  \item \code{original.mean}, \code{adjusted.mean}: Mean above cutoff.
-  \item \code{original.max}, \code{adjusted.max}: Max above cutoff.
-  \item \code{threshold.ratio}, \code{mean.ratio}, \code{max.ratio}: Adjusted/original ratios.
-}
+compute_extreme_diagnostics(prcp_ref, prcp_adj)
 }
 \description{
-Evaluates tail behavior by comparing exceedance thresholds and summary statistics
-of values above those thresholds for original and adjusted series.
-}
-\details{
-For each threshold probability \code{p} in \code{c(0.90, 0.95, 0.99, 0.999)},
-the function computes the empirical quantile \code{Q(p)} and then computes
-the mean and maximum of the subset \code{x[x >= Q(p)]}. Ratios are returned for
-threshold, mean, and max.
+Compute extreme-value diagnostics for quantile-mapped precipitation
 }
 \keyword{internal}

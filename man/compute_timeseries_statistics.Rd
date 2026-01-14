@@ -2,11 +2,11 @@
 % Please edit documentation in R/evaluate_generator.R
 \name{compute_timeseries_statistics}
 \alias{compute_timeseries_statistics}
-\title{Compute time series statistics}
+\title{Compute time series statistics used by the assessment}
 \usage{
-compute_timeseries_statistics(data, variables, mc.thresholds)
+compute_timeseries_statistics(data, vars, mc_thresholds)
 }
 \description{
-Compute time series statistics
+Compute time series statistics used by the assessment
 }
 \keyword{internal}

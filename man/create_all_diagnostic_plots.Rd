@@ -5,16 +5,32 @@
 \title{Create all diagnostic plots}
 \usage{
 create_all_diagnostic_plots(
-  plot.data,
-  plot.config,
-  variables,
-  variable.labels,
-  show.title,
-  save.plots,
-  output.path
+  plot_data,
+  plot_config,
+  vars,
+  show_title,
+  save_plot,
+  out_dir
 )
 }
+\arguments{
+\item{plot_data}{List of precomputed diagnostic datasets produced by the evaluation pipeline.}
+
+\item{plot_config}{List of plotting configuration options (theme, alpha, colors, subtitle).}
+
+\item{vars}{Character vector of variable names to loop over for monthly pattern plots.}
+
+\item{show_title}{Logical; if \code{TRUE}, titles/subtitles are added to plots where supported.}
+
+\item{save_plot}{Logical; if \code{TRUE}, plots are written to \code{out_dir}.}
+
+\item{out_dir}{Character; output directory for saved plots.}
+}
+\value{
+Named list of ggplot objects for all diagnostics created.
+}
 \description{
-Create all diagnostic plots
+Runs the full set of diagnostic plotting routines and returns a named list of ggplot
+objects. Optionally saves plots to disk (delegated to the individual plot exporters).
 }
 \keyword{internal}
