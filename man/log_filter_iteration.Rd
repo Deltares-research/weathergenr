@@ -2,7 +2,7 @@
 % Please edit documentation in R/warm_filtering.R
 \name{log_filter_iteration}
 \alias{log_filter_iteration}
-\title{Log filter iteration details with table format}
+\title{Log filter iteration details}
 \usage{
 log_filter_iteration(
   iter,
@@ -18,27 +18,30 @@ log_filter_iteration(
 )
 }
 \arguments{
-\item{iter}{Iteration number}
+\item{iter}{Integer scalar. Iteration number.}
 
-\item{passes}{List of pass vectors}
+\item{passes}{Named list of logical vectors. Per-filter pass vectors.}
 
-\item{pool}{Vector of pool indices}
+\item{pool}{Integer vector. Pool indices passing all active filters.}
 
-\item{n_total}{Total number of realizations}
+\item{n_total}{Integer scalar. Total number of realizations.}
 
-\item{target}{Target pool size}
+\item{target}{Integer scalar. Target pool size.}
 
-\item{bounds}{Bounds environment or list}
+\item{bounds}{Environment or list of bounds.}
 
-\item{tail_metrics}{Tail metrics list}
+\item{tail_metrics}{List. Tail metrics used for criteria display.}
 
-\item{wavelet_active}{Logical}
+\item{wavelet_active}{Logical scalar.}
 
-\item{wavelet_pars}{Wavelet parameters list}
+\item{wavelet_pars}{List. Wavelet parameter list.}
 
-\item{note}{Optional note string}
+\item{note}{Optional character scalar.}
+}
+\value{
+Invisibly returns NULL.
 }
 \description{
-Prints iteration diagnostics in table format for all iterations.
+Internal helper. Prints iteration diagnostics in a compact table-like format.
 }
 \keyword{internal}

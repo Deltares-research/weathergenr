@@ -26,8 +26,8 @@ the variables listed in \code{vars}.}
 \item{obs_data}{List of observed grid data.frames (one per grid cell). Each must include
 a \code{date} column and the variables listed in \code{vars}.}
 
-\item{vars}{Character vector of variables to evaluate (e.g., \code{c("prcp", "temp")}).
-Must include \code{"prcp"} to enable wet/dry day and spell diagnostics.}
+\item{vars}{Character vector of variables to evaluate (e.g., \code{c("precip", "temp")}).
+Must include \code{"precip"} to enable wet/dry day and spell diagnostics.}
 
 \item{n_realizations}{Integer. Number of realizations in \code{sim_data}. Must equal \code{length(sim_data)}.}
 
@@ -69,6 +69,6 @@ Comprehensive diagnostic evaluation comparing **synthetic daily simulations** ag
 }
 
 Variable naming is aligned with the package API:
-precipitation is expected as \code{prcp}; temperature variables can be evaluated as
+precipitation is expected as \code{precip}; temperature variables can be evaluated as
 \code{temp}, \code{temp_min}, \code{temp_max}, etc.
 }
