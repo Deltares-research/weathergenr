@@ -126,21 +126,27 @@ plot_wavelet_power <- function(
     ymax = rep(yb$upper, each = n_time),
     z = as.vector(t(z))
   )
-  df_power <- df_power[is.finite(df_power$z), ]
 
-  zlims <- quantile(df_power$z, c(0.05, 0.95), na.rm = TRUE)
+  # compute limits from finite z only (but do NOT drop rows)
+  zlims <- stats::quantile(df_power$z[is.finite(df_power$z)], c(0.05, 0.95), na.rm = TRUE)
+
+  y_limits <- range(c(yb$lower, yb$upper), finite = TRUE)
+  x_limits <- range(c(xb$lower, xb$upper), finite = TRUE)
 
   p_spectrum <- ggplot(df_power) +
     theme_light() +
     geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = z)) +
-    scale_y_reverse(expand = c(0, 0)) +
-    scale_x_continuous(expand = c(0, 0)) +
-    scale_fill_viridis_c(limits = zlims, oob = squish) +
+    scale_y_reverse(limits = rev(y_limits), expand = c(0, 0)) +
+    scale_x_continuous(limits = x_limits, expand = c(0, 0)) +
+    scale_fill_viridis_c(option = "C", na.value = "white",
+      limits = zlims, oob = scales::squish) +
     labs(x = "Time", y = "Period (years)") +
     guides(fill = "none") +
-    geom_line(data = data.frame(x = time_axis, y = coi),
-              aes(x = x, y = y),
-              linetype = "dashed", color = "red") +
+    geom_line(
+      data = data.frame(x = time_axis, y = coi),
+      aes(x = x, y = y),
+      linetype = "dashed", color = "red"
+    ) +
     stat_contour(
       data = data.frame(
         x = rep(time_axis, times = n_period),
@@ -151,6 +157,41 @@ plot_wavelet_power <- function(
       breaks = 1,
       color = "black"
     )
+
+  # df_power <- data.frame(
+  #   x = rep(time_axis, times = n_period),
+  #   y = rep(period, each = n_time),
+  #   xmin = rep(xb$lower, times = n_period),
+  #   xmax = rep(xb$upper, times = n_period),
+  #   ymin = rep(yb$lower, each = n_time),
+  #   ymax = rep(yb$upper, each = n_time),
+  #   z = as.vector(t(z))
+  # )
+  # df_power <- df_power[is.finite(df_power$z), ]
+  #
+  # zlims <- quantile(df_power$z, c(0.05, 0.95), na.rm = TRUE)
+  #
+  # p_spectrum <- ggplot(df_power) +
+  #   theme_light() +
+  #   geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = z)) +
+  #   scale_y_reverse(expand = c(0, 0)) +
+  #   scale_x_continuous(expand = c(0, 0)) +
+  #   scale_fill_viridis_c(limits = zlims, oob = squish) +
+  #   labs(x = "Time", y = "Period (years)") +
+  #   guides(fill = "none") +
+  #   geom_line(data = data.frame(x = time_axis, y = coi),
+  #             aes(x = x, y = y),
+  #             linetype = "dashed", color = "red") +
+  #   stat_contour(
+  #     data = data.frame(
+  #       x = rep(time_axis, times = n_period),
+  #       y = rep(period, each = n_time),
+  #       z = as.vector(t(signif_mask))
+  #     ),
+  #     aes(x = x, y = y, z = z),
+  #     breaks = 1,
+  #     color = "black"
+  #   )
 
   gws_df <- data.frame(period = period, gws = gws, signif = gws_signif)
 

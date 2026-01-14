@@ -2,20 +2,23 @@
 % Please edit documentation in R/warm_filtering.R
 \name{log_final_summary}
 \alias{log_final_summary}
-\title{Log final summary}
+\title{Log final filtering summary}
 \usage{
 log_final_summary(pool_size, n_total, n_sampled, relaxation_level)
 }
 \arguments{
-\item{pool_size}{Final pool size}
+\item{pool_size}{Integer scalar. Final pool size.}
 
-\item{n_total}{Total realizations}
+\item{n_total}{Integer scalar. Total realizations.}
 
-\item{n_sampled}{Number sampled}
+\item{n_sampled}{Integer scalar. Number sampled.}
 
-\item{relaxation_level}{Relaxation level reached}
+\item{relaxation_level}{Character scalar. Selection mode / relaxation level reached.}
+}
+\value{
+Invisibly returns NULL.
 }
 \description{
-Displays final filtering results.
+Internal helper. Displays final filtering results.
 }
 \keyword{internal}

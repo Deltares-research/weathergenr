@@ -253,3 +253,9 @@ assess_moment_changes <- function(moments_df) {
 
   invisible(NULL)
 }
+
+#' Internal logging
+#' @keywords internal
+.log <- function(msg, tag = NULL) {
+  .log_info(msg, verbose = verbose, tag = tag)
+}

@@ -206,7 +206,7 @@ filter_warm_pool <- function(
   # Base statistics
   # ---------------------------------------------------------------------------
   if (verbose) {
-    log_step("Computing", sprintf("mean, sd, tail mass for observed and %d simulated series", n_rlz))
+    log_step(sprintf("Computing mean, sd, tail mass for observed and %d simulated series", n_rlz))
   }
 
   obs_mean <- mean(obs_use)
@@ -247,7 +247,7 @@ filter_warm_pool <- function(
   # Wavelet metrics + caching (snake_case inside diagnostics)
   # ---------------------------------------------------------------------------
   if (verbose) {
-    log_step("Computing wavelet spectra for", sprintf("observed and %d simulated series", n_rlz))
+    log_step("Computing wavelet spectra for the observed and %d simulated series", n_rlz)
   }
 
   wavelet_results <- compute_wavelet_metrics(
@@ -517,13 +517,13 @@ filter_warm_pool <- function(
 filter_warm_bounds_defaults <- function() {
   list(
     # --- distributional tolerances (relative diff) ---
-    mean = 0.05,
-    sd   = 0.05,
+    mean = 0.03,
+    sd   = 0.03,
 
     # --- tail behaviour (quantile-defined tails + log-distance tol) ---
     tail_low_p   = 0.20,
     tail_high_p  = 0.80,
-    tail_tol_log = log(1.05),
+    tail_tol_log = log(1.03),
     tail_eps     = 1e-5,
 
     # --- wavelet (observed-relevant regions) ---

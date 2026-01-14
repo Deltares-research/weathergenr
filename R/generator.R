@@ -12,7 +12,7 @@
 #'   \item daily KNN resampling of precipitation and temperature anomalies.
 #' }
 #'
-#' The simulation-year definition is inferred from \code{year_start_month}:
+#' The simulation-year defINITIALIZEion is inferred from \code{year_start_month}:
 #' \itemize{
 #'   \item \code{year_start_month == 1}: calendar-year simulation,
 #'   \item \code{year_start_month != 1}: water-year simulation starting in \code{year_start_month}.
@@ -79,14 +79,14 @@
 #'   factors applied in the Markov-chain persistence logic.
 #' @param out_dir Character directory for diagnostics and CSV outputs. The
 #'   directory is created if it does not exist.
-#' @param seed Optional integer seed for reproducibility. Used to initialize
+#' @param seed Optional integer seed for reproducibility. Used to INITIALIZEialize
 #'   RNG streams for annual (WARM) and daily resampling components.
 #' @param parallel Logical; if \code{TRUE}, run the daily disaggregation across
 #'   realizations in parallel using a PSOCK cluster.
 #' @param n_cores Optional integer number of cores for parallel execution. If
 #'   \code{NULL} and \code{parallel = TRUE}, defaults to
 #'   \code{max(1, parallel::detectCores() - 1)}.
-#' @param verbose Logical; if \code{TRUE}, emits progress logs via \code{.log_info()}.
+#' @param verbose Logical; if \code{TRUE}, emits progress logs via \code{.log()}.
 #'
 #' @return A list with:
 #' \describe{
@@ -160,10 +160,6 @@ generate_weather <- function(
   start_time <- Sys.time()
   verbose <- isTRUE(verbose)
 
-  .log <- function(msg, tag = NULL) {
-    .log_info(msg, verbose = verbose, tag = tag)
-  }
-
   # ---------------------------------------------------------------------------
   # Setup
   # ---------------------------------------------------------------------------
@@ -221,20 +217,21 @@ generate_weather <- function(
     if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
     on.exit(parallel::stopCluster(cl), add = TRUE)
 
-    .log("Starting in parallel mode", tag = "INIT")
-    .log("Number of cores: {n_cores}", tag = "INIT")
+    .log("Starting in parallel mode", tag = "INITIALIZE")
+    .log("Number of cores: {n_cores}", tag = "INITIALIZE")
   } else {
-    .log("Starting in sequential mode", tag = "INIT")
+    .log("Starting in sequential mode", tag = "INITIALIZE")
   }
 
   # ---------------------------------------------------------------------------
-  # Initialization logging
+  # Initial Logging
   # ---------------------------------------------------------------------------
+
   n_grids <- length(obs_data)
-  .log("Randomization seed: {seed}", tag = "INIT")
-  .log("Climate variables: {paste(vars, collapse = ', ')}", tag = "INIT")
-  .log("Total number of grids: {n_grids}", tag = "INIT")
-  .log("Historical period: {obs_dates[1]} to {obs_dates[length(obs_dates)]}", tag = "INIT")
+  .log("Randomization seed: {seed}", tag = "INITIALIZE")
+  .log(paste0("Variables: ", paste(as.character(vars), collapse = ", ")), tag = "INITIALIZE")
+  .log("Total number of grids: {n_grids}", tag = "INITIALIZE")
+  .log("Historical period: {obs_dates[1]} to {obs_dates[length(obs_dates)]}", tag = "INITIALIZE")
 
   # ---------------------------------------------------------------------------
   # Calendar normalization (enforce 365-day calendar)
@@ -252,7 +249,7 @@ generate_weather <- function(
       df[-leap_idx, , drop = FALSE]
     })
 
-    .log("Dropped {length(leap_idx)} row(s): 365-day calendar enforced", tag = "INIT")
+    .log("Dropped {length(leap_idx)} row(s): 365-day calendar enforced", tag = "INITIALIZE")
   }
 
   # ---------------------------------------------------------------------------
@@ -307,7 +304,7 @@ generate_weather <- function(
   wyear_idx <- match(dates_d$dateo, obs_dates)
   if (anyNA(wyear_idx)) stop("Internal error: dates_d$dateo did not match obs_dates.", call. = FALSE)
 
-  .log("Using {length(full_wyears)} complete year(s) ({min(full_wyears)}-{max(full_wyears)})", tag = "INIT")
+  .log("Using {length(full_wyears)} complete year(s) ({min(full_wyears)}-{max(full_wyears)})", tag = "INITIALIZE")
 
   # ---------------------------------------------------------------------------
   # Area-averaged daily and annual climate series
@@ -436,9 +433,12 @@ generate_weather <- function(
 
   tryCatch(
     {
-      ggsave(file.path(out_dir, "warm_annual_series.png"), sim_annual_sub$plots[[1]], width = 8, height = 5)
-      ggsave(file.path(out_dir, "warm_annual_statistics.png"), sim_annual_sub$plots[[2]], width = 8, height = 5)
-      ggsave(file.path(out_dir, "warm_annual_wavelet.png"), sim_annual_sub$plots[[3]], width = 8, height = 5)
+      ggsave(file.path(out_dir, "warm_annual_series.png"),
+             sim_annual_sub$plots[[1]], width = pl_width, height = pl_height)
+      ggsave(file.path(out_dir, "warm_annual_statistics.png"),
+             sim_annual_sub$plots[[2]], width = pl_width, height = pl_height)
+      ggsave(file.path(out_dir, "warm_annual_wavelet.png"),
+             sim_annual_sub$plots[[3]], width = pl_width, height = pl_height)
     },
     error = function(e) logger::log_warn("Failed to save warm plots: {e$message}")
   )

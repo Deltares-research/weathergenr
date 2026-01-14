@@ -84,7 +84,7 @@ factors applied in the Markov-chain persistence logic.}
 \item{out_dir}{Character directory for diagnostics and CSV outputs. The
 directory is created if it does not exist.}
 
-\item{seed}{Optional integer seed for reproducibility. Used to initialize
+\item{seed}{Optional integer seed for reproducibility. Used to INITIALIZEialize
 RNG streams for annual (WARM) and daily resampling components.}
 
 \item{parallel}{Logical; if \code{TRUE}, run the daily disaggregation across
@@ -94,7 +94,7 @@ realizations in parallel using a PSOCK cluster.}
 \code{NULL} and \code{parallel = TRUE}, defaults to
 \code{max(1, parallel::detectCores() - 1)}.}
 
-\item{verbose}{Logical; if \code{TRUE}, emits progress logs via \code{.log_info()}.}
+\item{verbose}{Logical; if \code{TRUE}, emits progress logs via \code{.log()}.}
 }
 \value{
 A list with:
@@ -118,7 +118,7 @@ The workflow combines:
   \item daily KNN resampling of precipitation and temperature anomalies.
 }
 
-The simulation-year definition is inferred from \code{year_start_month}:
+The simulation-year defINITIALIZEion is inferred from \code{year_start_month}:
 \itemize{
   \item \code{year_start_month == 1}: calendar-year simulation,
   \item \code{year_start_month != 1}: water-year simulation starting in \code{year_start_month}.

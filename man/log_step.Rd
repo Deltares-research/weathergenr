@@ -7,11 +7,14 @@
 log_step(step_name, details = NULL)
 }
 \arguments{
-\item{step_name}{Name of the step}
+\item{step_name}{Character scalar. Name of the step.}
 
-\item{details}{Optional details string}
+\item{details}{Optional character scalar. Details string.}
+}
+\value{
+Invisibly returns NULL.
 }
 \description{
-Displays progress message for major computational steps.
+Internal helper. Displays progress message for major computational steps.
 }
 \keyword{internal}

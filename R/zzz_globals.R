@@ -18,3 +18,8 @@ rlz <- id1 <- id2 <- variable1 <- variable2 <- type <- Observed <- Stochastic <-
 wet_th <- Simulated <- 0
 x <- y <- z <- 0
 metric <- baseline <- low <- high <- month <- 0
+
+
+## GGPLOT constants
+pl_width <- 8
+pl_height <- 5
