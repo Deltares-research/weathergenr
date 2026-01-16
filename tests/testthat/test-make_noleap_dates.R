@@ -1,6 +1,6 @@
 test_that("returns correct length and Date class", {
 
-  out <- make_noleap_dates("1980-01-01", 365)
+  out <- generate_noleap_dates("1980-01-01", 365)
 
   expect_s3_class(out, "Date")
   expect_length(out, 365)
@@ -9,7 +9,7 @@ test_that("returns correct length and Date class", {
 
 test_that("never includes February 29", {
 
-  out <- make_noleap_dates("1980-01-01", 2000)
+  out <- generate_noleap_dates("1980-01-01", 2000)
 
   expect_false(any(format(out, "%m-%d") == "02-29"))
 })
@@ -17,7 +17,7 @@ test_that("never includes February 29", {
 
 test_that("start_date on Feb 29 is normalized to Feb 28", {
 
-  out <- make_noleap_dates("2000-02-29", 3)
+  out <- generate_noleap_dates("2000-02-29", 3)
 
   expect_identical(
     format(out[1], "%m-%d"),
@@ -28,7 +28,7 @@ test_that("start_date on Feb 29 is normalized to Feb 28", {
 
 test_that("dates progress monotonically without gaps", {
 
-  out <- make_noleap_dates("1999-12-30", 10)
+  out <- generate_noleap_dates("1999-12-30", 10)
 
   # Differences should always be 1 day
   expect_true(all(diff(out) == 1))
@@ -38,7 +38,7 @@ test_that("dates progress monotonically without gaps", {
 test_that("year increments exactly every 365 days", {
 
   start <- as.Date("2010-03-01")
-  out   <- make_noleap_dates(start, 800)
+  out   <- generate_noleap_dates(start, 800)
 
   years <- as.integer(format(out, "%Y"))
 
@@ -52,7 +52,7 @@ test_that("year increments exactly every 365 days", {
 
 test_that("month-day sequence repeats identically every 365 days", {
 
-  out <- make_noleap_dates("2015-01-01", 1000)
+  out <- generate_noleap_dates("2015-01-01", 1000)
 
   md <- format(out, "%m-%d")
 
@@ -65,7 +65,7 @@ test_that("month-day sequence repeats identically every 365 days", {
 
 test_that("start date aligns correctly with template", {
 
-  out <- make_noleap_dates("2021-06-15", 5)
+  out <- generate_noleap_dates("2021-06-15", 5)
 
   expect_identical(
     format(out, "%m-%d"),
@@ -76,7 +76,7 @@ test_that("start date aligns correctly with template", {
 
 test_that("supports n_dates = 1 edge case", {
 
-  out <- make_noleap_dates("1990-01-01", 1)
+  out <- generate_noleap_dates("1990-01-01", 1)
 
   expect_length(out, 1)
   expect_identical(out, as.Date("1990-01-01"))
@@ -85,7 +85,7 @@ test_that("supports n_dates = 1 edge case", {
 
 test_that("long sequences remain consistent over multiple synthetic years", {
 
-  out <- make_noleap_dates("1985-07-01", 5000)
+  out <- generate_noleap_dates("1985-07-01", 5000)
 
   # Still no leap days in month-day labels
   expect_false(any(format(out, "%m-%d") == "02-29"))

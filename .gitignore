@@ -1,11 +1,13 @@
-# R / IDE
-.Rproj.user
+# R / IDE (local state)
+.Rproj.user/
 .Rhistory
 .RData
 .Renviron
 .Rapp.history
 .Ruserdata
 .DS_Store
+
+# Credentials / tokens
 .httr-oauth
 
 # Build artifacts
@@ -13,18 +15,14 @@
 /*.tar.gz
 *-Ex.R
 
-# pkgdown (keep source folder tracked; ignore only build artifacts if any)
-/pkgdown/
-
 # Quarto/knitr artifacts
 vignettes/*_files/
 vignettes/*.html
+vignettes/.quarto/
 *_cache/
-/cache/
 /temp/
 
-# Misc
+# Misc local / manual
 /tests/tests_manual/
-man/.Rapp.history
 *.utf8.md
 *.knit.md

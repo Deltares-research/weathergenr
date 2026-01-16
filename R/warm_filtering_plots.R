@@ -108,6 +108,10 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
   par_labels <- c(mean = "Mean", sd = "Standard\nDeviation",
                   tail_low = "Dry extremes\n(lower-tail mass)", tail_high = "Wet extremes\n(upper-tail mass)")
 
+  stats_pool_long <- stats_df |>
+    tidyr::pivot_longer(cols = -idx, names_to = "par", values_to = "value") |>
+    dplyr::filter(is.finite(.data$value))
+
   stats_plot <- stats_pool_long |>
     dplyr::mutate(par = factor(.data$par, levels = c("mean", "sd", "tail_low", "tail_high")))
 

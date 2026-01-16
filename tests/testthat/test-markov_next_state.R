@@ -10,27 +10,27 @@ test_that("markov_next_state respects probability ordering", {
   p21 <- rep(0.4, 10)
 
   # State 0
-  expect_equal(weathergenr::markov_next_state(0, rn = 0.1, idx = 5,
+  expect_equal(weathergenr::markov_next_state(0, u_rand = 0.1, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 0)
-  expect_equal(weathergenr::markov_next_state(0, rn = 0.7, idx = 5,
+  expect_equal(weathergenr::markov_next_state(0, u_rand = 0.7, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 1)
-  expect_equal(weathergenr::markov_next_state(0, rn = 0.95, idx = 5,
+  expect_equal(weathergenr::markov_next_state(0, u_rand = 0.95, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 2)
 
   # State 1
-  expect_equal(weathergenr::markov_next_state(1, rn = 0.1, idx = 5,
+  expect_equal(weathergenr::markov_next_state(1, u_rand = 0.1, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 0)
-  expect_equal(weathergenr::markov_next_state(1, rn = 0.4, idx = 5,
+  expect_equal(weathergenr::markov_next_state(1, u_rand = 0.4, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 1)
-  expect_equal(weathergenr::markov_next_state(1, rn = 0.95, idx = 5,
+  expect_equal(weathergenr::markov_next_state(1, u_rand = 0.95, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 2)
 
   # State 2
-  expect_equal(weathergenr::markov_next_state(2, rn = 0.05, idx = 5,
+  expect_equal(weathergenr::markov_next_state(2, u_rand = 0.05, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 0)
-  expect_equal(weathergenr::markov_next_state(2, rn = 0.3, idx = 5,
+  expect_equal(weathergenr::markov_next_state(2, u_rand = 0.3, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 1)
-  expect_equal(weathergenr::markov_next_state(2, rn = 0.9, idx = 5,
+  expect_equal(weathergenr::markov_next_state(2, u_rand = 0.9, idx = 5,
                                               p00, p01, p10, p11, p20, p21), 2)
 })
 
@@ -46,7 +46,7 @@ test_that("markov_next_state handles NA probabilities safely", {
   p21 <- rep(NA_real_, 5)
 
   expect_silent(
-    state <- weathergenr::markov_next_state(0, rn = 0.5, idx = 3,
+    state <- weathergenr::markov_next_state(0, u_rand = 0.5, idx = 3,
                                             p00, p01, p10, p11, p20, p21)
   )
 
@@ -63,11 +63,11 @@ test_that("markov_next_state clamps probabilities when sum exceeds 1", {
   p20 <- rep(0.8, 5)
   p21 <- rep(0.6, 5)
 
-  # Suppress the repeated clamp warning spam from replicate()
+  # Suppress the repeated clamp wau_randing spam from replicate()
   out <- suppressWarnings(
     replicate(100, weathergenr::markov_next_state(
-      prev_state = 0,
-      rn = runif(1),
+      state_prev = 0,
+      u_rand = runif(1),
       idx = 3,
       p00, p01, p10, p11, p20, p21
     ))
@@ -98,7 +98,7 @@ test_that("markov_next_state handles invalid idx gracefully", {
   expect_true(out2 %in% 0:2)
 })
 
-test_that("markov_next_state handles invalid prev_state safely", {
+test_that("markov_next_state handles invalid state_prev safely", {
 
   p00 <- rep(0.6, 5)
   p01 <- rep(0.2, 5)
@@ -109,8 +109,8 @@ test_that("markov_next_state handles invalid prev_state safely", {
 
   out <- suppressWarnings(
     weathergenr::markov_next_state(
-      prev_state = 99,  # invalid
-      rn = 0.5,
+      state_prev = 99,  # invalid
+      u_rand = 0.5,
       idx = 2,
       p00, p01, p10, p11, p20, p21
     )
@@ -119,7 +119,7 @@ test_that("markov_next_state handles invalid prev_state safely", {
   expect_true(out %in% 0:2)
 })
 
-test_that("markov_next_state is reproducible for fixed rn", {
+test_that("markov_next_state is reproducible for fixed u_rand", {
 
   p00 <- rep(0.6, 10)
   p01 <- rep(0.2, 10)
@@ -128,10 +128,10 @@ test_that("markov_next_state is reproducible for fixed rn", {
   p20 <- rep(0.1, 10)
   p21 <- rep(0.3, 10)
 
-  rn <- 0.37
+  u_rand <- 0.37
 
-  out1 <- weathergenr::markov_next_state(0, rn, 5, p00, p01, p10, p11, p20, p21)
-  out2 <- weathergenr::markov_next_state(0, rn, 5, p00, p01, p10, p11, p20, p21)
+  out1 <- weathergenr::markov_next_state(0, u_rand, 5, p00, p01, p10, p11, p20, p21)
+  out2 <- weathergenr::markov_next_state(0, u_rand, 5, p00, p01, p10, p11, p20, p21)
 
   expect_identical(out1, out2)
 })
