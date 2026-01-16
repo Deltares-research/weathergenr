@@ -22,6 +22,7 @@ Imports:
     parallel,
     patchwork,
     stats,
+    quantmod,
     tidyr,
     utils,
     logger,

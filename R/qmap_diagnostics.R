@@ -679,11 +679,19 @@ summary.prcp_qm_diagnostics <- function(object, ...) {
 
   cat("\nMoments:\n")
   good_moments <- sum(object$moments$assessment %in% c("excellent", "good"))
-  cat(sprintf("  %d/%d metrics within acceptable range\n", good_moments, nrow(object$moments)))
+  cat(sprintf(
+    "  %s/%s metrics within acceptable range\n",
+    format(good_moments, big.mark = ","),
+    format(nrow(object$moments), big.mark = ",")
+  ))
 
   cat("\nQuantiles:\n")
   good_quant <- sum(object$quantiles$assessment == "good")
-  cat(sprintf("  %d/%d quantiles well preserved\n", good_quant, nrow(object$quantiles)))
+  cat(sprintf(
+    "  %s/%s quantiles well preserved\n",
+    format(good_quant, big.mark = ","),
+    format(nrow(object$quantiles), big.mark = ",")
+  ))
 
   cat("\nDry Days:\n")
   dd <- object$drydays

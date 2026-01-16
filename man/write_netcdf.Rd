@@ -46,7 +46,7 @@ mapping each list element to an output grid cell.}
 
 \item{signif_digits}{Integer. If not \code{NULL}, round values to this many significant digits.}
 
-\item{verbose}{Logical. If TRUE, emit progress logs via \code{.log_info()}.}
+\item{verbose}{Logical. If TRUE, emit progress logs via \code{.log()}.}
 }
 \value{
 Invisibly returns the written file path.
