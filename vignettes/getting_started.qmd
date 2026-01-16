@@ -1,4 +1,3 @@
-﻿---
 title: "Getting Started with weathergenr"
 description: "Read NetCDF inputs, generate stochastic realizations, and evaluate generator skill."
 format:
@@ -20,9 +19,8 @@ execute:
   freeze: auto
 vignette: >
   %\VignetteIndexEntry{Getting Started with weathergenr}
-  %\VignetteEngine{quarto::quarto}
+  %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
-  %\VignetteDepends{weathergenr, dplyr, ggplot2, tibble}
 ---
 
 # Introduction
@@ -102,7 +100,7 @@ The `data` element contains a list of data frames, one for each grid cell. Each 
 
 ```{r ncdata_timeseries}
 # Examine the first grid cell's time series
-ncdata$data[[1]]
+head(ncdata$data[[1]])
 ```
 
 This structure allows efficient access to complete time series for individual locations while maintaining a compact memory footprint.
@@ -113,7 +111,7 @@ The `grid` element provides spatial metadata for each grid cell:
 
 ```{r ncdata_grid}
 # View grid metadata
-ncdata$grid
+head(ncdata$grid)
 ```
 
 Each row describes a grid cell with:
