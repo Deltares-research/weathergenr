@@ -34,7 +34,7 @@ uniqueness or sorting of the output.
 \examples{
 base_idx <- c(5, 10)
 offset_vec <- -1:1
-expand_indices(base_idx, offset_vec, n_max = 15)
+weathergenr:::expand_indices(base_idx, offset_vec, n_max = 15)
 
 }
 \keyword{internal}

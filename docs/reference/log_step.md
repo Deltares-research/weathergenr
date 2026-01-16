@@ -1,6 +1,7 @@
 # Log major step progress
 
-Displays progress message for major computational steps.
+Internal helper. Displays progress message for major computational
+steps.
 
 ## Usage
 
@@ -12,8 +13,12 @@ log_step(step_name, details = NULL)
 
 - step_name:
 
-  Name of the step
+  Character scalar. Name of the step.
 
 - details:
 
-  Optional details string
+  Optional character scalar. Details string.
+
+## Value
+
+Invisibly returns NULL.

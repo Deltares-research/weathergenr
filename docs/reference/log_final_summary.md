@@ -1,6 +1,6 @@
-# Log final summary
+# Log final filtering summary
 
-Displays final filtering results.
+Internal helper. Displays final filtering results.
 
 ## Usage
 
@@ -12,16 +12,20 @@ log_final_summary(pool_size, n_total, n_sampled, relaxation_level)
 
 - pool_size:
 
-  Final pool size
+  Integer scalar. Final pool size.
 
 - n_total:
 
-  Total realizations
+  Integer scalar. Total realizations.
 
 - n_sampled:
 
-  Number sampled
+  Integer scalar. Number sampled.
 
 - relaxation_level:
 
-  Relaxation level reached
+  Character scalar. Selection mode / relaxation level reached.
+
+## Value
+
+Invisibly returns NULL.

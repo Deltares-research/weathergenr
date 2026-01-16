@@ -644,7 +644,7 @@ resample_weather_dates <- function(
 #' @examples
 #' base_idx <- c(5, 10)
 #' offset_vec <- -1:1
-#' expand_indices(base_idx, offset_vec, n_max = 15)
+#' weathergenr:::expand_indices(base_idx, offset_vec, n_max = 15)
 #'
 #' @keywords internal
 expand_indices <- function(base_idx, offset_vec, n_max) {
@@ -922,12 +922,14 @@ estimate_monthly_markov_probs <- function(
 #' returned vector is either \code{fallback_prob} or a uniform distribution.
 #'
 #' @examples
+#' \dontrun{
 #' prob <- c(0.2, NA, -0.1, 0.5)
 #' normalize_probs(prob)
 #'
 #' normalize_probs(c(0, 0, 0))
 #'
 #' normalize_probs(c(0, 0, 0), fallback_prob = c(0.7, 0.2, 0.1))
+#' }
 #'
 #' @keywords internal
 normalize_probs <- function(prob, fallback_prob = NULL) {
@@ -943,6 +945,7 @@ normalize_probs <- function(prob, fallback_prob = NULL) {
     }
   }
 }
+
 
 
 #' Determine Next State in a First-Order Markov Chain

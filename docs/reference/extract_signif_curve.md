@@ -1,20 +1,22 @@
-# Extract significance curve from wavelet analysis result
+# Extract Global-Spectrum Significance Curve
 
-Searches for GWS significance curve in wavelet analysis output. Tries
-multiple possible field names.
+Extracts a global-spectrum significance curve from a wavelet analysis
+output list. Intended as a small compatibility helper for downstream
+code that expects a single numeric vector. If not found, returns `NULL`.
 
 ## Usage
 
 ``` r
-extract_signif_curve(wv)
+extract_signif_curve(wavelet)
 ```
 
 ## Arguments
 
-- wv:
+- wavelet:
 
-  List output from wavelet_spectral_analysis()
+  List output from
+  [`analyze_wavelet_spectrum`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.md).
 
 ## Value
 
-Numeric vector of significance values, or NULL if not found
+Numeric vector of significance values, or `NULL` if not found.

@@ -1,6 +1,7 @@
-# Log filter iteration details with table format
+# Log filter iteration details
 
-Prints iteration diagnostics in table format for all iterations.
+Internal helper. Prints iteration diagnostics in a compact table-like
+format.
 
 ## Usage
 
@@ -23,40 +24,44 @@ log_filter_iteration(
 
 - iter:
 
-  Iteration number
+  Integer scalar. Iteration number.
 
 - passes:
 
-  List of pass vectors
+  Named list of logical vectors. Per-filter pass vectors.
 
 - pool:
 
-  Vector of pool indices
+  Integer vector. Pool indices passing all active filters.
 
 - n_total:
 
-  Total number of realizations
+  Integer scalar. Total number of realizations.
 
 - target:
 
-  Target pool size
+  Integer scalar. Target pool size.
 
 - bounds:
 
-  Bounds environment or list
+  Environment or list of bounds.
 
 - tail_metrics:
 
-  Tail metrics list
+  List. Tail metrics used for criteria display.
 
 - wavelet_active:
 
-  Logical
+  Logical scalar.
 
 - wavelet_pars:
 
-  Wavelet parameters list
+  List. Wavelet parameter list.
 
 - note:
 
-  Optional note string
+  Optional character scalar.
+
+## Value
+
+Invisibly returns NULL.

@@ -22,6 +22,7 @@
 ^README\.Rmd$
 ^README\.qmd$
 ^README_files$
+^README\.html$
 
 # Quarto build helpers / caches
 ^.*_cache$

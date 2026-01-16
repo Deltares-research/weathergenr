@@ -43,10 +43,52 @@
 
       <dl><dt>
 
+          <code><a href="analyze_wavelet_spectrum.html">analyze_wavelet_spectrum()</a></code>
+
+        </dt>
+        <dd>Continuous Wavelet Spectral Analysis with COI-Aware Significance</dd>
+
+        <dt>
+
           <code><a href="apply_climate_perturbations.html">apply_climate_perturbations()</a></code>
 
         </dt>
-        <dd>Apply Climate Change Perturbations to Gridded Weather Data</dd>
+        <dd>Apply monthly climate perturbations to gridded daily weather series</dd>
+
+        <dt>
+
+          <code><a href="calculate_monthly_pet.html">calculate_monthly_pet()</a></code>
+
+        </dt>
+        <dd>Calculate Monthly Potential Evapotranspiration (PET)</dd>
+
+        <dt>
+
+          <code><a href="compute_water_year.html">compute_water_year()</a></code>
+
+        </dt>
+        <dd>Calculate water year from a date vector</dd>
+
+        <dt>
+
+          <code><a href="create_all_diagnostic_plots.html">create_all_diagnostic_plots()</a></code>
+
+        </dt>
+        <dd>Create all diagnostic plots</dd>
+
+        <dt>
+
+          <code><a href="diagnose_prcp_qm.html">diagnose_prcp_qm()</a></code>
+
+        </dt>
+        <dd>Compute Diagnostics for Precipitation Quantile Mapping</dd>
+
+        <dt>
+
+          <code><a href="estimate_monthly_markov_probs.html">estimate_monthly_markov_probs()</a></code>
+
+        </dt>
+        <dd>Estimate Monthly Occurrence-State Markov Transition Probabilities</dd>
 
         <dt>
 
@@ -57,21 +99,35 @@
 
         <dt>
 
-          <code><a href="filter_warm_simulations.html">filter_warm_simulations()</a></code>
+          <code><a href="filter_warm_pool.html">filter_warm_pool()</a></code>
 
         </dt>
-        <dd>Filter and sample WARM simulations using distributional, tail, and wavelet criteria</dd>
+        <dd>Filter and sample WARM realizations using distributional, tail, and wavelet criteria</dd>
 
         <dt>
 
-          <code><a href="find_leap_days.html">find_leap_days()</a></code>
+          <code><a href="find_leap_day_indices.html">find_leap_day_indices()</a></code>
 
         </dt>
-        <dd>Find leap-day positions (Feb 29) in a date vector</dd>
+        <dd>Find leap-day (Feb 29) indices in a date vector</dd>
 
         <dt>
 
-          <code><a href="generate_weather_series.html">generate_weather_series()</a></code>
+          <code><a href="generate_noleap_dates.html">generate_noleap_dates()</a></code>
+
+        </dt>
+        <dd>Generate a no-leap (365-day) daily date sequence</dd>
+
+        <dt>
+
+          <code><a href="generate_symmetric_dummy_points.html">generate_symmetric_dummy_points()</a></code>
+
+        </dt>
+        <dd>Generate Dummy Points to Enforce Symmetric Facet Axes</dd>
+
+        <dt>
+
+          <code><a href="generate_weather.html">generate_weather()</a></code>
 
         </dt>
         <dd>Generate Synthetic Gridded Daily Weather Series</dd>
@@ -85,31 +141,10 @@
 
         <dt>
 
-          <code><a href="get_state_indices.html">get_state_indices()</a></code>
-
-        </dt>
-        <dd>Get Indices for a Specific Occurrence State Transition</dd>
-
-        <dt>
-
-          <code><a href="get_water_year.html">get_water_year()</a></code>
-
-        </dt>
-        <dd>Calculate Water Year from Date Vector</dd>
-
-        <dt>
-
           <code><a href="knn_sample.html">knn_sample()</a></code>
 
         </dt>
         <dd>K-Nearest Neighbor (KNN) Sampling from Candidates</dd>
-
-        <dt>
-
-          <code><a href="make_noleap_dates.html">make_noleap_dates()</a></code>
-
-        </dt>
-        <dd>Generate a no-leap (365-day) daily date sequence</dd>
 
         <dt>
 
@@ -120,59 +155,52 @@
 
         <dt>
 
-          <code><a href="monthly_markov_probs.html">monthly_markov_probs()</a></code>
+          <code><a href="match_transition_positions.html">match_transition_positions()</a></code>
 
         </dt>
-        <dd>Estimate Monthly Occurrence-State Markov Transition Probabilities</dd>
+        <dd>Get Positions of a Specific Occurrence State Transition Within Candidate Indices</dd>
 
         <dt>
 
-          <code><a href="pet_hargreaves.html">pet_hargreaves()</a></code>
-
-        </dt>
-        <dd>Estimate Monthly Potential Evapotranspiration (Hargreaves Method)</dd>
-
-        <dt>
-
-          <code><a href="plot.qmap_diagnostics.html">plot(<i>&lt;qmap_diagnostics&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Plot method for qmap_diagnostics</dd>
-
-        <dt>
-
-          <code><a href="plot_global_wavelet_spectrum.html">plot_global_wavelet_spectrum()</a></code>
-
-        </dt>
-        <dd>Plot Global Wavelet Spectrum</dd>
-
-        <dt>
-
-          <code><a href="plot_wavelet_spectra.html">plot_wavelet_spectra()</a></code>
-
-        </dt>
-        <dd>Plot Wavelet Power Spectrum and Global Wavelet Spectrum</dd>
-
-        <dt>
-
-          <code><a href="print.qmap_diagnostics.html">print(<i>&lt;qmap_diagnostics&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Print method for qmap_diagnostics</dd>
-
-        <dt>
-
-          <code><a href="quantile_mapping.html">quantile_mapping()</a></code>
+          <code><a href="perturb_prcp_qm.html">perturb_prcp_qm()</a></code>
 
         </dt>
         <dd>Quantile Mapping for Climate Change Perturbation of Precipitation</dd>
 
         <dt>
 
+          <code><a href="plot.prcp_qm_diagnostics.html">plot(<i>&lt;prcp_qm_diagnostics&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Plot diagnostics for precipitation QM</dd>
+
+        <dt>
+
+          <code><a href="plot_wavelet_global_spectrum.html">plot_wavelet_global_spectrum()</a></code>
+
+        </dt>
+        <dd>Plot Global Wavelet Spectrum</dd>
+
+        <dt>
+
+          <code><a href="plot_wavelet_power.html">plot_wavelet_power()</a></code>
+
+        </dt>
+        <dd>Plot Wavelet Power and Global Wavelet Spectrum</dd>
+
+        <dt>
+
+          <code><a href="print.prcp_qm_diagnostics.html">print(<i>&lt;prcp_qm_diagnostics&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Print precipitation QM diagnostics</dd>
+
+        <dt>
+
           <code><a href="read_netcdf.html">read_netcdf()</a></code>
 
         </dt>
-        <dd>Read a gridded NetCDF file into tidy weather format (fast + memory efficient)</dd>
+        <dd>Read NetCDF variables into tidy data frames</dd>
 
         <dt>
 
@@ -183,31 +211,24 @@
 
         <dt>
 
-          <code><a href="summary.qmap_diagnostics.html">summary(<i>&lt;qmap_diagnostics&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Summary method for qmap_diagnostics</dd>
-
-        <dt>
-
-          <code><a href="validate_quantile_mapping.html">validate_quantile_mapping()</a></code>
-
-        </dt>
-        <dd>Compute Validation Diagnostics for Quantile Mapping</dd>
-
-        <dt>
-
-          <code><a href="wavelet_arima.html">wavelet_arima()</a></code>
+          <code><a href="simulate_warm.html">simulate_warm()</a></code>
 
         </dt>
         <dd>Wavelet Autoregressive Modeling (WARM)</dd>
 
         <dt>
 
-          <code><a href="wavelet_spectral_analysis.html">wavelet_spectral_analysis()</a></code>
+          <code><a href="summary.prcp_qm_diagnostics.html">summary(<i>&lt;prcp_qm_diagnostics&gt;</i>)</a></code>
 
         </dt>
-        <dd>Continuous Wavelet Spectral Analysis with COI-Aware Significance</dd>
+        <dd>Summarize precipitation QM diagnostics</dd>
+
+        <dt>
+
+          <code><a href="validate_quantile_mapping.html">validate_quantile_mapping()</a></code>
+
+        </dt>
+        <dd>Validate precipitation quantile mapping adjustments</dd>
 
         <dt>
 

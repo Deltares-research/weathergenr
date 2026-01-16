@@ -6,6 +6,17 @@
 \usage{
 \method{plot}{prcp_qm_diagnostics}(x, which = c("all", "moments", "quantiles", "extremes", "monthly"), ...)
 }
+\arguments{
+\item{x}{A \code{"prcp_qm_diagnostics"} object.}
+
+\item{which}{Character. Which plot to return.}
+
+\item{...}{Additional arguments passed to plotting functions (unused).}
+}
+\value{
+A ggplot object when a single plot is requested, or a list of plots
+  when \code{which = "all"} and \code{gridExtra} is unavailable.
+}
 \description{
-Plot diagnostics for precipitation QM
+Plots selected diagnostic panels from a \code{"prcp_qm_diagnostics"} object.
 }

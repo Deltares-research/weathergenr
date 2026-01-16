@@ -1,28 +1,31 @@
-# Regrid GWS to target period vector
+# Regrid Global Wavelet Spectrum to a Target Period Grid
 
-Interpolates GWS from wavelet analysis onto a target period grid. Uses
-linear interpolation and fills edge NAs.
+Linearly interpolates the global wavelet spectrum from a wavelet
+analysis output onto a target period grid and fills edge values using
+nearest-neighbor filling.
 
 ## Usage
 
 ``` r
-gws_regrid(wv, target_period, use_unmasked = FALSE)
+gws_regrid(wavelet, target_period, use_unmasked = FALSE)
 ```
 
 ## Arguments
 
-- wv:
+- wavelet:
 
-  List output from wavelet_spectral_analysis()
+  List output from
+  [`analyze_wavelet_spectrum`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.md).
 
 - target_period:
 
-  Numeric vector of target periods
+  Numeric vector. Target periods for interpolation.
 
 - use_unmasked:
 
-  Logical. If TRUE and available, use gws_unmasked
+  Logical. If `TRUE` and available, uses `wavelet$gws_unmasked`;
+  otherwise uses `wavelet$gws`.
 
 ## Value
 
-Numeric vector of GWS values on target_period grid
+Numeric vector of interpolated GWS values on `target_period`.

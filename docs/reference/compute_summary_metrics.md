@@ -1,15 +1,15 @@
-# Compute overall summary metrics
+# Compute overall summary metrics for quantile-mapping diagnostics
 
-Compute overall summary metrics
+Compute overall summary metrics for quantile-mapping diagnostics
 
 ## Usage
 
 ``` r
 compute_summary_metrics(
   moments,
-  quantile.metrics,
-  extreme.metrics,
-  spell.metrics,
-  dryday.metrics
+  quant_metrics,
+  extreme_metrics,
+  spell_metrics,
+  dryday_metrics
 )
 ```
