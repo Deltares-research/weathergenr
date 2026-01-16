@@ -137,15 +137,15 @@ out <- evaluate_weather_generator(
   save_plots = FALSE,
   show_title = FALSE
 )
-#> INFO [2026-01-16 19:02:59] [VALIDATE] Start | grids = 1 | realizations = 1
-#> INFO [2026-01-16 19:02:59] [VALIDATE] Variables = precip,temp
-#> INFO [2026-01-16 19:02:59] [VALIDATE] Parameters: wet.q = 0.2 | extreme.q = 0.8
-#> INFO [2026-01-16 19:02:59] [VALIDATE] Standardizing obs/sim periods to full years and equal length
-#> INFO [2026-01-16 19:02:59] [VALIDATE] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
-#> INFO [2026-01-16 19:02:59] [VALIDATE] Processing observed data
-#> INFO [2026-01-16 19:03:00] [VALIDATE] Processing simulated data (1 realizations)
-#> INFO [2026-01-16 19:03:00] [VALIDATE] Preparing diagnostic data for plotting
-#> INFO [2026-01-16 19:03:00] [VALIDATE] Generating diagnostic plots
+#> INFO [2026-01-17 00:27:54] [VALIDATE] Start | grids = 1 | realizations = 1
+#> INFO [2026-01-17 00:27:54] [VALIDATE] Variables = precip,temp
+#> INFO [2026-01-17 00:27:54] [VALIDATE] Parameters: wet.q = 0.2 | extreme.q = 0.8
+#> INFO [2026-01-17 00:27:54] [VALIDATE] Standardizing obs/sim periods to full years and equal length
+#> INFO [2026-01-17 00:27:54] [VALIDATE] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
+#> INFO [2026-01-17 00:27:54] [VALIDATE] Processing observed data
+#> INFO [2026-01-17 00:27:54] [VALIDATE] Processing simulated data (1 realizations)
+#> INFO [2026-01-17 00:27:55] [VALIDATE] Preparing diagnostic data for plotting
+#> INFO [2026-01-17 00:27:55] [VALIDATE] Generating diagnostic plots
 #> Warning: There were 2 warnings in `dplyr::summarise()`.
 #> The first warning was:
 #> ℹ In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm
@@ -153,15 +153,15 @@ out <- evaluate_weather_generator(
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> INFO [2026-01-16 19:03:00] [VALIDATE] Generated 11 diagnostic plots.
-#> INFO [2026-01-16 19:03:00] [VALIDATE] Computing fit metrics for all realizations
+#> INFO [2026-01-17 00:27:55] [VALIDATE] Generated 11 diagnostic plots.
+#> INFO [2026-01-17 00:27:55] [VALIDATE] Computing fit metrics for all realizations
 #> Warning: There were 2 warnings in `dplyr::mutate()`.
 #> The first warning was:
 #> ℹ In argument: `dplyr::across(...)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> INFO [2026-01-16 19:03:00] [VALIDATE] Displaying fit assessment summary
+#> INFO [2026-01-17 00:27:55] [VALIDATE] Displaying fit assessment summary
 #> 
 #> =============================================================================================== 
 #>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS
@@ -188,7 +188,7 @@ out <- evaluate_weather_generator(
 #>   - Worst realization : 1 (score = 0.0000)
 #>   - Median score      : 0.0000
 #> 
-#> INFO [2026-01-16 19:03:00] [VALIDATE] Assessment completed successfully
+#> INFO [2026-01-17 00:27:55] [VALIDATE] Assessment completed successfully
 class(out)
 #> [1] "weather_assessment" "list"              
 ```
