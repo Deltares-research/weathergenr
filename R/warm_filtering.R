@@ -207,7 +207,7 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   if (verbose) {
     log_step(sprintf(
-      "Computing mean, sd, tail mass for observed and %s simulated series",
+      "Computing mean, sd, tail mass for observed and simulated series",
       format(n_rlz, big.mark = ",")
     ))
   }
@@ -251,7 +251,7 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   if (verbose) {
     log_step(sprintf(
-      "Computing wavelet spectra for the observed and %s simulated series",
+      "Computing wavelet spectra for the observed and simulated series",
       format(n_rlz, big.mark = ",")
     ))
   }

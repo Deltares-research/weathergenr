@@ -1,4 +1,4 @@
----
+﻿---
 title: "Getting Started with weathergenr"
 description: "Read NetCDF inputs, generate stochastic realizations, and evaluate generator skill."
 format:
@@ -47,17 +47,17 @@ library(ggplot2)
 ## Related functions
 
 - [`read_netcdf()`]
-- [`generate_weather_series()`]
+- [`generate_weather()`]
 - [`evaluate_weather_generator()`]
 - [`write_netcdf()`]
 - [`apply_climate_perturbations()`]
-- [`wavelet_spectral_analysis()`]
+- [`analyze_wavelet_spectrum()`]
 :::
 
 
 
 
-# 📂 Reading Gridded Multivariate Weather Data
+# Reading Gridded Multivariate Weather Data
 
 ## About the Example Dataset
 
@@ -77,7 +77,7 @@ The function performs several important operations:
 - Organizes data into per-grid-cell time series
 - Handles calendar systems including leap day management
 - Provides variable renaming capabilities
-- Optionally removes empty grid cells → reduces memory usage
+- Optionally drops variables with all missing values to reduce memory usage
 
 ```{r ncfile}
 # Locate the example NetCDF file
@@ -98,7 +98,7 @@ names(ncdata)
 
 #### 1. Time Series Data
 
-The `data` element contains a list of tibbles, one for each grid cell. Each tibble represents a daily time series with columns for each meteorological variable:
+The `data` element contains a list of data frames, one for each grid cell. Each data frame represents a daily time series with columns for each meteorological variable:
 
 ```{r ncdata_timeseries}
 # Examine the first grid cell's time series
@@ -155,38 +155,38 @@ The `read_netcdf()` function supports several optional parameters for customized
 ```{r ncfile_advanced, eval = FALSE}
 # Example: Load specific variables and rename them
 ncdata <- read_netcdf(
-  nc.file = ncfile,
-  variables = c("precip", "temp"),
-  var_rename = c(precip = "precipitation", temp = "temperature")
+  nc_path = ncfile,
+  var = c("precip", "temp"),
+  var_name = c(precip = "precipitation", temp = "temperature")
 )
 
 # Example: Handle 365-day calendar data (no leap days)
 ncdata <- read_netcdf(
-  nc.file = ncfile,
-  leap.days = FALSE
+  nc_path = ncfile,
+  keep_leap_day = FALSE
 )
 
 # Example: Round values to reduce precision and memory
 ncdata <- read_netcdf(
-  nc.file = ncfile,
-  signif.digits = 4,
-  omit.empty = TRUE
+  nc_path = ncfile,
+  signif_digits = 4,
+  drop_all_na = TRUE
 )
 ```
 
-# ⚙️ Generating Stochastic Weather Realizations
+# Generating Stochastic Weather Realizations
 
 ## Overview of the Weather Generation Method
 
-The `generate_weather_series()` function implements a sophisticated multi-scale weather generation framework that combines several statistical methods:
+The `generate_weather()` function implements a sophisticated multi-scale weather generation framework that combines several statistical methods:
 
 ### Statistical Components
 
-1. **Wavelet Autoregressive Modeling (WARM)**: Captures low-frequency (annual to multi-year) climate variability by decomposing annual precipitation signals into wavelet components → simulating their temporal evolution using ARIMA models.
+1. **Wavelet Autoregressive Modeling (WARM)**: Captures low-frequency (annual to multi-year) climate variability by decomposing annual precipitation signals into wavelet components and simulating their temporal evolution using ARIMA models.
 
 2. **Markov Chain Model**: Controls the persistence of wet and dry spells at the daily scale by modeling transitions between three precipitation states (dry, wet, extreme) with monthly-varying transition probabilities.
 
-3. **K-Nearest Neighbors (KNN) Resampling**: Selects historical analogue years based on similarity in annual precipitation patterns → resamples daily weather sequences from these analogues while preserving spatial and temporal correlations.
+3. **K-Nearest Neighbors (KNN) Resampling**: Selects historical analogue years based on similarity in annual precipitation patterns and resamples daily weather sequences from these analogues while preserving spatial and temporal correlations.
 
 This coupled approach ensures that synthetic weather series preserve both:
 
@@ -219,17 +219,17 @@ realization_num <- 3
 
 Key parameters control different aspects of the weather generation:
 
-- **Temporal scope**: `sim.year.num` and `sim.year.start` define the simulation period
-- **Realization count**: `realization.num` specifies how many independent synthetic series to create
+- **Temporal scope**: `n_years` and `start_year` define the simulation period
+- **Realization count**: `n_realizations` specifies how many independent synthetic series to create
 - **WARM parameters**: Control annual-scale variability simulation
-  - `warm.variable`: The primary driver variable (typically precipitation)
-  - `warm.signif.level`: Significance threshold for retaining wavelet components (0.90 = 90% confidence)
-  - `warm.sample.num`: Number of candidate annual traces to generate before filtering
+  - `warm_var`: The primary driver variable (typically precipitation)
+  - `warm_signif`: Significance threshold for retaining wavelet components (0.90 = 90% confidence)
+  - `warm_pool_size`: Number of candidate annual traces to generate before filtering
 - **KNN parameters**: Control daily-scale resampling
-  - `knn.sample.num`: Number of historical analogue years to consider
+  - `annual_knn_n`: Number of historical analogue years to consider
 - **Markov Chain parameters**: Define precipitation state thresholds
-  - `mc.wet.quantile`: Threshold for wet day classification (0.3 = 30th percentile)
-  - `mc.extreme.quantile`: Threshold for extreme precipitation (0.8 = 80th percentile)
+  - `wet_q`: Threshold for wet day classification (0.3 = 30th percentile)
+  - `extreme_q`: Threshold for extreme precipitation (0.8 = 80th percentile)
 
 ## Running the Weather Generator
 
@@ -238,25 +238,26 @@ Key parameters control different aspects of the weather generation:
 seed <- 123
 
 # Generate synthetic weather series
-stochastic_weather <- generate_weather_series(
-  weather.data = ncdata$data,
-  weather.grid = ncdata$grid,
-  weather.date = ncdata$date,
-  variables = variables,
-  sim.year.num = 20,
-  sim.year.start = 2020,
-  month.start = 1,
-  realization.num = realization_num,
-  warm.variable = "precip",
-  warm.signif.level = 0.90,
-  warm.sample.num = 10000,
-  knn.sample.num = 100,
-  mc.wet.quantile = 0.2,
-  mc.extreme.quantile = 0.8,
-  output.path = output_path,
+stochastic_weather <- generate_weather(
+  obs_data = ncdata$data,
+  obs_grid = ncdata$grid,
+  obs_dates = ncdata$date,
+  vars = variables,
+  n_years = 20,
+  start_year = 2020,
+  year_start_month = 1,
+  n_realizations = realization_num,
+  warm_var = "precip",
+  warm_signif = 0.90,
+  warm_pool_size = 10000,
+  annual_knn_n = 100,
+  wet_q = 0.2,
+  extreme_q = 0.8,
+  out_dir = output_path,
   seed = seed,
-  compute.parallel = FALSE,
-  num.cores = NULL
+  parallel = FALSE,
+  n_cores = NULL,
+  verbose = FALSE
 )
 ```
 
@@ -312,7 +313,7 @@ for (i in 1:realization_num) {
 }
 ```
 
-# 🔍 Evaluating Synthetic Weather Series
+# Evaluating Synthetic Weather Series
 
 ## Purpose of Evaluation
 
@@ -356,15 +357,15 @@ obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) {
 ```{r run_evaluation, results = "hide"}
 # Evaluate weather generator performance
 evaluation_plots <- evaluate_weather_generator(
-  daily.sim = rlz_sample,
-  daily.obs = obs_sample,
-  output.path = NULL,
-  save.plots = FALSE,
+  daily_sim = rlz_sample,
+  daily_obs = obs_sample,
   variables = variables,
-  variable.labels = variable_labels,
-  realization.num = realization_num,
-  wet.quantile = 0.3,
-  extreme.quantile = 0.8
+  variable_labels = variable_labels,
+  n_realizations = realization_num,
+  wet_quantile = 0.3,
+  extreme_quantile = 0.8,
+  output_path = NULL,
+  save_plots = FALSE
 )
 ```
 
@@ -418,8 +419,8 @@ Good weather generator performance is indicated by:
 
 Discrepancies may indicate:
 
-- Parameter tuning needed → adjust WARM or Markov chain thresholds
-- Insufficient historical analogue pool → increase KNN sample size
+- Parameter tuning needed - adjust WARM or Markov chain thresholds
+- Insufficient historical analogue pool - increase KNN sample size
 - Structural limitations for specific climate regimes
 
 # Other Features
@@ -432,11 +433,21 @@ Use `apply_climate_perturbations()` to modify synthetic weather based on climate
 
 ```{r climate_scenarios, eval = FALSE}
 # Example: Apply temperature increase and precipitation changes
+grid_with_lat <- ncdata$grid
+grid_with_lat$lat <- grid_with_lat$y
+
 perturbed_weather <- apply_climate_perturbations(
-  weather.data = synthetic_data[[1]],
-  temperature.change = 2.0,  # 2°C increase
-  precipitation.change = 1.1,  # 10% increase
-  month.start = 1
+  data = lapply(synthetic_data[[1]], function(df) {
+    dplyr::rename(df, prcp = precip)
+  }),
+  grid = grid_with_lat,
+  date = stochastic_weather$dates,
+  prcp_mean_factor = rep(1.1, 12),
+  prcp_var_factor = rep(1.0, 12),
+  temp_delta = rep(2.0, 12),
+  temp_transient = FALSE,
+  prcp_transient = FALSE,
+  compute_pet = FALSE
 )
 ```
 
@@ -446,9 +457,12 @@ Explore low-frequency climate variability using wavelet transforms:
 
 ```{r wavelet_analysis, eval = FALSE}
 # Analyze spectral characteristics of annual precipitation
-wavelet_results <- wavelet_spectral_analysis(
-  annual.series = annual_precip,
-  signif.level = 0.90,
+wavelet_results <- analyze_wavelet_spectrum(
+  series = annual_precip,
+  signif = 0.90,
+  noise = "red",
+  min_period = 2,
+  detrend = FALSE,
   mode = "fast"
 )
 ```
@@ -459,10 +473,10 @@ For large spatial domains, enable parallel processing to accelerate computation:
 
 ```{r parallel_example, eval = FALSE}
 # Generate weather using multiple cores
-stochastic_weather <- generate_weather_series(
+stochastic_weather <- generate_weather(
   # ... other parameters ...
-  compute.parallel = TRUE,
-  num.cores = 4
+  parallel = TRUE,
+  n_cores = 4
 )
 ```
 
@@ -472,12 +486,19 @@ Results can be written back to NetCDF format for use in other tools:
 
 ```{r save_results, eval = FALSE}
 # Example: Write synthetic weather to NetCDF
+data_to_write <- lapply(synthetic_data[[1]], function(df) {
+  as.list(df[variables])
+})
+
 write_netcdf(
-  weather.data = synthetic_data[[1]],
-  weather.grid = ncdata$grid,
-  weather.date = stochastic_weather$dates,
-  variables = variables,
-  output.file = file.path(output_path, "synthetic_weather.nc")
+  data = data_to_write,
+  grid = ncdata$grid,
+  out_dir = output_path,
+  origin_date = stochastic_weather$dates[1],
+  calendar = "noleap",
+  template_path = ncfile,
+  file_prefix = "synthetic_weather",
+  file_suffix = "rlz1"
 )
 ```
 

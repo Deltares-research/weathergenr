@@ -20,7 +20,7 @@ The package is intended for workflows such as:
 
 ## Methodological framework
 
-The generator explicitly represents climate variability across multiple temporal scales and couples long-term variability with realistic daily weather sequences.The procedure consists of three main components:
+The generator explicitly represents climate variability across multiple temporal scales and couples long-term variability with realistic daily weather sequences. The procedure consists of three main components:
 
 1. *Modeling Low-frequency variability*: Interannual to decadal climate variability is simulated using wavelet autoregressive modeling (WARM) applied to annual climate aggregates (typically precipitation). Wavelet decomposition isolates low-frequency components of the observed signal, which are stochastically simulated using autoregressive processes and recombined to generate synthetic annual sequences that preserve observed persistence and spectral structure. These annual simulations condition the daily generator, ensuring that low-frequency variability is coherently embedded in daily weather realizations.
 
@@ -53,14 +53,14 @@ To install the development version from GitHub:
 
 A worked end-to-end tutorial is available here:
 
-- 📘 **Getting Started**  
+- **Getting Started**  
   https://deltares-research.github.io/weathergenr/articles/getting_started.html
 
 Additional vignettes and advanced examples will be added as the package evolves.
 
 # Reference
 
-> Steinschneider, S., & Brown, C. (2013). *A semiparametric multivariate, multisite weather generator with low-frequency variability for use in climate risk assessments.* **Water Resources Research**, 49(11), 7205–7220. (https://doi.org/10.1002/wrcr.20528)
+> Steinschneider, S., & Brown, C. (2013). *A semiparametric multivariate, multisite weather generator with low-frequency variability for use in climate risk assessments.* **Water Resources Research**, 49(11), 7205-7220. (https://doi.org/10.1002/wrcr.20528)
 
 # License
 
