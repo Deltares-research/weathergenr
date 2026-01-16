@@ -1,7 +1,6 @@
 # Compact criteria string for a filter
 
-Creates a compact human-readable string describing current filter
-criteria.
+Compact criteria string for a filter
 
 ## Usage
 
@@ -14,29 +13,3 @@ criteria_string_compact(
   wavelet_pars
 )
 ```
-
-## Arguments
-
-- filter_name:
-
-  Character filter name
-
-- bounds:
-
-  Bounds environment or list
-
-- tail_metrics:
-
-  Tail metrics list
-
-- wavelet_active:
-
-  Logical
-
-- wavelet_pars:
-
-  Wavelet parameters
-
-## Value
-
-Character string (compact)

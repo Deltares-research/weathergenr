@@ -1,34 +1,33 @@
 # Create diagnostic plots for filtered pool
 
-Internal function used by filter_warm_simulations() to create diagnostic
-plots. Shows time series, statistics scatter, and wavelet GWS
-comparisons.
+Internal function used by filter_warm_pool() to create diagnostic plots.
+Shows time series, statistics scatter, and wavelet GWS comparisons.
 
 ## Usage
 
 ``` r
 plot_filter_diagnostics(
-  obs.use,
-  series_sim_for_stats,
+  obs_series,
+  sim_series,
   pool,
-  rel.diff.mean,
-  rel.diff.sd,
+  rel_diff_mean,
+  rel_diff_sd,
   tail_metrics,
-  power.period,
-  power.obs,
-  power.signif,
-  gws_cache_mat,
+  power_period,
+  power_obs,
+  power_signif,
+  gws_cache,
   wavelet_q = c(0.05, 0.95)
 )
 ```
 
 ## Arguments
 
-- obs.use:
+- obs_series:
 
   Numeric vector of observed values
 
-- series_sim_for_stats:
+- sim_series:
 
   Numeric matrix of simulated values
 
@@ -36,11 +35,11 @@ plot_filter_diagnostics(
 
   Integer vector of pool indices
 
-- rel.diff.mean:
+- rel_diff_mean:
 
   Relative differences in mean
 
-- rel.diff.sd:
+- rel_diff_sd:
 
   Relative differences in SD
 
@@ -48,19 +47,19 @@ plot_filter_diagnostics(
 
   Tail metrics list
 
-- power.period:
+- power_period:
 
   Wavelet periods
 
-- power.obs:
+- power_obs:
 
   Observed GWS
 
-- power.signif:
+- power_signif:
 
   Significance curve
 
-- gws_cache_mat:
+- gws_cache:
 
   Cached GWS matrix (n_periods x n_realizations)
 

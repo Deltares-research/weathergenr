@@ -1,7 +1,6 @@
 # Relax bounds for one filter
 
-Applies one relaxation step to a single filter. Updates bounds in place
-and returns status.
+Applies one relaxation step to a single filter. Updates bounds in place.
 
 ## Usage
 
@@ -18,20 +17,20 @@ relax_bounds_one_filter(
 
 - filter_name:
 
-  Character. Name of filter to relax
+  Character. Name of filter to relax.
 
 - bounds_env:
 
-  Environment containing bounds
+  Environment containing bounds (snake_case keys).
 
 - wavelet_active_env:
 
-  Environment containing wavelet_active flag
+  Environment containing wavelet_active flag.
 
 - recompute_tailmass_fn:
 
-  Function to recompute tail mass when thresholds change
+  Function to recompute tail mass when thresholds change.
 
 ## Value
 
-List with changed (logical) and msg (character)
+List with changed (logical) and msg (character).

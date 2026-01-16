@@ -22,7 +22,7 @@ Imports:
     parallel,
     patchwork,
     stats,
-    quantmod,
+    rlang,
     tidyr,
     utils,
     logger,
@@ -30,6 +30,7 @@ Imports:
     scales
 Suggests:
     devtools,
+    glue,
     quarto,
     rmarkdown,
     knitr,

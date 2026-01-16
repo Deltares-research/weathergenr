@@ -6,6 +6,14 @@
 \usage{
 \method{print}{prcp_qm_diagnostics}(x, ...)
 }
+\arguments{
+\item{x}{A \code{"prcp_qm_diagnostics"} object.}
+
+\item{...}{Additional arguments (unused).}
+}
+\value{
+Invisibly returns \code{x}.
+}
 \description{
-Print precipitation QM diagnostics
+Prints a compact summary of quantile-mapping diagnostics.
 }

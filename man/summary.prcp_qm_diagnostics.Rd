@@ -6,6 +6,14 @@
 \usage{
 \method{summary}{prcp_qm_diagnostics}(object, ...)
 }
+\arguments{
+\item{object}{A \code{"prcp_qm_diagnostics"} object.}
+
+\item{...}{Additional arguments (unused).}
+}
+\value{
+Invisibly returns \code{object}.
+}
 \description{
-Summarize precipitation QM diagnostics
+Prints a text summary for a \code{"prcp_qm_diagnostics"} object.
 }

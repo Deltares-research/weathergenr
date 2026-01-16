@@ -1,20 +1,23 @@
-# Fill NA values with nearest non-NA value
+# Fill NA Values with the Nearest Non-NA Neighbor
 
-Forward and backward fills NA values in a vector using the nearest
-non-NA value. Useful for handling edge effects in interpolated data.
+Fills missing values in a numeric vector by propagating the nearest
+available non-missing value. This is a deterministic forward-fill
+followed by a backward-fill. It is mainly used to stabilize curves after
+interpolation (e.g., regridded spectra).
 
 ## Usage
 
 ``` r
-fill_nearest(v)
+fill_nearest(x)
 ```
 
 ## Arguments
 
-- v:
+- x:
 
-  Numeric vector possibly containing NAs
+  Numeric vector possibly containing `NA`.
 
 ## Value
 
-Numeric vector with NAs filled
+Numeric vector with missing values filled. If `x` is all `NA`, it is
+returned unchanged.

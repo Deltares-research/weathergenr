@@ -31,12 +31,14 @@ arise. The function does not check that \code{fallback_prob} sums to one; this i
 assumed to be ensured by the caller.
 }
 \examples{
+\dontrun{
 prob <- c(0.2, NA, -0.1, 0.5)
 normalize_probs(prob)
 
 normalize_probs(c(0, 0, 0))
 
 normalize_probs(c(0, 0, 0), fallback_prob = c(0.7, 0.2, 0.1))
+}
 
 }
 \keyword{internal}

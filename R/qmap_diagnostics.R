@@ -185,6 +185,63 @@ diagnose_prcp_qm <- function(
   result
 }
 
+#' Validate precipitation quantile mapping adjustments
+#'
+#' @description
+#' Computes validation diagnostics comparing original and adjusted precipitation
+#' series using the same metrics returned by \code{\link{diagnose_prcp_qm}}.
+#'
+#' @details
+#' This is a convenience wrapper around \code{\link{diagnose_prcp_qm}} with
+#' argument names aligned to quantile-mapping workflows.
+#'
+#' @param prcp_org Numeric vector. Original precipitation values.
+#' @param prcp_adjusted Numeric vector. Adjusted precipitation values (same length as \code{prcp_org}).
+#' @param month Integer vector (optional). Month index (1--12) for each observation.
+#' @param year Integer vector (optional). Year index (1..n_years) for each observation.
+#' @param mean_factor Numeric matrix (optional). Target mean scaling factors (n_years x 12).
+#' @param var_factor Numeric matrix (optional). Target variance scaling factors (n_years x 12).
+#' @param wet_thresh Numeric. Threshold for defining wet days (default = 0.1 mm).
+#' @param probs Numeric vector. Quantile probabilities to evaluate.
+#'
+#' @return A list of class \code{"prcp_qm_diagnostics"} with diagnostic tables
+#'   and summary information (see \code{\link{diagnose_prcp_qm}} for details).
+#'
+#' @examples
+#' prcp_org <- c(0, 1, 2, 0, 5, 3)
+#' prcp_adjusted <- c(0, 1.1, 2.2, 0, 4.8, 3.1)
+#' month <- c(1, 1, 1, 1, 1, 1)
+#' year <- c(1, 1, 1, 1, 1, 1)
+#' validate_quantile_mapping(prcp_org, prcp_adjusted, month = month, year = year)
+#'
+#' @export
+validate_quantile_mapping <- function(
+    prcp_org,
+    prcp_adjusted,
+    month = NULL,
+    year = NULL,
+    mean_factor = NULL,
+    var_factor = NULL,
+    wet_thresh = 0.1,
+    probs = c(0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99)
+) {
+
+  if (length(prcp_org) != length(prcp_adjusted)) {
+    stop("'prcp_org' and 'prcp_adjusted' must have same length", call. = FALSE)
+  }
+
+  diagnose_prcp_qm(
+    prcp_ref = prcp_org,
+    prcp_adj = prcp_adjusted,
+    month = month,
+    year = year,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    wet_thresh = wet_thresh,
+    probs = probs
+  )
+}
+
 
 # ==============================================================================
 # HELPER FUNCTIONS FOR DIAGNOSTICS
@@ -202,7 +259,7 @@ compute_moment_diagnostics <- function(prcp_ref, prcp_adj, mask) {
     original = c(
       mean(ref),
       sd(ref),
-      var(ref),
+      stats::var(ref),
       sd(ref) / mean(ref),
       compute_skewness(ref),
       compute_kurtosis(ref)
@@ -210,7 +267,7 @@ compute_moment_diagnostics <- function(prcp_ref, prcp_adj, mask) {
     adjusted = c(
       mean(adj),
       sd(adj),
-      var(adj),
+      stats::var(adj),
       sd(adj) / mean(adj),
       compute_skewness(adj),
       compute_kurtosis(adj)
@@ -351,8 +408,8 @@ compute_monthly_diagnostics <- function(prcp_ref, prcp_adj, month,
     if (sum(idx) > 0) {
       monthly$original_mean[m] <- mean(prcp_ref[idx], na.rm = TRUE)
       monthly$adjusted_mean[m] <- mean(prcp_adj[idx], na.rm = TRUE)
-      monthly$original_var[m] <- var(prcp_ref[idx], na.rm = TRUE)
-      monthly$adjusted_var[m] <- var(prcp_adj[idx], na.rm = TRUE)
+      monthly$original_var[m] <- stats::var(prcp_ref[idx], na.rm = TRUE)
+      monthly$adjusted_var[m] <- stats::var(prcp_adj[idx], na.rm = TRUE)
       monthly$n_obs[m] <- sum(idx)
     } else {
       monthly$original_mean[m] <- NA_real_
@@ -511,6 +568,15 @@ compute_summary_metrics <- function(moments, quant_metrics, extreme_metrics,
 # ==============================================================================
 
 #' Print precipitation QM diagnostics
+#'
+#' @description
+#' Prints a compact summary of quantile-mapping diagnostics.
+#'
+#' @param x A \code{"prcp_qm_diagnostics"} object.
+#' @param ... Additional arguments (unused).
+#'
+#' @return Invisibly returns \code{x}.
+#'
 #' @export
 print.prcp_qm_diagnostics <- function(x, ...) {
   cat("\n=== Precipitation QM Diagnostics ===\n\n")
@@ -547,6 +613,17 @@ print.prcp_qm_diagnostics <- function(x, ...) {
 
 
 #' Plot diagnostics for precipitation QM
+#'
+#' @description
+#' Plots selected diagnostic panels from a \code{"prcp_qm_diagnostics"} object.
+#'
+#' @param x A \code{"prcp_qm_diagnostics"} object.
+#' @param which Character. Which plot to return.
+#' @param ... Additional arguments passed to plotting functions (unused).
+#'
+#' @return A ggplot object when a single plot is requested, or a list of plots
+#'   when \code{which = "all"} and \code{gridExtra} is unavailable.
+#'
 #' @export
 plot.prcp_qm_diagnostics <- function(x, which = c("all", "moments", "quantiles",
                                                   "extremes", "monthly"), ...) {
@@ -560,8 +637,8 @@ plot.prcp_qm_diagnostics <- function(x, which = c("all", "moments", "quantiles",
   plots <- list()
 
   if (which %in% c("all", "moments")) {
-    p1 <- ggplot(x$moments, aes(x = metric)) +
-      geom_col(aes(y = pct_change, fill = assessment)) +
+    p1 <- ggplot(x$moments, aes(x = rlang::.data$metric)) +
+      geom_col(aes(y = rlang::.data$pct_change, fill = rlang::.data$assessment)) +
       scale_fill_manual(
         values = c("excellent" = "green3", "good" = "yellow3", "poor" = "red3")
       ) +
@@ -667,6 +744,15 @@ plot.prcp_qm_diagnostics <- function(x, which = c("all", "moments", "quantiles",
 
 
 #' Summarize precipitation QM diagnostics
+#'
+#' @description
+#' Prints a text summary for a \code{"prcp_qm_diagnostics"} object.
+#'
+#' @param object A \code{"prcp_qm_diagnostics"} object.
+#' @param ... Additional arguments (unused).
+#'
+#' @return Invisibly returns \code{object}.
+#'
 #' @export
 summary.prcp_qm_diagnostics <- function(object, ...) {
   cat("\n=== Precipitation QM Diagnostics Summary ===\n\n")

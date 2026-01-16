@@ -478,6 +478,24 @@ test_that("perturb_prcp_qm returns diagnostic attributes", {
   expect_true(all(perturbed >= 1 & perturbed <= 12))
 })
 
+test_that("perturb_prcp_qm diagnostics returns diagnostics object", {
+  data <- generate_test_precip(n_years = 1)
+  changes <- create_change_factors(n_years = 1)
+
+  result <- perturb_prcp_qm(
+    prcp = data$prcp,
+    mean_factor = changes$mean_factor,
+    var_factor = changes$var_factor,
+    month = data$month,
+    year = data$year,
+    diagnostics = TRUE
+  )
+
+  expect_type(result, "list")
+  expect_true(all(c("adjusted", "diagnostics") %in% names(result)))
+  expect_true(inherits(result$diagnostics, "prcp_qm_diagnostics"))
+})
+
 
 test_that("perturb_prcp_qm verbose mode produces messages", {
   data <- generate_test_precip(n_years = 2)

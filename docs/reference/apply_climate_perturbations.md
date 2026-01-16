@@ -1,137 +1,118 @@
-# Apply Climate Change Perturbations to Gridded Weather Data
+# Apply monthly climate perturbations to gridded daily weather series
 
-Applies climate change perturbations to gridded daily weather data by
-modifying precipitation and temperature using monthly change factors.
-Perturbations can be applied as step changes or gradual transient
-changes. Both approaches are constructed to yield the same mean change
-over the simulation period.
+Applies \*\*monthly\*\* climate perturbations to \*\*daily\*\* gridded
+weather series:
+
+- \*\*Precipitation\*\* is perturbed using quantile mapping with monthly
+  mean and variance factors via
+  [`perturb_prcp_qm()`](https://deltares-research.github.io/weathergenr/reference/perturb_prcp_qm.md).
+
+- \*\*Temperature\*\* (`temp`, `temp_min`, `temp_max`) is perturbed
+  using monthly additive deltas (step or transient).
+
+- \*\*Potential evapotranspiration (PET)\*\* can be recomputed from
+  perturbed temperatures using
+  [`calculate_monthly_pet()`](https://deltares-research.github.io/weathergenr/reference/calculate_monthly_pet.md).
+
+Perturbations can be applied as a \*\*step change\*\* (constant in time)
+or as a \*\*transient change\*\* (linearly ramping over years) while
+preserving the same \*mean\* change over the simulation period.
 
 ## Usage
 
 ``` r
 apply_climate_perturbations(
-  climate.data = NULL,
-  climate.grid = NULL,
-  sim.dates = NULL,
-  change.factor.precip.mean = NULL,
-  change.factor.precip.variance = NULL,
-  change.factor.temp.mean = NULL,
-  transient.temp.change = TRUE,
-  transient.precip.change = TRUE,
-  calculate.pet = TRUE,
-  fit.method = "mme",
+  data = NULL,
+  grid = NULL,
+  date = NULL,
+  prcp_mean_factor = NULL,
+  prcp_var_factor = NULL,
+  temp_delta = NULL,
+  temp_transient = TRUE,
+  prcp_transient = TRUE,
+  compute_pet = TRUE,
+  pet_method = "hargreaves",
+  qm_fit_method = "mme",
   verbose = FALSE
 )
 ```
 
 ## Arguments
 
-- climate.data:
+- data:
 
-  List of data frames, one per grid cell. Each data frame must contain
-  columns `precip`, `temp`, `temp_min`, `temp_max`, and optionally
-  `pet`.
+  List of data.frames, one per grid cell. Each data.frame must contain:
 
-- climate.grid:
+  - `prcp` (daily precipitation)
 
-  Data frame containing grid cell metadata. Must include a column `y`
-  representing latitude in decimal degrees.
+  - `temp` (daily mean temperature)
 
-- sim.dates:
+  - `temp_min` (daily minimum temperature)
 
-  Vector of `Date` objects corresponding to the rows of each element in
-  `climate.data`.
+  - `temp_max` (daily maximum temperature)
 
-- change.factor.precip.mean:
+  If `compute_pet = TRUE`, `pet` is added or overwritten.
 
-  Numeric vector of length 12. Monthly multiplicative factors for
-  precipitation mean representing the desired average change over the
-  simulation period.
+- grid:
 
-- change.factor.precip.variance:
+  data.frame of grid metadata with `nrow(grid) == length(data)`. Must
+  include column `lat` (latitude in decimal degrees).
 
-  Numeric vector of length 12. Monthly multiplicative factors applied to
+- date:
+
+  Date vector of length `nrow(data[[i]])` (identical across cells).
+
+- prcp_mean_factor:
+
+  Numeric vector length 12. Monthly multiplicative factors for
+  precipitation mean.
+
+- prcp_var_factor:
+
+  Numeric vector length 12. Monthly multiplicative factors for
   precipitation variance.
 
-- change.factor.temp.mean:
+- temp_delta:
 
-  Numeric vector of length 12. Monthly additive temperature changes in
-  degrees Celsius representing the desired average change.
+  Numeric vector length 12. Monthly additive temperature deltas (degC)
+  applied to `temp`, `temp_min`, and `temp_max`.
 
-- transient.temp.change:
+- temp_transient:
 
-  Logical. If TRUE, temperature changes increase linearly from zero to
-  twice the specified factor so that the target mean change is achieved.
-  If FALSE, the full factor is applied uniformly.
+  Logical. If `TRUE`, temperature deltas ramp linearly from 0 to
+  `2 * temp_delta` over years (mean equals `temp_delta`).
 
-- transient.precip.change:
+- prcp_transient:
 
-  Logical. If TRUE, precipitation change factors increase linearly from
-  1.0 to a calculated endpoint that yields the target mean. If FALSE,
-  the full factor is applied uniformly.
+  Logical. If `TRUE`, precipitation factors ramp linearly from 1 to
+  `(factor - 1) * 2 + 1` over years.
 
-- calculate.pet:
+- compute_pet:
 
-  Logical. If TRUE, potential evapotranspiration is recalculated from
-  perturbed temperatures using the Hargreaves method.
+  Logical. If `TRUE`, recompute PET using
+  [`calculate_monthly_pet`](https://deltares-research.github.io/weathergenr/reference/calculate_monthly_pet.md).
 
-- fit.method:
+- pet_method:
 
-  Character string specifying the distribution fitting method passed to
-  `quantile_mapping`.
+  Character. PET method passed to
+  [`calculate_monthly_pet`](https://deltares-research.github.io/weathergenr/reference/calculate_monthly_pet.md)
+  (default: `"hargreaves"`).
+
+- qm_fit_method:
+
+  Character. Distribution-fitting method for
+  [`perturb_prcp_qm()`](https://deltares-research.github.io/weathergenr/reference/perturb_prcp_qm.md).
 
 - verbose:
 
-  Logical. If TRUE, progress messages are printed.
+  Logical. Emit progress logs.
 
 ## Value
 
-A list of data frames with the same structure as `climate.data`,
-containing perturbed weather variables. Invalid values are replaced with
-zero.
-
-## Details
-
-Climate change perturbations are applied using the following mechanisms:
-
-- Precipitation is adjusted using quantile mapping with mean and
-  variance scaling.
-
-- Temperature variables are adjusted using additive monthly shifts.
-
-- Potential evapotranspiration is recalculated using the Hargreaves
-  equation when requested.
-
-Step and transient perturbations are formulated to produce the same mean
-change over the full simulation period. Step changes apply the specified
-factor uniformly across all years. Transient changes increase linearly
-from a baseline to an endpoint that yields the same mean effect.
-
-For precipitation, transient factors ramp from 1.0 to a computed upper
-value. For temperature, transient changes ramp from zero to twice the
-specified mean change. This ensures comparability between step and
-transient scenarios while representing different temporal pathways.
-
-During transient precipitation adjustments, a minimum factor of 0.01 is
-enforced to prevent numerical instabilities.
+List of data.frames with perturbed variables.
 
 ## See also
 
-[`quantile_mapping`](https://deltares-research.github.io/weathergenr/reference/quantile_mapping.md)
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-perturbed_step <- apply_climate_perturbations(
-  climate.data = weather_grids,
-  climate.grid = grid_meta,
-  sim.dates = dates,
-  change.factor.precip.mean = rep(1.2, 12),
-  change.factor.precip.variance = rep(1.0, 12),
-  change.factor.temp.mean = rep(2.0, 12),
-  transient.temp.change = FALSE,
-  transient.precip.change = FALSE
-)
-} # }
-```
+[`perturb_prcp_qm`](https://deltares-research.github.io/weathergenr/reference/perturb_prcp_qm.md),
+[`diagnose_prcp_qm`](https://deltares-research.github.io/weathergenr/reference/diagnose_prcp_qm.md),
+[`calculate_monthly_pet`](https://deltares-research.github.io/weathergenr/reference/calculate_monthly_pet.md)
