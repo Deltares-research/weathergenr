@@ -26,3 +26,5 @@ vignettes/.quarto/
 /tests/tests_manual/
 *.utf8.md
 *.knit.md
+/doc/
+/Meta/
