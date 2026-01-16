@@ -1,3 +1,4 @@
+---
 title: "Getting Started with weathergenr"
 description: "Read NetCDF inputs, generate stochastic realizations, and evaluate generator skill."
 format:
@@ -18,7 +19,7 @@ execute:
   cache: false
   freeze: auto
 vignette: >
-  %\VignetteIndexEntry{Getting Started with weathergenr}
+  %\VignetteIndexEntry{Getting started}
   %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
 ---
