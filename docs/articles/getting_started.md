@@ -1,11 +1,4 @@
-# 
-
-title: “Getting Started with weathergenr” description: “Read NetCDF
-inputs, generate stochastic realizations, and evaluate generator skill.”
-format: html: toc: true toc-location: left toc-title: “Contents”
-toc-depth: 2 toc-expand: 2 page-layout: full code-fold: true code-tools:
-true df-print: tibble execute: echo: true warning: false message: false
-cache: false freeze: auto vignette: \> % % % —
+# Getting Started with weathergenr
 
 ## Introduction
 
@@ -24,6 +17,8 @@ This vignette demonstrates the core workflow:
     observations
 
 ### Load Required Packages
+
+Code
 
 ``` r
 
@@ -75,6 +70,8 @@ The function performs several important operations:
 - Optionally drops variables with all missing values to reduce memory
   usage
 
+Code
+
 ``` r
 
 # Locate the example NetCDF file
@@ -91,6 +88,8 @@ The
 function returns a list with five components that organize different
 aspects of the climate data:
 
+Code
+
 ``` r
 
 # Display the top-level structure
@@ -105,19 +104,23 @@ The `data` element contains a list of data frames, one for each grid
 cell. Each data frame represents a daily time series with columns for
 each meteorological variable:
 
+Code
+
 ``` r
 
 # Examine the first grid cell's time series
 head(ncdata$data[[1]])
 ```
 
-      press_msl      kin temp_min temp_max     temp     kout precip
-    1  1008.232 173.8779 24.39999 28.13000 25.89001 409.9045   9.12
-    2  1008.105 161.9229 23.67999 28.08002 24.89001 410.2427  15.59
-    3  1007.561 201.3387 23.58002 27.89001 25.64001 410.5097   4.84
-    4  1007.602 176.7380 25.04001 28.31000 26.13000 410.7956   5.20
-    5  1007.330 217.5677 24.61002 28.12000 26.13000 411.1073   1.54
-    6  1007.161 198.7215 25.02002 28.17999 26.34000 411.4271   8.35
+    # A tibble: 6 × 7
+      press_msl   kin temp_min temp_max  temp  kout precip
+          <dbl> <dbl>    <dbl>    <dbl> <dbl> <dbl>  <dbl>
+    1     1008.  174.     24.4     28.1  25.9  410.   9.12
+    2     1008.  162.     23.7     28.1  24.9  410.  15.6
+    3     1008.  201.     23.6     27.9  25.6  411.   4.84
+    4     1008.  177.     25.0     28.3  26.1  411.   5.20
+    5     1007.  218.     24.6     28.1  26.1  411.   1.54
+    6     1007.  199.     25.0     28.2  26.3  411.   8.35
 
 This structure allows efficient access to complete time series for
 individual locations while maintaining a compact memory footprint.
@@ -125,6 +128,8 @@ individual locations while maintaining a compact memory footprint.
 ##### 2. Spatial Grid Information
 
 The `grid` element provides spatial metadata for each grid cell:
+
+Code
 
 ``` r
 
@@ -154,6 +159,8 @@ Each row describes a grid cell with:
 The `date` element contains the complete time axis as a vector of Date
 objects:
 
+Code
+
 ``` r
 
 # Display the first and last few dates
@@ -163,6 +170,8 @@ head(ncdata$date)
     [1] "2000-01-01" "2000-01-02" "2000-01-03" "2000-01-04" "2000-01-05"
     [6] "2000-01-06"
 
+Code
+
 ``` r
 
 tail(ncdata$date)
@@ -170,6 +179,8 @@ tail(ncdata$date)
 
     [1] "2020-12-26" "2020-12-27" "2020-12-28" "2020-12-29" "2020-12-30"
     [6] "2020-12-31"
+
+Code
 
 ``` r
 
@@ -183,6 +194,8 @@ length(ncdata$date)
 
 The `dimensions` element stores the raw dimension vectors from the
 NetCDF file:
+
+Code
 
 ``` r
 
@@ -204,6 +217,8 @@ The
 [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
 function supports several optional parameters for customized data
 loading:
+
+Code
 
 ``` r
 
@@ -272,6 +287,8 @@ The method is described in detail by [Steinschneider and Brown
 First, define the output directory and specify which meteorological
 variables to simulate:
 
+Code
+
 ``` r
 
 # Create a temporary directory for outputs
@@ -312,6 +329,8 @@ Key parameters control different aspects of the weather generation:
 
 ### Running the Weather Generator
 
+Code
+
 ``` r
 
 # Set a seed for reproducibility
@@ -350,6 +369,8 @@ The function returns a list containing:
 - `dates`: The simulated daily time axis (always 365-day calendar, Feb
   29 excluded)
 
+Code
+
 ``` r
 
 # View the structure of the output
@@ -357,6 +378,8 @@ names(stochastic_weather)
 ```
 
     [1] "resampled" "dates"    
+
+Code
 
 ``` r
 
@@ -367,6 +390,8 @@ head(stochastic_weather$dates)
     [1] "2020-01-01" "2020-01-02" "2020-01-03" "2020-01-04" "2020-01-05"
     [6] "2020-01-06"
 
+Code
+
 ``` r
 
 tail(stochastic_weather$dates)
@@ -374,6 +399,8 @@ tail(stochastic_weather$dates)
 
     [1] "2039-12-26" "2039-12-27" "2039-12-28" "2039-12-29" "2039-12-30"
     [6] "2039-12-31"
+
+Code
 
 ``` r
 
@@ -392,6 +419,8 @@ analogues. This information reveals:
 - Whether the generator is drawing from wet or dry historical periods
 - The diversity of historical conditions being sampled
 - Temporal clustering patterns in the resampling scheme
+
+Code
 
 ``` r
 
@@ -418,6 +447,8 @@ stochastic_weather$resampled
 
 To access the actual weather values (not just the resampled dates), you
 need to extract the corresponding data from the historical record:
+
+Code
 
 ``` r
 
@@ -454,6 +485,8 @@ The evaluation function requires:
 2.  Simulated weather data structured similarly
 3.  Matching date columns in both datasets
 
+Code
+
 ``` r
 
 # Create day order indices for each realization
@@ -481,6 +514,8 @@ obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) {
 ```
 
 ### Running the Evaluation
+
+Code
 
 ``` r
 
@@ -539,6 +574,8 @@ versus simulated spatial coherence. This is critical for applications
 requiring realistic spatial patterns (e.g., regional hydrology).
 
 ### Viewing Evaluation Results
+
+Code
 
 ``` r
 
@@ -666,6 +703,8 @@ Use
 [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
 to modify synthetic weather based on climate change scenarios:
 
+Code
+
 ``` r
 
 # Example: Apply temperature increase and precipitation changes
@@ -691,6 +730,8 @@ perturbed_weather <- apply_climate_perturbations(
 
 Explore low-frequency climate variability using wavelet transforms:
 
+Code
+
 ``` r
 
 # Analyze spectral characteristics of annual precipitation
@@ -709,6 +750,8 @@ wavelet_results <- analyze_wavelet_spectrum(
 For large spatial domains, enable parallel processing to accelerate
 computation:
 
+Code
+
 ``` r
 
 # Generate weather using multiple cores
@@ -722,6 +765,8 @@ stochastic_weather <- generate_weather(
 ### Saving and Exporting Results
 
 Results can be written back to NetCDF format for use in other tools:
+
+Code
 
 ``` r
 
@@ -783,16 +828,16 @@ write_netcdf(
     [13] pkgconfig_2.0.3    Matrix_1.7-4       RColorBrewer_1.1-3 S7_0.2.1
     [17] lifecycle_1.0.5    compiler_4.5.2     farver_2.1.2       textshaping_1.0.4
     [21] codetools_0.2-20   ncdf4_1.24         htmltools_0.5.9    class_7.3-23
-    [25] pillar_1.11.1      tidyr_1.3.2        MASS_7.3-65        fitdistrplus_1.2-4
-    [29] iterators_1.0.14   foreach_1.5.2      nlme_3.1-168       fracdiff_1.5-3
-    [33] tidyselect_1.2.1   digest_0.6.39      purrr_1.2.1        labeling_0.4.3
-    [37] tseries_0.10-59    splines_4.5.2      fastmap_1.2.0      grid_4.5.2
-    [41] colorspace_2.1-2   cli_3.6.5          logger_0.4.1       magrittr_2.0.4
-    [45] patchwork_1.3.2    utf8_1.2.6         survival_3.8-6     e1071_1.7-17
-    [49] withr_3.0.2        scales_1.4.0       forecast_9.0.0     TTR_0.24.4
-    [53] rmarkdown_2.30     quantmod_0.4.28    otel_0.2.0         nnet_7.3-20
-    [57] timeDate_4051.111  gridExtra_2.3      ragg_1.5.0         zoo_1.8-15
-    [61] urca_1.3-4         evaluate_1.0.5     knitr_1.51         lmtest_0.9-40
-    [65] viridisLite_0.4.2  rlang_1.1.7        Rcpp_1.1.1         isoband_0.3.0
-    [69] glue_1.8.0         rstudioapi_0.18.0  jsonlite_2.0.0     R6_2.6.1
-    [73] systemfonts_1.3.1 
+    [25] yaml_2.3.12        pillar_1.11.1      tidyr_1.3.2        MASS_7.3-65
+    [29] fitdistrplus_1.2-4 iterators_1.0.14   foreach_1.5.2      nlme_3.1-168
+    [33] fracdiff_1.5-3     tidyselect_1.2.1   digest_0.6.39      purrr_1.2.1
+    [37] labeling_0.4.3     tseries_0.10-59    splines_4.5.2      fastmap_1.2.0
+    [41] grid_4.5.2         colorspace_2.1-2   cli_3.6.5          logger_0.4.1
+    [45] magrittr_2.0.4     patchwork_1.3.2    utf8_1.2.6         survival_3.8-6
+    [49] e1071_1.7-17       withr_3.0.2        scales_1.4.0       forecast_9.0.0
+    [53] TTR_0.24.4         rmarkdown_2.30     quantmod_0.4.28    otel_0.2.0
+    [57] nnet_7.3-20        timeDate_4051.111  gridExtra_2.3      ragg_1.5.0
+    [61] zoo_1.8-15         urca_1.3-4         evaluate_1.0.5     knitr_1.51
+    [65] lmtest_0.9-40      viridisLite_0.4.2  rlang_1.1.7        Rcpp_1.1.1
+    [69] isoband_0.3.0      glue_1.8.0         rstudioapi_0.18.0  jsonlite_2.0.0
+    [73] R6_2.6.1           systemfonts_1.3.1 
