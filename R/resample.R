@@ -1021,7 +1021,11 @@ markov_next_state <- function(state_prev, u_rand, idx, p00, p01, p10, p11, p20, 
   row_sum <- p_to0 + p_to1
   if (row_sum > 1) {
     if (row_sum > 1.01) {
-      warning(sprintf("Invalid transition probabilities: sum = %.3f at idx %d", row_sum, idx))
+      warning(sprintf(
+        "Invalid transition probabilities: sum = %.3f at index %s.",
+        row_sum,
+        format(idx, big.mark = ",")
+      ))
     }
     p_to0 <- p_to0 / row_sum
     p_to1 <- p_to1 / row_sum

@@ -210,55 +210,6 @@ assess_moment_changes <- function(moments_df) {
 # INTERNAL LOGGING UTILITIES
 # ==============================================================================
 
-#' Internal logging wrapper (INFO level)
-#'
-#' @description
-#' Package-wide internal logging helper. Routes messages to the \pkg{logger}
-#' package if available; otherwise falls back to \code{message()}.
-#'
-#' Logging is silent unless \code{verbose = TRUE}.
-#'
-#' @param msg Character scalar. Log message (already formatted).
-#' @param verbose Logical. If FALSE, no output is produced.
-#' @param tag Optional character scalar. Component tag (e.g. "FILTERING", "QMAP").
-#'
-#' @return Invisibly returns \code{NULL}.
-#'
-#' @keywords internal
-.log_info <- function(msg, verbose = FALSE, tag = NULL) {
-  if (!isTRUE(verbose)) {
-    return(invisible(NULL))
-  }
-
-  prefix <- ""
-  if (!is.null(tag) && nzchar(tag)) {
-    prefix <- paste0("[", tag, "]")
-  }
-
-  # Resolve { } HERE, in caller environment
-  rendered <- msg
-  if (requireNamespace("glue", quietly = TRUE)) {
-    rendered <- tryCatch(
-      as.character(glue::glue(msg, .envir = parent.frame())),
-      error = function(e) msg
-    )
-  }
-
-  full_msg <- if (nzchar(prefix)) {
-    paste(prefix, rendered)
-  } else {
-    rendered
-  }
-
-  if (requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info(full_msg, .skip_formatter = TRUE)
-  } else {
-    message(full_msg)
-  }
-
-  invisible(NULL)
-}
-
 #' Package-wide internal logger
 #'
 #' @description

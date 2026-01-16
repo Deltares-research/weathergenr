@@ -187,7 +187,7 @@ perturb_prcp_qm <- function(
 
   # If no non-zero precipitation, return unchanged
   if (!any(is_wet)) {
-    if (verbose) message("No non-zero precipitation values found")
+    if (verbose) message("No nonzero precipitation values found.")
     return(prcp)
   }
 
@@ -208,7 +208,11 @@ perturb_prcp_qm <- function(
 
   if (length(months_ok) == 0) {
     if (verbose) {
-      message("No months have sufficient non-zero events (min = ", min_events, ")")
+      message(
+        "No months have at least ",
+        format(min_events, big.mark = ","),
+        " nonzero events."
+      )
     }
     return(prcp)
   }
@@ -216,7 +220,8 @@ perturb_prcp_qm <- function(
   if (verbose && length(months_skipped) > 0) {
     message(
       "Skipping months with insufficient data: ",
-      paste(months_skipped, collapse = ", ")
+      paste(months_skipped, collapse = ", "),
+      "."
     )
   }
 
@@ -249,7 +254,7 @@ perturb_prcp_qm <- function(
   idx_perturb <- which(is_wet & (month %in% months_ok))
 
   if (length(idx_perturb) == 0) {
-    if (verbose) message("No values to perturb")
+    if (verbose) message("No values to perturb.")
     return(prcp)
   }
 
@@ -275,7 +280,9 @@ perturb_prcp_qm <- function(
       n_invalid <- sum(invalid_mask)
       if (verbose) {
         warning(
-          "Replaced ", n_invalid, " invalid output values (NaN/Inf) with original values"
+          "Replaced ",
+          format(n_invalid, big.mark = ","),
+          " invalid output values (NaN/Inf) with original values."
         )
       }
       prcp_out[invalid_mask] <- prcp[invalid_mask]

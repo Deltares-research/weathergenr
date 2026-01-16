@@ -309,8 +309,8 @@ analyze_wavelet_spectrum <- function(
     if (!any(ok_neff) || frac_small >= neff_warn_frac) {
       warning(
         sprintf(
-          "Wavelet significance may be unreliable: %.0f%% of scales have neff < %.2f (n=%d). Consider longer series or coarser scales/dj.",
-          100 * frac_small, neff_warn_min, n1
+          "Wavelet significance may be unreliable: %.0f%% of scales have neff < %.2f (n=%s). Consider longer series or coarser scales/dj.",
+          100 * frac_small, neff_warn_min, format(n1, big.mark = ",")
         ),
         call. = FALSE
       )
@@ -878,7 +878,7 @@ simulate_warm <- function(
 
     if (n_obs < 10) {
       warning(
-        "Component ", k, " has only ", n_obs, " observations. ARIMA modeling may be unreliable.",
+        "Component ", k, " has only ", format(n_obs, big.mark = ","), " observations. ARIMA modeling may be unreliable.",
         call. = FALSE
       )
     }

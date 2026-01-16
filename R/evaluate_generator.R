@@ -134,21 +134,21 @@ evaluate_weather_generator <- function(
   # SETUP
   # ============================================================================
 
-  .log_info(
+  .log(
     paste0(
-      "[Assessment] Start | grids = {length(daily_obs)} | ",
-      "realizations = {n_realizations} | "
+      "[VALIDATE] Start | grids = {format(length(daily_obs), big.mark = ',')} | ",
+      "realizations = {format(n_realizations, big.mark = ',')}"
     ),
     verbose = verbose
   )
-  .log_info(
+  .log(
     paste0(
-      "[Assessment] variables = {paste(variables, collapse = ',')} | "
+      "[VALIDATE] Variables = {paste(variables, collapse = ',')}"
     ),
     verbose = verbose
   )
-  .log_info(
-    paste0("[Assessment] Parameters: wet.q = { wet_quantile} | extreme.q = { extreme_quantile}"),
+  .log(
+    paste0("[VALIDATE] Parameters: wet.q = {wet_quantile} | extreme.q = {extreme_quantile}"),
     verbose = verbose
   )
 
@@ -196,7 +196,7 @@ evaluate_weather_generator <- function(
 
     if (isTRUE(verbose) && requireNamespace("logger", quietly = TRUE)) {
       logger::log_warn(
-        "[Assessment] Grid count reduced from {grid_count_original} to {grid_count} for memory control"
+        "[VALIDATE] Grid count reduced from {format(grid_count_original, big.mark = ',')} to {format(grid_count, big.mark = ',')} for memory control."
       )
     }
   }
@@ -206,8 +206,8 @@ evaluate_weather_generator <- function(
   # STANDARDIZE PERIODS (FULL YEARS + MATCH LENGTH VIA RANDOM WINDOW)
   # ============================================================================
 
-  .log_info(
-    "[Assessment] Standardizing obs/sim periods to full years and equal length",
+  .log(
+    "[VALIDATE] Standardizing obs/sim periods to full years and equal length",
     verbose = verbose
   )
 
@@ -221,9 +221,9 @@ evaluate_weather_generator <- function(
   daily_obs <- std$daily_obs
   daily_sim <- std$daily_sim
 
-  .log_info(
+  .log(
     paste0(
-      "[Assessment] Standardized period | ",
+      "[VALIDATE] Standardized period | ",
       "Obs = ", std$obs_year_start, "-", std$obs_year_end, " | ",
       "Sim = ", std$sim_year_start, "-", std$sim_year_end
     ),
@@ -234,7 +234,7 @@ evaluate_weather_generator <- function(
   # PROCESS OBSERVED DATA
   # ============================================================================
 
-  .log_info("[Assessment] Processing observed data", verbose = verbose)
+  .log("[VALIDATE] Processing observed data", verbose = verbose)
 
   obs_results <- .summarize_observed_data(
     daily_obs = daily_obs,
@@ -248,8 +248,8 @@ evaluate_weather_generator <- function(
   # PROCESS SIMULATED DATA
   # ============================================================================
 
-  .log_info(
-    "[Assessment] Processing simulated data ({n_realizations} realizations)",
+  .log(
+    "[VALIDATE] Processing simulated data ({format(n_realizations, big.mark = ',')} realizations)",
     verbose = verbose
   )
 
@@ -264,7 +264,7 @@ evaluate_weather_generator <- function(
   # MERGE AND PREPARE PLOT DATA
   # ============================================================================
 
-  .log_info("[Assessment] Preparing diagnostic data for plotting", verbose = verbose)
+  .log("[VALIDATE] Preparing diagnostic data for plotting", verbose = verbose)
 
   plot_data <- .build_plot_data(
     obs_results = obs_results,
@@ -276,7 +276,7 @@ evaluate_weather_generator <- function(
   # GENERATE DIAGNOSTIC PLOTS
   # ============================================================================
 
-  .log_info("[Assessment] Generating diagnostic plots", verbose = verbose)
+  .log("[VALIDATE] Generating diagnostic plots", verbose = verbose)
 
   plots <- create_all_diagnostic_plots(
     plot_data = plot_data,
@@ -287,16 +287,19 @@ evaluate_weather_generator <- function(
     output_path = output_path
   )
 
-  .log_info("[Assessment] Generated {length(plots)} diagnostic plots", verbose = verbose)
+  .log(
+    "[VALIDATE] Generated {format(length(plots), big.mark = ',')} diagnostic plots.",
+    verbose = verbose
+  )
   if (save_plots) {
-    .log_info("[Assessment] Plots saved to: {output_path}", verbose = verbose)
+    .log("[VALIDATE] Plots saved to: {output_path}", verbose = verbose)
   }
 
   # ============================================================================
   # COMPUTE FIT METRICS SUMMARY TABLE
   # ============================================================================
 
-  .log_info("[Assessment] Computing fit metrics for all realizations", verbose = verbose)
+  .log("[VALIDATE] Computing fit metrics for all realizations", verbose = verbose)
 
   fit_summary <- .summarize_realization_fit(
     obs_results = obs_results,
@@ -308,13 +311,13 @@ evaluate_weather_generator <- function(
   # DISPLAY FIT SUMMARY TABLE
   # ============================================================================
 
-  .log_info("[Assessment] Displaying fit assessment summary", verbose = verbose)
+  .log("[VALIDATE] Displaying fit assessment summary", verbose = verbose)
 
   if (isTRUE(verbose)) {
     .print_fit_summary_table(fit_summary)
   }
 
-  .log_info("[Assessment] Assessment completed successfully", verbose = verbose)
+  .log("[VALIDATE] Assessment completed successfully", verbose = verbose)
 
   structure(
     plots,
@@ -345,7 +348,7 @@ evaluate_weather_generator <- function(
 
   if (is.null(fit_summary) || nrow(fit_summary) == 0) {
     cat("\n")
-    cat("WARNING: No fit metrics computed\n")
+    cat("Warning: no fit metrics computed.\n")
     cat("\n")
     return(invisible(NULL))
   }
@@ -410,7 +413,17 @@ evaluate_weather_generator <- function(
   # Calculate column widths
   col_widths <- pmax(
     nchar(display_names),
-    apply(display_data, 2, function(x) max(nchar(format(x, digits = 4, nsmall = 4))))
+    vapply(
+      col_names,
+      function(nm) {
+        if (nm %in% c("rlz", "rank")) {
+          max(nchar(format(display_data[[nm]], big.mark = ",")))
+        } else {
+          max(nchar(format(display_data[[nm]], digits = 4, nsmall = 4)))
+        }
+      },
+      integer(1)
+    )
   ) + 2
 
   # Ensure minimum widths
@@ -465,7 +478,12 @@ evaluate_weather_generator <- function(
     # Format numeric values
     for (j in seq_along(row_values)) {
       if (col_names[j] %in% c("rlz", "rank")) {
-        row_values[j] <- format(as.integer(display_data[i, j]), width = col_widths[j], justify = "right")
+        row_values[j] <- format(
+          as.integer(display_data[i, j]),
+          width = col_widths[j],
+          justify = "right",
+          big.mark = ","
+        )
       } else {
         row_values[j] <- format(
           round(as.numeric(display_data[i, j]), 4),
@@ -488,9 +506,9 @@ evaluate_weather_generator <- function(
 
   cat("\n")
   cat(" Summary:\n")
-  cat("  - Best realization  : ", best_rlz, " (score = ",
+  cat("  - Best realization  : ", format(best_rlz, big.mark = ","), " (score = ",
       format(round(fit_summary$overall_score[1], 4), nsmall = 4), ")\n", sep = "")
-  cat("  - Worst realization : ", worst_rlz, " (score = ",
+  cat("  - Worst realization : ", format(worst_rlz, big.mark = ","), " (score = ",
       format(round(fit_summary$overall_score[nrow(fit_summary)], 4), nsmall = 4), ")\n", sep = "")
   cat("  - Median score      : ", format(round(median_score, 4), nsmall = 4), "\n", sep = "")
   cat("\n")

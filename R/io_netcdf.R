@@ -380,7 +380,7 @@ read_netcdf <- function(
 #' @param file_prefix Character. Prefix for output filename.
 #' @param file_suffix Character. Optional suffix appended to filename.
 #' @param signif_digits Integer. If not \code{NULL}, round values to this many significant digits.
-#' @param verbose Logical. If TRUE, emit progress logs via \code{.log_info()}.
+#' @param verbose Logical. If TRUE, emit progress logs via \code{.log()}.
 #'
 #' @return Invisibly returns the written file path.
 #'
@@ -506,8 +506,13 @@ write_netcdf <- function(
 
   if (nx < 1L || ny < 1L) stop("Template x/y dimensions are empty.", call. = FALSE)
 
-  .log_info(
-    msg = sprintf("Template loaded: nx=%d, ny=%d, nt=%d", nx, ny, nt),
+  .log(
+    msg = sprintf(
+      "Template loaded: nx=%s, ny=%s, nt=%s",
+      format(nx, big.mark = ","),
+      format(ny, big.mark = ","),
+      format(nt, big.mark = ",")
+    ),
     verbose = verbose,
     tag = "IO"
   )
@@ -656,10 +661,15 @@ write_netcdf <- function(
     ncdf4::ncvar_put(nc_out, v, arr)
   }
 
-  .log_info(
+  .log(
     msg = sprintf(
-      "NetCDF written: %s | vars=%s | dims=%d time x %d y x %d x | grids=%d",
-      nc_file_path, paste(var, collapse = ", "), nt, ny, nx, n_grids
+      "NetCDF written: %s | vars=%s | dims=%s time x %s y x %s x | grids=%s",
+      nc_file_path,
+      paste(var, collapse = ", "),
+      format(nt, big.mark = ","),
+      format(ny, big.mark = ","),
+      format(nx, big.mark = ","),
+      format(n_grids, big.mark = ",")
     ),
     verbose = verbose,
     tag = "IO"
