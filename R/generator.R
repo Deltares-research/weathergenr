@@ -376,8 +376,7 @@ generate_weather <- function(
     noise = "red",
     min_period = 2,
     detrend = detrend,
-    mode = "complete"
-  )
+    mode = "complete")
 
   p <- plot_wavelet_power(
     series = warm_series_obs,
@@ -387,8 +386,8 @@ generate_weather <- function(
     gws = warm_power$gws_unmasked,
     gws_signif = warm_power$gws_signif_unmasked,
     coi = warm_power$coi,
-    signif_mask = warm_power$sigm
-  )
+    signif_mask = warm_power$sigm)
+
   tryCatch(
     ggsave(file.path(out_dir, "global_wavelet_power_spectrum.png"), p, width = 8, height = 5),
     error = function(e) logger::log_warn("Failed to save wavelet spectrum plot: {e$message}")

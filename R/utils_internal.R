@@ -230,6 +230,7 @@ assess_moment_changes <- function(moments_df) {
     return(invisible(NULL))
   }
 
+  prefix <- ""
   if (!is.null(tag) && nzchar(tag)) {
     prefix <- paste0("[", tag, "]")
   }
@@ -243,7 +244,11 @@ assess_moment_changes <- function(moments_df) {
     )
   }
 
-  full_msg <- paste(prefix, rendered)
+  full_msg <- if (nzchar(prefix)) {
+    paste(prefix, rendered)
+  } else {
+    rendered
+  }
 
   if (requireNamespace("logger", quietly = TRUE)) {
     logger::log_info(full_msg, .skip_formatter = TRUE)
@@ -254,8 +259,70 @@ assess_moment_changes <- function(moments_df) {
   invisible(NULL)
 }
 
-#' Internal logging
+#' Package-wide internal logger
+#'
+#' @description
+#' Unified internal logging helper for the package.
+#'
+#' Features:
+#' - Single entry point for all logging
+#' - Glue interpolation resolved in caller environment
+#' - Safe with logger::formatter_glue (no raw `{}` passed downstream)
+#' - Supports log levels (info, warn, error)
+#' - Silent unless verbose = TRUE
+#' - Falls back to message()/warning()/stop() if logger is unavailable
+#'
+#' @param msg Character scalar. Log message template.
+#' @param ... Values interpolated into `msg` via glue.
+#' @param level Character scalar. One of "info", "warn", "error".
+#' @param verbose Logical. If FALSE, suppress output.
+#' @param tag Optional character scalar. Component tag (e.g. "WARM", "KNN").
+#'
+#' @return Invisibly returns NULL.
+#'
 #' @keywords internal
-.log <- function(msg, tag = NULL) {
-  .log_info(msg, verbose = verbose, tag = tag)
+.log <- function(msg,
+                 ...,
+                 level = c("info", "warn", "error"),
+                 verbose = TRUE,
+                 tag = NULL) {
+
+  if (!isTRUE(verbose)) {
+    return(invisible(NULL))
+  }
+
+  level <- match.arg(level)
+
+  rendered <- msg
+  if (requireNamespace("glue", quietly = TRUE)) {
+    rendered <- tryCatch(
+      as.character(glue::glue(msg, ..., .envir = parent.frame())),
+      error = function(e) msg
+    )
+  }
+
+  if (!is.null(tag) && nzchar(tag)) {
+    rendered <- paste0("[", tag, "] ", rendered)
+  }
+
+  # ---------------------------------------------------------------------------
+  # Emit via logger if available, otherwise base R
+  # ---------------------------------------------------------------------------
+  if (requireNamespace("logger", quietly = TRUE)) {
+    switch(
+      level,
+      info  = logger::log_info(rendered,  .skip_formatter = TRUE),
+      warn  = logger::log_warn(rendered,  .skip_formatter = TRUE),
+      error = logger::log_error(rendered, .skip_formatter = TRUE)
+    )
+  } else {
+    switch(
+      level,
+      info  = message(rendered),
+      warn  = warning(rendered, call. = FALSE),
+      error = stop(rendered, call. = FALSE)
+    )
+  }
+
+  invisible(NULL)
 }

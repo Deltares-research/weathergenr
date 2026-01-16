@@ -2,7 +2,7 @@
 % Please edit documentation in R/evaluate_generator_plots.R
 \name{generate_symmetric_dummy_points}
 \alias{generate_symmetric_dummy_points}
-\title{Generate dummy points to enforce symmetric axes in facets}
+\title{Generate Dummy Points to Enforce Symmetric Facet Axes}
 \usage{
 generate_symmetric_dummy_points(df, facet_var, x_col, y_col)
 }
@@ -20,7 +20,20 @@ Data frame with columns \code{facet_var}, \code{Observed}, \code{Simulated}
   (using \code{x_col} and \code{y_col} names) containing min/max dummy points.
 }
 \description{
-Creates invisible points with x=y at the min/max range per facet to force ggplot
+Creates invisible points with x = y at the min/max range per facet to force ggplot
 to use symmetric x/y limits within each facet when scales are free.
 }
-\keyword{internal}
+\details{
+The output includes two points per facet (min and max). These points can be added
+with \code{geom_blank()} to enforce consistent axis limits without affecting
+the visible data.
+}
+\examples{
+df <- data.frame(
+  variable = c("precip", "precip", "temp", "temp"),
+  Observed = c(1, 5, 10, 12),
+  Simulated = c(0.5, 6, 9, 13)
+)
+generate_symmetric_dummy_points(df, "variable", "Observed", "Simulated")
+
+}

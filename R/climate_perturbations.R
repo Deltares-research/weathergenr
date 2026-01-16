@@ -84,14 +84,14 @@ apply_climate_perturbations <- function(
   # --------------------------------------------------------------------------
 
   if (is.null(data)) stop("'climate.data' must not be NULL", call. = FALSE)
-  if (is.null(grid)) stop("'climate.grid' must not be NULL", call. = FALSE)
+  if (is.null(grid)) stop("'grid' must not be NULL", call. = FALSE)
   if (is.null(date)) stop("'sim.dates' must not be NULL", call. = FALSE)
   if (is.null(prcp_mean_factor)) stop("'change.factor.precip.mean' must not be NULL", call. = FALSE)
   if (is.null(prcp_var_factor)) stop("'change.factor.precip.variance' must not be NULL", call. = FALSE)
   if (is.null(temp_delta)) stop("'change.factor.temp.mean' must not be NULL", call. = FALSE)
 
   if (!is.list(data)) stop("'climate.data' must be a list of data frames", call. = FALSE)
-  if (!is.data.frame(grid)) stop("'climate.grid' must be a data frame", call. = FALSE)
+  if (!is.data.frame(grid)) stop("'grid' must be a data frame", call. = FALSE)
   if (!inherits(date, "Date")) stop("'sim.dates' must be a Date vector", call. = FALSE)
 
   n_grid <- length(data)
@@ -99,13 +99,13 @@ apply_climate_perturbations <- function(
   if (n_grid != nrow(grid)) {
     stop(
       "Length of 'climate.data' (", n_grid, ") must match ",
-      "number of rows in 'climate.grid' (", nrow(grid), ")",
+      "number of rows in 'grid' (", nrow(grid), ")",
       call. = FALSE
     )
   }
 
   if (!"lat" %in% names(grid)) {
-    stop("'climate.grid' must contain a 'y' column (latitude)", call. = FALSE)
+    stop("'grid' must contain a 'y' column (latitude)", call. = FALSE)
   }
 
   required_cols <- c("prcp", "temp", "temp_min", "temp_max")

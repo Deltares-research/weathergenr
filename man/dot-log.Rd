@@ -2,11 +2,33 @@
 % Please edit documentation in R/utils_internal.R
 \name{.log}
 \alias{.log}
-\title{Internal logging}
+\title{Package-wide internal logger}
 \usage{
-.log(msg, tag = NULL)
+.log(msg, ..., level = c("info", "warn", "error"), verbose = TRUE, tag = NULL)
+}
+\arguments{
+\item{msg}{Character scalar. Log message template.}
+
+\item{...}{Values interpolated into `msg` via glue.}
+
+\item{level}{Character scalar. One of "info", "warn", "error".}
+
+\item{verbose}{Logical. If FALSE, suppress output.}
+
+\item{tag}{Optional character scalar. Component tag (e.g. "WARM", "KNN").}
+}
+\value{
+Invisibly returns NULL.
 }
 \description{
-Internal logging
+Unified internal logging helper for the package.
+
+Features:
+- Single entry point for all logging
+- Glue interpolation resolved in caller environment
+- Safe with logger::formatter_glue (no raw `{}` passed downstream)
+- Supports log levels (info, warn, error)
+- Silent unless verbose = TRUE
+- Falls back to message()/warning()/stop() if logger is unavailable
 }
 \keyword{internal}

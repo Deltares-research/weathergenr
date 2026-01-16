@@ -136,10 +136,11 @@ plot_wavelet_power <- function(
   p_spectrum <- ggplot(df_power) +
     theme_light() +
     geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = z)) +
-    scale_y_reverse(limits = rev(y_limits), expand = c(0, 0)) +
-    scale_x_continuous(limits = x_limits, expand = c(0, 0)) +
+    scale_y_reverse(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0, 0)) +
     scale_fill_viridis_c(option = "C", na.value = "white",
       limits = zlims, oob = scales::squish) +
+    coord_cartesian(xlim = x_limits, ylim = rev(y_limits), expand = FALSE) +
     labs(x = "Time", y = "Period (years)") +
     guides(fill = "none") +
     geom_line(
@@ -155,53 +156,16 @@ plot_wavelet_power <- function(
       ),
       aes(x = x, y = y, z = z),
       breaks = 1,
-      color = "black"
-    )
-
-  # df_power <- data.frame(
-  #   x = rep(time_axis, times = n_period),
-  #   y = rep(period, each = n_time),
-  #   xmin = rep(xb$lower, times = n_period),
-  #   xmax = rep(xb$upper, times = n_period),
-  #   ymin = rep(yb$lower, each = n_time),
-  #   ymax = rep(yb$upper, each = n_time),
-  #   z = as.vector(t(z))
-  # )
-  # df_power <- df_power[is.finite(df_power$z), ]
-  #
-  # zlims <- quantile(df_power$z, c(0.05, 0.95), na.rm = TRUE)
-  #
-  # p_spectrum <- ggplot(df_power) +
-  #   theme_light() +
-  #   geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = z)) +
-  #   scale_y_reverse(expand = c(0, 0)) +
-  #   scale_x_continuous(expand = c(0, 0)) +
-  #   scale_fill_viridis_c(limits = zlims, oob = squish) +
-  #   labs(x = "Time", y = "Period (years)") +
-  #   guides(fill = "none") +
-  #   geom_line(data = data.frame(x = time_axis, y = coi),
-  #             aes(x = x, y = y),
-  #             linetype = "dashed", color = "red") +
-  #   stat_contour(
-  #     data = data.frame(
-  #       x = rep(time_axis, times = n_period),
-  #       y = rep(period, each = n_time),
-  #       z = as.vector(t(signif_mask))
-  #     ),
-  #     aes(x = x, y = y, z = z),
-  #     breaks = 1,
-  #     color = "black"
-  #   )
+      color = "black")
 
   gws_df <- data.frame(period = period, gws = gws, signif = gws_signif)
 
   p_gws <- ggplot(gws_df, aes(x = period, y = gws)) +
     theme_light() +
-    geom_line() +
-    geom_point(size = 1) +
+    geom_line(color = "blue") +
     geom_line(aes(y = signif), color = "red", linetype = "dashed") +
-    coord_flip() +
-    scale_x_reverse(limits = range(period)) +
+    scale_x_reverse(expand = c(0,0)) +
+    coord_flip(xlim = range(period), expand = FALSE) +
     labs(y = bquote(Power ~ (.(unit)^2)), x = "")
 
   p_spectrum + p_gws + plot_layout(widths = c(3, 1.2))

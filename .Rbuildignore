@@ -1,31 +1,46 @@
+
+# RStudio / project
 ^.*\.Rproj$
 ^\.Rproj\.user$
+
+# Licenses / repo-only docs
 ^LICENSE\.md$
+
+# devtools build artifacts
 ^doc$
 ^Meta$
+
+# pkgdown / website
 ^pkgdown$
 ^docs$
-
-^\.github$
-^README.Rmd
-^inst/docs
-^inst/examples
-^inst/misc$
-
-
-^\.httr-oauth$
-
-
-^.*_cache$
-^\.build_quarto_vignettes\.R$
-
-^vignettes/.*_files$
-^vignettes/.*\.html$
-^vignettes/.quarto$
-
-^README_files$
-^README\.qmd$
 ^_pkgdown\.yml$
 
+# GitHub metadata
+^\.github$
+
+# README sources not needed in build
+^README\.Rmd$
+^README\.qmd$
+^README_files$
+
+# Quarto build helpers / caches
+^.*_cache$
+^\.build_quarto_vignettes\.R$
+^vignettes/.*_files$
+^vignettes/.*\.html$
+^vignettes/\.quarto$
+
+# Optional repo-only development folder
 ^dev$
 
+# Optional: exclude large internal material inside inst/
+^inst/docs$
+^inst/examples$
+^inst/misc$
+
+# OAuth token cache (should also be in .gitignore)
+^\.httr-oauth$
+
+# Codex rules (dev-only)
+^codex_rules\.txt$
+^codex_safe\.sh$
