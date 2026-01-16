@@ -672,7 +672,7 @@ evaluation_plots
     [1] "precip"   "temp"     "temp_min" "temp_max"
 
     attr(,"metadata")$assessment_date
-    [1] "2026-01-16"
+    [1] "2026-01-17"
 
 #### Interpreting the Plots
 
