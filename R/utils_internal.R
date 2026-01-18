@@ -206,6 +206,16 @@ assess_moment_changes <- function(moments_df) {
 }
 
 
+.format_pct <- function(x, digits = 0) {
+  ifelse(is.na(x), NA_character_, sprintf(paste0("%+.", digits, "f%%"), x))
+}
+
+.format_num <- function(x, digits = 2) {
+  ifelse(is.na(x), NA_character_, formatC(x, format = "f", digits = digits))
+}
+
+
+
 # ==============================================================================
 # INTERNAL LOGGING UTILITIES
 # ==============================================================================

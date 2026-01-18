@@ -133,27 +133,27 @@
 #' @import logger
 #' @importFrom dplyr mutate
 generate_weather <- function(
-    obs_data = NULL,
-    obs_grid = NULL,
-    obs_dates = NULL,
-    vars = NULL,
-    n_years = NULL,
-    start_year = 2020,
-    year_start_month = 1,
-    n_realizations = 5,
-    warm_var = "precip",
-    warm_signif = 0.90,
-    warm_pool_size = 5000,
-    annual_knn_n = 120,
-    wet_q = 0.3,
-    extreme_q = 0.8,
-    dry_spell_factor = rep(1, 12),
-    wet_spell_factor = rep(1, 12),
-    out_dir = tempdir(),
-    seed = NULL,
-    parallel = FALSE,
-    n_cores = NULL,
-    verbose = FALSE
+  obs_data = NULL,
+  obs_grid = NULL,
+  obs_dates = NULL,
+  vars = NULL,
+  n_years = NULL,
+  start_year = 2020,
+  year_start_month = 1,
+  n_realizations = 5,
+  warm_var = "precip",
+  warm_signif = 0.90,
+  warm_pool_size = 5000,
+  annual_knn_n = 120,
+  wet_q = 0.3,
+  extreme_q = 0.8,
+  dry_spell_factor = rep(1, 12),
+  wet_spell_factor = rep(1, 12),
+  out_dir = tempdir(),
+  seed = NULL,
+  parallel = FALSE,
+  n_cores = NULL,
+  verbose = FALSE
 ) {
 
 

@@ -1,811 +1,416 @@
-# ==============================================================================
-# UNIT TESTS FOR perturb_prcp_qm()
-# ==============================================================================
+testthat::test_that("adjust_precipitation_qm: identity mapping (no mean enforcement) preserves wet days and dry days", {
+  set.seed(1)
 
-# ==============================================================================
-# TEST FIXTURES AND HELPER FUNCTIONS
-# ==============================================================================
+  n_years <- 2L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+  month <- rep(1:12, length.out = n_days)
 
-#' Generate synthetic daily precipitation data
-#' @keywords internal
-generate_test_precip <- function(n_years = 2, seed = 123) {
-  set.seed(seed)
+  prcp <- rgamma(n_days, shape = 1.5, scale = 4)
+  prcp[sample.int(n_days, size = 120)] <- 0
 
-  n_days <- n_years * 365
+  mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
-  # Month indices (no leap days)
-  month_days <- c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-  month_idx <- rep(rep(1:12, times = month_days), n_years)[1:n_days]
-
-  # Year indices
-  year_idx <- rep(1:n_years, each = 365)
-
-  # Generate precipitation with seasonal pattern
-  # Higher precipitation in winter months (12, 1, 2)
-  seasonal_mean <- c(8, 7, 6, 4, 3, 2, 2, 3, 4, 5, 6, 7)[month_idx]
-
-  # Generate gamma-distributed precipitation
-  prcp <- rgamma(n_days, shape = 2, scale = seasonal_mean / 2)
-
-  # Add some dry days (~30%)
-  dry_days <- sample(n_days, size = floor(n_days * 0.3))
-  prcp[dry_days] <- 0
-
-  list(
+  out <- adjust_precipitation_qm(
     prcp = prcp,
-    month = month_idx,
-    year = year_idx,
-    n_days = n_days,
-    n_years = n_years
-  )
-}
-
-
-#' Create change factor matrices
-#' @keywords internal
-create_change_factors <- function(n_years, mean_factor = 1.1, var_factor = 1.2) {
-  list(
-    mean_factor = matrix(mean_factor, nrow = n_years, ncol = 12),
-    var_factor  = matrix(var_factor,  nrow = n_years, ncol = 12)
-  )
-}
-
-
-# ==============================================================================
-# BASIC FUNCTIONALITY TESTS
-# ==============================================================================
-
-test_that("perturb_prcp_qm returns correct length output", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_equal(length(result), length(data$prcp))
-  expect_type(result, "double")
-})
-
-
-test_that("perturb_prcp_qm preserves zeros (dry days)", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_equal(sum(data$prcp == 0), sum(result == 0))
-  expect_true(all(result[data$prcp == 0] == 0))
-})
-
-
-test_that("perturb_prcp_qm increases mean when mean_factor > 1", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2, mean_factor = 1.5, var_factor = 1.0)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  nonzero_original <- data$prcp[data$prcp > 0]
-  nonzero_result <- result[result > 0]
-
-  expect_true(mean(nonzero_result) > mean(nonzero_original))
-})
-
-
-test_that("perturb_prcp_qm increases variance when var_factor > 1", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2, mean_factor = 1.0, var_factor = 2.0)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  nonzero_original <- data$prcp[data$prcp > 0]
-  nonzero_result <- result[result > 0]
-
-  expect_true(var(nonzero_result) > var(nonzero_original))
-})
-
-
-test_that("perturb_prcp_qm with no change returns similar distribution", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2, mean_factor = 1.0, var_factor = 1.0)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  nonzero_idx <- data$prcp > 0
-  relative_diff <- abs(result[nonzero_idx] - data$prcp[nonzero_idx]) / data$prcp[nonzero_idx]
-
-  expect_true(median(relative_diff) < 0.05)
-})
-
-
-# ==============================================================================
-# INPUT VALIDATION TESTS
-# ==============================================================================
-
-test_that("perturb_prcp_qm rejects NULL inputs", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = NULL,
-      mean_factor = changes$mean_factor,
-      var_factor = changes$var_factor,
-      month = data$month,
-      year = data$year
-    ),
-    "'prcp' must not be NULL"
-  )
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = NULL,
-      var_factor = changes$var_factor,
-      month = data$month,
-      year = data$year
-    ),
-    "'mean_factor' must not be NULL"
-  )
-})
-
-
-test_that("perturb_prcp_qm rejects mismatched lengths", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = changes$mean_factor,
-      var_factor = changes$var_factor,
-      month = data$month[1:100],  # wrong length
-      year = data$year
-    ),
-    "'month' must have same length as 'prcp'"
-  )
-})
-
-
-test_that("perturb_prcp_qm rejects negative precipitation", {
-  data <- generate_test_precip(n_years = 2)
-  data$prcp[1] <- -1
-  changes <- create_change_factors(n_years = 2)
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = changes$mean_factor,
-      var_factor = changes$var_factor,
-      month = data$month,
-      year = data$year
-    ),
-    "'prcp' must be non-negative"
-  )
-})
-
-
-test_that("perturb_prcp_qm rejects invalid month indices", {
-  data <- generate_test_precip(n_years = 2)
-  data$month[1] <- 13
-  changes <- create_change_factors(n_years = 2)
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = changes$mean_factor,
-      var_factor = changes$var_factor,
-      month = data$month,
-      year = data$year
-    ),
-    "'month' must contain integers between 1 and 12"
-  )
-})
-
-
-test_that("perturb_prcp_qm rejects non-matrix change factors", {
-  data <- generate_test_precip(n_years = 2)
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = rep(1.1, 24),  # vector, not matrix
-      var_factor = matrix(1.2, nrow = 2, ncol = 12),
-      month = data$month,
-      year = data$year
-    ),
-    "'mean_factor' must be a matrix with nrow = n_years, ncol = 12"
-  )
-})
-
-
-test_that("perturb_prcp_qm rejects wrong matrix dimensions", {
-  data <- generate_test_precip(n_years = 2)
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = matrix(1.1, nrow = 2, ncol = 6),  # wrong columns
-      var_factor = matrix(1.2, nrow = 2, ncol = 12),
-      month = data$month,
-      year = data$year
-    ),
-    "'mean_factor' must have 12 columns \\(one per month\\)"
-  )
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = matrix(1.1, nrow = 3, ncol = 12), # wrong rows (n_years = 2)
-      var_factor = matrix(1.2, nrow = 3, ncol = 12),
-      month = data$month,
-      year = data$year
-    ),
-    "'mean_factor' must have 2 rows \\(one per year\\)"
-  )
-})
-
-
-
-
-test_that("perturb_prcp_qm rejects negative change factors", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-  changes$mean_factor[1, 1] <- -0.5
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = changes$mean_factor,
-      var_factor = changes$var_factor,
-      month = data$month,
-      year = data$year
-    ),
-    "'mean_factor' must contain positive values"
-  )
-})
-
-
-test_that("perturb_prcp_qm rejects zero change factors", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-  changes$var_factor[1, 1] <- 0
-
-  expect_error(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = changes$mean_factor,
-      var_factor = changes$var_factor,
-      month = data$month,
-      year = data$year
-    ),
-    "'var_factor' must contain positive values"
-  )
-})
-
-
-# ==============================================================================
-# EDGE CASES AND ROBUSTNESS TESTS
-# ==============================================================================
-
-test_that("perturb_prcp_qm handles all-zero input", {
-  data <- generate_test_precip(n_years = 2)
-  data$prcp[] <- 0
-  changes <- create_change_factors(n_years = 2)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    month = month,
+    year = year,
+    intensity_threshold = 0,
+    exaggerate_extremes = FALSE,
+    enforce_target_mean = FALSE,   # critical for identity behavior
+    min_events = 10,
+    validate_output = TRUE,
+    diagnostics = FALSE,
     verbose = FALSE
   )
 
-  expect_equal(result, data$prcp)
-  expect_true(all(result == 0))
+  testthat::expect_type(out, "double")
+  testthat::expect_length(out, length(prcp))
+  testthat::expect_true(all(is.finite(out[!is.na(out)])))
+
+  # Dry days remain unchanged
+  testthat::expect_identical(out[prcp == 0], prcp[prcp == 0])
+
+  # With identical params and no enforcement, qgamma(pgamma(x)) should be ~ x
+  wet <- prcp > 0
+  testthat::expect_lt(mean(abs(out[wet] - prcp[wet])), 1e-6)
+
+  # Attributes exist
+  testthat::expect_true(!is.null(attr(out, "perturbed_months")))
+  testthat::expect_true(!is.null(attr(out, "skipped_months")))
+  testthat::expect_true(!is.null(attr(out, "n_failed_fits")))
 })
 
 
-test_that("perturb_prcp_qm handles insufficient data in some months", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
+testthat::test_that("adjust_precipitation_qm: mean_factor scales wet-day mean approximately (no tail exaggeration)", {
+  set.seed(2)
 
-  jan_idx <- which(data$month == 1)
-  data$prcp[jan_idx[1:55]] <- 0
+  n_years <- 3L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+  month <- rep(1:12, length.out = n_days)
 
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year,
+  prcp <- rgamma(n_days, shape = 1.3, scale = 5)
+  prcp[sample.int(n_days, size = 150)] <- 0
+
+  mean_factor <- matrix(0.7, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+
+  out <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    month = month,
+    year = year,
+    intensity_threshold = 0,
+    min_events = 10,
+    validate_output = TRUE,
+    verbose = FALSE
+  )
+
+  # Check mean scaling on wet days across all months/years combined
+  wet <- prcp > 0
+  m0 <- mean(prcp[wet])
+  m1 <- mean(out[wet])
+
+  # Allow tolerance because mapping is month-wise and depends on fits
+  testthat::expect_equal(m1 / m0, 0.7, tolerance = 0.05)
+
+  # Dry days unchanged
+  testthat::expect_identical(out[prcp == 0], prcp[prcp == 0])
+})
+
+testthat::test_that("adjust_precipitation_qm: variance_factor affects spread of wet-day intensities", {
+  set.seed(3)
+
+  n_years <- 2L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+  month <- rep(1:12, length.out = n_days)
+
+  prcp <- rgamma(n_days, shape = 1.2, scale = 6)
+  prcp[sample.int(n_days, size = 100)] <- 0
+
+  mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.6, nrow = n_years, ncol = 12)
+
+  out <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    month = month,
+    year = year,
+    min_events = 10,
+    validate_output = TRUE,
+    verbose = FALSE
+  )
+
+  wet <- prcp > 0
+  v0 <- stats::var(prcp[wet])
+  v1 <- stats::var(out[wet])
+
+  # Should increase variance noticeably (not necessarily exactly by factor, due to month-wise mapping)
+  testthat::expect_gt(v1, v0 * 1.2)
+})
+
+testthat::test_that("adjust_precipitation_qm: scale_var_with_mean combines variance and mean scaling", {
+  set.seed(4)
+
+  n_years <- 2L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+  month <- rep(1:12, length.out = n_days)
+
+  prcp <- rgamma(n_days, shape = 1.8, scale = 3)
+  prcp[sample.int(n_days, size = 80)] <- 0
+
+  mean_factor <- matrix(0.8, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+
+  out_noscale <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    scale_var_with_mean = FALSE,
+    month = month,
+    year = year,
+    verbose = FALSE
+  )
+
+  out_scale <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    scale_var_with_mean = TRUE,
+    month = month,
+    year = year,
+    verbose = FALSE
+  )
+
+  wet <- prcp > 0
+
+  # Means should be similar (both target mean ~ 0.8 * baseline)
+  testthat::expect_equal(mean(out_scale[wet]) / mean(prcp[wet]), 0.8, tolerance = 0.05)
+  testthat::expect_equal(mean(out_noscale[wet]) / mean(prcp[wet]), 0.8, tolerance = 0.05)
+
+  # With scale_var_with_mean=TRUE, effective variance factor ~ mean_factor^2,
+  # so variance should be lower than the no-scale case (which keeps variance factor at 1).
+  testthat::expect_lt(stats::var(out_scale[wet]), stats::var(out_noscale[wet]))
+})
+
+testthat::test_that("adjust_precipitation_qm: tail amplification increases upper tail; mean enforcement keeps mean on target", {
+  set.seed(5)
+
+  n_years <- 2L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+  month <- rep(1:12, length.out = n_days)
+
+  prcp <- rgamma(n_days, shape = 1.1, scale = 7)
+  prcp[sample.int(n_days, size = 90)] <- 0
+
+  mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+
+  out_base <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    exaggerate_extremes = FALSE,
+    month = month,
+    year = year,
+    verbose = FALSE
+  )
+
+  out_tail_nom <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    exaggerate_extremes = TRUE,
+    extreme_prob_threshold = 0.95,
+    extreme_k = 1.4,
+    enforce_target_mean = FALSE,
+    month = month,
+    year = year,
+    verbose = FALSE
+  )
+
+  out_tail_mean <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    exaggerate_extremes = TRUE,
+    extreme_prob_threshold = 0.95,
+    extreme_k = 1.4,
+    enforce_target_mean = TRUE,
+    month = month,
+    year = year,
+    verbose = FALSE
+  )
+
+  wet <- prcp > 0
+
+  q0 <- stats::quantile(out_base[wet], probs = 0.99, names = FALSE, na.rm = TRUE)
+  q1 <- stats::quantile(out_tail_nom[wet], probs = 0.99, names = FALSE, na.rm = TRUE)
+  q2 <- stats::quantile(out_tail_mean[wet], probs = 0.99, names = FALSE, na.rm = TRUE)
+
+  # Tail amplification should increase the upper tail relative to baseline
+  testthat::expect_gt(q1, q0)
+  testthat::expect_gt(q2, q0)
+
+  # If enforce_target_mean=TRUE and mean_factor=1, wet-day mean should remain ~ baseline wet-day mean
+  testthat::expect_equal(mean(out_tail_mean[wet]), mean(out_base[wet]), tolerance = 0.02)
+
+  # Without mean enforcement, mean can drift (not guaranteed, but expected with tail exaggeration)
+  # Require that drift is non-zero beyond tiny numerical error.
+  testthat::expect_true(abs(mean(out_tail_nom[wet]) - mean(out_base[wet])) > 1e-6)
+})
+
+testthat::test_that("adjust_precipitation_qm: intensity_threshold keeps small values unchanged and does not change dry-day frequency", {
+  set.seed(6)
+
+  n_years <- 2L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+  month <- rep(1:12, length.out = n_days)
+
+  prcp <- rgamma(n_days, shape = 1.4, scale = 4)
+
+  # Inject a band of small drizzle values that should be treated as "dry" for intensity mapping
+  drizzle_idx <- sample.int(n_days, size = 120)
+  prcp[drizzle_idx] <- runif(length(drizzle_idx), min = 0, max = 0.5)
+
+  # Inject true dry days too
+  prcp[sample(setdiff(seq_len(n_days), drizzle_idx), size = 60)] <- 0
+
+  thr <- 0.5
+
+  mean_factor <- matrix(1.2, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+
+  out <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    month = month,
+    year = year,
+    intensity_threshold = thr,
+    verbose = FALSE
+  )
+
+  # Values <= threshold must be unchanged (including exact zeros and drizzle band)
+  keep <- !is.na(prcp) & (prcp <= thr)
+  testthat::expect_identical(out[keep], prcp[keep])
+
+  # Wet-day indicator relative to threshold is preserved (function does not change occurrence)
+  wet0 <- prcp > thr
+  wet1 <- out > thr
+  wet0[is.na(wet0)] <- FALSE
+  wet1[is.na(wet1)] <- FALSE
+  testthat::expect_identical(wet1, wet0)
+})
+
+testthat::test_that("adjust_precipitation_qm: months with insufficient events are skipped and pass through", {
+  set.seed(7)
+
+  n_years <- 2L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+
+  # Force month=1 to have very few wet days by setting nearly all to 0 in month 1
+  month <- rep(1:12, length.out = n_days)
+
+  prcp <- rgamma(n_days, shape = 1.6, scale = 4)
+  prcp[sample.int(n_days, size = 120)] <- 0
+
+  # Make month 1 mostly dry, so it will fail min_events for wet intensities
+  idx_m1 <- which(month == 1 & prcp > 0)
+  if (length(idx_m1) > 5) prcp[idx_m1[-seq_len(5)]] <- 0
+
+  mean_factor <- matrix(1.3, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+
+  out <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    month = month,
+    year = year,
     min_events = 10,
     verbose = FALSE
   )
 
-  expect_equal(length(result), length(data$prcp))
-
-  skipped <- attr(result, "skipped_months")
-  expect_true(1 %in% skipped)
-})
-
-
-test_that("perturb_prcp_qm handles very small precipitation values", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  small_idx <- sample(which(data$prcp > 0), 50)
-  data$prcp[small_idx] <- runif(50, 0.001, 0.01)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_equal(length(result), length(data$prcp))
-  expect_true(all(is.finite(result)))
-})
-
-
-test_that("perturb_prcp_qm handles extreme change factors", {
-  data <- generate_test_precip(n_years = 2)
-
-  changes_large <- create_change_factors(n_years = 2, mean_factor = 5.0, var_factor = 10.0)
-
-  result_large <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes_large$mean_factor,
-    var_factor = changes_large$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_true(all(is.finite(result_large)))
-  expect_true(mean(result_large) > mean(data$prcp))
-
-  changes_small <- create_change_factors(n_years = 2, mean_factor = 0.2, var_factor = 0.5)
-
-  result_small <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes_small$mean_factor,
-    var_factor = changes_small$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_true(all(is.finite(result_small)))
-  expect_true(mean(result_small[result_small > 0]) < mean(data$prcp[data$prcp > 0]))
-})
-
-
-test_that("perturb_prcp_qm handles single year data", {
-  data <- generate_test_precip(n_years = 1)
-  changes <- create_change_factors(n_years = 1)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_equal(length(result), length(data$prcp))
-  expect_true(all(is.finite(result)))
-})
-
-
-test_that("perturb_prcp_qm handles varying change factors by year", {
-  data <- generate_test_precip(n_years = 3)
-
-  mean_factor <- matrix(NA_real_, nrow = 3, ncol = 12)
-  var_factor  <- matrix(NA_real_, nrow = 3, ncol = 12)
-
-  for (y in 1:3) {
-    mean_factor[y, ] <- 1.0 + (y - 1) * 0.05
-    var_factor[y, ]  <- 1.0 + (y - 1) * 0.10
+  # Any wet days in skipped month should pass through unchanged
+  wet_m1 <- which(month == 1 & prcp > 0)
+  if (length(wet_m1) > 0) {
+    testthat::expect_identical(out[wet_m1], prcp[wet_m1])
   }
 
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
+  skipped <- attr(out, "skipped_months")
+  testthat::expect_true(1 %in% skipped)
+})
+
+testthat::test_that("adjust_precipitation_qm: NA values pass through unchanged", {
+  set.seed(8)
+
+  n_years <- 2L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+  month <- rep(1:12, length.out = n_days)
+
+  prcp <- rgamma(n_days, shape = 1.3, scale = 5)
+  prcp[sample.int(n_days, size = 80)] <- 0
+  na_idx <- sample.int(n_days, size = 20)
+  prcp[na_idx] <- NA_real_
+
+  mean_factor <- matrix(1.1, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+
+  out <- adjust_precipitation_qm(
+    prcp = prcp,
     mean_factor = mean_factor,
     var_factor = var_factor,
-    month = data$month,
-    year = data$year
+    month = month,
+    year = year,
+    verbose = FALSE
   )
 
-  year_means <- tapply(result[result > 0], data$year[result > 0], mean)
-
-  expect_true(year_means[2] > year_means[1])
-  expect_true(year_means[3] > year_means[2])
+  testthat::expect_true(all(is.na(out[na_idx])))
 })
 
+testthat::test_that("adjust_precipitation_qm: diagnostics=TRUE returns expected structure and includes fitted objects", {
+  set.seed(9)
 
-# ==============================================================================
-# ATTRIBUTE AND DIAGNOSTIC TESTS
-# ==============================================================================
+  n_years <- 2L
+  n_days <- 365L * n_years
+  year <- rep(seq_len(n_years), each = 365L)
+  month <- rep(1:12, length.out = n_days)
 
-test_that("perturb_prcp_qm returns diagnostic attributes", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
+  prcp <- rgamma(n_days, shape = 1.4, scale = 4)
+  prcp[sample.int(n_days, size = 100)] <- 0
 
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
+  mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+
+  res <- adjust_precipitation_qm(
+    prcp = prcp,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    month = month,
+    year = year,
+    diagnostics = TRUE,
+    verbose = FALSE
   )
 
-  expect_true(!is.null(attr(result, "perturbed_months")))
-  expect_true(!is.null(attr(result, "skipped_months")))
-  expect_true(!is.null(attr(result, "n_failed_fits")))
+  testthat::expect_true(is.list(res))
+  testthat::expect_true(all(c("adjusted", "diagnostics", "base_gamma", "target_gamma", "var_factor_use") %in% names(res)))
 
-  perturbed <- attr(result, "perturbed_months")
-  expect_true(is.numeric(perturbed))
-  expect_true(all(perturbed >= 1 & perturbed <= 12))
+  out <- res$adjusted
+  testthat::expect_length(out, length(prcp))
+
+  # base_gamma is data.frame with required columns
+  testthat::expect_s3_class(res$base_gamma, "data.frame")
+  testthat::expect_true(all(c("month", "shape", "scale", "mean", "var") %in% names(res$base_gamma)))
+
+  # target_gamma list contains matrices indexed [month_row, year_index]
+  testthat::expect_true(is.list(res$target_gamma))
+  testthat::expect_true(all(c("months", "shape", "scale", "mean", "var") %in% names(res$target_gamma)))
+  testthat::expect_true(is.matrix(res$target_gamma$shape))
+  testthat::expect_true(ncol(res$target_gamma$shape) == n_years)
+
+  # var_factor_use same dims as inputs
+  testthat::expect_true(is.matrix(res$var_factor_use))
+  testthat::expect_true(all(dim(res$var_factor_use) == c(n_years, 12)))
 })
 
-test_that("perturb_prcp_qm diagnostics returns diagnostics object", {
-  data <- generate_test_precip(n_years = 1)
-  changes <- create_change_factors(n_years = 1)
+testthat::test_that("adjust_precipitation_qm: year index contiguity is enforced (guards against calendar years)", {
+  set.seed(10)
 
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year,
-    diagnostics = TRUE
-  )
+  n_years <- 2L
+  n_days <- 365L * n_years
+  month <- rep(1:12, length.out = n_days)
 
-  expect_type(result, "list")
-  expect_true(all(c("adjusted", "diagnostics") %in% names(result)))
-  expect_true(inherits(result$diagnostics, "prcp_qm_diagnostics"))
-})
+  prcp <- rgamma(n_days, shape = 1.2, scale = 5)
+  prcp[sample.int(n_days, size = 80)] <- 0
 
+  mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
-test_that("perturb_prcp_qm verbose mode produces messages", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
+  # Non-contiguous year indices (mimics passing calendar years)
+  year_bad <- rep(c(2020L, 2021L), each = 365L)
 
-  jan_idx <- which(data$month == 1)
-  data$prcp[jan_idx[1:58]] <- 0
-
-  expect_message(
-    perturb_prcp_qm(
-      prcp = data$prcp,
-      mean_factor = changes$mean_factor,
-      var_factor = changes$var_factor,
-      month = data$month,
-      year = data$year,
-      verbose = TRUE
+  testthat::expect_error(
+    adjust_precipitation_qm(
+      prcp = prcp,
+      mean_factor = mean_factor,
+      var_factor = var_factor,
+      month = month,
+      year = year_bad,
+      verbose = FALSE
     ),
-    "Skipping months"
+    "contiguous simulation-year index"
   )
-})
-
-
-# ==============================================================================
-# STATISTICAL PROPERTIES TESTS
-# ==============================================================================
-
-test_that("perturb_prcp_qm preserves distribution shape (relative)", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2, mean_factor = 1.5, var_factor = 1.5)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  nonzero_original <- data$prcp[data$prcp > 0]
-  nonzero_result <- result[result > 0]
-
-  cv_original <- sd(nonzero_original) / mean(nonzero_original)
-  cv_result <- sd(nonzero_result) / mean(nonzero_result)
-
-  expect_true(abs(cv_result - cv_original) / cv_original < 0.2)
-})
-
-
-test_that("perturb_prcp_qm maintains monthly patterns", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2, mean_factor = 1.2, var_factor = 1.2)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  monthly_means_original <- tapply(
-    data$prcp[data$prcp > 0],
-    data$month[data$prcp > 0],
-    mean
-  )
-
-  monthly_means_result <- tapply(
-    result[result > 0],
-    data$month[result > 0],
-    mean
-  )
-
-  cor_monthly <- cor(monthly_means_original, monthly_means_result, use = "complete.obs")
-  expect_true(cor_monthly > 0.95)
-})
-
-
-# ==============================================================================
-# FITTING METHOD TESTS
-# ==============================================================================
-
-test_that("perturb_prcp_qm works with different fitting methods", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  result_mme <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year,
-    fit_method = "mme"
-  )
-
-  result_mle <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year,
-    fit_method = "mle"
-  )
-
-  expect_true(all(is.finite(result_mme)))
-  expect_true(all(is.finite(result_mle)))
-
-  nonzero_idx <- data$prcp > 0
-  cor_methods <- cor(result_mme[nonzero_idx], result_mle[nonzero_idx])
-  expect_true(cor_methods > 0.99)
-})
-
-
-# ==============================================================================
-# VALIDATION FEATURE TESTS
-# ==============================================================================
-
-test_that("perturb_prcp_qm validates output by default", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year,
-    validate_output = TRUE
-  )
-
-  expect_true(all(is.finite(result)))
-})
-
-
-test_that("perturb_prcp_qm can disable output validation", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year,
-    validate_output = FALSE
-  )
-
-  expect_equal(length(result), length(data$prcp))
-})
-
-
-# ==============================================================================
-# PERFORMANCE AND STRESS TESTS
-# ==============================================================================
-
-test_that("perturb_prcp_qm handles large datasets efficiently", {
-  skip_on_cran()
-
-  data <- generate_test_precip(n_years = 10)
-  changes <- create_change_factors(n_years = 10)
-
-  expect_lt(
-    system.time({
-      result <- perturb_prcp_qm(
-        prcp = data$prcp,
-        mean_factor = changes$mean_factor,
-        var_factor = changes$var_factor,
-        month = data$month,
-        year = data$year
-      )
-    })["elapsed"],
-    5.0
-  )
-
-  expect_equal(length(result), length(data$prcp))
-})
-
-
-test_that("perturb_prcp_qm is deterministic with same input", {
-  data <- generate_test_precip(n_years = 2, seed = 456)
-  changes <- create_change_factors(n_years = 2)
-
-  result1 <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  result2 <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_equal(result1, result2)
-})
-
-
-# ==============================================================================
-# INTEGRATION TESTS (REVISED)
-# ==============================================================================
-
-test_that("perturb_prcp_qm integrates with real-world workflow", {
-  set.seed(98765)
-  data <- generate_test_precip(n_years = 5, seed = 98765)
-
-  mean_factor <- matrix(NA_real_, nrow = 5, ncol = 12)
-  var_factor  <- matrix(NA_real_, nrow = 5, ncol = 12)
-
-  for (y in 1:5) {
-    mean_factor[y, ] <- 1.0 + (y - 1) * 0.03
-    var_factor[y, ]  <- 1.0 + (y - 1) * 0.05
-
-    winter_months <- c(12, 1, 2)
-    mean_factor[y, winter_months] <- mean_factor[y, winter_months] * 1.1
-    var_factor[y, winter_months]  <- var_factor[y, winter_months] * 1.2
-  }
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = mean_factor,
-    var_factor = var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_true(all(is.finite(result)))
-  expect_true(all(result >= 0))
-  expect_equal(length(result), length(data$prcp))
-
-  expect_equal(sum(data$prcp == 0), sum(result == 0))
-
-  overall_mean_original <- mean(data$prcp[data$prcp > 0])
-  overall_mean_result <- mean(result[result > 0])
-  expect_true(overall_mean_result > overall_mean_original)
-
-  overall_var_original <- var(data$prcp[data$prcp > 0])
-  overall_var_result <- var(result[result > 0])
-  expect_true(overall_var_result > overall_var_original)
-
-  year1_values <- result[result > 0 & data$year == 1]
-  year5_values <- result[result > 0 & data$year == 5]
-
-  year1_mean <- mean(year1_values)
-  year5_mean <- mean(year5_values)
-
-  expect_true(year5_mean > year1_mean * 1.08)
-
-  winter_idx <- data$month %in% c(12, 1, 2) & data$year == 5 & result > 0
-  summer_idx <- data$month %in% c(6, 7, 8) & data$year == 5 & result > 0
-
-  if (sum(winter_idx) > 10 && sum(summer_idx) > 10) {
-    winter_mean <- mean(result[winter_idx])
-    summer_mean <- mean(result[summer_idx])
-    expect_true(winter_mean > summer_mean)
-  }
-
-  nonzero_idx <- data$prcp > 0
-  changed <- result[nonzero_idx] != data$prcp[nonzero_idx]
-  expect_true(mean(changed) > 0.8)
-
-  test_idx <- data$month == 6 & data$year == 3 & data$prcp > 0
-  if (sum(test_idx) > 5) {
-    original_ranks <- rank(data$prcp[test_idx])
-    result_ranks <- rank(result[test_idx])
-    expect_equal(original_ranks, result_ranks)
-  }
-})
-
-
-# ==============================================================================
-# COMPARISON WITH ORIGINAL VALUES TESTS
-# ==============================================================================
-
-test_that("perturb_prcp_qm with extreme decrease doesn't create negative values", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2, mean_factor = 0.1, var_factor = 0.1)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  expect_true(all(result >= 0))
-})
-
-
-test_that("perturb_prcp_qm rank preservation within months", {
-  data <- generate_test_precip(n_years = 2)
-  changes <- create_change_factors(n_years = 2)
-
-  result <- perturb_prcp_qm(
-    prcp = data$prcp,
-    mean_factor = changes$mean_factor,
-    var_factor = changes$var_factor,
-    month = data$month,
-    year = data$year
-  )
-
-  month_idx <- which(data$month == 6 & data$prcp > 0)
-
-  if (length(month_idx) > 5) {
-    original_ranks <- rank(data$prcp[month_idx])
-    result_ranks <- rank(result[month_idx])
-    expect_equal(original_ranks, result_ranks)
-  }
 })

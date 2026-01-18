@@ -2,6 +2,7 @@
 # RStudio / project
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.Rprofile$
 
 # Licenses / repo-only docs
 ^LICENSE\.md$
@@ -31,8 +32,9 @@
 ^vignettes/.*\.html$
 ^vignettes/\.quarto$
 
-# Optional repo-only development folder
-^dev$
+
+# Optional repo-only tools folder
+^tools$
 
 # Optional: exclude large internal material inside inst/
 ^inst/docs$

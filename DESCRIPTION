@@ -17,7 +17,6 @@ Imports:
     forecast,
     foreach,
     ggplot2,
-    gridExtra,
     ncdf4,
     parallel,
     patchwork,
