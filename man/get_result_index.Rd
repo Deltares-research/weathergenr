@@ -4,29 +4,29 @@
 \alias{get_result_index}
 \title{Safely Get or Sample an Index from a Vector}
 \usage{
-get_result_index(idx, candidate_prcp)
+get_result_index(idx, candidate_precip)
 }
 \arguments{
-\item{idx}{Integer. Proposed index for retrieving an element from `candidate_prcp`.}
+\item{idx}{Integer. Proposed index for retrieving an element from `candidate_precip`.}
 
-\item{candidate_prcp}{Numeric vector. A set of candidate precipitation values (e.g., for the next day).}
+\item{candidate_precip}{Numeric vector. A set of candidate precipitation values (e.g., for the next day).}
 }
 \value{
-Integer. A valid index from `candidate_prcp`, or `NA_integer_` if `candidate_prcp` is empty.
+Integer. A valid index from `candidate_precip`, or `NA_integer_` if `candidate_precip` is empty.
 }
 \description{
-Returns a valid index from `candidate_prcp` based on the provided `idx`.
+Returns a valid index from `candidate_precip` based on the provided `idx`.
 If `idx` is missing, out of bounds, or invalid, a random index is sampled instead.
-If `candidate_prcp` is empty, `NA_integer_` is returned.
+If `candidate_precip` is empty, `NA_integer_` is returned.
 }
 \examples{
-candidate_prcp <- c(0, 5, 10, 20)
-get_result_index(2, candidate_prcp)
+candidate_precip <- c(0, 5, 10, 20)
+get_result_index(2, candidate_precip)
 
 set.seed(1)
-get_result_index(10, candidate_prcp)
+get_result_index(10, candidate_precip)
 
-get_result_index(NA, candidate_prcp)
+get_result_index(NA, candidate_precip)
 get_result_index(1, numeric(0))
 
 }

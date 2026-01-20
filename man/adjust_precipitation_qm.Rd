@@ -5,7 +5,7 @@
 \title{Adjust Daily Precipitation with Gamma Quantile Mapping Under Monthly Scenario Factors}
 \usage{
 adjust_precipitation_qm(
-  prcp = NULL,
+  precip = NULL,
   mean_factor = NULL,
   var_factor = NULL,
   scale_var_with_mean = TRUE,
@@ -25,7 +25,7 @@ adjust_precipitation_qm(
 )
 }
 \arguments{
-\item{prcp}{Numeric vector. Daily precipitation (mm/day). Must be \code{>= 0}.
+\item{precip}{Numeric vector. Daily precipitation (mm/day). Must be \code{>= 0}.
 \code{NA} values are allowed and pass through unchanged.}
 
 \item{mean_factor}{Numeric matrix with dimensions \code{(n_years x 12)}.
@@ -64,16 +64,16 @@ intended target mean \code{baseline_mean(month) * mean_factor[y, m]}.
 This is most relevant when \code{exaggerate_extremes = TRUE} because tail amplification
 can shift the mean away from the intended target. Default is \code{TRUE}.}
 
-\item{month}{Integer vector, same length as \code{prcp}. Calendar month for each day
+\item{month}{Integer vector, same length as \code{precip}. Calendar month for each day
 (\code{1}--\code{12}).}
 
-\item{year}{Integer vector, same length as \code{prcp}. \strong{Simulation year index}
+\item{year}{Integer vector, same length as \code{precip}. \strong{Simulation year index}
 for each day (\code{1 =} first simulated year, \code{2 =} second, ...).
 Must be a contiguous index set \code{1:n_years}. Do not pass calendar years.
 \code{max(year)} must equal \code{nrow(mean_factor)} and \code{nrow(var_factor)}.}
 
 \item{intensity_threshold}{Numeric scalar \code{>= 0}. Defines which values are treated as
-wet-day intensities for fitting and mapping: \code{prcp > intensity_threshold}.
+wet-day intensities for fitting and mapping: \code{precip > intensity_threshold}.
 Values \code{<= intensity_threshold} are returned unchanged. Default is \code{0}.}
 
 \item{fit_method}{Character scalar. Estimation method passed to
@@ -100,7 +100,7 @@ The previous RNG state is restored on exit. Default is \code{NULL}.}
 months and failed fits. Default is \code{FALSE}.}
 }
 \value{
-If \code{diagnostics = FALSE}, returns a numeric vector of the same length as \code{prcp}.
+If \code{diagnostics = FALSE}, returns a numeric vector of the same length as \code{precip}.
 The returned vector has attributes:
 \itemize{
   \item \code{perturbed_months}: months (1--12) successfully fitted and perturbed
@@ -112,9 +112,6 @@ If \code{diagnostics = TRUE}, returns a list:
 \itemize{
   \item \code{adjusted}: numeric vector as above (with the same attributes)
   \item \code{diagnostics}: output of \code{validate_quantile_mapping()}
-  \item \code{base_gamma}: fitted baseline monthly Gamma parameters used for mapping
-  \item \code{target_gamma}: target Gamma parameters (month-row x year-index matrices)
-  \item \code{var_factor_use}: effective variance factor matrix used to build targets
 }
 }
 \description{
@@ -123,7 +120,7 @@ prescribed changes in **wet-day intensity** (monthly wet-day mean and variance).
 
 The workflow is:
 \enumerate{
-  \item Identify "wet-day intensities" as \code{prcp > intensity_threshold}.
+  \item Identify "wet-day intensities" as \code{precip > intensity_threshold}.
   \item For each calendar month, fit a **baseline Gamma distribution** to wet-day
     intensities using \code{fitdistrplus::fitdist()}.
   \item For each \strong{simulation year index} \code{y} and month \code{m}, construct a
@@ -141,11 +138,11 @@ If you need changes in wet/dry spell structure, apply a separate occurrence pert
 \details{
 \strong{Interpretation of mean/variance factors}
 \itemize{
-  \item Factors apply to wet-day intensities only (\code{prcp > intensity_threshold}).
+  \item Factors apply to wet-day intensities only (\code{precip > intensity_threshold}).
   \item They do not control wet-day frequency; apply a separate occurrence model if required.
 }
 }
 \seealso{
 \code{\link[fitdistrplus]{fitdist}}, \code{\link[stats]{pgamma}}, \code{\link[stats]{qgamma}},
-\code{\link{validate_quantile_mapping}}, \code{\link{diagnose_prcp_qm}}
+\code{\link{validate_quantile_mapping}}, \code{\link{diagnose_precip_qm}}
 }

@@ -4,12 +4,10 @@
 \alias{.log}
 \title{Package-wide internal logger}
 \usage{
-.log(msg, ..., level = c("info", "warn", "error"), verbose = TRUE, tag = NULL)
+.log(msg, level = c("info", "warn", "error"), verbose = TRUE, tag = NULL)
 }
 \arguments{
-\item{msg}{Character scalar. Log message template.}
-
-\item{...}{Values interpolated into `msg` via glue.}
+\item{msg}{Character scalar. Log message template with \code{{variable}} syntax.}
 
 \item{level}{Character scalar. One of "info", "warn", "error".}
 
@@ -25,10 +23,9 @@ Unified internal logging helper for the package.
 
 Features:
 - Single entry point for all logging
-- Glue interpolation resolved in caller environment
-- Safe with logger::formatter_glue (no raw `{}` passed downstream)
+- Brace interpolation resolved in caller environment (base R, no glue)
 - Supports log levels (info, warn, error)
 - Silent unless verbose = TRUE
-- Falls back to message()/warning()/stop() if logger is unavailable
+- Timestamps in ISO format
 }
 \keyword{internal}

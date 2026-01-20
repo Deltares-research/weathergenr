@@ -6,7 +6,7 @@
 #'
 #' The workflow is:
 #' \enumerate{
-#'   \item Identify "wet-day intensities" as \code{prcp > intensity_threshold}.
+#'   \item Identify "wet-day intensities" as \code{precip > intensity_threshold}.
 #'   \item For each calendar month, fit a **baseline Gamma distribution** to wet-day
 #'     intensities using \code{fitdistrplus::fitdist()}.
 #'   \item For each \strong{simulation year index} \code{y} and month \code{m}, construct a
@@ -21,7 +21,7 @@
 #' returned unchanged. Therefore, this function does \strong{not} change wet-day frequency.
 #' If you need changes in wet/dry spell structure, apply a separate occurrence perturbation.
 #'
-#' @param prcp Numeric vector. Daily precipitation (mm/day). Must be \code{>= 0}.
+#' @param precip Numeric vector. Daily precipitation (mm/day). Must be \code{>= 0}.
 #'   \code{NA} values are allowed and pass through unchanged.
 #'
 #' @param mean_factor Numeric matrix with dimensions \code{(n_years x 12)}.
@@ -60,16 +60,16 @@
 #'   This is most relevant when \code{exaggerate_extremes = TRUE} because tail amplification
 #'   can shift the mean away from the intended target. Default is \code{TRUE}.
 #'
-#' @param month Integer vector, same length as \code{prcp}. Calendar month for each day
+#' @param month Integer vector, same length as \code{precip}. Calendar month for each day
 #'   (\code{1}--\code{12}).
 #'
-#' @param year Integer vector, same length as \code{prcp}. \strong{Simulation year index}
+#' @param year Integer vector, same length as \code{precip}. \strong{Simulation year index}
 #'   for each day (\code{1 =} first simulated year, \code{2 =} second, ...).
 #'   Must be a contiguous index set \code{1:n_years}. Do not pass calendar years.
 #'   \code{max(year)} must equal \code{nrow(mean_factor)} and \code{nrow(var_factor)}.
 #'
 #' @param intensity_threshold Numeric scalar \code{>= 0}. Defines which values are treated as
-#'   wet-day intensities for fitting and mapping: \code{prcp > intensity_threshold}.
+#'   wet-day intensities for fitting and mapping: \code{precip > intensity_threshold}.
 #'   Values \code{<= intensity_threshold} are returned unchanged. Default is \code{0}.
 #'
 #' @param fit_method Character scalar. Estimation method passed to
@@ -96,7 +96,7 @@
 #'   months and failed fits. Default is \code{FALSE}.
 #'
 #' @return
-#' If \code{diagnostics = FALSE}, returns a numeric vector of the same length as \code{prcp}.
+#' If \code{diagnostics = FALSE}, returns a numeric vector of the same length as \code{precip}.
 #' The returned vector has attributes:
 #' \itemize{
 #'   \item \code{perturbed_months}: months (1--12) successfully fitted and perturbed
@@ -108,25 +108,22 @@
 #' \itemize{
 #'   \item \code{adjusted}: numeric vector as above (with the same attributes)
 #'   \item \code{diagnostics}: output of \code{validate_quantile_mapping()}
-#'   \item \code{base_gamma}: fitted baseline monthly Gamma parameters used for mapping
-#'   \item \code{target_gamma}: target Gamma parameters (month-row x year-index matrices)
-#'   \item \code{var_factor_use}: effective variance factor matrix used to build targets
 #' }
 #'
 #' @details
 #' \strong{Interpretation of mean/variance factors}
 #' \itemize{
-#'   \item Factors apply to wet-day intensities only (\code{prcp > intensity_threshold}).
+#'   \item Factors apply to wet-day intensities only (\code{precip > intensity_threshold}).
 #'   \item They do not control wet-day frequency; apply a separate occurrence model if required.
 #' }
 #'
 #' @seealso
 #' \code{\link[fitdistrplus]{fitdist}}, \code{\link[stats]{pgamma}}, \code{\link[stats]{qgamma}},
-#' \code{\link{validate_quantile_mapping}}, \code{\link{diagnose_prcp_qm}}
+#' \code{\link{validate_quantile_mapping}}, \code{\link{diagnose_precip_qm}}
 #'
 #' @export
 adjust_precipitation_qm <- function(
-    prcp = NULL,
+    precip = NULL,
     mean_factor = NULL,
     var_factor = NULL,
     scale_var_with_mean = TRUE,
@@ -148,13 +145,13 @@ adjust_precipitation_qm <- function(
   # INPUT VALIDATION
   # ==========================================================================
 
-  if (is.null(prcp)) stop("'prcp' must not be NULL", call. = FALSE)
+  if (is.null(precip)) stop("'precip' must not be NULL", call. = FALSE)
   if (is.null(mean_factor)) stop("'mean_factor' must not be NULL", call. = FALSE)
   if (is.null(var_factor)) stop("'var_factor' must not be NULL", call. = FALSE)
   if (is.null(month)) stop("'month' must not be NULL", call. = FALSE)
   if (is.null(year)) stop("'year' must not be NULL", call. = FALSE)
 
-  if (!is.numeric(prcp)) stop("'prcp' must be numeric", call. = FALSE)
+  if (!is.numeric(precip)) stop("'precip' must be numeric", call. = FALSE)
   if (!is.numeric(month)) stop("'month' must be numeric", call. = FALSE)
   if (!is.numeric(year)) stop("'year' must be numeric", call. = FALSE)
 
@@ -164,15 +161,15 @@ adjust_precipitation_qm <- function(
   }
 
   # Allow NA, but disallow NaN/Inf
-  bad_inf <- is.infinite(prcp) | is.nan(prcp)
+  bad_inf <- is.infinite(precip) | is.nan(precip)
   if (any(bad_inf, na.rm = TRUE)) {
-    stop("'prcp' must not contain Inf/NaN (use NA for missing).", call. = FALSE)
+    stop("'precip' must not contain Inf/NaN (use NA for missing).", call. = FALSE)
   }
-  if (any(prcp < 0, na.rm = TRUE)) stop("'prcp' must be non-negative", call. = FALSE)
+  if (any(precip < 0, na.rm = TRUE)) stop("'precip' must be non-negative", call. = FALSE)
 
-  n <- length(prcp)
-  if (length(month) != n) stop("'month' must have same length as 'prcp'", call. = FALSE)
-  if (length(year) != n) stop("'year' must have same length as 'prcp'", call. = FALSE)
+  n <- length(precip)
+  if (length(month) != n) stop("'month' must have same length as 'precip'", call. = FALSE)
+  if (length(year) != n) stop("'year' must have same length as 'precip'", call. = FALSE)
 
   if (any(!is.finite(month), na.rm = TRUE) || any(!is.finite(year), na.rm = TRUE)) {
     stop("'month' and 'year' must contain only finite values.", call. = FALSE)
@@ -253,7 +250,7 @@ adjust_precipitation_qm <- function(
   }
 
   # Optional: keep copy for diagnostics
-  if (isTRUE(diagnostics)) prcp_org <- prcp
+  if (isTRUE(diagnostics)) precip_org <- precip
 
   # RNG hygiene: set + restore
   if (!is.null(seed)) {
@@ -279,15 +276,15 @@ adjust_precipitation_qm <- function(
   # IDENTIFY WET EVENTS
   # ==========================================================================
 
-  is_wet <- prcp > intensity_threshold
+  is_wet <- precip > intensity_threshold
   is_wet[is.na(is_wet)] <- FALSE
 
   if (!any(is_wet)) {
     if (isTRUE(verbose)) message("No wet-day precipitation values found.")
-    return(prcp)
+    return(precip)
   }
 
-  prcp_wet  <- prcp[is_wet]
+  precip_wet  <- precip[is_wet]
   month_wet <- month[is_wet]
 
   # ==========================================================================
@@ -302,7 +299,7 @@ adjust_precipitation_qm <- function(
     if (isTRUE(verbose)) {
       message("No months have at least ", format(min_events, big.mark = ","), " wet-day events.")
     }
-    return(prcp)
+    return(precip)
   }
 
   if (isTRUE(verbose) && length(months_skipped) > 0L) {
@@ -310,7 +307,7 @@ adjust_precipitation_qm <- function(
   }
 
   base_gamma <- fit_monthly_distributions(
-    prcp_wet = prcp_wet,
+    precip_wet = precip_wet,
     month_wet = month_wet,
     months_ok = months_ok,
     fit_method = fit_method,
@@ -326,7 +323,7 @@ adjust_precipitation_qm <- function(
 
   if (nrow(base_gamma) == 0L || length(months_ok) == 0L) {
     if (isTRUE(verbose)) message("All monthly distribution fits failed; returning original precipitation.")
-    return(prcp)
+    return(precip)
   }
 
   # ==========================================================================
@@ -348,20 +345,20 @@ adjust_precipitation_qm <- function(
   idx_perturb <- which(is_wet & (month %in% months_ok))
   if (length(idx_perturb) == 0L) {
     if (isTRUE(verbose)) message("No values to perturb.")
-    return(prcp)
+    return(precip)
   }
 
-  prcp_out <- prcp
+  precip_out <- precip
 
   # Ensure NA pass-through
-  idx_perturb <- idx_perturb[!is.na(prcp_out[idx_perturb])]
+  idx_perturb <- idx_perturb[!is.na(precip_out[idx_perturb])]
   if (length(idx_perturb) == 0L) {
     if (isTRUE(verbose)) message("No non-missing values to perturb.")
-    return(prcp)
+    return(precip)
   }
 
-  prcp_out[idx_perturb] <- apply_quantile_mapping(
-    prcp = prcp[idx_perturb],
+  precip_out[idx_perturb] <- apply_quantile_mapping(
+    precip = precip[idx_perturb],
     mon = month[idx_perturb],
     year = year[idx_perturb],
     base_gamma = base_gamma,
@@ -377,7 +374,7 @@ adjust_precipitation_qm <- function(
   # ==========================================================================
 
   if (isTRUE(validate_output)) {
-    invalid_mask <- !is.finite(prcp_out)
+    invalid_mask <- !is.finite(precip_out)
     invalid_mask[is.na(invalid_mask)] <- FALSE
 
     if (any(invalid_mask)) {
@@ -389,25 +386,26 @@ adjust_precipitation_qm <- function(
           call. = FALSE
         )
       }
-      prcp_out[invalid_mask] <- prcp[invalid_mask]
+      precip_out[invalid_mask] <- precip[invalid_mask]
     }
 
-    neg_mask <- prcp_out < 0
+    neg_mask <- precip_out < 0
     neg_mask[is.na(neg_mask)] <- FALSE
     if (any(neg_mask)) {
       if (isTRUE(verbose)) warning("Negative values produced; clamping to zero.", call. = FALSE)
-      prcp_out[neg_mask] <- 0
+      precip_out[neg_mask] <- 0
     }
   }
 
-  attr(prcp_out, "perturbed_months") <- months_ok
-  attr(prcp_out, "skipped_months") <- months_skipped
-  attr(prcp_out, "n_failed_fits") <- attr(base_gamma, "n_failed_fits")
+  attr(precip_out, "perturbed_months") <- months_ok
+  attr(precip_out, "skipped_months") <- months_skipped
+  attr(precip_out, "n_failed_fits") <- attr(base_gamma, "n_failed_fits")
 
   if (isTRUE(diagnostics)) {
+
     d <- validate_quantile_mapping(
-      prcp_org = prcp_org,
-      prcp_adjusted = prcp_out,
+      precip_org = precip_org,
+      precip_adjusted = precip_out,
       month = month,
       year = year,
       mean_factor = mean_factor,
@@ -420,20 +418,13 @@ adjust_precipitation_qm <- function(
     }
 
     return(list(
-      adjusted = prcp_out,
-      diagnostics = d,
-      base_gamma = base_gamma,
-      target_gamma = target_gamma,
-      var_factor_use = var_factor_use
+      adjusted = precip_out,
+      diagnostics = d
     ))
   }
 
-  prcp_out
+  precip_out
 }
-
-
-
-
 
 # ==============================================================================
 # HELPER FUNCTIONS
@@ -446,10 +437,10 @@ adjust_precipitation_qm <- function(
 #' `months_ok`. Uses `fitdistrplus::fitdist()` and returns month-specific gamma
 #' parameters and implied moments. Months that fail to fit are dropped.
 #'
-#' @param prcp_wet Numeric vector of wet-day precipitation values (strictly > 0
+#' @param precip_wet Numeric vector of wet-day precipitation values (strictly > 0
 #'   recommended). Length must match `month_wet`.
 #' @param month_wet Integer vector of months (1-12) corresponding to each element
-#'   of `prcp_wet`.
+#'   of `precip_wet`.
 #' @param months_ok Integer vector of months to attempt fitting (subset of 1-12).
 #' @param fit_method Character scalar. Estimation method forwarded to
 #'   `fitdistrplus::fitdist()` (e.g., `"mle"`, `"mme"`).
@@ -468,7 +459,7 @@ adjust_precipitation_qm <- function(
 #' `n_failed_fits` with the number of failed months.
 #'
 #' @keywords internal
-fit_monthly_distributions <- function(prcp_wet,
+fit_monthly_distributions <- function(precip_wet,
                                       month_wet,
                                       months_ok,
                                       fit_method,
@@ -488,11 +479,11 @@ fit_monthly_distributions <- function(prcp_wet,
   for (i in seq_along(months_ok)) {
 
     m <- months_ok[i]
-    prcp_m <- prcp_wet[month_wet == m]
-    prcp_m <- prcp_m[is.finite(prcp_m)]
+    precip_m <- precip_wet[month_wet == m]
+    precip_m <- precip_m[is.finite(precip_m)]
 
     # Robustness: MME gamma fit degenerates when variance is ~0
-    if (length(prcp_m) < 2L || stats::sd(prcp_m, na.rm = TRUE) <= sqrt(.Machine$double.eps)) {
+    if (length(precip_m) < 2L || stats::sd(precip_m, na.rm = TRUE) <= sqrt(.Machine$double.eps)) {
       if (isTRUE(verbose)) {
         warning("Month ", m, ": wet-day intensities have ~zero variance; skipping Gamma fit.", call. = FALSE)
       }
@@ -501,7 +492,7 @@ fit_monthly_distributions <- function(prcp_wet,
     }
 
     # Robustness: extremely low discreteness can also destabilize fitting
-    if (length(unique(prcp_m)) < 3L) {
+    if (length(unique(precip_m)) < 3L) {
       if (isTRUE(verbose)) {
         warning("Month ", m, ": too few unique wet-day values; skipping Gamma fit.", call. = FALSE)
       }
@@ -512,7 +503,7 @@ fit_monthly_distributions <- function(prcp_wet,
 
     fit_result <- tryCatch(
       {
-        fit <- fitdistrplus::fitdist(prcp_m, "gamma", method = fit_method)
+        fit <- fitdistrplus::fitdist(precip_m, "gamma", method = fit_method)
 
         # fitdist() returns shape and rate; convert to scale
         shape <- unname(fit$estimate["shape"])
@@ -630,8 +621,8 @@ compute_target_parameters <- function(base_gamma,
 #' applies a tail-probability exaggeration and an enforcement step to match the
 #' target mean at the month-year subset level.
 #'
-#' @param prcp Numeric vector of precipitation values (subset, typically wet days).
-#' @param mon Integer vector of months (1-12), same length as `prcp`.
+#' @param precip Numeric vector of precipitation values (subset, typically wet days).
+#' @param mon Integer vector of months (1-12), same length as `precip`.
 #' @param year Integer vector of year indices used to select columns in
 #'   `target_gamma$shape/scale/mean`. This is an index (1..n_years), not
 #'   necessarily the calendar year value.
@@ -645,10 +636,10 @@ compute_target_parameters <- function(base_gamma,
 #' @param enforce_target_mean Logical. If `TRUE`, rescales mapped values within
 #'   each (month, year) subset to match `target_gamma$mean`.
 #'
-#' @return Numeric vector of mapped precipitation values, same length as `prcp`.
+#' @return Numeric vector of mapped precipitation values, same length as `precip`.
 #'
 #' @keywords internal
-apply_quantile_mapping <- function(prcp,
+apply_quantile_mapping <- function(precip,
                                    mon,
                                    year,
                                    base_gamma,
@@ -657,8 +648,8 @@ apply_quantile_mapping <- function(prcp,
                                    extreme_prob_threshold = 0.95,
                                    extreme_k = 1.2,
                                    enforce_target_mean = TRUE) {
-  n <- length(prcp)
-  result <- prcp
+  n <- length(precip)
+  result <- precip
 
   if (n == 0L) {
     return(result)
@@ -678,7 +669,7 @@ apply_quantile_mapping <- function(prcp,
 
     i_month <- which(base_gamma$month == m)
     if (length(i_month) == 0L) {
-      result[idx] <- prcp[idx]
+      result[idx] <- precip[idx]
       next
     }
 
@@ -693,11 +684,11 @@ apply_quantile_mapping <- function(prcp,
         !is.finite(target_shape) || !is.finite(target_scale) ||
         base_shape <= 0 || base_scale <= 0 ||
         target_shape <= 0 || target_scale <= 0) {
-      result[idx] <- prcp[idx]
+      result[idx] <- precip[idx]
       next
     }
 
-    u <- stats::pgamma(prcp[idx], shape = base_shape, scale = base_scale)
+    u <- stats::pgamma(precip[idx], shape = base_shape, scale = base_scale)
     u <- pmin(pmax(u, eps), 1 - eps)
 
     if (isTRUE(exaggerate_extremes)) {
@@ -726,7 +717,7 @@ apply_quantile_mapping <- function(prcp,
 
     bad <- !is.finite(mapped)
     if (any(bad)) {
-      mapped[bad] <- prcp[idx][bad]
+      mapped[bad] <- precip[idx][bad]
     }
     mapped[mapped < 0] <- 0
 

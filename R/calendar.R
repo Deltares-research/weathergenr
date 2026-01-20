@@ -23,7 +23,7 @@
 #' @export
 generate_noleap_dates <- function(start_date, n_days) {
 
-  start_date <- as.Date(start_date)
+  start_date <- .safe_as_date(start_date)
 
   if (!inherits(start_date, "Date") || length(start_date) != 1L || is.na(start_date)) {
     stop("'start_date' must be a valid Date (or coercible to Date).", call. = FALSE)
@@ -129,7 +129,8 @@ compute_water_year <- function(date, water_year_start_month = 1) {
 #' @export
 find_leap_day_indices <- function(date) {
 
-  date <- as.Date(date)
+  date <- .safe_as_date(date)
+
   if (anyNA(date)) {
     stop("'date' must be coercible to Date with no NA values.", call. = FALSE)
   }
@@ -138,3 +139,169 @@ find_leap_day_indices <- function(date) {
 
   if (length(leap_idx) == 0L) NULL else leap_idx
 }
+
+
+# ==============================================================================
+# INTERNAL HELPER FUNCTIONS FOR generate_weather()
+# ==============================================================================
+
+#' Normalize Calendar to 365 Days
+#'
+#' @description
+#' Removes February 29 (leap days) from observation dates and corresponding
+#' rows from all grid cell data frames to enforce a 365-day calendar.
+#'
+#' @param obs_dates Date vector of observation dates.
+#' @param obs_data Named list of data frames (one per grid cell).
+#' @param verbose Logical. If TRUE, logs the number of dropped days.
+#'
+#' @return A list with two elements:
+#' \describe{
+#'   \item{dates}{Date vector with leap days removed.}
+#'   \item{data}{List of data frames with corresponding rows removed.}
+#' }
+#'
+#' @export
+normalize_calendar <- function(obs_dates, obs_data, verbose = FALSE) {
+
+  leap_idx <- find_leap_day_indices(obs_dates)
+
+  if (is.null(leap_idx) || length(leap_idx) == 0L) {
+    return(list(dates = obs_dates, data = obs_data))
+  }
+
+  n_orig <- length(obs_dates)
+  dates_out <- obs_dates[-leap_idx]
+
+  data_out <- lapply(obs_data, function(df) {
+    if (!is.data.frame(df)) {
+      stop("Each element of obs_data must be a data.frame.", call. = FALSE)
+    }
+    if (nrow(df) != n_orig) {
+      stop("Each obs_data element must have nrow equal to length(obs_dates).",
+           call. = FALSE)
+    }
+    df[-leap_idx, , drop = FALSE]
+  })
+
+  .log(
+    "Dropped {length(leap_idx)} leap days (365-day calendar enforced)",
+    tag = "INIT",
+    verbose = verbose
+  )
+
+  list(dates = dates_out, data = data_out)
+}
+
+
+#' Build Historical Date Table
+#'
+#' @description
+#' Constructs a tibble of historical dates with calendar and water-year indices,
+#' then restricts to complete years (365 days each) and returns the longest
+#' contiguous block of complete years.
+#'
+#' @param obs_dates Date vector of observation dates (leap days already removed).
+#' @param year_start_month Integer 1-12. First month of the simulation year.
+#' @param verbose Logical. If TRUE, logs summary information.
+#'
+#' @return A list with three elements:
+#' \describe{
+#'   \item{dates_df}{Tibble with columns: dateo, year, wyear, month, day, date.}
+#'   \item{wyear_idx}{Integer vector of row indices in obs_dates corresponding
+#'     to complete years.}
+#'   \item{complete_wyears}{Integer vector of complete water years.}
+#' }
+#'
+#' @export
+build_historical_dates <- function(obs_dates, year_start_month, verbose = FALSE) {
+
+  his_wyear <- compute_water_year(obs_dates, year_start_month)
+
+  dates_df <- tibble::tibble(
+    dateo = obs_dates,
+    year  = as.integer(format(obs_dates, "%Y")),
+    wyear = his_wyear,
+    month = as.integer(format(obs_dates, "%m")),
+    day   = as.integer(format(obs_dates, "%d"))
+  )
+
+  # Compute internal date representation
+  if (year_start_month == 1L) {
+    dates_df$date <- dates_df$dateo
+  } else {
+    dates_df$date <- as.Date(
+      sprintf("%04d-%02d-%02d", dates_df$wyear, dates_df$month, dates_df$day)
+    )
+  }
+
+  # Validation
+  if (anyNA(dates_df$date)) {
+    stop("Internal error: dates_df$date contains NA.", call. = FALSE)
+  }
+  if (anyDuplicated(dates_df$date)) {
+    stop("Internal error: dates_df$date contains duplicates.", call. = FALSE)
+  }
+
+  # ---------------------------------------------------------------------------
+  # Identify complete years (365 days) and keep longest contiguous block
+  # ---------------------------------------------------------------------------
+  wyear_counts <- as.data.frame(table(dates_df$wyear), stringsAsFactors = FALSE)
+  names(wyear_counts) <- c("wyear", "n_days")
+  wyear_counts$wyear <- as.integer(wyear_counts$wyear)
+
+  full_wyears <- wyear_counts$wyear[wyear_counts$n_days == 365L]
+
+  if (length(full_wyears) == 0L) {
+    stop(
+      "No complete years found (need 365 days per year after leap day removal).",
+      call. = FALSE
+    )
+  }
+
+  # Find longest contiguous block
+  full_wyears <- sort(full_wyears)
+  runs <- split(full_wyears, cumsum(c(1L, diff(full_wyears) != 1L)))
+  full_wyears <- runs[[which.max(lengths(runs))]]
+
+  # Filter to complete years
+  dates_df <- dplyr::filter(dates_df, wyear %in% full_wyears)
+
+  # Build index mapping back to original obs_dates
+  wyear_idx <- match(dates_df$dateo, obs_dates)
+
+  if (anyNA(wyear_idx)) {
+    stop("Internal error: dates_df$dateo did not match obs_dates.", call. = FALSE)
+  }
+
+  .log(
+    "Complete years: {length(full_wyears)} ({min(full_wyears)}-{max(full_wyears)})",
+    tag = "INIT",
+    verbose = verbose
+  )
+
+  list(
+    dates_df       = dates_df,
+    wyear_idx      = wyear_idx,
+    complete_wyears = full_wyears
+  )
+}
+
+
+
+# ==============================================================================
+# INTERNAL: Safe Date coercion (turns as.Date() errors into NA)
+# ==============================================================================
+
+.safe_as_date <- function(x) {
+  if (inherits(x, "Date")) return(x)
+
+  tryCatch(
+    as.Date(x),
+    error = function(e) {
+      # Preserve length for vector inputs
+      rep(as.Date(NA), length(x))
+    }
+  )
+}
+

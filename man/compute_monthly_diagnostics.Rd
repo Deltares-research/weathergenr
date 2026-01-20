@@ -5,8 +5,8 @@
 \title{Compute month-by-month diagnostics (scenario-aware when factors + year are available)}
 \usage{
 compute_monthly_diagnostics(
-  prcp_ref,
-  prcp_adj,
+  precip_ref,
+  precip_adj,
   month,
   mean_factor = NULL,
   var_factor = NULL,

@@ -6,14 +6,14 @@ testthat::test_that("adjust_precipitation_qm: identity mapping (no mean enforcem
   year <- rep(seq_len(n_years), each = 365L)
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.5, scale = 4)
-  prcp[sample.int(n_days, size = 120)] <- 0
+  precip <- rgamma(n_days, shape = 1.5, scale = 4)
+  precip[sample.int(n_days, size = 120)] <- 0
 
   mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
   out <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     month = month,
@@ -28,15 +28,15 @@ testthat::test_that("adjust_precipitation_qm: identity mapping (no mean enforcem
   )
 
   testthat::expect_type(out, "double")
-  testthat::expect_length(out, length(prcp))
+  testthat::expect_length(out, length(precip))
   testthat::expect_true(all(is.finite(out[!is.na(out)])))
 
   # Dry days remain unchanged
-  testthat::expect_identical(out[prcp == 0], prcp[prcp == 0])
+  testthat::expect_identical(out[precip == 0], precip[precip == 0])
 
   # With identical params and no enforcement, qgamma(pgamma(x)) should be ~ x
-  wet <- prcp > 0
-  testthat::expect_lt(mean(abs(out[wet] - prcp[wet])), 1e-6)
+  wet <- precip > 0
+  testthat::expect_lt(mean(abs(out[wet] - precip[wet])), 1e-6)
 
   # Attributes exist
   testthat::expect_true(!is.null(attr(out, "perturbed_months")))
@@ -53,14 +53,14 @@ testthat::test_that("adjust_precipitation_qm: mean_factor scales wet-day mean ap
   year <- rep(seq_len(n_years), each = 365L)
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.3, scale = 5)
-  prcp[sample.int(n_days, size = 150)] <- 0
+  precip <- rgamma(n_days, shape = 1.3, scale = 5)
+  precip[sample.int(n_days, size = 150)] <- 0
 
   mean_factor <- matrix(0.7, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
   out <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     month = month,
@@ -72,15 +72,15 @@ testthat::test_that("adjust_precipitation_qm: mean_factor scales wet-day mean ap
   )
 
   # Check mean scaling on wet days across all months/years combined
-  wet <- prcp > 0
-  m0 <- mean(prcp[wet])
+  wet <- precip > 0
+  m0 <- mean(precip[wet])
   m1 <- mean(out[wet])
 
   # Allow tolerance because mapping is month-wise and depends on fits
   testthat::expect_equal(m1 / m0, 0.7, tolerance = 0.05)
 
   # Dry days unchanged
-  testthat::expect_identical(out[prcp == 0], prcp[prcp == 0])
+  testthat::expect_identical(out[precip == 0], precip[precip == 0])
 })
 
 testthat::test_that("adjust_precipitation_qm: variance_factor affects spread of wet-day intensities", {
@@ -91,14 +91,14 @@ testthat::test_that("adjust_precipitation_qm: variance_factor affects spread of 
   year <- rep(seq_len(n_years), each = 365L)
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.2, scale = 6)
-  prcp[sample.int(n_days, size = 100)] <- 0
+  precip <- rgamma(n_days, shape = 1.2, scale = 6)
+  precip[sample.int(n_days, size = 100)] <- 0
 
   mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.6, nrow = n_years, ncol = 12)
 
   out <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     month = month,
@@ -108,8 +108,8 @@ testthat::test_that("adjust_precipitation_qm: variance_factor affects spread of 
     verbose = FALSE
   )
 
-  wet <- prcp > 0
-  v0 <- stats::var(prcp[wet])
+  wet <- precip > 0
+  v0 <- stats::var(precip[wet])
   v1 <- stats::var(out[wet])
 
   # Should increase variance noticeably (not necessarily exactly by factor, due to month-wise mapping)
@@ -124,14 +124,14 @@ testthat::test_that("adjust_precipitation_qm: scale_var_with_mean combines varia
   year <- rep(seq_len(n_years), each = 365L)
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.8, scale = 3)
-  prcp[sample.int(n_days, size = 80)] <- 0
+  precip <- rgamma(n_days, shape = 1.8, scale = 3)
+  precip[sample.int(n_days, size = 80)] <- 0
 
   mean_factor <- matrix(0.8, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
   out_noscale <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     scale_var_with_mean = FALSE,
@@ -141,7 +141,7 @@ testthat::test_that("adjust_precipitation_qm: scale_var_with_mean combines varia
   )
 
   out_scale <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     scale_var_with_mean = TRUE,
@@ -150,11 +150,11 @@ testthat::test_that("adjust_precipitation_qm: scale_var_with_mean combines varia
     verbose = FALSE
   )
 
-  wet <- prcp > 0
+  wet <- precip > 0
 
   # Means should be similar (both target mean ~ 0.8 * baseline)
-  testthat::expect_equal(mean(out_scale[wet]) / mean(prcp[wet]), 0.8, tolerance = 0.05)
-  testthat::expect_equal(mean(out_noscale[wet]) / mean(prcp[wet]), 0.8, tolerance = 0.05)
+  testthat::expect_equal(mean(out_scale[wet]) / mean(precip[wet]), 0.8, tolerance = 0.05)
+  testthat::expect_equal(mean(out_noscale[wet]) / mean(precip[wet]), 0.8, tolerance = 0.05)
 
   # With scale_var_with_mean=TRUE, effective variance factor ~ mean_factor^2,
   # so variance should be lower than the no-scale case (which keeps variance factor at 1).
@@ -169,14 +169,14 @@ testthat::test_that("adjust_precipitation_qm: tail amplification increases upper
   year <- rep(seq_len(n_years), each = 365L)
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.1, scale = 7)
-  prcp[sample.int(n_days, size = 90)] <- 0
+  precip <- rgamma(n_days, shape = 1.1, scale = 7)
+  precip[sample.int(n_days, size = 90)] <- 0
 
   mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
   out_base <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     exaggerate_extremes = FALSE,
@@ -186,7 +186,7 @@ testthat::test_that("adjust_precipitation_qm: tail amplification increases upper
   )
 
   out_tail_nom <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     exaggerate_extremes = TRUE,
@@ -199,7 +199,7 @@ testthat::test_that("adjust_precipitation_qm: tail amplification increases upper
   )
 
   out_tail_mean <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     exaggerate_extremes = TRUE,
@@ -211,7 +211,7 @@ testthat::test_that("adjust_precipitation_qm: tail amplification increases upper
     verbose = FALSE
   )
 
-  wet <- prcp > 0
+  wet <- precip > 0
 
   q0 <- stats::quantile(out_base[wet], probs = 0.99, names = FALSE, na.rm = TRUE)
   q1 <- stats::quantile(out_tail_nom[wet], probs = 0.99, names = FALSE, na.rm = TRUE)
@@ -237,14 +237,14 @@ testthat::test_that("adjust_precipitation_qm: intensity_threshold keeps small va
   year <- rep(seq_len(n_years), each = 365L)
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.4, scale = 4)
+  precip <- rgamma(n_days, shape = 1.4, scale = 4)
 
   # Inject a band of small drizzle values that should be treated as "dry" for intensity mapping
   drizzle_idx <- sample.int(n_days, size = 120)
-  prcp[drizzle_idx] <- runif(length(drizzle_idx), min = 0, max = 0.5)
+  precip[drizzle_idx] <- runif(length(drizzle_idx), min = 0, max = 0.5)
 
   # Inject true dry days too
-  prcp[sample(setdiff(seq_len(n_days), drizzle_idx), size = 60)] <- 0
+  precip[sample(setdiff(seq_len(n_days), drizzle_idx), size = 60)] <- 0
 
   thr <- 0.5
 
@@ -252,7 +252,7 @@ testthat::test_that("adjust_precipitation_qm: intensity_threshold keeps small va
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
   out <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     month = month,
@@ -262,11 +262,11 @@ testthat::test_that("adjust_precipitation_qm: intensity_threshold keeps small va
   )
 
   # Values <= threshold must be unchanged (including exact zeros and drizzle band)
-  keep <- !is.na(prcp) & (prcp <= thr)
-  testthat::expect_identical(out[keep], prcp[keep])
+  keep <- !is.na(precip) & (precip <= thr)
+  testthat::expect_identical(out[keep], precip[keep])
 
   # Wet-day indicator relative to threshold is preserved (function does not change occurrence)
-  wet0 <- prcp > thr
+  wet0 <- precip > thr
   wet1 <- out > thr
   wet0[is.na(wet0)] <- FALSE
   wet1[is.na(wet1)] <- FALSE
@@ -283,18 +283,18 @@ testthat::test_that("adjust_precipitation_qm: months with insufficient events ar
   # Force month=1 to have very few wet days by setting nearly all to 0 in month 1
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.6, scale = 4)
-  prcp[sample.int(n_days, size = 120)] <- 0
+  precip <- rgamma(n_days, shape = 1.6, scale = 4)
+  precip[sample.int(n_days, size = 120)] <- 0
 
   # Make month 1 mostly dry, so it will fail min_events for wet intensities
-  idx_m1 <- which(month == 1 & prcp > 0)
-  if (length(idx_m1) > 5) prcp[idx_m1[-seq_len(5)]] <- 0
+  idx_m1 <- which(month == 1 & precip > 0)
+  if (length(idx_m1) > 5) precip[idx_m1[-seq_len(5)]] <- 0
 
   mean_factor <- matrix(1.3, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
   out <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     month = month,
@@ -304,9 +304,9 @@ testthat::test_that("adjust_precipitation_qm: months with insufficient events ar
   )
 
   # Any wet days in skipped month should pass through unchanged
-  wet_m1 <- which(month == 1 & prcp > 0)
+  wet_m1 <- which(month == 1 & precip > 0)
   if (length(wet_m1) > 0) {
-    testthat::expect_identical(out[wet_m1], prcp[wet_m1])
+    testthat::expect_identical(out[wet_m1], precip[wet_m1])
   }
 
   skipped <- attr(out, "skipped_months")
@@ -321,16 +321,16 @@ testthat::test_that("adjust_precipitation_qm: NA values pass through unchanged",
   year <- rep(seq_len(n_years), each = 365L)
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.3, scale = 5)
-  prcp[sample.int(n_days, size = 80)] <- 0
+  precip <- rgamma(n_days, shape = 1.3, scale = 5)
+  precip[sample.int(n_days, size = 80)] <- 0
   na_idx <- sample.int(n_days, size = 20)
-  prcp[na_idx] <- NA_real_
+  precip[na_idx] <- NA_real_
 
   mean_factor <- matrix(1.1, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
   out <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     month = month,
@@ -349,14 +349,14 @@ testthat::test_that("adjust_precipitation_qm: diagnostics=TRUE returns expected 
   year <- rep(seq_len(n_years), each = 365L)
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.4, scale = 4)
-  prcp[sample.int(n_days, size = 100)] <- 0
+  precip <- rgamma(n_days, shape = 1.4, scale = 4)
+  precip[sample.int(n_days, size = 100)] <- 0
 
   mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
 
   res <- adjust_precipitation_qm(
-    prcp = prcp,
+    precip = precip,
     mean_factor = mean_factor,
     var_factor = var_factor,
     month = month,
@@ -369,7 +369,7 @@ testthat::test_that("adjust_precipitation_qm: diagnostics=TRUE returns expected 
   testthat::expect_true(all(c("adjusted", "diagnostics", "base_gamma", "target_gamma", "var_factor_use") %in% names(res)))
 
   out <- res$adjusted
-  testthat::expect_length(out, length(prcp))
+  testthat::expect_length(out, length(precip))
 
   # base_gamma is data.frame with required columns
   testthat::expect_s3_class(res$base_gamma, "data.frame")
@@ -393,8 +393,8 @@ testthat::test_that("adjust_precipitation_qm: year index contiguity is enforced 
   n_days <- 365L * n_years
   month <- rep(1:12, length.out = n_days)
 
-  prcp <- rgamma(n_days, shape = 1.2, scale = 5)
-  prcp[sample.int(n_days, size = 80)] <- 0
+  precip <- rgamma(n_days, shape = 1.2, scale = 5)
+  precip[sample.int(n_days, size = 80)] <- 0
 
   mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
   var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
@@ -404,7 +404,7 @@ testthat::test_that("adjust_precipitation_qm: year index contiguity is enforced 
 
   testthat::expect_error(
     adjust_precipitation_qm(
-      prcp = prcp,
+      precip = precip,
       mean_factor = mean_factor,
       var_factor = var_factor,
       month = month,

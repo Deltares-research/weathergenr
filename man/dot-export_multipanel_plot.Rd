@@ -11,7 +11,7 @@
   save_plots,
   title = NULL,
   subtitle = NULL,
-  output_path
+  output_dir
 )
 }
 \arguments{
@@ -21,13 +21,13 @@
 
 \item{show_title}{Logical; if \code{TRUE}, adds \code{title}/\code{subtitle} via \code{labs()}.}
 
-\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{output_path}.}
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{output_dir}.}
 
 \item{title}{Character; plot title (only used when \code{show_title = TRUE}).}
 
 \item{subtitle}{Character; plot subtitle (only used when \code{show_title = TRUE}).}
 
-\item{output_path}{Character; output directory for saved plots.}
+\item{output_dir}{Character; output directory for saved plots.}
 }
 \value{
 The ggplot object \code{p}, returned invisibly.

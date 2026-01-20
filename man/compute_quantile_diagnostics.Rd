@@ -4,7 +4,7 @@
 \alias{compute_quantile_diagnostics}
 \title{Compute quantile diagnostics (reports change; no scenario-aware target by default)}
 \usage{
-compute_quantile_diagnostics(prcp_ref, prcp_adj, probs)
+compute_quantile_diagnostics(precip_ref, precip_adj, probs)
 }
 \description{
 Compute quantile diagnostics (reports change; no scenario-aware target by default)

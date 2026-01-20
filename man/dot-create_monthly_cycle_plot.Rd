@@ -9,7 +9,7 @@
   plot_config,
   show_title,
   save_plots,
-  output_path
+  output_dir
 )
 }
 \arguments{
@@ -19,9 +19,9 @@
 
 \item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
 
-\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{output_path}.}
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{output_dir}.}
 
-\item{output_path}{Character; output directory for saved plots.}
+\item{output_dir}{Character; output directory for saved plots.}
 }
 \value{
 ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
