@@ -8,14 +8,14 @@ apply_climate_perturbations(
   data = NULL,
   grid = NULL,
   date = NULL,
-  prcp_mean_factor = NULL,
-  prcp_var_factor = NULL,
-  prcp_occurrence_factor = NULL,
-  prcp_intensity_threshold = 0,
+  precip_mean_factor = NULL,
+  precip_var_factor = NULL,
+  precip_occurrence_factor = NULL,
+  precip_intensity_threshold = 0,
   temp_delta = NULL,
   temp_transient = TRUE,
-  prcp_transient = TRUE,
-  prcp_occurrence_transient = TRUE,
+  precip_transient = TRUE,
+  precip_occurrence_transient = TRUE,
   compute_pet = TRUE,
   pet_method = "hargreaves",
   qm_fit_method = "mme",
@@ -24,140 +24,123 @@ apply_climate_perturbations(
   extreme_prob_threshold = 0.95,
   extreme_k = 1.2,
   enforce_target_mean = TRUE,
-  prcp_cap_mm_day = NULL,
-  prcp_floor_mm_day = NULL,
-  prcp_cap_quantile = NULL,
+  precip_cap_mm_day = NULL,
+  precip_floor_mm_day = NULL,
+  precip_cap_quantile = NULL,
   seed = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  diagnostic = TRUE
 )
 }
 \arguments{
-\item{data}{List of data.frames, one per grid cell. Each data.frame must contain:
-\itemize{
-  \item \code{prcp} - daily precipitation (mm/day),
-  \item \code{temp} - daily mean temperature (degC),
-  \item \code{temp_min} - daily minimum temperature (degC),
-  \item \code{temp_max} - daily maximum temperature (degC).
-}
-If \code{compute_pet = TRUE}, a column \code{pet} is added or overwritten.}
+\item{data}{List of data.frames, one per grid cell. Each data.frame must contain `precip`,
+`temp`, `temp_min`, and `temp_max`. If `compute_pet = TRUE`, a column `pet` is added or
+overwritten.}
 
-\item{grid}{Data frame of grid metadata with \code{nrow(grid) == length(data)}.
-Must include a latitude column: \code{lat} (preferred) or \code{y} (legacy).}
+\item{grid}{Data frame of grid metadata with `nrow(grid) == length(data)`. Must include a
+latitude column: `lat` (preferred) or `y` (legacy).}
 
 \item{date}{Date vector with length equal to the number of rows in each grid-cell data.frame.
 Used to derive month and simulation-year indices.}
 
-\item{prcp_mean_factor}{Numeric vector of length 12 or numeric matrix \code{(n_years x 12)}.
-Monthly multiplicative factors applied to **wet-day precipitation mean**
-during intensity perturbation.}
+\item{precip_mean_factor}{Numeric vector of length 12 or numeric matrix `(n_years x 12)`. Monthly
+multiplicative factors applied to wet-day precipitation mean during intensity perturbation.}
 
-\item{prcp_var_factor}{Numeric vector of length 12 or numeric matrix \code{(n_years x 12)}.
-Monthly multiplicative factors applied to **wet-day precipitation variance**.
-If \code{scale_var_with_mean = TRUE}, this factor is combined with mean scaling
-(see below).}
+\item{precip_var_factor}{Numeric vector of length 12 or numeric matrix `(n_years x 12)`. Monthly
+multiplicative factors applied to wet-day precipitation variance.}
 
-\item{prcp_occurrence_factor}{Optional numeric vector of length 12 or numeric matrix \code{(n_years x 12)}.
-Multiplicative factors applied to **monthly wet-day probability**.
-Values greater than 1 increase wet-day frequency; values less than 1 decrease it.}
+\item{precip_occurrence_factor}{Optional numeric vector of length 12 or numeric matrix `(n_years x 12)`.
+Multiplicative factors applied to monthly wet-day probability.}
 
-\item{prcp_intensity_threshold}{Numeric scalar \code{>= 0}. Defines wet days as \code{prcp > prcp_intensity_threshold}.
-This threshold is:
-\itemize{
-  \item used to define wet days for occurrence perturbation, and
-  \item passed to \code{\link{adjust_precipitation_qm}} as its
-    \code{intensity_threshold}.
-}
-Default is \code{0}.}
+\item{precip_intensity_threshold}{Numeric scalar `>= 0`. Defines wet days as `precip > precip_intensity_threshold`.
+Also passed to [adjust_precipitation_qm()] as `intensity_threshold`. Default is 0.}
 
-\item{temp_delta}{Numeric vector of length 12. Monthly additive temperature deltas (degC) applied
-to \code{temp}, \code{temp_min}, and \code{temp_max}.}
+\item{temp_delta}{Numeric vector of length 12. Monthly additive temperature deltas (degC) applied to
+`temp`, `temp_min`, and `temp_max`.}
 
-\item{temp_transient}{Logical. If \code{TRUE}, temperature deltas ramp linearly from zero to twice
-\code{temp_delta} across simulation years, preserving the same mean change.}
+\item{temp_transient}{Logical. If TRUE, temperature deltas ramp linearly from zero to twice `temp_delta`
+across simulation years, preserving the same mean change.}
 
-\item{prcp_transient}{Logical. If \code{TRUE}, precipitation mean and variance factors ramp linearly
-across simulation years using the same transient logic.}
+\item{precip_transient}{Logical. If TRUE, precipitation mean and variance factors ramp linearly across
+simulation years using the same transient logic.}
 
-\item{prcp_occurrence_transient}{Logical. If \code{TRUE}, precipitation occurrence factors ramp linearly
-across simulation years.}
+\item{precip_occurrence_transient}{Logical. If TRUE, precipitation occurrence factors ramp linearly across
+simulation years.}
 
-\item{compute_pet}{Logical. If \code{TRUE}, recompute PET from perturbed temperature using
-\code{\link{calculate_monthly_pet}}.}
+\item{compute_pet}{Logical. If TRUE, recompute PET from perturbed temperature using
+[calculate_monthly_pet()].}
 
-\item{pet_method}{Character string specifying the PET method passed to
-\code{\link{calculate_monthly_pet}} (default: \code{"hargreaves"}).}
+\item{pet_method}{Character string specifying the PET method passed to [calculate_monthly_pet()] (default:
+"hargreaves").}
 
 \item{qm_fit_method}{Character string specifying the Gamma fitting method passed to
-\code{\link{adjust_precipitation_qm}} (e.g., \code{"mme"}, \code{"mle"}).}
+[adjust_precipitation_qm()] (e.g., "mme", "mle").}
 
-\item{scale_var_with_mean}{Logical. If \code{TRUE}, precipitation variance scaling is computed as:
-\deqn{var\_factor\_use = prcp\_var\_factor \times prcp\_mean\_factor^2}
-This tends to preserve the coefficient of variation under mean changes.}
+\item{scale_var_with_mean}{Logical. If TRUE, precipitation variance scaling is computed as
+`var_factor_use = precip_var_factor * precip_mean_factor^2`.}
 
-\item{exaggerate_extremes}{Logical. If TRUE, amplify upper-tail wet-day precipitation during the
-intensity quantile mapping step (forwarded to \code{\link{adjust_precipitation_qm}}).}
+\item{exaggerate_extremes}{Logical. If TRUE, amplify upper-tail wet-day precipitation during the intensity
+quantile mapping step (forwarded to [adjust_precipitation_qm()]).}
 
 \item{extreme_prob_threshold}{Numeric scalar in (0, 1). Probability threshold defining the start of the tail
-region for amplification in \code{adjust_precipitation_qm}. For example, 0.95 means
-the top 5% of baseline wet-day intensities (month-specific).}
+region for amplification in [adjust_precipitation_qm()].}
 
 \item{extreme_k}{Numeric scalar > 0. Tail exponent controlling amplification strength in
-\code{adjust_precipitation_qm}. Values > 1 amplify extremes; values in (0, 1) dampen.}
+[adjust_precipitation_qm()]. Values > 1 amplify extremes; values in (0, 1) dampen.}
 
 \item{enforce_target_mean}{Logical. If TRUE, rescale mapped wet-day values within each (year index, month)
-group so the wet-day mean matches the intended target mean after tail amplification.
-Forwarded to \code{\link{adjust_precipitation_qm}}.}
+group so the wet-day mean matches the intended target mean after tail amplification.}
 
-\item{prcp_cap_mm_day}{Optional numeric scalar. Absolute upper cap (mm/day) applied to precipitation
-after all perturbations. Intended as a numerical safeguard.}
+\item{precip_cap_mm_day}{Optional numeric scalar. Absolute upper cap (mm/day) applied to precipitation after
+all perturbations.}
 
-\item{prcp_floor_mm_day}{Optional numeric scalar. Minimum precipitation amount (mm/day) applied to wet days
-after perturbation. Useful to avoid unrealistically small drizzle amounts.}
+\item{precip_floor_mm_day}{Optional numeric scalar. Minimum precipitation amount (mm/day) applied to wet days
+after perturbation.}
 
-\item{prcp_cap_quantile}{Optional numeric scalar in \code{(0, 1)}. Quantile-based cap computed from the
-perturbed precipitation series and applied as an additional upper bound.}
+\item{precip_cap_quantile}{Optional numeric scalar in (0, 1). Quantile-based cap computed from the perturbed
+precipitation series and applied as an additional upper bound.}
 
-\item{seed}{Optional integer. Sets the random seed for reproducible precipitation occurrence
-perturbations and any stochastic components. The previous RNG state is restored on exit.}
+\item{seed}{Optional integer. Sets the random seed for reproducible precipitation occurrence perturbations
+and any stochastic components.}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress messages and warnings.}
+\item{verbose}{Logical. If TRUE, prints progress messages and warnings.}
+
+\item{diagnostic}{Logical. If TRUE (default), return precipitation quantile-mapping diagnostics from
+[adjust_precipitation_qm()] alongside the perturbed data.}
 }
 \value{
-A list of data.frames, one per grid cell, containing the perturbed weather variables.
-The structure matches the input \code{data} list.
+If `diagnostic = TRUE` (default), a list with:
+* `data`: list of data.frames (one per grid cell)
+* `diagnostic`: list of per-grid diagnostic objects returned by [adjust_precipitation_qm()], with the large
+  `adjusted` vector removed
+
+If `diagnostic = FALSE`, only the list of data.frames is returned.
 }
 \description{
-Applies **monthly climate perturbations** to **daily gridded weather simulations**
-in a modular and physically interpretable way. The function operates independently
-on precipitation intensity, precipitation occurrence, temperature, and (optionally)
+Applies monthly climate perturbations to daily gridded weather simulations in a
+modular and physically interpretable way. The function operates independently on
+precipitation intensity, precipitation occurrence, temperature, and (optionally)
 potential evapotranspiration (PET).
 
 The perturbation workflow is:
-\enumerate{
-  \item Construct a **simulation-year index** from \code{date} (\code{1..n_years}).
-  \item Apply **precipitation occurrence perturbations** (optional) by modifying
-    monthly wet-day probabilities within each (year index, month) group.
-  \item Apply **precipitation intensity perturbations** to wet days using
-    Gamma-based quantile mapping via \code{\link{adjust_precipitation_qm}}.
-  \item Apply **temperature perturbations** using monthly additive deltas
-    (step change or transient ramp).
-  \item Optionally recompute **PET** from perturbed temperature fields.
-}
+1. Construct a simulation-year index from `date` (`1..n_years`).
+2. Optionally modify monthly wet-day probabilities within each (year index, month) group.
+3. Apply precipitation intensity perturbations to wet days using Gamma-based quantile mapping
+   via [adjust_precipitation_qm()].
+4. Apply temperature perturbations using monthly additive deltas (step change or transient ramp).
+5. Optionally recompute PET from perturbed temperature fields.
 
-This function is intended for **climate stress testing and scenario analysis**,
-where controlled changes in mean climate, variability, and extremes are required
-while preserving realistic daily structure.
+This function is intended for climate stress testing and scenario analysis, where
+controlled changes in mean climate, variability, and extremes are required while
+preserving realistic daily structure.
 }
 \section{Year indexing convention (critical)}{
 
-All precipitation perturbations rely on a **simulation-year index**
-\code{year_idx = 1..n_years}, derived internally from \code{date}.
-Calendar years are \strong{not} passed downstream.
-Any factor matrices supplied as \code{n_years x 12} are indexed using this
-simulation-year convention.
+All precipitation perturbations rely on a simulation-year index `year_idx = 1..n_years`,
+derived internally from `date`. Calendar years are not passed downstream. Any factor
+matrices supplied as `n_years x 12` are indexed using this simulation-year convention.
 }
 
 \seealso{
-\code{\link{adjust_precipitation_qm}},
-\code{\link{calculate_monthly_pet}}
+[adjust_precipitation_qm()], [calculate_monthly_pet()]
 }

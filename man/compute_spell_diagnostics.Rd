@@ -4,7 +4,12 @@
 \alias{compute_spell_diagnostics}
 \title{Compute wet and dry spell-length diagnostics (intended preserved)}
 \usage{
-compute_spell_diagnostics(prcp_ref, prcp_adj, wet_thresh, tol_mean_ratio = 0.2)
+compute_spell_diagnostics(
+  precip_ref,
+  precip_adj,
+  wet_thresh,
+  tol_mean_ratio = 0.2
+)
 }
 \description{
 Compute wet and dry spell-length diagnostics (intended preserved)

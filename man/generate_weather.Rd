@@ -118,7 +118,7 @@ The workflow combines:
   \item daily KNN resampling of precipitation and temperature anomalies.
 }
 
-The simulation-year defINITion is inferred from \code{year_start_month}:
+The simulation-year definitionis inferred from \code{year_start_month}:
 \itemize{
   \item \code{year_start_month == 1}: calendar-year simulation,
   \item \code{year_start_month != 1}: water-year simulation starting in \code{year_start_month}.

@@ -19,6 +19,9 @@
 # Helper: Create synthetic grid data frame
 # ------------------------------------------------------------------------------
 
+library(testthat)
+
+
 make_test_grid_df <- function(dates, id_shift = 0) {
 
   n <- length(dates)
@@ -40,7 +43,7 @@ make_test_grid_df <- function(dates, id_shift = 0) {
 
   # Minimal plot list (must include keys used in tests)
   .mock_create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
-                                                show_title, save_plots, output_path) {
+                                                show_title, save_plots, output_dir) {
     plots <- list(
       daily_mean = .p(),
       daily_sd = .p(),
@@ -158,7 +161,7 @@ testthat::test_that("evaluate_weather_generator returns weather_assessment with 
       n_realizations = n_realizations,
       wet_quantile = 0.2,
       extreme_quantile = 0.8,
-      output_path = NULL,
+      output_dir = NULL,
       save_plots = FALSE,
       show_title = FALSE,
       max_grids = 25,
@@ -226,7 +229,7 @@ testthat::test_that("evaluate_weather_generator subsamples grids when exceeding 
       daily_obs = daily_obs,
       variables = c("precip", "temp"),
       n_realizations = n_realizations,
-      output_path = NULL,
+      output_dir = NULL,
       save_plots = FALSE,
       show_title = FALSE,
       max_grids = max_grids,
@@ -432,7 +435,7 @@ testthat::test_that("evaluate_weather_generator handles leap days without error"
       daily_obs = daily_obs,
       variables = c("precip", "temp"),
       n_realizations = n_realizations,
-      output_path = NULL,
+      output_dir = NULL,
       save_plots = FALSE,
       show_title = FALSE,
       verbose = FALSE
@@ -483,7 +486,7 @@ testthat::test_that("evaluate_weather_generator produces reproducible results wi
       n_realizations = n_realizations,
       max_grids = max_grids,
       seed = 12345,
-      output_path = NULL,
+      output_dir = NULL,
       save_plots = FALSE,
       verbose = FALSE
     )
@@ -495,7 +498,7 @@ testthat::test_that("evaluate_weather_generator produces reproducible results wi
       n_realizations = n_realizations,
       max_grids = max_grids,
       seed = 12345,
-      output_path = NULL,
+      output_dir = NULL,
       save_plots = FALSE,
       verbose = FALSE
     )
@@ -514,3 +517,324 @@ testthat::test_that("evaluate_weather_generator produces reproducible results wi
     testthat::expect_equal(fit1, fit2)
   })
 })
+
+
+test_that("generate_symmetric_dummy_points returns 2 points per facet and is symmetric", {
+  df <- data.frame(
+    variable = c("precip", "precip", "temp", "temp"),
+    Observed = c(1, 5, 10, 12),
+    Simulated = c(0.5, 6, 9, 13)
+  )
+
+  out <- generate_symmetric_dummy_points(
+    df = df,
+    facet_var = "variable",
+    x_col = "Observed",
+    y_col = "Simulated"
+  )
+
+  # 2 dummy points per facet
+  expect_true(is.data.frame(out))
+  expect_true(all(c("variable", "Observed", "Simulated") %in% names(out)))
+  expect_equal(nrow(out), 2L * length(unique(df$variable)))
+
+  # Symmetry: each row has x == y
+  expect_true(all(out$Observed == out$Simulated))
+
+  # For each facet: contains min and max of combined range
+  for (v in unique(df$variable)) {
+    d <- df[df$variable == v, ]
+    rng <- range(c(d$Observed, d$Simulated), na.rm = TRUE)
+    o <- out[out$variable == v, ]
+    expect_true(any(abs(o$Observed - rng[1]) < 1e-12))
+    expect_true(any(abs(o$Observed - rng[2]) < 1e-12))
+  }
+})
+
+test_that("create_all_diagnostic_plots returns expected plot names and ggplot objects", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("dplyr")
+  skip_if_not_installed("tidyr")
+
+  # Minimal plot_data fixture with required columns
+  daily_stats_season <- data.frame(
+    rlz = c(1, 1, 1, 1),
+    id = c(1, 1, 1, 1),
+    mon = c(1, 2, 1, 2),
+    variable = c("precip", "precip", "temp", "temp"),
+    stat = c("mean", "mean", "mean", "mean"),
+    Observed = c(1, 2, 10, 11),
+    Simulated = c(1.1, 1.9, 9.8, 11.2)
+  )
+
+  # Need SD rows for daily_sd plot
+  daily_stats_sd <- daily_stats_season
+  daily_stats_sd$stat <- "sd"
+  daily_stats_sd$Observed <- c(0.5, 0.6, 1.0, 1.1)
+  daily_stats_sd$Simulated <- c(0.55, 0.58, 0.9, 1.2)
+
+  daily_stats_season <- rbind(daily_stats_season, daily_stats_sd)
+
+  # Wet/dry diagnostics used by spell_length + wetdry_days_count plots
+  stats_wetdry <- data.frame(
+    rlz = c(1, 1, 1, 1),
+    id = c(1, 1, 1, 1),
+    mon = c(1, 1, 1, 1),
+    variable = c("precip", "precip", "precip", "precip"),
+    stat = c("Wet", "Dry", "Wet", "Dry"),
+    type = c("days", "days", "spells", "spells"),
+    Observed = c(10, 20, 2.0, 3.0),
+    Simulated = c(11, 19, 2.2, 2.8)
+  )
+
+  # Cross-grid correlations: variable1 facets
+  stats_crosscor <- data.frame(
+    rlz = c(1, 1),
+    variable1 = c("precip", "temp"),
+    variable2 = c("precip", "temp"),
+    id1 = c(1, 1),
+    id2 = c(2, 2),
+    Observed = c(0.4, 0.2),
+    Simulated = c(0.35, 0.25)
+  )
+
+  # Inter-variable correlations: variable facets
+  stats_intercor <- data.frame(
+    rlz = c(1, 1),
+    variable = c("precip:temp", "precip:temp"),
+    variable1 = c("precip", "precip"),
+    variable2 = c("temp", "temp"),
+    id1 = c(1, 2),
+    id2 = c(1, 2),
+    Observed = c(0.1, 0.15),
+    Simulated = c(0.12, 0.14)
+  )
+
+  # Conditional precip correlations: regime ~ variable facets, within-grid only
+  stats_precip_cor_cond <- data.frame(
+    rlz = c(1, 1, 1),
+    id1 = c(1, 1, 1),
+    id2 = c(1, 1, 1),
+    variable1 = c("precip", "precip", "precip"),
+    variable2 = c("temp", "temp", "temp"),
+    regime = c("all", "wet", "dry"),
+    transform = c("precip", "log1p_precip", "precip"),
+    Observed = c(0.05, 0.10, 0.00),
+    Simulated = c(0.06, 0.09, -0.01)
+  )
+
+  # Monthly pattern inputs
+  stats_mon_aavg_sim <- data.frame(
+    rlz = c(1, 1, 1, 1),
+    year = c(1, 1, 1, 1),
+    mon = c(1, 2, 1, 2),
+    variable = c("precip", "precip", "temp", "temp"),
+    stat = c("mean", "mean", "mean", "mean"),
+    Simulated = c(1.0, 2.0, 10, 11)
+  )
+
+  stats_mon_aavg_obs <- data.frame(
+    year = c(1, 1, 1, 1),
+    mon = c(1, 2, 1, 2),
+    variable = c("precip", "precip", "temp", "temp"),
+    stat = c("mean", "mean", "mean", "mean"),
+    Observed = c(1.1, 1.9, 10.2, 10.8)
+  )
+
+  # Annual precip inputs
+  stats_annual_aavg_sim <- data.frame(
+    rlz = c(1, 1),
+    year = c(1, 2),
+    variable = c("precip", "precip"),
+    stat = c("mean", "mean"),
+    Simulated = c(1.5, 1.7)
+  )
+
+  stats_annual_aavg_obs <- data.frame(
+    year = c(1, 2),
+    variable = c("precip", "precip"),
+    stat = c("mean", "mean"),
+    Observed = c(1.6, 1.65)
+  )
+
+  plot_data <- list(
+    daily_stats_season = daily_stats_season,
+    stats_mon_aavg_sim = stats_mon_aavg_sim,
+    stats_mon_aavg_obs = stats_mon_aavg_obs,
+    stats_annual_aavg_sim = stats_annual_aavg_sim,
+    stats_annual_aavg_obs = stats_annual_aavg_obs,
+    stats_crosscor = stats_crosscor,
+    stats_intercor = stats_intercor,
+    stats_wetdry = stats_wetdry,
+    stats_precip_cor_cond = stats_precip_cor_cond
+  )
+
+  plot_config <- list(
+    subtitle = "test subtitle",
+    alpha = 0.4,
+    colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated")),
+    theme = ggplot2::theme_bw(base_size = 12)
+  )
+
+  variables <- c("precip", "temp")
+
+  plots <- create_all_diagnostic_plots(
+    plot_data = plot_data,
+    plot_config = plot_config,
+    variables = variables,
+    show_title = FALSE,
+    save_plots = FALSE,
+    output_dir = NULL
+  )
+
+  expect_true(is.list(plots))
+
+  # Expected base plot names
+  expected <- c(
+    "daily_mean", "daily_sd",
+    "spell_length", "wetdry_days_count",
+    "crossgrid", "intergrid",
+    "precip_cond_cor",
+    "monthly_cycle", "annual_precip",
+    "annual_pattern_precip", "annual_pattern_temp"
+  )
+  expect_true(all(expected %in% names(plots)))
+
+  # All are ggplot objects
+  for (nm in expected) {
+    expect_s3_class(plots[[nm]], "ggplot")
+  }
+})
+
+test_that("create_all_diagnostic_plots calls ggsave when save_plots=TRUE (mocked)", {
+  skip_if_not_installed("ggplot2")
+
+  # Minimal plot_data for one plot is not enough because create_all_diagnostic_plots builds all plots.
+  # Reuse the prior fixture by sourcing it from a helper if you have one.
+  # Here, keep it simple: mock ggsave and run with save_plots=TRUE + tempdir.
+
+  # Define a small valid fixture by reusing the previous test's objects if tests run in order is NOT guaranteed.
+  # So we rebuild a minimal-but-valid plot_data by calling the same builder logic in-line.
+
+  daily_stats_season <- data.frame(
+    rlz = c(1, 1),
+    id = c(1, 1),
+    mon = c(1, 1),
+    variable = c("precip", "precip"),
+    stat = c("mean", "sd"),
+    Observed = c(1, 0.5),
+    Simulated = c(1.1, 0.55)
+  )
+
+  stats_wetdry <- data.frame(
+    rlz = c(1, 1, 1, 1),
+    id = c(1, 1, 1, 1),
+    mon = c(1, 1, 1, 1),
+    variable = c("precip", "precip", "precip", "precip"),
+    stat = c("Wet", "Dry", "Wet", "Dry"),
+    type = c("days", "days", "spells", "spells"),
+    Observed = c(10, 20, 2.0, 3.0),
+    Simulated = c(11, 19, 2.2, 2.8)
+  )
+
+  stats_crosscor <- data.frame(
+    rlz = 1,
+    variable1 = "precip",
+    variable2 = "precip",
+    id1 = 1, id2 = 2,
+    Observed = 0.4, Simulated = 0.35
+  )
+
+  stats_intercor <- data.frame(
+    rlz = 1,
+    variable = "precip:temp",
+    variable1 = "precip", variable2 = "temp",
+    id1 = 1, id2 = 1,
+    Observed = 0.1, Simulated = 0.12
+  )
+
+  stats_precip_cor_cond <- data.frame(
+    rlz = c(1, 1, 1),
+    id1 = 1, id2 = 1,
+    variable1 = "precip", variable2 = "temp",
+    regime = c("all", "wet", "dry"),
+    transform = c("precip", "log1p_precip", "precip"),
+    Observed = c(0.05, 0.10, 0.00),
+    Simulated = c(0.06, 0.09, -0.01)
+  )
+
+  stats_mon_aavg_sim <- data.frame(
+    rlz = 1,
+    year = 1,
+    mon = 1,
+    variable = "precip",
+    stat = "mean",
+    Simulated = 1.0
+  )
+
+  stats_mon_aavg_obs <- data.frame(
+    year = 1,
+    mon = 1,
+    variable = "precip",
+    stat = "mean",
+    Observed = 1.1
+  )
+
+  stats_annual_aavg_sim <- data.frame(
+    rlz = 1,
+    year = 1,
+    variable = "precip",
+    stat = "mean",
+    Simulated = 1.5
+  )
+
+  stats_annual_aavg_obs <- data.frame(
+    year = 1,
+    variable = "precip",
+    stat = "mean",
+    Observed = 1.6
+  )
+
+  plot_data <- list(
+    daily_stats_season = daily_stats_season,
+    stats_mon_aavg_sim = stats_mon_aavg_sim,
+    stats_mon_aavg_obs = stats_mon_aavg_obs,
+    stats_annual_aavg_sim = stats_annual_aavg_sim,
+    stats_annual_aavg_obs = stats_annual_aavg_obs,
+    stats_crosscor = stats_crosscor,
+    stats_intercor = stats_intercor,
+    stats_wetdry = stats_wetdry,
+    stats_precip_cor_cond = stats_precip_cor_cond
+  )
+
+  plot_config <- list(
+    subtitle = "test subtitle",
+    alpha = 0.4,
+    colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated")),
+    theme = ggplot2::theme_bw(base_size = 12)
+  )
+
+  out_dir <- tempdir()
+  calls <- 0L
+
+  testthat::local_mocked_bindings(
+    ggsave = function(...) {
+      calls <<- calls + 1L
+      invisible(NULL)
+    },
+    .package = "ggplot2"
+  )
+
+  plots <- create_all_diagnostic_plots(
+    plot_data = plot_data,
+    plot_config = plot_config,
+    variables = c("precip"),  # keep it minimal
+    show_title = FALSE,
+    save_plots = TRUE,
+    output_dir = out_dir
+  )
+
+  expect_true(is.list(plots))
+  expect_true(calls >= 1L)
+})
+

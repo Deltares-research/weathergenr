@@ -438,16 +438,14 @@ grid_with_lat <- ncdata$grid
 grid_with_lat$lat <- grid_with_lat$y
 
 perturbed_weather <- apply_climate_perturbations(
-  data = lapply(synthetic_data[[1]], function(df) {
-    dplyr::rename(df, prcp = precip)
-  }),
+  data = synthetic_data[[1]],
   grid = grid_with_lat,
   date = stochastic_weather$dates,
-  prcp_mean_factor = rep(1.1, 12),
-  prcp_var_factor = rep(1.0, 12),
+  precip_mean_factor = rep(1.1, 12),
+  precip_var_factor = rep(1.0, 12),
   temp_delta = rep(2.0, 12),
   temp_transient = FALSE,
-  prcp_transient = FALSE,
+  precip_transient = FALSE,
   compute_pet = FALSE
 )
 ```

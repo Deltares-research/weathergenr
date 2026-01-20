@@ -4,14 +4,20 @@
 \alias{fit_monthly_distributions}
 \title{Fit Monthly Gamma Distributions for Wet-Day Precipitation}
 \usage{
-fit_monthly_distributions(prcp_wet, month_wet, months_ok, fit_method, verbose)
+fit_monthly_distributions(
+  precip_wet,
+  month_wet,
+  months_ok,
+  fit_method,
+  verbose
+)
 }
 \arguments{
-\item{prcp_wet}{Numeric vector of wet-day precipitation values (strictly > 0
+\item{precip_wet}{Numeric vector of wet-day precipitation values (strictly > 0
 recommended). Length must match `month_wet`.}
 
 \item{month_wet}{Integer vector of months (1-12) corresponding to each element
-of `prcp_wet`.}
+of `precip_wet`.}
 
 \item{months_ok}{Integer vector of months to attempt fitting (subset of 1-12).}
 

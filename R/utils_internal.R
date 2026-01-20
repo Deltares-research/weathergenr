@@ -137,6 +137,64 @@ assess_moment_changes <- function(moments_df) {
   assessments
 }
 
+
+#' Compute Area-Averaged Daily and Annual Climate Series
+#'
+#' @description
+#' Computes area-averaged (mean across grid cells) daily climate values and
+#' aggregates them to annual means by water year.
+#'
+#' @param obs_data Named list of data frames (one per grid cell).
+#' @param wyear_idx Integer vector of row indices to extract from each data frame.
+#' @param wyear Integer vector of water years corresponding to wyear_idx.
+#' @param vars Character vector of variable names to average.
+#'
+#' @return A list with two elements:
+#' \describe{
+#'   \item{daily}{Data frame of area-averaged daily values with columns for
+#'     each variable plus wyear.}
+#'   \item{annual}{Tibble of annual means with columns wyear plus each variable.}
+#' }
+#'
+#' @export
+compute_area_averages <- function(obs_data, wyear_idx, wyear, vars) {
+
+  n_grids <- length(obs_data)
+  n_days  <- length(wyear_idx)
+  n_vars  <- length(vars)
+
+  # ---------------------------------------------------------------------------
+  # Daily area average
+  # ---------------------------------------------------------------------------
+  if (n_grids == 1L) {
+    daily_avg <- obs_data[[1]][wyear_idx, vars, drop = FALSE]
+  } else {
+    daily_mat <- matrix(0, nrow = n_days, ncol = n_vars)
+    colnames(daily_mat) <- vars
+
+    for (i in seq_len(n_grids)) {
+      grid_data <- as.matrix(obs_data[[i]][wyear_idx, vars, drop = FALSE])
+      daily_mat <- daily_mat + grid_data
+    }
+
+    daily_avg <- as.data.frame(daily_mat / n_grids)
+  }
+
+  daily_avg$wyear <- wyear
+
+  # ---------------------------------------------------------------------------
+  # Annual area average (mean of daily values by water year)
+  # ---------------------------------------------------------------------------
+  annual_avg <- daily_avg |>
+    dplyr::group_by(wyear) |>
+    dplyr::summarize(dplyr::across(dplyr::all_of(vars), mean), .groups = "drop")
+
+  list(
+    daily  = daily_avg,
+    annual = annual_avg
+  )
+}
+
 # ==============================================================================
 # UTILS: MISC
 # ==============================================================================
@@ -219,7 +277,6 @@ assess_moment_changes <- function(moments_df) {
 # ==============================================================================
 # INTERNAL LOGGING UTILITIES
 # ==============================================================================
-
 #' Package-wide internal logger
 #'
 #' @description
@@ -227,14 +284,12 @@ assess_moment_changes <- function(moments_df) {
 #'
 #' Features:
 #' - Single entry point for all logging
-#' - Glue interpolation resolved in caller environment
-#' - Safe with logger::formatter_glue (no raw `{}` passed downstream)
+#' - Brace interpolation resolved in caller environment (base R, no glue)
 #' - Supports log levels (info, warn, error)
 #' - Silent unless verbose = TRUE
-#' - Falls back to message()/warning()/stop() if logger is unavailable
+#' - Timestamps in ISO format
 #'
-#' @param msg Character scalar. Log message template.
-#' @param ... Values interpolated into `msg` via glue.
+#' @param msg Character scalar. Log message template with \code{{variable}} syntax.
 #' @param level Character scalar. One of "info", "warn", "error".
 #' @param verbose Logical. If FALSE, suppress output.
 #' @param tag Optional character scalar. Component tag (e.g. "WARM", "KNN").
@@ -243,7 +298,6 @@ assess_moment_changes <- function(moments_df) {
 #'
 #' @keywords internal
 .log <- function(msg,
-                 ...,
                  level = c("info", "warn", "error"),
                  verbose = TRUE,
                  tag = NULL) {
@@ -254,36 +308,76 @@ assess_moment_changes <- function(moments_df) {
 
   level <- match.arg(level)
 
+  # ---------------------------------------------------------------------------
+  # Simple brace interpolation using base R
+  # ---------------------------------------------------------------------------
   rendered <- msg
-  if (requireNamespace("glue", quietly = TRUE)) {
-    rendered <- tryCatch(
-      as.character(glue::glue(msg, ..., .envir = parent.frame())),
-      error = function(e) msg
-    )
+  env <- parent.frame()
+
+  # Find all {expression} patterns
+  matches <- gregexpr("\\{[^}]+\\}", msg)
+  if (matches[[1]][1] != -1L) {
+    exprs <- regmatches(msg, matches)[[1]]
+    for (expr in exprs) {
+      var_expr <- substr(expr, 2L, nchar(expr) - 1L)
+      value <- tryCatch(
+        eval(parse(text = var_expr), envir = env),
+        error = function(e) expr
+      )
+      rendered <- sub(expr, as.character(value), rendered, fixed = TRUE)
+    }
   }
+
+  # Build prefix: timestamp + optional tag
+  timestamp <- format(Sys.time(), "[%Y-%m-%d %H:%M:%S]")
 
   if (!is.null(tag) && nzchar(tag)) {
-    rendered <- paste0("[", tag, "] ", rendered)
+    prefix <- paste0(timestamp, " [", tag, "] ")
+  } else {
+    prefix <- paste0(timestamp, " ")
   }
 
+  rendered <- paste0(prefix, rendered)
+
   # ---------------------------------------------------------------------------
-  # Emit via logger if available, otherwise base R
+  # Emit via base R
   # ---------------------------------------------------------------------------
-  if (requireNamespace("logger", quietly = TRUE)) {
-    switch(
-      level,
-      info  = logger::log_info(rendered,  .skip_formatter = TRUE),
-      warn  = logger::log_warn(rendered,  .skip_formatter = TRUE),
-      error = logger::log_error(rendered, .skip_formatter = TRUE)
-    )
-  } else {
-    switch(
-      level,
-      info  = message(rendered),
-      warn  = warning(rendered, call. = FALSE),
-      error = stop(rendered, call. = FALSE)
-    )
-  }
+  switch(
+    level,
+    info  = message(rendered),
+    warn  = warning(rendered, call. = FALSE),
+    error = stop(rendered, call. = FALSE)
+  )
 
   invisible(NULL)
 }
+
+
+#' Format Elapsed Time for Display
+#'
+#' @description
+#' Computes elapsed time from a start time and formats it as a human-readable
+#' string with appropriate units (seconds, minutes, or hours).
+#'
+#' @param start_time POSIXct object. The start time to measure from.
+#'
+#' @return Character string with formatted elapsed time.
+#'
+#' @keywords internal
+format_elapsed <- function(start_time) {
+  elapsed_secs <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
+
+  if (elapsed_secs < 60) {
+    sprintf("%.1f seconds", elapsed_secs)
+  } else if (elapsed_secs < 3600) {
+    mins <- floor(elapsed_secs / 60)
+    secs <- round(elapsed_secs %% 60, 0)
+    sprintf("%d min %d sec", mins, secs)
+  } else {
+    hrs <- floor(elapsed_secs / 3600)
+    mins <- round((elapsed_secs %% 3600) / 60, 0)
+    sprintf("%d hr %d min", hrs, mins)
+  }
+}
+
+

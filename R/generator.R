@@ -12,7 +12,7 @@
 #'   \item daily KNN resampling of precipitation and temperature anomalies.
 #' }
 #'
-#' The simulation-year defINITion is inferred from \code{year_start_month}:
+#' The simulation-year definitionis inferred from \code{year_start_month}:
 #' \itemize{
 #'   \item \code{year_start_month == 1}: calendar-year simulation,
 #'   \item \code{year_start_month != 1}: water-year simulation starting in \code{year_start_month}.
@@ -130,7 +130,6 @@
 #' @import tidyr
 #' @import patchwork
 #' @import dplyr
-#' @import logger
 #' @importFrom dplyr mutate
 generate_weather <- function(
   obs_data = NULL,
@@ -156,7 +155,6 @@ generate_weather <- function(
   verbose = FALSE
 ) {
 
-
   start_time <- Sys.time()
   verbose <- isTRUE(verbose)
 
@@ -174,6 +172,7 @@ generate_weather <- function(
     "obs_dates must be a Date vector" = inherits(obs_dates, "Date"),
     "obs_data must be non-empty" = length(obs_data) >= 1L,
     "obs_dates length must match data rows" = length(obs_dates) == nrow(obs_data[[1]]),
+    "All grid cells must have the same number of rows" = length(unique(vapply(obs_data, nrow, integer(1)))) == 1L,
     "year_start_month must be 1-12" = year_start_month %in% 1:12,
     "vars must be non-empty" = length(vars) > 0,
     "vars must exist in obs_data" = all(vars %in% names(obs_data[[1]])),
@@ -181,22 +180,26 @@ generate_weather <- function(
     "wet_spell_factor must have length 12" = length(wet_spell_factor) == 12,
     "wet_q must be in (0,1)" = is.numeric(wet_q) && wet_q > 0 && wet_q < 1,
     "extreme_q must be in (0,1)" = is.numeric(extreme_q) && extreme_q > 0 && extreme_q < 1,
-    "extreme_q > wet_q" = extreme_q > wet_q,
+    "extreme_q must be greater than wet_q" = extreme_q > wet_q,
     "warm_var must be in vars" = warm_var %in% vars,
-    "obs_grid must have required columns" = all(c("xind", "yind", "x", "y") %in% names(obs_grid))
+    "obs_grid must have required columns" = all(c("xind", "yind", "x", "y") %in% names(obs_grid)),
+    "verbose must be TRUE or FALSE" = is.logical(verbose) && length(verbose) == 1L
   )
 
-  if (!is.logical(verbose) || length(verbose) != 1L) {
-    stop("'verbose' must be TRUE/FALSE.", call. = FALSE)
-  }
+  if (!("id" %in% names(obs_grid))) obs_grid$id <- seq_len(nrow(obs_grid))
 
-  if (length(unique(vapply(obs_data, nrow, integer(1)))) != 1L) {
-    stop("All grid cells must have the same number of observations", call. = FALSE)
-  }
+  # ---------------------------------------------------------------------------
+  # CONSTANTS
+  # ---------------------------------------------------------------------------
 
-  if (!("id" %in% names(obs_grid))) {
-    obs_grid$id <- seq_len(nrow(obs_grid))
-  }
+  ## GGPLOT constants
+  pl_width <- 8
+  pl_height <- 5
+
+  # WARM constants
+  DETREND <- TRUE
+  MIN_PERIOD <- 2
+  RELAX_ORDER <- c("wavelet", "sd", "tail_low", "tail_high", "mean")
 
   # ---------------------------------------------------------------------------
   # RNG management
@@ -217,10 +220,10 @@ generate_weather <- function(
     if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
     on.exit(parallel::stopCluster(cl), add = TRUE)
 
-    .log("Starting in parallel mode", tag = "INIT")
-    .log("Number of cores: {n_cores}", tag = "INIT")
+    .log("Starting in parallel mode", tag = "INIT", verbose = verbose)
+    .log("Number of cores: {n_cores}", tag = "INIT", verbose = verbose)
   } else {
-    .log("Starting in sequential mode", tag = "INIT")
+    .log("Starting in sequential mode", tag = "INIT", verbose = verbose)
   }
 
   # ---------------------------------------------------------------------------
@@ -228,109 +231,34 @@ generate_weather <- function(
   # ---------------------------------------------------------------------------
 
   n_grids <- length(obs_data)
-  .log("Randomization seed: {seed}", tag = "INIT")
-  .log(paste0("Variables: ", paste(as.character(vars), collapse = ", ")), tag = "INIT")
-  .log("Total number of grids: {n_grids}", tag = "INIT")
-  .log("Historical period: {obs_dates[1]} to {obs_dates[length(obs_dates)]}", tag = "INIT")
-
-  # ---------------------------------------------------------------------------
-  # Calendar normalization (enforce 365-day calendar)
-  # ---------------------------------------------------------------------------
-  leap_idx <- find_leap_day_indices(obs_dates)
-  if (!is.null(leap_idx) && length(leap_idx) > 0L) {
-    obs_dates_old <- obs_dates
-    obs_dates <- obs_dates[-leap_idx]
-
-    obs_data <- lapply(obs_data, function(df) {
-      if (!is.data.frame(df)) stop("Each element of obs_data must be a data.frame.", call. = FALSE)
-      if (nrow(df) != length(obs_dates_old)) {
-        stop("Each obs_data[[i]] must have nrow equal to length(obs_dates).", call. = FALSE)
-      }
-      df[-leap_idx, , drop = FALSE]
-    })
-
-    .log("Dropped {length(leap_idx)} row(s): 365-day calendar enforced", tag = "INIT")
-  }
-
-  # ---------------------------------------------------------------------------
-  # Historical date table (internal time axis)
-  # ---------------------------------------------------------------------------
-  his_date  <- obs_dates
-  his_wyear <- compute_water_year(his_date, year_start_month)
-
-  dates_d <- tibble::tibble(
-    dateo = his_date,
-    year  = as.integer(format(his_date, "%Y")),
-    wyear = his_wyear,
-    month = as.integer(format(his_date, "%m")),
-    day   = as.integer(format(his_date, "%d"))
-  )
-
-  dates_d <- dates_d |>
-    dplyr::mutate(
-      date = if (year_start_month == 1) {
-        dateo
-      } else {
-        as.Date(sprintf("%04d-%02d-%02d", wyear, month, day))
-      }
-    )
-
-  if (anyNA(dates_d$date)) stop("Internal error: dates_d$date contains NA.", call. = FALSE)
-  if (anyDuplicated(dates_d$date)) {
-    stop("Internal error: dates_d$date contains duplicates; mapping is ambiguous.", call. = FALSE)
-  }
-
-  # ---------------------------------------------------------------------------
-  # Restrict to complete years (365 days) and keep longest contiguous block
-  # ---------------------------------------------------------------------------
-  wyear_counts <- as.data.frame(table(dates_d$wyear), stringsAsFactors = FALSE)
-  names(wyear_counts) <- c("wyear", "n_days")
-  wyear_counts$wyear <- as.integer(wyear_counts$wyear)
-
-  full_wyears <- wyear_counts$wyear[wyear_counts$n_days == 365L]
-  if (length(full_wyears) == 0L) {
-    stop(
-      "No complete simulation-years found in historical record (need 365 days per year after Feb 29 removal).",
-      call. = FALSE
-    )
-  }
-
-  full_wyears <- sort(full_wyears)
-  runs <- split(full_wyears, cumsum(c(1L, diff(full_wyears) != 1L)))
-  full_wyears <- runs[[which.max(lengths(runs))]]
-
-  dates_d <- dplyr::filter(dates_d, wyear %in% full_wyears)
-
-  wyear_idx <- match(dates_d$dateo, obs_dates)
-  if (anyNA(wyear_idx)) stop("Internal error: dates_d$dateo did not match obs_dates.", call. = FALSE)
-
-  .log("Using {length(full_wyears)} complete year(s) ({min(full_wyears)}-{max(full_wyears)})", tag = "INIT")
-
-  # ---------------------------------------------------------------------------
-  # Area-averaged daily and annual climate series
-  # ---------------------------------------------------------------------------
-  if (n_grids == 1L) {
-    climate_d_aavg <- obs_data[[1]][wyear_idx, vars, drop = FALSE]
+  if (!is.null(seed)) {
+    .log("Seed: {seed}", tag = "INIT", verbose = verbose)
   } else {
-    n_days <- length(wyear_idx)
-    n_vars <- length(vars)
-
-    climate_d_aavg_mat <- matrix(0, nrow = n_days, ncol = n_vars)
-    colnames(climate_d_aavg_mat) <- vars
-
-    for (i in seq_len(n_grids)) {
-      grid_data <- as.matrix(obs_data[[i]][wyear_idx, vars, drop = FALSE])
-      climate_d_aavg_mat <- climate_d_aavg_mat + grid_data
-    }
-
-    climate_d_aavg <- as.data.frame(climate_d_aavg_mat / n_grids)
+    .log("Seed: not set (non-reproducible)", tag = "INIT", verbose = verbose)
   }
+  .log(paste0("Variables: ", paste(as.character(vars), collapse = ", ")), tag = "INIT", verbose = verbose)
+  .log("Grid cells: {n_grids}", tag = "INIT", verbose = verbose)
+  .log("Historical period: {obs_dates[1]} to {obs_dates[length(obs_dates)]}", tag = "INIT", verbose = verbose)
 
-  climate_d_aavg$wyear <- dates_d$wyear
+  # ---------------------------------------------------------------------------
+  # Preprocessing
+  # ---------------------------------------------------------------------------
 
-  climate_a_aavg <- climate_d_aavg |>
-    dplyr::group_by(wyear) |>
-    dplyr::summarize(dplyr::across(dplyr::all_of(vars), mean), .groups = "drop")
+  # 4a. Normalize calendar (remove leap days)
+  cal_norm <- normalize_calendar(obs_dates, obs_data, verbose = verbose)
+  obs_dates <- cal_norm$dates
+  obs_data  <- cal_norm$data
+
+  # 4b. Build historical date table
+  hist_dates <- build_historical_dates(obs_dates, year_start_month, verbose = verbose)
+  dates_d      <- hist_dates$dates_df
+  wyear_idx    <- hist_dates$wyear_idx
+  full_wyears  <- hist_dates$complete_wyears
+
+  # 4c. Compute area averages
+  area_avg <- compute_area_averages(obs_data, wyear_idx, dates_d$wyear, vars)
+  climate_d_aavg <- area_avg$daily
+  climate_a_aavg <- area_avg$annual
 
   # ---------------------------------------------------------------------------
   # Simulation date table (internal 365-day calendar)
@@ -365,17 +293,17 @@ generate_weather <- function(
   # ---------------------------------------------------------------------------
   # Annual time-series generation (WARM)
   # ---------------------------------------------------------------------------
-  .log("Running annual WARM simulation", tag = "WARM")
+  .log("Running annual WARM simulation", tag = "WARM", verbose = verbose)
 
-  detrend <- TRUE
+
   warm_series_obs <- climate_a_aavg[[warm_var]]
 
   warm_power <- analyze_wavelet_spectrum(
     series = warm_series_obs,
     signif = warm_signif,
     noise = "red",
-    min_period = 2,
-    detrend = detrend,
+    min_period = MIN_PERIOD,
+    detrend = DETREND,
     mode = "complete")
 
   p <- plot_wavelet_power(
@@ -390,17 +318,15 @@ generate_weather <- function(
 
   tryCatch(
     ggsave(file.path(out_dir, "global_wavelet_power_spectrum.png"), p, width = 8, height = 5),
-    error = function(e) logger::log_warn("Failed to save wavelet spectrum plot: {e$message}")
+    error = function(e) .log("Failed to save wavelet spectrum plot: {e$message}", level = "warn", verbose = verbose)
   )
 
   if (any(!is.na(warm_power$signif_periods))) {
-    .log("Significant low-frequency components detected: {length(warm_power$comps_names) - 1}", tag = "WARM")
-    .log(
-      "Detected periodicity (years): {paste(round(warm_power$period[warm_power$signif_periods], 2), collapse = ', ')}",
-      tag = "WARM"
-    )
+    .log("Significant low-frequency components: {length(warm_power$comps_names) - 1}", tag = "WARM", verbose = verbose)
+    .log("Periodicity (years): {paste(round(warm_power$period[warm_power$signif_periods], 2), collapse = ', ')}",
+      tag = "WARM", verbose = verbose)
   } else {
-    .log("No low-frequency signals detected", tag = "WARM")
+    .log("No significant low-frequency periodicities detected", tag = "WARM", verbose = verbose)
   }
 
   sim_annual <- simulate_warm(
@@ -419,13 +345,13 @@ generate_weather <- function(
     seed = warm_seed + 1L,
     pad_periods = TRUE,
     filter_bounds = list(),
-    relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+    relax_order = RELAX_ORDER,
     make_plots = TRUE,
     wavelet_args = list(
       signif_level = warm_signif,
       noise_type = "red",
       period_lower_limit = 2,
-      detrend = detrend
+      detrend = DETREND
     ),
     verbose = verbose
   )
@@ -439,39 +365,70 @@ generate_weather <- function(
       ggsave(file.path(out_dir, "warm_annual_wavelet.png"),
              sim_annual_sub$plots[[3]], width = pl_width, height = pl_height)
     },
-    error = function(e) logger::log_warn("Failed to save warm plots: {e$message}")
+    error = function(e) .log("Failed to save warm plots: {e$message}", level = "warn")
   )
 
   # ---------------------------------------------------------------------------
   # Daily disaggregation (KNN + Markov chain) -> resampled historical dates
   # ---------------------------------------------------------------------------
-  .log("Starting daily weather simulation using KNN + Markov Chain scheme", tag = "DOWNSCALING")
+  .log("Running daily KNN + Markov Chain resampling", tag = "RESAMPLE", verbose = verbose)
 
   if (isTRUE(parallel)) {
-    `%d%` <- foreach::`%dopar%`
-  } else {
-    `%d%` <- foreach::`%do%`
-  }
 
-  resampled_ini <- foreach::foreach(n = seq_len(n_realizations)) %d% {
-    resample_weather_dates(
-      sim_annual_prcp = sim_annual_sub$selected[, n],
-      obs_annual_prcp = warm_series_obs,
-      obs_daily_prcp  = climate_d_aavg$precip,
-      obs_daily_temp  = climate_d_aavg$temp,
-      year_start  = start_year,
-      realization_idx  = n,
-      n_years     = n_years,
-      obs_dates_df = dates_d,
-      sim_dates_df = sim_dates_d,
-      annual_knn_n    = annual_knn_n,
-      year_start_month = year_start_month,
-      wet_q           = wet_q,
-      extreme_q       = extreme_q,
-      dry_spell_factor = dry_spell_factor,
-      wet_spell_factor = wet_spell_factor,
-      seed = daily_seed + n
-    )
+    # Parallel: foreach %dopar%
+    .log("Processing {n_realizations} realizations...", tag = "RESAMPLE", verbose = verbose)
+
+    resampled_ini <- foreach::foreach(n = seq_len(n_realizations)) %dopar% {
+      resample_weather_dates(
+        sim_annual_precip = sim_annual_sub$selected[, n],
+        obs_annual_precip = warm_series_obs,
+        obs_daily_precip  = climate_d_aavg$precip,
+        obs_daily_temp  = climate_d_aavg$temp,
+        year_start  = start_year,
+        realization_idx  = n,
+        n_years     = n_years,
+        obs_dates_df = dates_d,
+        sim_dates_df = sim_dates_d,
+        annual_knn_n    = annual_knn_n,
+        year_start_month = year_start_month,
+        wet_q           = wet_q,
+        extreme_q       = extreme_q,
+        dry_spell_factor = dry_spell_factor,
+        wet_spell_factor = wet_spell_factor,
+        seed = daily_seed + n)
+    }
+
+  } else {
+
+    # Sequential: plain for loop with progress
+    resampled_ini <- vector("list", n_realizations)
+    progress_parts <- character(n_realizations)
+
+    for (n in seq_len(n_realizations)) {
+
+      progress_parts[n] <- paste0(n, "/", n_realizations)
+
+      resampled_ini[[n]] <-  resample_weather_dates(
+        sim_annual_precip = sim_annual_sub$selected[, n],
+        obs_annual_precip = warm_series_obs,
+        obs_daily_precip  = climate_d_aavg$precip,
+        obs_daily_temp  = climate_d_aavg$temp,
+        year_start  = start_year,
+        realization_idx  = n,
+        n_years     = n_years,
+        obs_dates_df = dates_d,
+        sim_dates_df = sim_dates_d,
+        annual_knn_n    = annual_knn_n,
+        year_start_month = year_start_month,
+        wet_q  = wet_q,
+        extreme_q   = extreme_q,
+        dry_spell_factor = dry_spell_factor,
+        wet_spell_factor = wet_spell_factor,
+        seed = daily_seed + n)
+    }
+
+    progress_str <- paste(progress_parts, collapse = "..")
+    .log("Processing realization: {progress_str}", tag = "RESAMPLE", verbose = verbose)
   }
 
   # ---------------------------------------------------------------------------
@@ -490,16 +447,22 @@ generate_weather <- function(
   # ---------------------------------------------------------------------------
   tryCatch(
     utils::write.csv(sim_dates_d$date, file.path(out_dir, "sim_dates.csv"), row.names = FALSE),
-    error = function(e) logger::log_error("Failed to write sim_dates.csv: {e$message}")
+    error = function(e) {
+      msg <- paste0("Failed to write sim_dates.csv: ", conditionMessage(e))
+      .log(msg, level = "error", verbose = verbose)
+    }
   )
 
   tryCatch(
     utils::write.csv(resampled_dates, file.path(out_dir, "resampled_dates.csv"), row.names = FALSE),
-    error = function(e) logger::log_error("Failed to write resampled_dates.csv: {e$message}")
+    error = function(e) {
+      msg <- paste0("Failed to write resampled_dates.csv: ", conditionMessage(e))
+      .log(msg, level = "error", verbose = verbose)
+    }
   )
 
-  .log("Results saved to: `{out_dir}`", tag = "DONE")
-  .log("Simulation complete. Elapsed time: {Sys.time() - start_time} secs", tag = "DONE")
+  .log("Output: `{out_dir}`", tag = "COMPLETE", verbose = verbose)
+  .log("Elapsed time: {format_elapsed(start_time)}", tag = "COMPLETE", verbose = verbose)
 
   list(resampled = resampled_dates, dates = sim_dates_d$dateo)
 }

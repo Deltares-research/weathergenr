@@ -12,8 +12,8 @@
 #' @param plot_config List of plotting configuration options (theme, alpha, colors, subtitle).
 #' @param variables Character vector of variable names to loop over for monthly pattern plots.
 #' @param show_title Logical; if \code{TRUE}, titles/subtitles are added to plots where supported.
-#' @param save_plots Logical; if \code{TRUE}, plots are written to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, plots are written to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return Named list of ggplot objects for all diagnostics created.
 #'
@@ -32,7 +32,7 @@
 #'     variables = c("precip", "temp"),
 #'     show_title = FALSE,
 #'     save_plots = FALSE,
-#'     output_path = NULL
+#'     output_dir = NULL
 #'   )
 #' }
 #'
@@ -41,7 +41,7 @@
 #' @import tidyr
 #' @export
 create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
-                                        show_title, save_plots, output_path) {
+                                        show_title, save_plots, output_dir) {
 
   plots <- list()
 
@@ -50,7 +50,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   plots$daily_sd <- .create_daily_sd_plot(
@@ -58,7 +58,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   plots$spell_length <- .create_spell_length_plot(
@@ -66,7 +66,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   plots$wetdry_days_count <- .create_wetdry_days_plot(
@@ -74,7 +74,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   plots$crossgrid <- .create_crossgrid_cor_plot(
@@ -82,7 +82,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   plots$intergrid <- .create_intergrid_cor_plot(
@@ -90,7 +90,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   plots$precip_cond_cor <- .create_precip_cond_cor_plot(
@@ -98,7 +98,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   # Monthly patterns per variable (use var name as label)
@@ -111,7 +111,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
       plot_config = plot_config,
       show_title = show_title,
       save_plots = save_plots,
-      output_path = output_path
+      output_dir = output_dir
     )
   }
 
@@ -120,7 +120,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   plots$annual_precip <- .create_annual_precip_plot(
@@ -129,7 +129,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   plots
@@ -144,23 +144,23 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param p ggplot object, typically faceted via \code{facet_wrap()} or \code{facet_grid()}.
 #' @param filename Character; output filename (e.g., \code{"daily_mean.png"}).
 #' @param show_title Logical; if \code{TRUE}, adds \code{title}/\code{subtitle} via \code{labs()}.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param title Character; plot title (only used when \code{show_title = TRUE}).
 #' @param subtitle Character; plot subtitle (only used when \code{show_title = TRUE}).
-#' @param output_path Character; output directory for saved plots.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return The ggplot object \code{p}, returned invisibly.
 #'
 #' @keywords internal
 #' @import ggplot2
 .export_multipanel_plot <- function(p, filename, show_title, save_plots,
-                                   title = NULL, subtitle = NULL, output_path) {
+                                   title = NULL, subtitle = NULL, output_dir) {
 
   if (show_title && !is.null(title)) {
     p <- p + labs(title = title, subtitle = subtitle)
   }
 
-  if (save_plots && !is.null(output_path)) {
+  if (save_plots && !is.null(output_dir)) {
     ncol <- p$facet$params$ncol
     nrow <- p$facet$params$nrow
     if (is.null(ncol)) ncol <- 2
@@ -169,8 +169,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     width <- ncol * 4
     height <- nrow * 4 + 0.5
 
-    ggsave(
-      filename = file.path(output_path, filename),
+    ggplot2::ggsave(
+      filename = file.path(output_dir, filename),
       plot = p,
       width = width,
       height = height,
@@ -191,8 +191,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   \code{stat}, \code{Observed}, \code{Simulated}, and \code{variable}.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
@@ -200,7 +200,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_daily_mean_plot <- function(daily_stats_season, plot_config,
-                                   show_title, save_plots, output_path) {
+                                   show_title, save_plots, output_dir) {
 
   data_mean <- daily_stats_season %>%
     dplyr::filter(.data$stat == "mean")
@@ -234,7 +234,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Daily means for all grid cells and months",
     subtitle = plot_config$subtitle,
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -248,8 +248,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   \code{stat}, \code{Observed}, \code{Simulated}, and \code{variable}.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
@@ -257,7 +257,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_daily_sd_plot <- function(daily_stats_season, plot_config,
-                                 show_title, save_plots, output_path) {
+                                 show_title, save_plots, output_dir) {
 
   data_sd <- daily_stats_season %>%
     dplyr::filter(.data$stat == "sd")
@@ -291,7 +291,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Daily standard deviations for all grid cells and months",
     subtitle = plot_config$subtitle,
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -304,8 +304,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param stats_wetdry Data frame of wet/dry diagnostics including spell statistics.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
@@ -314,7 +314,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import dplyr
 #' @import tidyr
 .create_spell_length_plot <- function(stats_wetdry, plot_config,
-                                     show_title, save_plots, output_path) {
+                                     show_title, save_plots, output_dir) {
 
   data_spells <- stats_wetdry %>%
     dplyr::filter(.data$type == "spells")
@@ -355,7 +355,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Average dry and wet spell length per month, across all grid cells",
     subtitle = plot_config$subtitle,
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -368,8 +368,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param stats_wetdry Data frame of wet/dry diagnostics including day-count statistics.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
@@ -378,7 +378,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import dplyr
 #' @import tidyr
 .create_wetdry_days_plot <- function(stats_wetdry, plot_config,
-                                    show_title, save_plots, output_path) {
+                                    show_title, save_plots, output_dir) {
 
   data_days <- stats_wetdry %>%
     dplyr::filter(.data$type == "days")
@@ -419,7 +419,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Average number of dry and wet days per month across all grid cells",
     subtitle = plot_config$subtitle,
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -433,15 +433,15 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   \code{Observed}, \code{Simulated}, and \code{variable1}.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
 #' @keywords internal
 #' @import ggplot2
 .create_crossgrid_cor_plot <- function(stats_crosscor, plot_config,
-                                      show_title, save_plots, output_path) {
+                                      show_title, save_plots, output_dir) {
 
   dummy_points <- generate_symmetric_dummy_points(
     df = stats_crosscor,
@@ -472,7 +472,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Cross-grid correlations",
     subtitle = paste0(plot_config$subtitle, "\nCorrelations calculated over daily series"),
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -486,15 +486,15 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   \code{Observed}, \code{Simulated}, and \code{variable}.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
 #' @keywords internal
 #' @import ggplot2
 .create_intergrid_cor_plot <- function(stats_intercor, plot_config,
-                                      show_title, save_plots, output_path) {
+                                      show_title, save_plots, output_dir) {
 
   dummy_points <- generate_symmetric_dummy_points(
     df = stats_intercor,
@@ -525,7 +525,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Inter-variable correlations",
     subtitle = paste0(plot_config$subtitle, "\nCorrelations calculated over daily series"),
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -541,8 +541,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   \code{Observed}, and \code{Simulated}.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
@@ -550,7 +550,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_precip_cond_cor_plot <- function(stats_precip_cor_cond, plot_config,
-                                        show_title, save_plots, output_path) {
+                                        show_title, save_plots, output_dir) {
 
   dat <- stats_precip_cor_cond %>%
     dplyr::mutate(variable = paste0(.data$variable1, ":", .data$variable2)) %>%
@@ -585,7 +585,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Conditional precip-variable correlations (within-grid)",
     subtitle = "Rows: all/wet/dry. Wet uses log1p(precip) if enabled.",
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -600,8 +600,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param variable Character; variable name to plot (must exist in the inputs).
 #' @param plot_config List of plotting configuration options (theme, alpha, colors, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
@@ -610,15 +610,18 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import dplyr
 .create_monthly_pattern_plot <- function(stats_mon_aavg_sim, stats_mon_aavg_obs,
                                         variable, plot_config,
-                                        show_title, save_plots, output_path) {
+                                        show_title, save_plots, output_dir) {
 
   dat_sim <- stats_mon_aavg_sim %>%
     dplyr::filter(.data$variable == !!variable) %>%
-    dplyr::mutate(type = "Simulated") %>%
+    dplyr::mutate(
+      rlz = as.integer(.data$rlz),
+      type = "Simulated"
+    ) %>%
     dplyr::rename(value = .data$Simulated)
 
   dat_obs <- stats_mon_aavg_obs %>%
-    dplyr::mutate(rlz = "0", .before = .data$year) %>%
+    dplyr::mutate(rlz = 0L, .before = .data$year) %>%
     dplyr::filter(.data$variable == !!variable, !is.nan(.data$Observed)) %>%
     dplyr::mutate(type = "Observed") %>%
     dplyr::rename(value = .data$Observed)
@@ -659,7 +662,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = paste0("Monthly patterns for ", variable),
     subtitle = paste0(plot_config$subtitle, "\nResults averaged across all grid cells"),
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -672,8 +675,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param daily_stats_season Data frame of daily seasonal statistics including mean values.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
 #'
@@ -681,7 +684,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_monthly_cycle_plot <- function(daily_stats_season, plot_config,
-                                      show_title, save_plots, output_path) {
+                                      show_title, save_plots, output_dir) {
 
   sim_avg <- daily_stats_season %>%
     dplyr::group_by(.data$rlz, .data$mon, .data$variable) %>%
@@ -716,7 +719,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Annual cycles of variables",
     subtitle = paste0(plot_config$subtitle, "\nResults averaged over all grid cells and across each month"),
-    output_path = output_path
+    output_dir = output_dir
   )
 }
 
@@ -730,8 +733,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param stats_annual_aavg_obs Data frame of observed annual aggregated statistics.
 #' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title to the plot.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_path}.
-#' @param output_path Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param output_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object returned invisibly.
 #'
@@ -739,7 +742,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_annual_precip_plot <- function(stats_annual_aavg_sim, stats_annual_aavg_obs,
-                                      plot_config, show_title, save_plots, output_path) {
+                                      plot_config, show_title, save_plots, output_dir) {
 
   sim_precip <- stats_annual_aavg_sim %>%
     dplyr::filter(.data$stat == "mean", .data$variable == "precip")
@@ -747,42 +750,49 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   obs_precip <- stats_annual_aavg_obs %>%
     dplyr::filter(.data$stat == "mean", .data$variable == "precip")
 
-  p <- ggplot(sim_precip, aes(x = .data$year)) +
+  p <- ggplot2::ggplot() +
     plot_config$theme +
-    geom_line(
-      aes(y = .data$Simulated, group = .data$rlz),
-      color = "gray30",
-      alpha = 0.4
-    ) +
-    geom_point(
-      aes(y = .data$Simulated, group = .data$rlz),
+    ggplot2::geom_point(
+      data = sim_precip,
+      ggplot2::aes(x = .data$year, y = .data$Simulated, group = .data$rlz),
       size = 0.5,
-      color = "gray30",
       alpha = 0.3
-    ) +
-    geom_line(
+    )
+
+  p <- .add_line_if_possible(
+    p = p,
+    data = sim_precip,
+    mapping = ggplot2::aes(x = .data$year, y = .data$Simulated, group = .data$rlz),
+    group_col = "rlz"
+  )
+
+  # observed
+  p <- p +
+    ggplot2::geom_point(
       data = obs_precip,
-      aes(y = .data$Observed),
-      color = "blue",
-      group = 1
-    ) +
-    geom_point(
-      data = obs_precip,
-      aes(y = .data$Observed),
+      ggplot2::aes(x = .data$year, y = .data$Observed),
       size = 0.5,
-      alpha = 0.3,
-      color = "blue",
-      group = 1
-    ) +
-    labs(x = "Serial year", y = "mm/day")
+      alpha = 0.3
+    )
+
+  if (nrow(obs_precip) >= 2) {
+    p <- p + ggplot2::geom_line(
+      data = obs_precip,
+      ggplot2::aes(x = .data$year, y = .data$Observed, group = 1),
+      linewidth = 1.25
+    )
+  }
+
+  p <- p + ggplot2::labs(x = "Serial year", y = "mm/day")
+
 
   if (show_title) {
     p <- p + labs(title = "Annual mean precipitation")
   }
 
-  if (save_plots && !is.null(output_path)) {
+  if (save_plots && !is.null(output_dir)) {
     ggsave(
-      filename = file.path(output_path, "annual_precip.png"),
+      filename = file.path(output_dir, "annual_precip.png"),
       plot = p,
       height = 4,
       width = 8,
@@ -854,5 +864,23 @@ generate_symmetric_dummy_points <- function(df, facet_var, x_col, y_col) {
   out
 }
 
+#' Add geom_line only for groups with >= 2 observations
+#' @keywords internal
+.add_line_if_possible <- function(p, data, mapping, group_col) {
+
+  if (is.null(data) || nrow(data) < 2) return(p)
+  if (!group_col %in% names(data)) return(p)
+
+  # count rows per group and keep groups with >=2 points
+  tab <- table(data[[group_col]])
+  keep <- names(tab)[tab >= 2]
+
+  if (length(keep) == 0) return(p)
+
+  data2 <- data[data[[group_col]] %in% keep, , drop = FALSE]
+  if (nrow(data2) < 2) return(p)
+
+  p + ggplot2::geom_line(data = data2, mapping = mapping, inherit.aes = FALSE)
+}
 
 

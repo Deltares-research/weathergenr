@@ -205,12 +205,7 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   # Base statistics
   # ---------------------------------------------------------------------------
-  if (verbose) {
-    log_step(sprintf(
-      "Computing mean, sd, tail mass for observed and simulated series",
-      format(n_rlz, big.mark = ",")
-    ))
-  }
+  .log("Computing statistics (mean, sd, tail mass)", verbose = verbose, tag = "FILTER")
 
   obs_mean <- mean(obs_use)
   obs_sd   <- stats::sd(obs_use)
@@ -249,20 +244,15 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   # Wavelet metrics + caching (snake_case inside diagnostics)
   # ---------------------------------------------------------------------------
-  if (verbose) {
-    log_step(sprintf(
-      "Computing wavelet spectra for the observed and simulated series",
-      format(n_rlz, big.mark = ",")
-    ))
-  }
+
+  .log("Computing wavelet spectra", verbose = verbose, tag = "FILTER")
 
   wavelet_results <- compute_wavelet_metrics(
     obs_use = obs_use,
     sim_series_stats = sim_use,
     wavelet_pars = wavelet_args,
     padding = pad_periods,
-    min_bg = b$wavelet_min_bg
-  )
+    min_bg = b$wavelet_min_bg)
 
   wavelet_active <- wavelet_results$active
   wavelet_diag <- wavelet_results$diagnostics
@@ -427,16 +417,10 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   # Select from pool
   # ---------------------------------------------------------------------------
-  if (verbose) {
-    log_step(
-      "Selecting series",
-      sprintf(
-        "selecting %s from pool of %s",
-        format(n_select, big.mark = ","),
-        format(length(pool_idx), big.mark = ",")
-      )
-    )
-  }
+
+
+  .log("Selecting {format(n_select, big.mark = ',')} from pool of {format(length(pool_idx), big.mark = ',')}",
+    tag = "FILTER", verbose = verbose)
 
   idx_select <- if (length(pool_idx) == n_select) pool_idx else sample(pool_idx, size = n_select, replace = FALSE)
 
@@ -473,9 +457,9 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   plots_out <- NULL
   if (make_plots) {
-    if (verbose) {
-      log_step("Creating diagnostic plots", "time-series, statistics, and wavelet spectra")
-    }
+
+    .log("Creating diagnostic plots for the selected realizations",
+         tag = "FILTER", verbose = verbose)
 
     if (length(pool_idx) < 1L) {
       warning("make_plots=TRUE but final pool is empty; plots=NULL.", call. = FALSE)
@@ -976,35 +960,16 @@ criteria_string_compact <- function(filter_name, bounds, tail_metrics,
 #' @keywords internal
 log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, relax_priority) {
 
-  logger::log_info("[FILTERING] ===========================================================================")
-  logger::log_info("[FILTERING] FILTERING SETUP")
-  logger::log_info("[FILTERING] ===========================================================================")
-  logger::log_info("[FILTERING] Observed series: {format(n_obs, big.mark = ',')} years")
-  logger::log_info("[FILTERING] Simulated series: {format(n_sim, big.mark = ',')} years x {format(n_realizations, big.mark = ',')} candidate realizations")
-  logger::log_info("[FILTERING] Target: select {format(sample_target, big.mark = ',')} realizations from pool")
-  logger::log_info("[FILTERING] Relaxation priority: {paste(relax_priority, collapse = ' > ')}")
-  logger::log_info("[FILTERING] Filters relax left-to-right: {relax_priority[1]} relaxes FIRST, {relax_priority[length(relax_priority)]} relaxes LAST")
-  logger::log_info("[FILTERING] ===========================================================================")
+  .log("[FILTER] ===========================================================================")
+  .log("[FILTER] FILTERING SETUP")
+  .log("[FILTER] ===========================================================================")
+  .log("[FILTER] Observed series: {format(n_obs, big.mark = ',')} years")
+  .log("[FILTER] Simulated series: {format(n_sim, big.mark = ',')} years x {format(n_realizations, big.mark = ',')} candidate realizations")
+  .log("[FILTER] Target: select {format(sample_target, big.mark = ',')} realizations from pool")
+  .log("[FILTER] Relaxation priority: {paste(relax_priority, collapse = ' > ')}")
+  .log("[FILTER] Filters relax left-to-right: {relax_priority[1]} relaxes FIRST, {relax_priority[length(relax_priority)]} relaxes LAST")
+  .log("[FILTER] ===========================================================================")
 
-  invisible(NULL)
-}
-
-#' Log major step progress
-#'
-#' @description
-#' Internal helper. Displays progress message for major computational steps.
-#'
-#' @param step_name Character scalar. Name of the step.
-#' @param details Optional character scalar. Details string.
-#'
-#' @return Invisibly returns NULL.
-#' @keywords internal
-log_step <- function(step_name, details = NULL) {
-  if (!is.null(details)) {
-    logger::log_info("[FILTERING] {step_name} | {details}")
-  } else {
-    logger::log_info("[FILTERING] {step_name}")
-  }
   invisible(NULL)
 }
 
@@ -1035,38 +1000,38 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
   pool_pct <- if (n_total > 0) 100 * pool_size / n_total else 0
 
   if (iter == 0L) {
-    logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
-    logger::log_info("[FILTERING] ITERATION {format(iter, big.mark = ',')} | Initial evaluation")
+    .log("[FILTER] ---------------------------------------------------------------------------")
+    .log("[FILTER] ITERATION {format(iter, big.mark = ',')} | Initial evaluation")
   } else {
-    logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
+    .log("[FILTER] ---------------------------------------------------------------------------")
     if (!is.null(note)) {
-      logger::log_info("[FILTERING] ITERATION {format(iter, big.mark = ',')} | {note}")
+      .log("[FILTER] ITERATION {format(iter, big.mark = ',')} | {note}")
     } else {
-      logger::log_info("[FILTERING] ITERATION {format(iter, big.mark = ',')}")
+      .log("[FILTER] ITERATION {format(iter, big.mark = ',')}")
     }
   }
-  logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
+  .log("[FILTER] ---------------------------------------------------------------------------")
 
   filter_order <- c("mean", "sd", "tail_low", "tail_high", "wavelet")
   show_filters <- intersect(filter_order, active)
 
   if (length(show_filters) > 0) {
-    logger::log_info("[FILTERING] {sprintf('%-12s %10s %8s  %-30s', 'Filter', 'Passed', 'Rate', 'Criteria')}")
-    logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
+    .log("[FILTER] {sprintf('%-12s %10s %8s  %-30s', 'Filter', 'Passed', 'Rate', 'Criteria')}")
+    .log("[FILTER] ---------------------------------------------------------------------------")
 
     for (nm in show_filters) {
       n_pass <- sum(passes[[nm]])
       rate <- 100 * mean(passes[[nm]])
       crit <- criteria_string_compact(nm, bounds, tail_metrics, wavelet_active, wavelet_pars)
-      logger::log_info("[FILTERING] {sprintf('%-12s %10s %7.1f%%  %-30s', nm, format(n_pass, big.mark = ','), rate, crit)}")
+      .log("[FILTER] {sprintf('%-12s %10s %7.1f%%  %-30s', nm, format(n_pass, big.mark = ','), rate, crit)}")
     }
-    logger::log_info("[FILTERING] ---------------------------------------------------------------------------")
+    .log("[FILTER] ---------------------------------------------------------------------------")
   }
 
   status_icon <- if (pool_size >= target) "[OK]" else "[>>]"
   status_txt  <- if (pool_size >= target) "TARGET REACHED" else "Need more candidates"
 
-  logger::log_info("[FILTERING] {status_icon} Pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pool_pct)}%) | Need: {format(target, big.mark = ',')} | Status: {status_txt}")
+  .log("[FILTER] {status_icon} Pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pool_pct)}%) | Need: {format(target, big.mark = ',')} | Status: {status_txt}")
 
   invisible(NULL)
 }
@@ -1087,13 +1052,13 @@ log_final_summary <- function(pool_size, n_total, n_sampled, relaxation_level) {
 
   pct <- if (n_total > 0) 100 * pool_size / n_total else NA_real_
 
-  logger::log_info("[FILTERING] ===========================================================================")
-  logger::log_info("[FILTERING] FILTERING COMPLETE")
-  logger::log_info("[FILTERING] ===========================================================================")
-  logger::log_info("[FILTERING] Final pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pct)}%)")
-  logger::log_info("[FILTERING] Sampled: {format(n_sampled, big.mark = ',')} realizations")
-  logger::log_info("[FILTERING] Selection mode: {relaxation_level}")
-  logger::log_info("[FILTERING] ===========================================================================")
+  .log("[FILTER] ===========================================================================")
+  .log("[FILTER] FILTERING COMPLETE")
+  .log("[FILTER] ===========================================================================")
+  .log("[FILTER] Final pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pct)}%)")
+  .log("[FILTER] Sampled: {format(n_sampled, big.mark = ',')} realizations")
+  .log("[FILTER] Selection mode: {relaxation_level}")
+  .log("[FILTER] ===========================================================================")
 
   invisible(NULL)
 }

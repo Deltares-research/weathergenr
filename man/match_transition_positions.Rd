@@ -7,7 +7,7 @@
 match_transition_positions(
   state_from,
   state_to,
-  prcp_vec,
+  precip_vec,
   day0_idx,
   wet_threshold,
   extreme_threshold
@@ -18,7 +18,7 @@ match_transition_positions(
 
 \item{state_to}{Integer. The next occurrence state (0 = dry, 1 = wet, 2 = extreme).}
 
-\item{prcp_vec}{Numeric vector of precipitation values.}
+\item{precip_vec}{Numeric vector of precipitation values.}
 
 \item{day0_idx}{Integer vector of indices representing candidate "day 0" positions
 in the time series.}
@@ -42,13 +42,13 @@ Occurrence states are defined as:
 - 2: Extreme wet day (precipitation > extreme_threshold)
 }
 \examples{
-prcp_vec <- c(0, 0, 5, 15, 30, 0, 2, 25, 40, 0)
-day0_idx <- 1:(length(prcp_vec) - 1)
+precip_vec <- c(0, 0, 5, 15, 30, 0, 2, 25, 40, 0)
+day0_idx <- 1:(length(precip_vec) - 1)
 wet_threshold <- 1
 extreme_threshold <- 20
 
-match_transition_positions(0, 1, prcp_vec, day0_idx, wet_threshold, extreme_threshold)
-match_transition_positions(1, 2, prcp_vec, day0_idx, wet_threshold, extreme_threshold)
-match_transition_positions(2, 0, prcp_vec, day0_idx, wet_threshold, extreme_threshold)
+match_transition_positions(0, 1, precip_vec, day0_idx, wet_threshold, extreme_threshold)
+match_transition_positions(1, 2, precip_vec, day0_idx, wet_threshold, extreme_threshold)
+match_transition_positions(2, 0, precip_vec, day0_idx, wet_threshold, extreme_threshold)
 
 }

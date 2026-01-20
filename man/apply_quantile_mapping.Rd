@@ -5,7 +5,7 @@
 \title{Apply Gamma-to-Gamma Quantile Mapping for Precipitation}
 \usage{
 apply_quantile_mapping(
-  prcp,
+  precip,
   mon,
   year,
   base_gamma,
@@ -17,9 +17,9 @@ apply_quantile_mapping(
 )
 }
 \arguments{
-\item{prcp}{Numeric vector of precipitation values (subset, typically wet days).}
+\item{precip}{Numeric vector of precipitation values (subset, typically wet days).}
 
-\item{mon}{Integer vector of months (1-12), same length as `prcp`.}
+\item{mon}{Integer vector of months (1-12), same length as `precip`.}
 
 \item{year}{Integer vector of year indices used to select columns in
 `target_gamma$shape/scale/mean`. This is an index (1..n_years), not
@@ -41,7 +41,7 @@ necessarily the calendar year value.}
 each (month, year) subset to match `target_gamma$mean`.}
 }
 \value{
-Numeric vector of mapped precipitation values, same length as `prcp`.
+Numeric vector of mapped precipitation values, same length as `precip`.
 }
 \description{
 Internal helper implementing gamma-based quantile mapping for precipitation:

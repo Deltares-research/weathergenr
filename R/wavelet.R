@@ -972,10 +972,7 @@ simulate_warm <- function(
     }
   }
 
-  if (verbose && match_variance && any(variance_corrections) &&
-      requireNamespace("logger", quietly = TRUE)) {
-    logger::log_info("[WARM] Variance correction applied to component(s)")
-  }
+  if (verbose && match_variance) .log("[WARM] Variance correction applied")
 
   output
 }

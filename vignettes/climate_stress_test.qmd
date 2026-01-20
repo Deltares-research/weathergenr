@@ -1,0 +1,298 @@
+---
+title: "Climate Stress Testing with weathergenr"
+description: "Design climate stress-test scenarios, apply monthly perturbations to stochastic weather, and validate precipitation changes."
+format:
+  html:
+    toc: true
+    toc-location: right
+    toc-title: "Contents"
+    toc-depth: 2
+    toc-expand: 2
+    page-layout: full
+    number-sections: true
+    code-fold: true
+    code-tools: true
+    df-print: tibble
+    self-contained: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: false
+  freeze: true
+  execute-dir: project
+vignette: >
+  %\VignetteIndexEntry{Climate stress testing}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Purpose
+
+This vignette demonstrates how to apply **climate perturbations** to daily
+weather series using `weathergenr`. The workflow modifies precipitation and
+temperature in a controlled way to reflect user-defined stress scenarios while
+preserving realistic daily variability. This is useful for hydrological stress
+testing, climate sensitivity analysis, and impact modeling.
+
+# Setup
+
+```{r setup}
+library(weathergenr)
+library(ggplot2)
+
+ncfile <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+ncdata <- read_netcdf(ncfile)
+```
+
+# Define climate scenario
+
+We define a stress-test scenario representing a drier and warmer climate:
+30% reduction in mean precipitation and +2 degrees Celsius temperature increase.
+
+```{r climate_factors}
+obs_date <- ncdata$date
+obs_month <- as.integer(format(obs_date, "%m"))
+obs_year <- as.integer(format(obs_date, "%Y"))
+obs_year_idx <- obs_year - min(obs_year) + 1L
+n_years <- max(obs_year_idx)
+
+# Monthly perturbation vectors (length 12)
+precip_mean_change <- rep(0.7, 12)
+precip_var_change <- rep(1.0, 12)
+temp_mean_change <- rep(2, 12)
+
+# Expand to matrices (n_years x 12) for quantile mapping
+precip_mean_change_m <- matrix(precip_mean_change, nrow = n_years, ncol = 12, byrow = TRUE)
+precip_var_change_m <- matrix(precip_var_change, nrow = n_years, ncol = 12, byrow = TRUE)
+```
+
+# Preview quantile mapping
+
+Before applying perturbations across all grid cells, we preview the
+quantile-mapping diagnostics on a single cell to verify target changes are
+achieved.
+
+```{r quantile_mapping_preview}
+precip_qm <- adjust_precipitation_qm(
+  precip = ncdata$data[[1]]$precip,
+  mean_factor = precip_mean_change_m,
+  var_factor = precip_var_change_m,
+  scale_var_with_mean = TRUE,
+  exaggerate_extremes = FALSE,
+  enforce_target_mean = TRUE,
+  month = obs_month,
+  year = obs_year_idx,
+  min_events = 10,
+  validate_output = TRUE,
+  diagnostics = TRUE,
+  verbose = FALSE
+)
+
+print(precip_qm$diagnostics)
+```
+
+# Apply climate perturbations
+
+The `apply_climate_perturbations()` function processes all grid cells. It
+accepts a list of data frames (`data`), grid metadata (`grid`), and a date
+vector (`date`). Monthly perturbation factors control precipitation mean/variance
+scaling and temperature shifts. When `diagnostic = TRUE`, the function returns
+both the perturbed data and validation diagnostics.
+
+```{r apply_perturbations}
+rlz_future <- apply_climate_perturbations(
+  data = ncdata$data,
+  grid = ncdata$grid,
+  date = ncdata$date,
+  precip_mean_factor = precip_mean_change,
+  precip_var_factor = precip_var_change,
+  temp_delta = temp_mean_change,
+  precip_occurrence_factor = NULL,
+  precip_intensity_threshold = 0,
+  temp_transient = TRUE,
+  precip_transient = TRUE,
+  precip_occurrence_transient = TRUE,
+  compute_pet = FALSE,
+  pet_method = "hargreaves",
+  qm_fit_method = "mme",
+  scale_var_with_mean = TRUE,
+  exaggerate_extremes = FALSE,
+  extreme_prob_threshold = 0.95,
+  extreme_k = 1.2,
+  enforce_target_mean = TRUE,
+  precip_cap_mm_day = NULL,
+  precip_floor_mm_day = NULL,
+  precip_cap_quantile = NULL,
+  seed = 42,
+  diagnostic = TRUE,
+  verbose = FALSE
+)
+```
+
+The output contains `data` (list of perturbed data frames) and `diagnostic`
+(list of per-grid validation objects, precipitation only).
+
+# Visualizations
+
+## Monthly precipitation
+
+```{r plot_monthly_precip}
+obs_cell <- ncdata$data[[1]]
+sim_cell <- rlz_future$data[[1]]
+
+obs_monthly <- tapply(obs_cell$precip, obs_month, mean, na.rm = TRUE)
+sim_monthly <- tapply(sim_cell$precip, obs_month, mean, na.rm = TRUE)
+
+plot_data <- data.frame(
+  Month = factor(month.abb[1:12], levels = month.abb),
+  Observed = as.numeric(obs_monthly),
+  Perturbed = as.numeric(sim_monthly)
+)
+plot_data_long <- tidyr::pivot_longer(
+  plot_data, cols = c("Observed", "Perturbed"),
+  names_to = "Series", values_to = "Precipitation"
+)
+
+ggplot(plot_data_long, aes(x = Month, y = Precipitation, fill = Series)) +
+  geom_col(position = "dodge", width = 0.7) +
+  scale_fill_manual(values = c(Observed = "steelblue", Perturbed = "coral")) +
+  labs(
+    title = "Monthly Mean Precipitation",
+    subtitle = "Observed vs. perturbed (30% reduction scenario)",
+    y = "Precipitation (mm/day)", x = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Distribution comparison
+
+```{r plot_distribution}
+wet_obs <- obs_cell$precip[obs_cell$precip > 0]
+wet_sim <- sim_cell$precip[sim_cell$precip > 0]
+
+dist_data <- data.frame(
+
+  Precipitation = c(wet_obs, wet_sim),
+  Series = factor(
+    c(rep("Observed", length(wet_obs)), rep("Perturbed", length(wet_sim))),
+    levels = c("Observed", "Perturbed")
+  )
+)
+
+ggplot(dist_data, aes(x = Precipitation, color = Series, fill = Series)) +
+  geom_density(alpha = 0.3, linewidth = 1) +
+  scale_color_manual(values = c(Observed = "steelblue", Perturbed = "coral")) +
+  scale_fill_manual(values = c(Observed = "steelblue", Perturbed = "coral")) +
+  scale_x_continuous(limits = c(0, quantile(c(wet_obs, wet_sim), 0.98))) +
+  labs(
+    title = "Wet-Day Precipitation Distribution",
+    x = "Precipitation (mm/day)", y = "Density"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Temperature time series
+
+```{r plot_temperature}
+n_plot <- min(365, nrow(obs_cell))
+plot_idx <- seq_len(n_plot)
+
+temp_ts <- data.frame(
+  Day = plot_idx,
+  Observed = obs_cell$temp[plot_idx],
+  Perturbed = sim_cell$temp[plot_idx]
+)
+temp_ts_long <- tidyr::pivot_longer(
+  temp_ts, cols = c("Observed", "Perturbed"),
+  names_to = "Series", values_to = "Temperature"
+)
+
+ggplot(temp_ts_long, aes(x = Day, y = Temperature, color = Series)) +
+  geom_line(alpha = 0.7) +
+  scale_color_manual(values = c(Observed = "steelblue", Perturbed = "coral")) +
+  labs(
+    title = "Daily Temperature Time Series",
+    subtitle = paste0("First ", n_plot, " days: +2 deg C shift"),
+    x = "Day", y = "Temperature (deg C)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+# Use cases and extensions
+
+## Step changes
+
+For immediate perturbations instead of transient ramps:
+
+```{r step_changes, eval=FALSE}
+rlz_step <- apply_climate_perturbations(
+  data = ncdata$data, grid = ncdata$grid, date = ncdata$date,
+  precip_mean_factor = precip_mean_change,
+  precip_var_factor = precip_var_change,
+  temp_delta = temp_mean_change,
+  temp_transient = FALSE,
+  precip_transient = FALSE,
+  diagnostic = TRUE
+)
+```
+
+## Occurrence perturbations
+
+To modify wet-day frequency:
+
+```{r occurrence_example, eval=FALSE}
+occurrence_factor <- rep(1.0, 12)
+occurrence_factor[6:8] <- 0.8  # 20% fewer wet days in summer
+
+rlz_dry_summer <- apply_climate_perturbations(
+  data = ncdata$data, grid = ncdata$grid, date = ncdata$date,
+  precip_mean_factor = precip_mean_change,
+  precip_var_factor = precip_var_change,
+  precip_occurrence_factor = occurrence_factor,
+  temp_delta = temp_mean_change,
+  diagnostic = TRUE
+)
+```
+
+## PET recalculation
+
+To propagate temperature changes to PET:
+
+```{r pet_example, eval=FALSE}
+rlz_with_pet <- apply_climate_perturbations(
+  data = ncdata$data, grid = ncdata$grid, date = ncdata$date,
+  precip_mean_factor = precip_mean_change,
+  precip_var_factor = precip_var_change,
+  temp_delta = temp_mean_change,
+  compute_pet = TRUE,
+  pet_method = "hargreaves",
+  diagnostic = TRUE
+)
+```
+
+## Extreme amplification
+
+To amplify upper-tail changes:
+
+```{r extreme_example, eval=FALSE}
+rlz_extreme <- apply_climate_perturbations(
+  data = ncdata$data, grid = ncdata$grid, date = ncdata$date,
+  precip_mean_factor = precip_mean_change,
+  precip_var_factor = precip_var_change,
+  temp_delta = temp_mean_change,
+  exaggerate_extremes = TRUE,
+  extreme_prob_threshold = 0.95,
+  extreme_k = 1.2,
+  diagnostic = TRUE
+)
+```
+
+# Session info
+
+```{r session_info}
+sessionInfo()
+```

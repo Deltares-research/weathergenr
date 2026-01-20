@@ -4,7 +4,7 @@
 \alias{compute_temporal_diagnostics}
 \title{Compute temporal diagnostics (no subjective categories)}
 \usage{
-compute_temporal_diagnostics(prcp_ref, prcp_adj, month, year, mask)
+compute_temporal_diagnostics(precip_ref, precip_adj, month, year, mask)
 }
 \description{
 Compute temporal diagnostics (no subjective categories)

@@ -5,8 +5,8 @@
 \title{Compute moment diagnostics (scenario-aware when factors + month/year are available)}
 \usage{
 compute_moment_diagnostics(
-  prcp_ref,
-  prcp_adj,
+  precip_ref,
+  precip_adj,
   mask,
   month = NULL,
   year = NULL,

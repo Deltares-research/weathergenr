@@ -12,7 +12,7 @@ evaluate_weather_generator(
   n_realizations = NULL,
   wet_quantile = 0.2,
   extreme_quantile = 0.8,
-  output_path = NULL,
+  output_dir = NULL,
   save_plots = TRUE,
   show_title = TRUE,
   verbose = TRUE,
@@ -41,10 +41,10 @@ Defaults to `variables` if `NULL`.}
 \item{extreme_quantile}{Numeric between 0 and 1. Quantile threshold for extremely
 wet days (default = 0.8).}
 
-\item{output_path}{Character. Directory path to save generated plots. If `NULL`,
+\item{output_dir}{Character. Directory path to save generated plots. If `NULL`,
 plots are not saved to disk.}
 
-\item{save_plots}{Logical. Whether to save plots to `output_path` (default = `TRUE`).}
+\item{save_plots}{Logical. Whether to save plots to `output_dir` (default = `TRUE`).}
 
 \item{show_title}{Logical. Whether to display titles in plots (default = `TRUE`).}
 
@@ -99,7 +99,7 @@ out <- evaluate_weather_generator(
   daily_obs = obs_grid,
   variables = c("precip", "temp"),
   n_realizations = 1,
-  output_path = NULL,
+  output_dir = NULL,
   save_plots = FALSE,
   show_title = FALSE
 )

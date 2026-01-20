@@ -28,9 +28,9 @@
 #'   (default = 0.2).
 #' @param extreme_quantile Numeric between 0 and 1. Quantile threshold for extremely
 #'   wet days (default = 0.8).
-#' @param output_path Character. Directory path to save generated plots. If `NULL`,
+#' @param output_dir Character. Directory path to save generated plots. If `NULL`,
 #'   plots are not saved to disk.
-#' @param save_plots Logical. Whether to save plots to `output_path` (default = `TRUE`).
+#' @param save_plots Logical. Whether to save plots to `output_dir` (default = `TRUE`).
 #' @param show_title Logical. Whether to display titles in plots (default = `TRUE`).
 #' @param verbose Logical. Whether to emit console messages and the fit summary table.
 #' @param max_grids Integer. Maximum number of grid cells to evaluate (default = 25).
@@ -65,7 +65,7 @@
 #'   daily_obs = obs_grid,
 #'   variables = c("precip", "temp"),
 #'   n_realizations = 1,
-#'   output_path = NULL,
+#'   output_dir = NULL,
 #'   save_plots = FALSE,
 #'   show_title = FALSE
 #' )
@@ -86,7 +86,7 @@ evaluate_weather_generator <- function(
     n_realizations = NULL,
     wet_quantile = 0.2,
     extreme_quantile = 0.8,
-    output_path = NULL,
+    output_dir = NULL,
     save_plots = TRUE,
     show_title = TRUE,
     verbose = TRUE,
@@ -136,28 +136,28 @@ evaluate_weather_generator <- function(
 
   .log(
     paste0(
-      "[VALIDATE] Start | grids = {format(length(daily_obs), big.mark = ',')} | ",
+      "[EVAL] Start | grids = {format(length(daily_obs), big.mark = ',')} | ",
       "realizations = {format(n_realizations, big.mark = ',')}"
     ),
     verbose = verbose
   )
   .log(
     paste0(
-      "[VALIDATE] Variables = {paste(variables, collapse = ',')}"
+      "[EVAL] Variables = {paste(variables, collapse = ',')}"
     ),
     verbose = verbose
   )
   .log(
-    paste0("[VALIDATE] Parameters: wet.q = {wet_quantile} | extreme.q = {extreme_quantile}"),
+    paste0("[EVAL] Parameters: wet.q = {wet_quantile} | extreme.q = {extreme_quantile}"),
     verbose = verbose
   )
 
 
   if (is.null(variable_labels)) variable_labels <- variables
 
-  if (!is.null(output_path)) {
-    if (!dir.exists(output_path)) {
-      dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
+  if (!is.null(output_dir)) {
+    if (!dir.exists(output_dir)) {
+      dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     }
   } else {
     save_plots <- FALSE
@@ -196,7 +196,7 @@ evaluate_weather_generator <- function(
 
     if (isTRUE(verbose) && requireNamespace("logger", quietly = TRUE)) {
       logger::log_warn(
-        "[VALIDATE] Grid count reduced from {format(grid_count_original, big.mark = ',')} to {format(grid_count, big.mark = ',')} for memory control."
+        "[EVAL] Grid count reduced from {format(grid_count_original, big.mark = ',')} to {format(grid_count, big.mark = ',')} for memory control."
       )
     }
   }
@@ -207,7 +207,7 @@ evaluate_weather_generator <- function(
   # ============================================================================
 
   .log(
-    "[VALIDATE] Standardizing obs/sim periods to full years and equal length",
+    "[EVAL] Standardizing obs/sim periods to full years and equal length",
     verbose = verbose
   )
 
@@ -223,7 +223,7 @@ evaluate_weather_generator <- function(
 
   .log(
     paste0(
-      "[VALIDATE] Standardized period | ",
+      "[EVAL] Standardized period | ",
       "Obs = ", std$obs_year_start, "-", std$obs_year_end, " | ",
       "Sim = ", std$sim_year_start, "-", std$sim_year_end
     ),
@@ -234,7 +234,7 @@ evaluate_weather_generator <- function(
   # PROCESS OBSERVED DATA
   # ============================================================================
 
-  .log("[VALIDATE] Processing observed data", verbose = verbose)
+  .log("[EVAL] Processing observed data", verbose = verbose)
 
   obs_results <- .summarize_observed_data(
     daily_obs = daily_obs,
@@ -249,7 +249,7 @@ evaluate_weather_generator <- function(
   # ============================================================================
 
   .log(
-    "[VALIDATE] Processing simulated data ({format(n_realizations, big.mark = ',')} realizations)",
+    "[EVAL] Processing simulated data ({format(n_realizations, big.mark = ',')} realizations)",
     verbose = verbose
   )
 
@@ -264,7 +264,7 @@ evaluate_weather_generator <- function(
   # MERGE AND PREPARE PLOT DATA
   # ============================================================================
 
-  .log("[VALIDATE] Preparing diagnostic data for plotting", verbose = verbose)
+  .log("[EVAL] Preparing diagnostic data for plotting", verbose = verbose)
 
   plot_data <- .build_plot_data(
     obs_results = obs_results,
@@ -276,7 +276,7 @@ evaluate_weather_generator <- function(
   # GENERATE DIAGNOSTIC PLOTS
   # ============================================================================
 
-  .log("[VALIDATE] Generating diagnostic plots", verbose = verbose)
+  .log("[EVAL] Generating diagnostic plots", verbose = verbose)
 
   plots <- create_all_diagnostic_plots(
     plot_data = plot_data,
@@ -284,22 +284,22 @@ evaluate_weather_generator <- function(
     variables = variables,
     show_title = show_title,
     save_plots = save_plots,
-    output_path = output_path
+    output_dir = output_dir
   )
 
   .log(
-    "[VALIDATE] Generated {format(length(plots), big.mark = ',')} diagnostic plots.",
+    "[EVAL] Generated {format(length(plots), big.mark = ',')} diagnostic plots.",
     verbose = verbose
   )
   if (save_plots) {
-    .log("[VALIDATE] Plots saved to: {output_path}", verbose = verbose)
+    .log("[EVAL] Plots saved to: {output_dir}", verbose = verbose)
   }
 
   # ============================================================================
   # COMPUTE FIT METRICS SUMMARY TABLE
   # ============================================================================
 
-  .log("[VALIDATE] Computing fit metrics for all realizations", verbose = verbose)
+  .log("[EVAL] Computing fit metrics for all realizations", verbose = verbose)
 
   fit_summary <- .summarize_realization_fit(
     obs_results = obs_results,
@@ -311,13 +311,13 @@ evaluate_weather_generator <- function(
   # DISPLAY FIT SUMMARY TABLE
   # ============================================================================
 
-  .log("[VALIDATE] Displaying fit assessment summary", verbose = verbose)
+  .log("[EVAL] Displaying fit assessment summary", verbose = verbose)
 
   if (isTRUE(verbose)) {
     .print_fit_summary_table(fit_summary)
   }
 
-  .log("[VALIDATE] Assessment completed successfully", verbose = verbose)
+  .log("[EVAL] Assessment completed successfully", verbose = verbose)
 
   structure(
     plots,
@@ -1452,7 +1452,242 @@ evaluate_weather_generator <- function(
 }
 
 
+#' Prepare Generator Output for Evaluation
+#'
+#' @description
+#' Transforms the output from \code{\link{generate_weather}} into the format
+#' required by \code{\link{evaluate_weather_generator}}. This helper function
+#' handles the date resampling, complete-year filtering, and data extraction
+#' that is typically needed between generation and evaluation steps.
+#'
+#' @details
+#' The function performs the following transformations:
+#' \enumerate{
+#'   \item Maps resampled dates back to row indices in the original observations
+#'   \item Filters the simulation period to complete years only (>= 365 days)
+#'   \item Extracts the specified variables from observed data using resampled indices
+#'   \item Formats both simulated and observed data as required by the evaluator
+#' }
+#'
+#' Complete years are identified by calendar year boundaries. For water-year
+#' simulations, users should ensure the simulation spans full water years.
+#'
+#' @param gen_output List returned by \code{\link{generate_weather}}, containing
+#'   \code{resampled} (tibble of resampled observation dates per realization)
+#'   and \code{dates} (vector of simulated dates).
+#' @param obs_data Named list of data frames from \code{\link{read_netcdf}$data},
+#'   one per grid cell. Each data frame must contain columns for all variables.
+#' @param obs_dates Date vector corresponding to rows in each \code{obs_data}
+#'   element. Typically from \code{read_netcdf()$date}.
+#' @param grid_ids Character or integer vector of grid cell identifiers to
+#'   include in the evaluation. Must match names or indices in \code{obs_data}.
+#' @param variables Character vector of variable names to extract
+#'   (e.g., \code{c("precip", "temp")}).
+#' @param min_days_per_year Integer. Minimum number of days required to consider
+#'   a year complete. Default is 365. Use 360 for 360-day calendars.
+#' @param verbose Logical. If \code{TRUE}, prints progress messages to console
+#'   via the internal \code{.log()} function. Default is \code{TRUE}.
+#'
+#' @return A list with two elements:
+#' \describe{
+#'   \item{sim_data}{List of length \code{n_realizations}. Each element is a
+#'     list of data frames (one per grid cell) with columns \code{date} followed
+#'     by the requested \code{variables}.}
+#'   \item{obs_data}{List of data frames (one per grid cell) with columns
+#'     \code{date} followed by the requested \code{variables}.}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # After running generate_weather()
+#' ncdata <- read_netcdf("climate_data.nc")
+#' gen_output <- generate_weather(
+#'   obs_data = ncdata$data,
+#'   obs_grid = ncdata$grid,
+#'   obs_dates = ncdata$date,
+#'   ...
+#' )
+#'
+#' # Prepare data for evaluation
+#' eval_data <- prepare_evaluation_data(
+#'   gen_output = gen_output,
+#'   obs_data   = ncdata$data,
+#'   obs_dates  = ncdata$date,
+#'   grid_ids   = ncdata$grid$id,
+#'   variables  = c("precip", "temp")
+#' )
+#'
+#' # Run evaluation
+#' results <- evaluate_weather_generator(
+#'   daily_sim = eval_data$sim_data,
+#'   daily_obs = eval_data$obs_data,
+#'   ...
+#' )
+#' }
+#'
+#' @seealso \code{\link{generate_weather}}, \code{\link{evaluate_weather_generator}}
+#' @export
+prepare_evaluation_data <- function(gen_output,
+                                    obs_data,
+                                    obs_dates,
+                                    grid_ids,
+                                    variables,
+                                    min_days_per_year = 365L,
+                                    verbose = TRUE) {
 
+  # ---------------------------------------------------------------------------
+  # Input validation
+  # ---------------------------------------------------------------------------
+  if (!is.list(gen_output) ||
+      !all(c("resampled", "dates") %in% names(gen_output))) {
+    stop("'gen_output' must be output from generate_weather() with ",
+         "'resampled' and 'dates' elements.", call. = FALSE)
+  }
+
+  if (!is.list(obs_data) || length(obs_data) == 0L) {
+    stop("'obs_data' must be a non-empty list of data frames.", call. = FALSE)
+  }
+
+  if (!inherits(obs_dates, "Date")) {
+    stop("'obs_dates' must be a Date vector.", call. = FALSE)
+  }
+
+  if (length(obs_dates) != nrow(obs_data[[1]])) {
+    stop("'obs_dates' length must match number of rows in obs_data elements.",
+         call. = FALSE)
+  }
+
+  if (!is.character(variables) || length(variables) == 0L) {
+    stop("'variables' must be a non-empty character vector.", call. = FALSE)
+  }
+
+  missing_vars <- setdiff(variables, names(obs_data[[1]]))
+  if (length(missing_vars) > 0L) {
+    stop("Variables not found in obs_data: ",
+         paste(missing_vars, collapse = ", "), call. = FALSE)
+  }
+
+  if (!all(grid_ids %in% names(obs_data)) &&
+      !all(grid_ids %in% seq_along(obs_data))) {
+    stop("'grid_ids' must match names or indices of obs_data.", call. = FALSE)
+  }
+
+  min_days_per_year <- as.integer(min_days_per_year)
+  if (is.na(min_days_per_year) || min_days_per_year < 1L) {
+    stop("'min_days_per_year' must be a positive integer.", call. = FALSE)
+  }
+
+  if (!is.logical(verbose) || length(verbose) != 1L) {
+    stop("'verbose' must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  # ---------------------------------------------------------------------------
+  # Extract dimensions
+  # ---------------------------------------------------------------------------
+  .log("Preparing evaluation data", tag = "EVAL", verbose = verbose)
+
+  n_realizations <- ncol(gen_output$resampled)
+  sim_dates      <- gen_output$dates
+
+  if (n_realizations == 0L) {
+    stop("gen_output$resampled has no columns (realizations).", call. = FALSE)
+  }
+
+  n_grids <- length(grid_ids)
+  n_vars  <- length(variables)
+
+  .log(
+    "Configuration: {n_realizations} realizations, {n_grids} grids, {n_vars} variables",
+    tag = "EVAL",
+    verbose = verbose
+  )
+
+  # ---------------------------------------------------------------------------
+  # Build resampling index matrix
+  # ---------------------------------------------------------------------------
+  .log("Building resampling index matrix", tag = "EVAL", verbose = verbose)
+
+  # Maps each simulated day to its corresponding row in obs_data
+  day_order <- vapply(
+    seq_len(n_realizations),
+    function(n) match(gen_output$resampled[[n]], obs_dates),
+    integer(length(sim_dates))
+  )
+
+  # Check for unmatched dates
+  if (anyNA(day_order)) {
+    n_missing <- sum(is.na(day_order))
+    warning("Could not match ", n_missing, " resampled dates to obs_dates. ",
+            "These rows will contain NA values.", call. = FALSE)
+  }
+
+  # ---------------------------------------------------------------------------
+  # Identify complete years
+  # ---------------------------------------------------------------------------
+  .log("Identifying complete years (min {min_days_per_year} days)", tag = "EVAL", verbose = verbose)
+
+  sim_years <- as.integer(format(sim_dates, "%Y"))
+  year_counts <- table(sim_years)
+  complete_years <- as.integer(names(year_counts)[year_counts >= min_days_per_year])
+
+  if (length(complete_years) == 0L) {
+    stop("No complete years found in simulation period (min_days = ",
+         min_days_per_year, ").", call. = FALSE)
+  }
+
+  complete_year_idx <- which(sim_years %in% complete_years)
+
+  .log(
+    "Found {length(complete_years)} complete years: {min(complete_years)}-{max(complete_years)}",
+    tag = "EVAL",
+    verbose = verbose
+  )
+
+  # ---------------------------------------------------------------------------
+  # Extract simulated data
+  # ---------------------------------------------------------------------------
+  .log("Extracting simulated data for {n_realizations} realizations", tag = "EVAL", verbose = verbose)
+
+  sim_data <- vector("list", n_realizations)
+
+  for (n in seq_len(n_realizations)) {
+    sim_data[[n]] <- lapply(obs_data[grid_ids], function(grid_df) {
+      # Reorder observations according to resampled dates
+      resampled_df <- grid_df[day_order[, n], variables, drop = FALSE]
+
+      # Add date column and filter to complete years
+      resampled_df$date <- sim_dates
+      resampled_df <- resampled_df[complete_year_idx, c("date", variables)]
+
+      # Reset row names for cleaner output
+      rownames(resampled_df) <- NULL
+      resampled_df
+    })
+  }
+
+  # ---------------------------------------------------------------------------
+  # Extract observed data
+  # ---------------------------------------------------------------------------
+  .log("Extracting observed data for {n_grids} grid cells", tag = "EVAL", verbose = verbose)
+
+  obs_data_eval <- lapply(obs_data[grid_ids], function(grid_df) {
+    out <- grid_df[, variables, drop = FALSE]
+    out$date <- obs_dates
+    out <- out[, c("date", variables)]
+    rownames(out) <- NULL
+    out
+  })
+
+  # ---------------------------------------------------------------------------
+  # Return formatted output
+  # ---------------------------------------------------------------------------
+  .log("Evaluation data preparation complete", tag = "EVAL", verbose = verbose)
+
+  list(
+    sim_data = sim_data,
+    obs_data = obs_data_eval
+  )
+}
 
 
 

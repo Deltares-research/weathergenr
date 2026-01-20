@@ -16,6 +16,7 @@ n_years <- max(obs_year)
 
 prcp_mean_change <- rep(0.7, 12)
 prcp_var_change <- rep(1.0, 12)
+temp_mean_change <- rep(2, 12)
 prcp_mean_change_m <- matrix(prcp_mean_change, nrow = n_years, ncol = 12, byrow = TRUE)
 prcp_var_change_m <- matrix(prcp_var_change, nrow = n_years, ncol = 12, byrow = TRUE)
 
@@ -35,25 +36,32 @@ prcp_qm <- adjust_precipitation_qm(
 )
 
 
-
-
-
-
-
-
-prcp_qm$diagnostics
 # Apply perturbations (returns the perturbed realization)
 rlz_future <- apply_climate_perturbations(
   data = ncdata$data,
   grid = ncdata$grid,
   date = ncdata$date,
-  prcp_mean_factor = prcp_mean_factor_s,
-  prcp_var_factor  = prcp_var_factor_s,
-  temp_delta       = temp_delta_s,
-  temp_transient   = TRUE,
-  prcp_transient   = TRUE,
-  compute_pet      = FALSE,
-  verbose          = FALSE
+  prcp_mean_factor = prcp_mean_change,
+  prcp_var_factor = prcp_var_change,
+  temp_delta = temp_mean_change,
+  prcp_occurrence_factor = NULL,
+  prcp_intensity_threshold = 0,
+  temp_transient = TRUE,
+  prcp_transient = TRUE,
+  prcp_occurrence_transient = TRUE,
+  compute_pet = FALSE,
+  pet_method = "hargreaves",
+  qm_fit_method = "mme",
+  scale_var_with_mean = TRUE,
+  exaggerate_extremes = FALSE,
+  extreme_prob_threshold = 0.95,
+  extreme_k = 1.2,
+  enforce_target_mean = TRUE,
+  prcp_cap_mm_day = NULL,
+  prcp_floor_mm_day = NULL,
+  prcp_cap_quantile = NULL,
+  seed = NULL,
+  verbose = FALSE
 )
 
 

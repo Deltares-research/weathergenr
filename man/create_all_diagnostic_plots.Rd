@@ -10,7 +10,7 @@ create_all_diagnostic_plots(
   variables,
   show_title,
   save_plots,
-  output_path
+  output_dir
 )
 }
 \arguments{
@@ -22,9 +22,9 @@ create_all_diagnostic_plots(
 
 \item{show_title}{Logical; if \code{TRUE}, titles/subtitles are added to plots where supported.}
 
-\item{save_plots}{Logical; if \code{TRUE}, plots are written to \code{output_path}.}
+\item{save_plots}{Logical; if \code{TRUE}, plots are written to \code{output_dir}.}
 
-\item{output_path}{Character; output directory for saved plots.}
+\item{output_dir}{Character; output directory for saved plots.}
 }
 \value{
 Named list of ggplot objects for all diagnostics created.
@@ -52,7 +52,7 @@ It does not validate plot input structure beyond basic use in downstream plottin
     variables = c("precip", "temp"),
     show_title = FALSE,
     save_plots = FALSE,
-    output_path = NULL
+    output_dir = NULL
   )
 }
 

@@ -4,7 +4,12 @@
 \alias{compute_dryday_diagnostics}
 \title{Compute dry-day and wet-day frequency diagnostics (intended preserved)}
 \usage{
-compute_dryday_diagnostics(prcp_ref, prcp_adj, wet_thresh, tol_freq_abs = 0.01)
+compute_dryday_diagnostics(
+  precip_ref,
+  precip_adj,
+  wet_thresh,
+  tol_freq_abs = 0.01
+)
 }
 \description{
 Compute dry-day and wet-day frequency diagnostics (intended preserved)

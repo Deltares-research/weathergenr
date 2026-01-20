@@ -5,8 +5,8 @@
 \title{Validate precipitation quantile mapping adjustments}
 \usage{
 validate_quantile_mapping(
-  prcp_org,
-  prcp_adjusted,
+  precip_org,
+  precip_adjusted,
   month = NULL,
   year = NULL,
   mean_factor = NULL,
@@ -16,9 +16,9 @@ validate_quantile_mapping(
 )
 }
 \arguments{
-\item{prcp_org}{Numeric vector. Original precipitation values.}
+\item{precip_org}{Numeric vector. Original precipitation values.}
 
-\item{prcp_adjusted}{Numeric vector. Adjusted precipitation values (same length as `prcp_org`).}
+\item{precip_adjusted}{Numeric vector. Adjusted precipitation values (same length as `precip_org`).}
 
 \item{month}{Integer vector (optional). Month index (1--12) for each observation.}
 
@@ -33,8 +33,8 @@ validate_quantile_mapping(
 \item{probs}{Numeric vector. Quantile probabilities to evaluate.}
 }
 \value{
-A `prcp_qm_diagnostics` object (see `diagnose_prcp_qm()`).
+A `precip_qm_diagnostics` object (see `diagnose_precip_qm()`).
 }
 \description{
-Convenience wrapper around `diagnose_prcp_qm()` with argument names aligned to QM workflows.
+Convenience wrapper around `diagnose_precip_qm()` with argument names aligned to QM workflows.
 }

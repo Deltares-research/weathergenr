@@ -24,12 +24,10 @@ Imports:
     rlang,
     tidyr,
     utils,
-    logger,
     tibble,
     scales
 Suggests:
     devtools,
-    glue,
     quarto,
     rmarkdown,
     knitr,

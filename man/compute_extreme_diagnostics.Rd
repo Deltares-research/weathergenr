@@ -4,7 +4,7 @@
 \alias{compute_extreme_diagnostics}
 \title{Compute extreme-value diagnostics (tail ratios)}
 \usage{
-compute_extreme_diagnostics(prcp_ref, prcp_adj)
+compute_extreme_diagnostics(precip_ref, precip_adj)
 }
 \description{
 Compute extreme-value diagnostics (tail ratios)
