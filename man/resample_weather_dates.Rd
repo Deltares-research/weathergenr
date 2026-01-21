@@ -10,7 +10,6 @@ resample_weather_dates(
   obs_daily_precip,
   obs_daily_temp,
   year_start,
-  realization_idx,
   n_years,
   obs_dates_df,
   sim_dates_df,
@@ -39,9 +38,6 @@ corresponding to historical water years.}
 
 \item{year_start}{Integer. First simulation year (calendar year if
 `year_start_month == 1`, otherwise first water year).}
-
-\item{realization_idx}{Integer. Realization index, used to perturb the random
-seed so that multiple realizations are independent.}
 
 \item{n_years}{Integer. Number of simulated years.}
 

@@ -16,6 +16,8 @@ generate_weather(
   warm_var = "precip",
   warm_signif = 0.9,
   warm_pool_size = 5000,
+  warm_filter_bounds = list(),
+  warm_filter_relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   annual_knn_n = 120,
   wet_q = 0.3,
   extreme_q = 0.8,
@@ -65,6 +67,16 @@ low-frequency components in WARM.}
 
 \item{warm_pool_size}{Integer number of candidate annual traces to generate
 before filtering down to \code{n_realizations}.}
+
+\item{warm_filter_bounds}{Named list of filtering thresholds and relaxation controls
+forwarded to \code{\link{filter_warm_pool}} as \code{filter_bounds}. Any entry
+overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}).}
+
+\item{warm_filter_relax_order}{Character vector giving the relaxation priority
+for WARM filtering, forwarded to \code{\link{filter_warm_pool}} as \code{relax_order}.
+Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
+Filters are relaxed iteratively by loosening the currently most restrictive criterion
+(lowest pass rate), subject to this priority ordering.}
 
 \item{annual_knn_n}{Integer number of historical analogue years considered in
 the annual KNN step of the disaggregation.}
@@ -118,7 +130,7 @@ The workflow combines:
   \item daily KNN resampling of precipitation and temperature anomalies.
 }
 
-The simulation-year definitionis inferred from \code{year_start_month}:
+The simulation-year definition is inferred from \code{year_start_month}:
 \itemize{
   \item \code{year_start_month == 1}: calendar-year simulation,
   \item \code{year_start_month != 1}: water-year simulation starting in \code{year_start_month}.

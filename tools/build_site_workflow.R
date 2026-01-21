@@ -2,7 +2,7 @@
 # Clean, reproducible documentation + vignette + pkgdown build workflow
 #
 # Intended usage (from package root):
-#   source("dev/build_site_workflow.R")
+#   source("tools/build_site_workflow.R")
 #   publish_docs()
 #
 # Notes:

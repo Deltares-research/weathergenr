@@ -188,28 +188,18 @@ evaluate_weather_generator <- function(
   if (grid_count > max_grids) {
 
     sel.grids <- sort(sample(seq_len(grid_count), max_grids))
-
     daily_obs <- daily_obs[sel.grids]
     daily_sim <- lapply(daily_sim, function(rlz) rlz[sel.grids])
-
     grid_count <- length(daily_obs)
 
-    if (isTRUE(verbose) && requireNamespace("logger", quietly = TRUE)) {
-      logger::log_warn(
-        "[EVAL] Grid count reduced from {format(grid_count_original, big.mark = ',')} to {format(grid_count, big.mark = ',')} for memory control."
-      )
-    }
+    .log("Grid count reduced from {format(grid_count_original, big.mark = ',')} to {format(grid_count, big.mark = ',')} for memory control.", tag = "EVAL", verbose = verbose)
   }
-
 
   # ============================================================================
   # STANDARDIZE PERIODS (FULL YEARS + MATCH LENGTH VIA RANDOM WINDOW)
   # ============================================================================
 
-  .log(
-    "[EVAL] Standardizing obs/sim periods to full years and equal length",
-    verbose = verbose
-  )
+  .log("[EVAL] Standardizing obs/sim periods to full years and equal length", verbose = verbose)
 
   std <- .align_obs_sim_periods(
     daily_obs = daily_obs,
@@ -221,14 +211,11 @@ evaluate_weather_generator <- function(
   daily_obs <- std$daily_obs
   daily_sim <- std$daily_sim
 
-  .log(
-    paste0(
+  .log(paste0(
       "[EVAL] Standardized period | ",
       "Obs = ", std$obs_year_start, "-", std$obs_year_end, " | ",
-      "Sim = ", std$sim_year_start, "-", std$sim_year_end
-    ),
-    verbose = verbose
-  )
+      "Sim = ", std$sim_year_start, "-", std$sim_year_end),
+    verbose = verbose)
 
   # ============================================================================
   # PROCESS OBSERVED DATA
@@ -241,24 +228,19 @@ evaluate_weather_generator <- function(
     variables = variables,
     grid_count = grid_count,
     wet_quantile = wet_quantile,
-    extreme_quantile = extreme_quantile
-  )
+    extreme_quantile = extreme_quantile)
 
   # ============================================================================
   # PROCESS SIMULATED DATA
   # ============================================================================
 
-  .log(
-    "[EVAL] Processing simulated data ({format(n_realizations, big.mark = ',')} realizations)",
-    verbose = verbose
-  )
+  .log("[EVAL] Processing simulated data ({format(n_realizations, big.mark = ',')} realizations)", verbose = verbose)
 
   sim_results <- .summarize_simulated_data(
     daily_sim = daily_sim,
     n_realizations = n_realizations,
     variables = variables,
-    mc_thresholds = obs_results$mc_thresholds
-  )
+    mc_thresholds = obs_results$mc_thresholds)
 
   # ============================================================================
   # MERGE AND PREPARE PLOT DATA
@@ -287,10 +269,7 @@ evaluate_weather_generator <- function(
     output_dir = output_dir
   )
 
-  .log(
-    "[EVAL] Generated {format(length(plots), big.mark = ',')} diagnostic plots.",
-    verbose = verbose
-  )
+  .log("[EVAL] Generated {format(length(plots), big.mark = ',')} diagnostic plots.", verbose = verbose)
   if (save_plots) {
     .log("[EVAL] Plots saved to: {output_dir}", verbose = verbose)
   }

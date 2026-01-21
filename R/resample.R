@@ -205,8 +205,6 @@ knn_sample <- function(
 #'   (no leap days), aligned with `obs_dates_df`.
 #' @param year_start Integer. First simulation year (calendar year if
 #'   `year_start_month == 1`, otherwise first water year).
-#' @param realization_idx Integer. Realization index, used to perturb the random
-#'   seed so that multiple realizations are independent.
 #' @param n_years Integer. Number of simulated years.
 #' @param obs_dates_df Data frame containing observed date information. Must
 #'   include columns `date`, `month`, `day`, and `wyear`.
@@ -259,7 +257,6 @@ resample_weather_dates <- function(
     obs_daily_precip,
     obs_daily_temp,
     year_start,
-    realization_idx,
     n_years,
     obs_dates_df,
     sim_dates_df,
@@ -278,7 +275,7 @@ resample_weather_dates <- function(
   }
 
   # SET RNG
-  base_seed <- if (is.null(seed)) NULL else seed + realization_idx
+  base_seed <- if (is.null(seed)) NULL else seed
 
   if (!is.null(base_seed)) {
     if (exists(".Random.seed", envir = .GlobalEnv)) {
@@ -1104,7 +1101,8 @@ match_transition_positions <- function(
 #' If `idx` is missing, out of bounds, or invalid, a random index is sampled instead.
 #' If `candidate_precip` is empty, `NA_integer_` is returned.
 #'
-#' @param idx Integer. Proposed index for retrieving an element from `candidate_precip`.
+#' @param idx Integer-valued scalar. Proposed index for retrieving an element
+#'   from `candidate_precip`. Non-integer or invalid values trigger resampling.
 #' @param candidate_precip Numeric vector. A set of candidate precipitation values (e.g., for the next day).
 #'
 #' @return Integer. A valid index from `candidate_precip`, or `NA_integer_` if `candidate_precip` is empty.
@@ -1121,13 +1119,13 @@ match_transition_positions <- function(
 #'
 #' @export
 get_result_index <- function(idx, candidate_precip) {
-  if (is.na(idx) || length(idx) == 0 || idx < 1 || idx > length(candidate_precip)) {
-    if (length(candidate_precip) > 0) {
-      sample(seq_along(candidate_precip), 1)
-    } else {
-      NA_integer_
-    }
+  if (!length(candidate_precip)) {
+    return(NA_integer_)
+  }
+
+  if (!.is_int_scalar(idx) || idx < 1L || idx > length(candidate_precip)) {
+    sample.int(length(candidate_precip), 1L)
   } else {
-    idx
+    as.integer(idx)
   }
 }

@@ -16,21 +16,36 @@ library(dplyr)
 library(tidyr)
 
 # =============================================================================
-# Configuration
+# PROJECT SETUP
 # =============================================================================
 
+year_start_month <- 10
+
 # --- Path Configuration ---
-#ncfile_path   <- "C:/Users/taner/WS/Spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
+#ncfile_dir <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+#output_dir <- file.path("C:/TEMP/ntoum/", year_start_month)
+#ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir))
+
+### ---> FOR VECHTE DATA
+ncfile_dir   <- "C:/Users/taner/WS/Spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
+output_dir <- file.path("C:/TEMP/vechte/", year_start_month)
+ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir),
+    var = c("precip", "temp", "tn", "tx"),
+    var_name = c(tn = "temp_min", tx = "temp_max"))
+
+
+### ---> FOR RHINE BASIN
+#ncfile_dir   <- "C:/Users/taner/WS/Spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
 #output_dir <- "C:/TEMP/vechte/"
 
-ncfile_path <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-output_dir <- paste0("C:/TEMP/ntoum/")
-
+# =============================================================================
+# KEY PARAMETERS
+# =============================================================================
 
 # --- Key Simulation Parameters ---
 config <- list(
   # Calendar settings
-  year_start_month = 10,         # Water year starts in October (1 = calendar year)
+  year_start_month = year_start_month,   # Water year starts in October (1 = calendar year)
   start_year       = 2020,       # First simulation year
   n_years          = NULL,       # NULL = use all available complete years
 
@@ -40,7 +55,7 @@ config <- list(
   # WARM parameters
   warm_var       = "precip",     # Variable for annual wavelet analysis
   warm_signif    = 0.80,         # Wavelet significance threshold
-  warm_pool_size = 5000,        # Candidate realizations before filtering
+  warm_pool_size = 20000,        # Candidate realizations before filtering
 
   # Resampling parameters
   n_realizations = 3,            # Number of synthetic series to generate
@@ -58,17 +73,6 @@ config <- list(
   seed     = 1030,
   verbose  = TRUE
 )
-
-# Update output path with water year month
-output_dir <- file.path(output_dir, config$year_start_month)
-
-# =============================================================================
-# Step 1: Read Input Data
-# =============================================================================
-
-ncdata <- read_netcdf(nc_path  = paste0(ncfile_path)) #,
-#  var      = c("precip", "temp", "tn", "tx"),
-#  var_name = c(tn = "temp_min", tx = "temp_max"))
 
 # =============================================================================
 # Step 2: Generate Synthetic Weather

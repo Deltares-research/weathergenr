@@ -58,7 +58,7 @@ A worked end-to-end tutorial is available here:
 
 Additional vignettes and advanced examples will be added as the package evolves.
 
-# Reference
+# References
 
 > Steinschneider, S., & Brown, C. (2013). *A semiparametric multivariate, multisite weather generator with low-frequency variability for use in climate risk assessments.* **Water Resources Research**, 49(11), 7205-7220. (https://doi.org/10.1002/wrcr.20528)
 
