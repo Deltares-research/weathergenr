@@ -29,29 +29,25 @@ The generator represents climate variability across multiple time scales
 by coupling low-frequency climate dynamics with realistic daily weather
 sequences. It consists of three components:
 
-1.  *Modeling Low-frequency variability*: Interannual to decadal
-    variability is simulated using wavelet autoregressive modeling
-    (WARM) applied to annual climate aggregates (typically
-    precipitation). Wavelet decomposition isolates low-frequency
-    components, which are stochastically simulated and recombined to
-    produce synthetic annual sequences that preserve observed
-    persistence and spectral structure. These annual states condition
-    the daily generator.
+The generator combines low-frequency climate variability with realistic
+daily weather sequences using a three-stage approach:
 
-2.  *Daily weather generation (Markov chain + KNN)*: Daily precipitation
-    occurrence is modeled using a multi-state Markov chain to reproduce
-    wet and dry spell persistence, while precipitation and temperature
-    amounts are generated via k-nearest-neighbour (KNN) resampling. This
-    preserves seasonality, cross-variable dependence, and spatial
-    correlations, with historical analogues selected conditional on the
-    simulated annual climate state.
+**1. Low-frequency climate variability (WARM)** Interannual to decadal
+variability is modeled with wavelet autoregressive methods applied to
+annual climate aggregates. This preserves persistence and spectral
+structure and defines annual climate states that condition daily
+weather.
 
-3.  *Climate perturbations and quantile mapping*: Quantile-based
-    perturbation methods (e.g. quantile mapping) are used to impose
-    controlled changes in temperature and precipitation distributions,
-    enabling systematic stress-testing of shifts in means, variability,
-    and extremes while retaining internal temporal and spatial
-    consistency.
+**2. Daily weather generation (Markov chain + KNN)** Wet-dry persistence
+is simulated with a multi-state Markov chain, while daily precipitation
+and temperature values are generated via K-nearest-neighbour resampling.
+This maintains seasonality, cross-variable dependence, and spatial
+coherence.
+
+**3. Climate perturbation and stress testing** Quantile-based
+perturbations impose controlled changes in means, variability, and
+extremes, enabling systematic climate stress testing while preserving
+internal consistency.
 
 ## Intended use
 
@@ -61,12 +57,10 @@ climate conditions.
 
 ## Key features
 
-- Support for **gridded NetCDF inputs** and outputs
-- Multivariate and multisite weather generation
-- Explicit representation of low-frequency climate variability
-- Efficient filtering and selection of stochastic realizations
-- Extensive visualization helper functions
-- Designed for reproducible, scenario-based workflows
+- netcdf i/o for convenient coupling with other models
+- efficient generation, filtering, and evaluation of large stochastic
+  ensembles
+- integrated diagnostics and visualization for validation and analysis
 
 # Installation
 
@@ -79,7 +73,7 @@ Install the latest version from GitHub:
 
 # Getting started
 
-A quik tutorial is available here:  
+A quick tutorial is available here:  
 https://deltares-research.github.io/weathergenr/articles/getting_started.html
 
 # References

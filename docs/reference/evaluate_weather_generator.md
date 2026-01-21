@@ -136,15 +136,15 @@ out <- evaluate_weather_generator(
   save_plots = FALSE,
   show_title = FALSE
 )
-#> [2026-01-21 22:53:18] [EVAL] Start | grids = 1 | realizations = 1
-#> [2026-01-21 22:53:18] [EVAL] Variables = precip,temp
-#> [2026-01-21 22:53:18] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8
-#> [2026-01-21 22:53:18] [EVAL] Standardizing obs/sim periods to full years and equal length
-#> [2026-01-21 22:53:18] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
-#> [2026-01-21 22:53:18] [EVAL] Processing observed data
-#> [2026-01-21 22:53:18] [EVAL] Processing simulated data (1 realizations)
-#> [2026-01-21 22:53:19] [EVAL] Preparing diagnostic data for plotting
-#> [2026-01-21 22:53:19] [EVAL] Generating diagnostic plots
+#> [2026-01-21 23:25:50] [EVAL] Start | grids = 1 | realizations = 1
+#> [2026-01-21 23:25:50] [EVAL] Variables = precip,temp
+#> [2026-01-21 23:25:50] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8
+#> [2026-01-21 23:25:50] [EVAL] Standardizing obs/sim periods to full years and equal length
+#> [2026-01-21 23:25:50] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
+#> [2026-01-21 23:25:50] [EVAL] Processing observed data
+#> [2026-01-21 23:25:50] [EVAL] Processing simulated data (1 realizations)
+#> [2026-01-21 23:25:50] [EVAL] Preparing diagnostic data for plotting
+#> [2026-01-21 23:25:50] [EVAL] Generating diagnostic plots
 #> Warning: There were 2 warnings in `dplyr::summarise()`.
 #> The first warning was:
 #> ℹ In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm
@@ -152,15 +152,15 @@ out <- evaluate_weather_generator(
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> [2026-01-21 22:53:19] [EVAL] Generated 11 diagnostic plots.
-#> [2026-01-21 22:53:19] [EVAL] Computing fit metrics for all realizations
+#> [2026-01-21 23:25:51] [EVAL] Generated 11 diagnostic plots.
+#> [2026-01-21 23:25:51] [EVAL] Computing fit metrics for all realizations
 #> Warning: There were 2 warnings in `dplyr::mutate()`.
 #> The first warning was:
 #> ℹ In argument: `dplyr::across(...)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> [2026-01-21 22:53:19] [EVAL] Displaying fit assessment summary
+#> [2026-01-21 23:25:51] [EVAL] Displaying fit assessment summary
 #> 
 #> =============================================================================================== 
 #>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS
@@ -187,7 +187,7 @@ out <- evaluate_weather_generator(
 #>   - Worst realization : 1 (score = 0.0000)
 #>   - Median score      : 0.0000
 #> 
-#> [2026-01-21 22:53:19] [EVAL] Assessment completed successfully
+#> [2026-01-21 23:25:51] [EVAL] Assessment completed successfully
 class(out)
 #> [1] "weather_assessment" "list"              
 ```
