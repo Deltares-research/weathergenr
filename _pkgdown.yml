@@ -2,11 +2,6 @@ url: https://deltares-research.github.io/weathergenr
 
 template:
   bootstrap: 5
-  bootswatch: flatly
-  bslib:
-    primary: "#0d6efd"
-    border-radius: 0.3rem
-    btn-border-radius: 0.3rem
 
 home:
   title: weathergenr
@@ -14,15 +9,20 @@ home:
 
 navbar:
   structure:
-    left:  [intro, reference, articles, news]
+    left:  [reference, articles]
     right: [search, github]
-  components:
-    articles:
-      text: Articles
-      menu: ~
+
+articles:
+  - title: Getting Started
+    navbar: ~
+    contents:
+    - getting_started
+  - title: Guides
+    contents:
+    - climate_perturbation
+    - running_from_python
 
 footer:
   structure:
-    left: developed_by
     right: built_with
 

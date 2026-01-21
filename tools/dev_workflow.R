@@ -31,7 +31,7 @@ stopifnot(
 )
 
 # Load the build workflow tools
-source("dev/build_site_workflow.R")
+source("tools/build_site_tools.R")
 
 
 # ==============================================================================
@@ -43,19 +43,13 @@ source("dev/build_site_workflow.R")
 #
 # ------------------------------------------------------------------------------
 
-# 1a. Regenerate Rd documentation from roxygen2 comments
-devtools::document()
-message("Documentation regenerated")
+
 # 1b. Reload the package into your R session (without reinstalling
 devtools::load_all()
 message("Package reloaded")
 
 # 1c. Run unit tests to verify changes work
 devtools::test()
-
-# 1d. (Optional) Run a quick check for obvious issues
-devtools::check(args = c("--no-manual", "--ignore-vignettes"))
-
 
 # ==============================================================================
 # STEP 2: LOCAL VALIDATION (Before Committing)
@@ -65,6 +59,11 @@ devtools::check(args = c("--no-manual", "--ignore-vignettes"))
 # Catches most issues before they enter version control
 #
 # ------------------------------------------------------------------------------
+
+# 1a. Regenerate Rd documentation from roxygen2 comments
+devtools::document()
+message("Documentation regenerated")
+
 
 # 2a. Quick R CMD check (skips vignettes to avoid Windows/Quarto bug)
 check_only()

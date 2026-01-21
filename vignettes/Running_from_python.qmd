@@ -1,6 +1,6 @@
 ---
-title: "Running weathergenr from Python"
-description: "Calling weathergenr functions from a Python environment using rpy2."
+title: "Running from Python"
+description: "Read NetCDF inputs, generate stochastic realizations, and evaluate generator skill."
 format:
   html:
     toc: true
@@ -9,527 +9,170 @@ format:
     toc-depth: 2
     toc-expand: 2
     page-layout: full
-    number-sections: true
     code-tools: true
     df-print: tibble
     self-contained: true
-engine: knitr
 execute:
   echo: true
+  eval: false
   warning: false
   message: false
-  eval: false
+  cache: false
 vignette: >
   %\VignetteIndexEntry{Running from Python}
-  %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{quarto::html}
 ---
 
-# Introduction
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+```
 
-While **weathergenr** is an R package, Python users can access its full functionality through the **rpy2** library, which provides an interface between Python and R. This approach allows you to integrate stochastic weather generation into Python-based workflows, such as machine learning pipelines, data science applications, or existing climate analysis scripts.
-  
-This vignette covers:
+# Overview
 
-1. Setting up a Python environment with rpy2
-2. Installing and configuring weathergenr from Python
-3. Reading NetCDF data and running the weather generator
-4. Accessing and interpreting outputs in Python
+This vignette demonstrates how to run the **weathergenr** R package from a
+**Python** environment using **rpy2**. The workflow is designed to be portable
+across machines and operating systems and avoids hard-coded, user-specific
+paths.
 
-::: {.callout-note}
-## Prerequisites
+The recommended sequence is:
 
-Before proceeding, ensure you have:
+1. Install R and make it discoverable.
+2. Create a Python environment with `rpy2`.
+3. Configure minimal environment variables (`R_HOME`, `PATH`).
+4. Install and call **weathergenr** from Python.
 
-- R (version 4.1 or later) installed on your system
-- Python (version 3.8 or later)
-- Basic familiarity with both R and Python
-:::
+# Prerequisites
 
-# Setting Up the Python Environment
+## Install R
 
-## Creating a Conda Environment
-
-The recommended approach is to create a dedicated conda environment with all required packages. This isolates dependencies and avoids conflicts with other Python projects.
+Install the latest version of R from CRAN and verify that it is available
+from the command line:
 
 ```bash
-
-# Create a new conda environment
-conda create -n weathergen python=3.10
-
-# Activate the environment
-conda activate weathergen
-
-# Install rpy2 and supporting packages
-conda install -c conda-forge rpy2 pandas numpy
-
-# Alternatively, install via pip
-pip install rpy2 pandas numpy
+R --version
 ```
 
-## Configuring Environment Variables
+## Create a Python environment
 
-Before importing rpy2, you must configure environment variables so Python can locate your R installation. The specific paths depend on your operating system and installation locations.
+```bash
+conda create -n weathergenr-py python=3.11 -y
+conda activate weathergenr-py
+conda install -c conda-forge rpy2 -y
+pip install numpy pandas
+```
 
-### Windows Configuration
+Avoid setting `PYTHONHOME` and `PYTHONPATH` unless debugging a misconfigured
+environment.
 
-```python
+# Configure environment variables for rpy2
 
+```{python, eval=FALSE}
 import os
+import shutil
+from pathlib import Path
 
-# Path to R installation (adjust version number as needed)
-r_home = "C:/Program Files/R/R-4.4.0"
+def _windows_guess_r_home():
+    candidates = [
+        Path("C:/Program Files/R"),
+        Path("C:/Program Files (x86)/R"),
+    ]
+    for base in candidates:
+        if base.exists():
+            versions = sorted(base.glob("R-*"), reverse=True)
+            if versions:
+                return str(versions[0])
+    return None
 
-# Set environment variables
-os.environ["R_HOME"] = r_home
-os.environ["PATH"] = os.path.join(r_home, "bin", "x64") + os.pathsep + os.environ.get("PATH", "")
+r_home = os.environ.get("R_HOME")
 
-# Optional: Set R library path if packages are installed elsewhere
-# os.environ["R_LIBS_USER"] = "C:/Users/YourName/Documents/R/win-library/4.4"
+if not r_home and os.name == "nt":
+    r_home = _windows_guess_r_home()
+
+if r_home:
+    os.environ["R_HOME"] = r_home
+    r_bin = Path(r_home) / "bin"
+    if os.name == "nt":
+        r_bin_x64 = r_bin / "x64"
+        if r_bin_x64.exists():
+            r_bin = r_bin_x64
+    os.environ["PATH"] = str(r_bin) + os.pathsep + os.environ.get("PATH", "")
+else:
+    if shutil.which("R") is None:
+        raise RuntimeError("R not found. Install R or set R_HOME.")
+
+print("R_HOME:", os.environ.get("R_HOME", "<not set>"))
+print("R on PATH:", shutil.which("R") or "<not found>")
 ```
 
-### Linux/macOS Configuration
+# Install and load weathergenr from GitHub
 
-```python
-
-import os
-
-# Path to R installation (common locations)
-# Linux: /usr/lib/R or /usr/local/lib/R
-# macOS: /Library/Frameworks/R.framework/Resources
-r_home = "/usr/lib/R"
-
-os.environ["R_HOME"] = r_home
-
-# On some systems, you may also need:
-# os.environ["LD_LIBRARY_PATH"] = os.path.join(r_home, "lib")
-```
-
-## Verifying the Configuration
-
-After setting environment variables, verify that rpy2 can locate R correctly:
-
-```python
-
-import rpy2.situation
-
-# Display rpy2 configuration information
-for row in rpy2.situation.iter_info():
-    print(row)
-```
-
-A successful configuration displays the R home directory, version, and library paths without errors.
-
-# Installing weathergenr
-
-## Loading Required R Packages
-
-With rpy2 configured, you can import R packages into Python. The `importr` function loads R packages, making their functions available as Python objects.
-
-```python
-
-import rpy2.robjects as robjects
+```{python, eval=FALSE}
+import rpy2.robjects as ro
 from rpy2.robjects.packages import importr
-from rpy2.robjects import pandas2ri
 
-# Enable automatic conversion between R and pandas data frames
-pandas2ri.activate()
-
-# Load core R packages
-base = importr("base")
-utils = importr("utils")
-```
-
-## Installing from GitHub
-
-The weathergenr package is hosted on GitHub. Use the devtools package to install it:
-
-```python
-
-# Select a CRAN mirror for installing dependencies
-utils.chooseCRANmirror(ind=1)
-
-# Install devtools if not already available
-utils.install_packages("devtools")
-
-# Translation dictionary for R function names containing dots
-# R uses dots in names (e.g., install.packages) which are invalid in Python
 translations = {
     "package.dependencies": "package_dot_dependencies",
-    "install_github": "install_github"
+    "package_dependencies": "package_uscore_dependencies",
 }
 
-devtools = importr("devtools", robject_translations=translations)
+base = importr("base")
+utils = importr("utils")
+utils.chooseCRANmirror(ind = 1)
 
-# Install weathergenr from GitHub
+if not ro.r('requireNamespace("devtools", quietly = TRUE)')[0]:
+    utils.install_packages("devtools")
+
+devtools = importr("devtools", robject_translations = translations)
 devtools.install_github("tanerumit/weathergenr")
+
+weathergenr = importr("weathergenr", robject_translations = translations)
 ```
 
-## Loading weathergenr
+# Run a minimal example
 
-Once installed, load the package:
-
-```python
-
-# Load weathergenr with function name translations
-weathergenr = importr("weathergenr", robject_translations={
-    "read_netcdf": "read_netcdf",
-    "generate_weather": "generate_weather",
-    "evaluate_weather_generator": "evaluate_weather_generator"
-})
-```
-
-::: {.callout-tip}
-## Function Name Translations
-
-R allows dots in function names (e.g., `read.csv`), but Python interprets dots as attribute access. The `robject_translations` dictionary maps R names to Python-compatible names. For weathergenr, most function names already use underscores, so minimal translation is needed.
-:::
-
-# Reading NetCDF Data
-
-## Loading the Example Dataset
-
-The weathergenr package includes an example NetCDF file containing ERA5 reanalysis data for the Ntoum Basin in Gabon. Access it using R's `system.file` function:
-
-```python
-
-# Locate the example NetCDF file bundled with the package
-ncfile = base.system_file("extdata", "ntoum_era5_data.nc", package="weathergenr")
-print(f"NetCDF file path: {ncfile[0]}")
-
-# Read the NetCDF file
-ncdata = weathergenr.read_netcdf(ncfile)
-```
-
-## Understanding the Data Structure
-
-The `read_netcdf` function returns an R list with five components. In Python, access these using integer indices or the `rx2` method:
-
-```python
-
-# Display component names
-print("Components:", list(ncdata.names))
-
-# Access components by name using rx2()
-obs_data = ncdata.rx2("data")      # List of data frames (one per grid cell)
-obs_grid = ncdata.rx2("grid")      # Spatial grid metadata
-obs_dates = ncdata.rx2("date")     # Date vector
-
-# Check dimensions
-print(f"Number of grid cells: {len(obs_data)}")
-print(f"Number of time steps: {len(obs_dates)}")
-```
-
-## Converting to pandas DataFrames
-
-For analysis in Python, convert R data frames to pandas:
-
-```python
-
-import pandas as pd
-from rpy2.robjects import conversion
-from rpy2.robjects import pandas2ri
-
-# Convert the grid metadata to a pandas DataFrame
-with conversion.localconverter(robjects.default_converter + pandas2ri.converter):
-    grid_df = robjects.conversion.rpy2py(obs_grid)
-
-print(grid_df.head())
-
-# Convert time series data for a single grid cell
-with conversion.localconverter(robjects.default_converter + pandas2ri.converter):
-    cell_data = robjects.conversion.rpy2py(obs_data.rx2(1))
-
-print(cell_data.head())
-```
-
-# Generating Stochastic Weather
-
-## Configuring the Simulation
-
-Define the simulation parameters. Note that Python uses `True`/`False` (capitalized) rather than R's `TRUE`/`FALSE`:
-
-```python
-
-import tempfile
-
-# Create output directory
-output_dir = tempfile.mkdtemp()
-
-# Define variables to simulate
-variables = base.c("precip", "temp", "temp_min", "temp_max")
-
-# Simulation parameters
-n_realizations = 3
-n_years = 20
-start_year = 2020
-seed = 123
-```
-
-## Running the Weather Generator
-
-Call the `generate_weather` function with the configured parameters:
-
-```python
-
-# Run the weather generator
-stochastic_weather = weathergenr.generate_weather(
-    obs_data=ncdata.rx2("data"),
-    obs_grid=ncdata.rx2("grid"),
-    obs_dates=ncdata.rx2("date"),
-    vars=variables,
-    n_years=n_years,
-    start_year=start_year,
-    year_start_month=1,
-    n_realizations=n_realizations,
-    warm_var="precip",
-    warm_signif=0.90,
-    warm_pool_size=5000,
-    annual_knn_n=100,
-    wet_q=0.3,
-    extreme_q=0.8,
-    out_dir=output_dir,
-    seed=seed,
-    parallel=False,
-    verbose=True
-)
-```
-
-::: {.callout-note}
-## Execution Time
-
-The weather generator may take several minutes depending on the spatial domain size, number of realizations, and WARM pool size. Progress messages are displayed when `verbose=True`.
-:::
-
-## Understanding the Output
-
-The function returns an R list containing resampled dates and the simulation time axis:
-
-```python
-
-# Display output components
-print("Output components:", list(stochastic_weather.names))
-
-# Access the resampled dates (historical analogues selected for each day)
-resampled = stochastic_weather.rx2("resampled")
-
-# Access the simulation date axis
-sim_dates = stochastic_weather.rx2("dates")
-
-print(f"Simulation period: {len(sim_dates)} days")
-print(f"Number of realizations: {len(resampled.names)}")
-```
-
-# Accessing Results
-
-## Extracting Resampled Dates
-
-The `resampled` component contains the historical dates selected as analogues for each simulated day. Each column represents one stochastic realization:
-
-```python
-
-# Convert resampled dates to pandas DataFrame
-with conversion.localconverter(robjects.default_converter + pandas2ri.converter):
-    resampled_df = robjects.conversion.rpy2py(resampled)
-
-print("Resampled dates shape:", resampled_df.shape)
-print(resampled_df.head(10))
-```
-
-## Reconstructing Synthetic Weather Series
-
-To obtain actual weather values, map the resampled dates back to the historical record:
-
-```python
-
-import numpy as np
-
-# Convert date vectors for matching
-with conversion.localconverter(robjects.default_converter + pandas2ri.converter):
-    obs_dates_py = robjects.conversion.rpy2py(obs_dates)
-    sim_dates_py = robjects.conversion.rpy2py(sim_dates)
-
-# Extract synthetic weather for the first realization and first grid cell
-realization_idx = 0
-grid_cell_idx = 0
-
-# Get the resampled dates for this realization
-rlz_dates = resampled_df.iloc[:, realization_idx]
-
-# Find indices in the historical record
-# (This maps each simulated day to its historical analogue)
-date_indices = [np.where(obs_dates_py == d)[0][0] for d in rlz_dates if d in obs_dates_py]
-
-# Extract the corresponding weather data
-with conversion.localconverter(robjects.default_converter + pandas2ri.converter):
-    historical_data = robjects.conversion.rpy2py(obs_data.rx2(grid_cell_idx + 1))
-
-synthetic_weather = historical_data.iloc[date_indices].reset_index(drop=True)
-synthetic_weather["date"] = sim_dates_py
-print(synthetic_weather.head(10))
-```
-
-## Viewing Output Files
-
-The weather generator also writes diagnostic outputs to the specified directory:
-
-```python
-
+```{python, eval=FALSE}
 import os
+from pathlib import Path
+import rpy2.robjects as ro
+from rpy2.robjects.packages import importr
 
-# List files in the output directory
-output_files = os.listdir(output_dir)
-print("Generated output files:")
-for f in sorted(output_files):
-    print(f"  - {f}")
-```
+base = importr("base")
+weathergenr = importr("weathergenr")
 
-Typical outputs include:
+ncfile = base.system_file("extdata", "ntoum_era5_data.nc", package="weathergenr")
+ncdata = weathergenr.readNetcdf(ncfile)
 
-- `sim_dates.csv`: The simulation date axis
-- `resampled_dates.csv`: Historical analogue dates for each realization
-- `global_wavelet_power_spectrum.png`: Wavelet analysis of annual precipitation
-- `warm_annual_series.png`: Simulated annual precipitation traces
-- `warm_annual_statistics.png`: Statistical comparison of WARM outputs
+outdir = Path(os.environ.get("WEATHERGENR_OUTDIR", "weathergenr-output")).resolve()
+outdir.mkdir(parents=True, exist_ok=True)
 
-# Evaluating Generator Performance
+variables = ro.StrVector(["precip", "temp", "temp_min", "temp_max"])
 
-## Running the Evaluation
-
-The `evaluate_weather_generator` function compares synthetic and observed weather statistics:
-
-```python
-
-# Prepare observed data (list of data frames, one per grid cell)
-# This step uses R's data manipulation since the evaluation function expects R objects
-
-# Create day order indices for each realization
-robjects.r('''
-prepare_evaluation_data <- function(ncdata, stochastic_weather, n_realizations) {
-  
-  day_order <- sapply(1:n_realizations, function(n) {
-    match(stochastic_weather$resampled[[n]], ncdata$date)
-  })
-  
-  # Extract synthetic samples
-  rlz_sample <- list()
-  for (n in 1:n_realizations) {
-    rlz_sample[[n]] <- lapply(ncdata$data, function(x) {
-      df <- x[day_order[, n], c("precip", "temp", "temp_min", "temp_max")]
-      df$date <- stochastic_weather$dates
-      df
-    })
-  }
-  
-  # Prepare observed data
-  obs_sample <- lapply(ncdata$data, function(x) {
-    df <- x[, c("precip", "temp", "temp_min", "temp_max")]
-    df$date <- ncdata$date
-    df
-  })
-  
-  list(simulated = rlz_sample, observed = obs_sample)
-}
-''')
-
-# Call the R function
-prepare_data = robjects.r["prepare_evaluation_data"]
-eval_data = prepare_data(ncdata, stochastic_weather, n_realizations)
-
-# Run the evaluation
-variable_labels = base.c("Precipitation", "Temperature (mean)", 
-                         "Temperature (min)", "Temperature (max)")
-
-evaluation_plots = weathergenr.evaluate_weather_generator(
-    daily_sim=eval_data.rx2("simulated"),
-    daily_obs=eval_data.rx2("observed"),
-    variables=variables,
-    variable_labels=variable_labels,
-    n_realizations=n_realizations,
-    wet_quantile=0.3,
-    extreme_quantile=0.8,
-    output_dir=output_dir,
-    save_plots=True,
-    verbose=True
+stochastic_weather <- weathergenr.generate_weather(
+  obs_data = ncdata[0],
+  obs_grid = ncdata[1],
+  obs_dates = ncdata[2],
+  vars = variables,
+  n_years = 20,
+  start_year = 2020,
+  year_start_month = 1,
+  n_realizations = 3,
+  warm_var = "precip",
+  warm_signif = 0.90,
+  warm_pool_size = 10000,
+  annual_knn_n = 100,
+  wet_q = 0.2,
+  extreme_q = 0.8,
+  output_path = str(outdir),
+  seed = seed,
+  parallel = False,
+  verbose = False
 )
-```
 
-## Viewing Diagnostic Plots
-
-Evaluation plots are saved to the output directory. View them using Python's image display capabilities:
-
-```python
-
-from IPython.display import Image, display
-import glob
-
-# Find and display saved plots
-plot_files = glob.glob(os.path.join(output_dir, "*.png"))
-
-for plot_file in sorted(plot_files):
-    print(f"\n{os.path.basename(plot_file)}:")
-    display(Image(filename=plot_file, width=600))
-```
-
-# Troubleshooting
-
-## Common Issues
-
-### rpy2 Cannot Find R
-
-If you encounter errors about R not being found:
-
-1. Verify R is installed and accessible from the command line
-2. Check that `R_HOME` points to the correct directory
-3. On Windows, ensure the R `bin/x64` directory is in your PATH
-
-### Package Installation Failures
-
-If weathergenr installation fails:
-
-1. Ensure you have a working internet connection
-2. Try installing dependencies manually in R first
-3. Check that devtools is properly installed
-
-### Memory Errors
-
-For large spatial domains:
-
-1. Reduce `warm_pool_size` to decrease memory usage
-2. Process grid cells in batches
-3. Enable parallel processing with `parallel=True`
-
-## Getting Help
-
-- **Package documentation**: Access R help from Python using `robjects.r("?function_name")`
-- **GitHub issues**: Report bugs at the weathergenr repository
-- **R console**: For complex debugging, test commands in R directly before translating to Python
-
-# Summary
-
-This vignette demonstrated how to:
-
-1. **Configure a Python environment** with rpy2 for R interoperability
-2. **Install weathergenr** from GitHub using devtools
-3. **Read NetCDF data** and convert between R and Python data structures
-4. **Run the weather generator** with appropriate parameters
-5. **Access outputs** including resampled dates and synthetic weather series
-6. **Evaluate performance** using built-in diagnostic functions
-
-The rpy2 bridge enables full access to weathergenr's capabilities while allowing integration with Python's data science ecosystem, including pandas, numpy, and visualization libraries.
-
----
-
-**Session Information**
-
-```python
-
-import sys
-print(f"Python version: {sys.version}")
-
-import rpy2
-print(f"rpy2 version: {rpy2.__version__}")
-
-# Print R session info
-robjects.r("sessionInfo()")
+print("Completed. Output written to:", outdir)
 ```
