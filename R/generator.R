@@ -139,6 +139,7 @@
 #' @import patchwork
 #' @import dplyr
 #' @importFrom dplyr mutate
+#' @importFrom foreach %dopar%
 generate_weather <- function(
   obs_data = NULL,
   obs_grid = NULL,

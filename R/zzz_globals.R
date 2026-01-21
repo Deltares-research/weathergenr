@@ -8,7 +8,7 @@ utils::globalVariables(c(
   "min_val", "max_val", "lim", "minlim", "maxlim",
   "pct.change","assessment","original","adjusted","threshold",
   "idx","series","period","lo","hi","obs","sim_mu",
-  "xmin","xmax","ymin","ymax","dateo"
+  "xmin","xmax","ymin","ymax","dateo",".min", ".max", "%dopar%"
 ))
 
 # Workaround for rlang warning

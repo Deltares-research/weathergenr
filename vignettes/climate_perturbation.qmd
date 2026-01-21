@@ -1,5 +1,5 @@
 ---
-title: "Perturbing long-term statistics of weather data"
+title: "Climate Perturbations"
 description: "Applying monthly perturbations to stochastic weather, and validate precipitation changes."
 format:
   html:
@@ -21,7 +21,7 @@ execute:
   freeze: true
   execute-dir: project
 vignette: >
-  %\VignetteIndexEntry{Climate Perturbation}
+  %\VignetteIndexEntry{Climate Perturbations}
   %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
 ---

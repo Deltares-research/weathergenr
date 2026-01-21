@@ -17,12 +17,61 @@
 # MUST run before pkgdown/devtools/quarto/rmarkdown loads and spawns processes.
 # ==============================================================================
 
-.set_safe_tmpdir <- function() {
-  td <- normalizePath(tempdir(), winslash = "/", mustWork = FALSE)
-  Sys.setenv(TMPDIR = td, TMP = td, TEMP = td)
-  invisible(td)
+.install_quarto_cli_shim <- function() {
+  if (.Platform$OS.type != "windows") return(invisible(FALSE))
+
+  real_quarto <- Sys.which("quarto")
+  if (real_quarto == "") {
+    warning("Quarto CLI not found on PATH; cannot install shim.", call. = FALSE)
+    return(invisible(FALSE))
+  }
+
+  shim_dir <- file.path(tempdir(), "quarto_shim")
+  dir.create(shim_dir, recursive = TRUE, showWarnings = FALSE)
+
+  shim_path <- file.path(shim_dir, "quarto.cmd")
+
+  # A minimal shim: remove any TMP*, TEMP* tokens that were incorrectly passed as args.
+  shim <- c(
+    "@echo off",
+    "setlocal EnableExtensions EnableDelayedExpansion",
+    "set \"REAL_QUARTO=" %+% real_quarto %+% "\"",
+    "set \"ARGS=\"",
+    ":loop",
+    "if \"%~1\"==\"\" goto run",
+    "set \"A=%~1\"",
+    "set \"SKIP=0\"",
+    "echo(!A!| findstr /I /B /C:\"TMPDIR=\" /C:\"TMP=\" /C:\"TEMP=\" >nul && set \"SKIP=1\"",
+    "if \"!SKIP!\"==\"0\" set \"ARGS=!ARGS! \"\"!A!\"\"\"",
+    "shift",
+    "goto loop",
+    ":run",
+    "call \"%REAL_QUARTO%\" %ARGS%",
+    "exit /b %ERRORLEVEL%"
+  )
+
+  # helper for concatenation
+  `%+%` <- function(a, b) paste0(a, b)
+
+  writeLines(shim, shim_path, useBytes = TRUE)
+
+  # Prepend shim_dir to PATH so system2("quarto", ...) hits the shim.
+  old_path <- Sys.getenv("PATH")
+  Sys.setenv(PATH = paste(shim_dir, old_path, sep = .Platform$path.sep))
+
+  invisible(TRUE)
 }
-.set_safe_tmpdir()
+
+# Call this as early as possible (before any quarto/rmarkdown/pkgdown/devtools loads)
+.install_quarto_cli_shim()
+
+
+# .set_safe_tmpdir <- function() {
+#   td <- normalizePath(tempdir(), winslash = "/", mustWork = FALSE)
+#   Sys.setenv(TMPDIR = td, TMP = td, TEMP = td)
+#   invisible(td)
+# }
+# .set_safe_tmpdir()
 
 # ==============================================================================
 # LOCAL HELPERS
@@ -45,7 +94,10 @@
 }
 
 .local_step <- function(step_num, total, description) {
-  .local_message(sprintf("Step %d/%d: %s", step_num, total, description), prefix = "----")
+  .local_message(
+    sprintf("Step %d/%d: %s", step_num, total, description),
+    prefix = "----"
+  )
 }
 
 .assert_pkg_root <- function() {
@@ -63,7 +115,10 @@
 
 .require_pkg <- function(pkg) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
-    .local_stop("Missing required package: '", pkg, "'. Install with install.packages('", pkg, "')")
+    .local_stop(
+      "Missing required package: '", pkg,
+      "'. Install with install.packages('", pkg, "')"
+    )
   }
   invisible(TRUE)
 }
@@ -90,17 +145,23 @@
     return(invisible(FALSE))
   }
 
-  # Version check
   v <- tryCatch({
-    suppressWarnings(
-      system2("quarto", "--version", stdout = TRUE, stderr = TRUE)
-    )
+    suppressWarnings(system2("quarto", "--version", stdout = TRUE, stderr = TRUE))
   }, error = function(e) NULL)
 
   if (!is.null(v) && length(v) > 0L && !grepl("ERROR:", v[1])) {
     .local_message("Quarto CLI version: ", v[1])
   }
 
+  invisible(TRUE)
+}
+
+.check_quarto_r_pkg <- function(strict = FALSE) {
+  if (!requireNamespace("quarto", quietly = TRUE)) {
+    msg <- "R package 'quarto' is not installed. Quarto vignettes may fail to build."
+    if (isTRUE(strict)) .local_stop(msg) else .local_warn(msg)
+    return(invisible(FALSE))
+  }
   invisible(TRUE)
 }
 
@@ -114,11 +175,12 @@
     return(invisible(FALSE))
   }
 
-  # Check if quarto is the builder
   has_quarto <- any(grepl("^VignetteBuilder:.*quarto", desc))
   if (!has_quarto) {
-    .local_message("VignetteBuilder is not 'quarto'. Using: ",
-                   gsub("^VignetteBuilder:\\s*", "", desc[grepl("^VignetteBuilder:", desc)]))
+    .local_message(
+      "VignetteBuilder is not 'quarto'. Using: ",
+      gsub("^VignetteBuilder:\\s*", "", desc[grepl("^VignetteBuilder:", desc)])
+    )
   }
 
   invisible(has_vb)
@@ -146,7 +208,10 @@
   )
 
   if (length(st) > 0) {
-    msg <- sprintf("Working tree has %d uncommitted change(s). Consider committing before publishing.", length(st))
+    msg <- sprintf(
+      "Working tree has %d uncommitted change(s). Consider committing before publishing.",
+      length(st)
+    )
     if (isTRUE(strict)) .local_stop(msg) else .local_warn(msg)
   } else {
     .local_success("Git working tree is clean")
@@ -156,13 +221,11 @@
 }
 
 .check_namespace_current <- function() {
-  # Check if NAMESPACE might be stale
   if (!file.exists("NAMESPACE")) {
     .local_warn("NAMESPACE file not found. Run devtools::document() first.")
     return(invisible(FALSE))
   }
 
-  # Get modification times
   r_files <- list.files("R", pattern = "\\.R$", full.names = TRUE)
   if (length(r_files) == 0) return(invisible(TRUE))
 
@@ -198,13 +261,15 @@
 
 #' Clean All Build Artifacts
 #'
-#' Comprehensive removal of all intermediate and output files from previous
+#' Comprehensive removal of intermediate and output files from previous
 #' documentation, vignette, and package builds.
 #'
 #' @param clean_site Logical. Remove pkgdown site output?
 #' @param clean_vignettes Logical. Remove vignette build artifacts?
 #' @param clean_check Logical. Remove R CMD check artifacts?
-#' @param clean_build Logical
+#' @param clean_build Logical. Remove package build artifacts (tarballs/binaries)?
+#' @param clean_temp Logical. Remove temp/cache files?
+#' @param verbose Logical. Print progress messages?
 .clean_build_artifacts <- function(clean_site = TRUE,
                                    clean_vignettes = TRUE,
                                    clean_check = TRUE,
@@ -214,9 +279,7 @@
 
   removed_count <- 0L
 
-  # --------------------------------------------------------------------------
   # PKGDOWN SITE ARTIFACTS
-  # --------------------------------------------------------------------------
   if (isTRUE(clean_site)) {
     site_artifacts <- c(
       "docs",
@@ -237,11 +300,8 @@
     if (verbose) .local_message("Cleaned pkgdown/site artifacts")
   }
 
-  # --------------------------------------------------------------------------
   # VIGNETTE BUILD ARTIFACTS
-  # --------------------------------------------------------------------------
   if (isTRUE(clean_vignettes)) {
-    # Fixed paths
     vignette_dirs <- c(
       file.path("inst", "doc"),
       file.path("vignettes", ".quarto"),
@@ -249,7 +309,7 @@
       file.path("vignettes", "_freeze"),
       file.path("vignettes", "_site"),
       file.path("vignettes", "rsconnect"),
-      file.path("doc")
+      "doc"
     )
 
     for (path in vignette_dirs) {
@@ -259,26 +319,21 @@
       }
     }
 
-    # Pattern-matched vignette artifacts
     if (dir.exists("vignettes")) {
-      # HTML output files (not .qmd or .Rmd source)
       vignette_html <- list.files("vignettes", pattern = "\\.html$", full.names = TRUE)
       lapply(vignette_html, .safe_unlink)
       removed_count <- removed_count + length(vignette_html)
 
-      # *_files directories (knitr/rmarkdown figure directories)
       files_dirs <- list.files("vignettes", pattern = "_files$", full.names = TRUE)
       files_dirs <- files_dirs[dir.exists(files_dirs)]
       lapply(files_dirs, .safe_unlink)
       removed_count <- removed_count + length(files_dirs)
 
-      # *_cache directories (knitr cache)
       cache_dirs <- list.files("vignettes", pattern = "_cache$", full.names = TRUE)
       cache_dirs <- cache_dirs[dir.exists(cache_dirs)]
       lapply(cache_dirs, .safe_unlink)
       removed_count <- removed_count + length(cache_dirs)
 
-      # Quarto intermediate files
       quarto_files <- list.files("vignettes", pattern = "\\.(tex|log|aux)$", full.names = TRUE)
       lapply(quarto_files, .safe_unlink)
       removed_count <- removed_count + length(quarto_files)
@@ -287,38 +342,18 @@
     if (verbose) .local_message("Cleaned vignette build artifacts")
   }
 
-  # --------------------------------------------------------------------------
   # R CMD CHECK ARTIFACTS
-  # --------------------------------------------------------------------------
   if (isTRUE(clean_check)) {
-    # .Rcheck directories (anywhere in package root)
     check_dirs <- list.files(".", pattern = "\\.Rcheck$", full.names = TRUE, all.files = TRUE)
     lapply(check_dirs, .safe_unlink)
     removed_count <- removed_count + length(check_dirs)
 
-    # Common check output locations
-    check_artifacts <- c(
-      ".Rcheck",
-      "..Rcheck"
-    )
-
-    for (path in check_artifacts) {
-      if (dir.exists(path)) {
-        .safe_unlink(path)
-        removed_count <- removed_count + 1L
-      }
-    }
-
     if (verbose) .local_message("Cleaned R CMD check artifacts")
   }
 
-  # --------------------------------------------------------------------------
   # PACKAGE BUILD ARTIFACTS
-  # --------------------------------------------------------------------------
   if (isTRUE(clean_build)) {
-    # Source package tarballs (*.tar.gz)
     tarballs <- list.files(".", pattern = "\\.tar\\.gz$", full.names = TRUE)
-    # Only remove if they look like package builds (pkgname_version.tar.gz)
     pkg_name <- tryCatch(.get_pkg_name(), error = function(e) NULL)
     if (!is.null(pkg_name)) {
       pkg_tarballs <- tarballs[grepl(paste0("^\\./", pkg_name, "_"), tarballs)]
@@ -326,7 +361,6 @@
       removed_count <- removed_count + length(pkg_tarballs)
     }
 
-    # Binary packages (*.zip on Windows, *.tgz on macOS)
     binaries <- list.files(".", pattern = "\\.(zip|tgz)$", full.names = TRUE)
     if (!is.null(pkg_name)) {
       pkg_binaries <- binaries[grepl(paste0("^\\./", pkg_name, "_"), binaries)]
@@ -334,23 +368,17 @@
       removed_count <- removed_count + length(pkg_binaries)
     }
 
-    # Build directory
     .safe_unlink("build")
-
-    # Meta directory (sometimes created during build)
     .safe_unlink("Meta")
 
     if (verbose) .local_message("Cleaned package build artifacts")
   }
 
-  # --------------------------------------------------------------------------
   # TEMPORARY AND CACHE FILES
-  # --------------------------------------------------------------------------
   if (isTRUE(clean_temp)) {
     temp_files <- c(
       ".Rhistory",
       ".RData",
-      ".Rproj.user",
       ".DS_Store",
       "Thumbs.db"
     )
@@ -362,7 +390,6 @@
       }
     }
 
-    # Root-level Quarto artifacts
     root_quarto <- c(".quarto", "_cache", "_freeze")
     for (d in root_quarto) {
       if (dir.exists(d)) {
@@ -371,16 +398,14 @@
       }
     }
 
-    # Coverage artifacts
     covr_dirs <- list.files(".", pattern = "^covr", full.names = TRUE)
     lapply(covr_dirs, .safe_unlink)
     .safe_unlink("codecov")
     .safe_unlink("coverage.html")
 
-    # Rcpp artifacts (if applicable)
-    .safe_unlink(file.path("src", "*.o"))
-    .safe_unlink(file.path("src", "*.so"))
-    .safe_unlink(file.path("src", "*.dll"))
+    for (f in Sys.glob(file.path("src", "*.{o,so,dll}"))) {
+      .safe_unlink(f)
+    }
 
     if (verbose) .local_message("Cleaned temporary and cache files")
   }
@@ -404,7 +429,6 @@ deep_clean <- function() {
   .local_warn("Deep clean will remove ALL generated files.")
   .local_warn("This includes: docs/, inst/doc/, vignette HTML, .Rcheck/, package builds")
 
-  # Prompt for confirmation in interactive mode
   if (interactive()) {
     response <- readline("Continue? (y/N): ")
     if (!tolower(response) %in% c("y", "yes")) {
@@ -443,35 +467,18 @@ deep_clean <- function() {
 
 .run_tests <- function(stop_on_failure = TRUE) {
   .require_pkg("testthat")
-
   .local_message("Running package tests...")
 
-  result <- tryCatch({
-    devtools::test(stop_on_failure = FALSE)
+  ok <- tryCatch({
+    testthat::test_local(reporter = "summary")
+    TRUE
   }, error = function(e) {
-    .local_warn("Test execution failed: ", conditionMessage(e))
-    return(NULL)
+    .local_warn("Tests failed: ", conditionMessage(e))
+    FALSE
   })
 
-  if (is.null(result)) {
-    if (stop_on_failure) .local_stop("Tests failed to execute")
-    return(invisible(FALSE))
-  }
-
-  # Check for failures
-  if (inherits(result, "testthat_results")) {
-    n_fail <- sum(vapply(result, function(x) x$failed, integer(1)))
-    n_skip <- sum(vapply(result, function(x) x$skipped, integer(1)))
-    n_pass <- sum(vapply(result, function(x) x$passed, integer(1)))
-
-    .local_message(sprintf("Tests: %d passed, %d failed, %d skipped", n_pass, n_fail, n_skip))
-
-    if (n_fail > 0 && stop_on_failure) {
-      .local_stop("Package tests failed. Fix tests before publishing.")
-    }
-  }
-
-  invisible(TRUE)
+  if (!ok && stop_on_failure) .local_stop("Package tests failed. Fix before publishing.")
+  invisible(ok)
 }
 
 .run_spell_check <- function(stop_on_failure = FALSE) {
@@ -490,7 +497,9 @@ deep_clean <- function() {
   })
 
   if (!is.null(errors) && nrow(errors) > 0) {
-    .local_warn(sprintf("Found %d potential spelling errors. Review with spelling::spell_check_package()", nrow(errors)))
+    .local_warn(
+      sprintf("Found %d potential spelling errors. Review with spelling::spell_check_package()", nrow(errors))
+    )
     if (stop_on_failure) {
       print(errors)
       .local_stop("Spell check found errors")
@@ -500,6 +509,24 @@ deep_clean <- function() {
   }
 
   invisible(errors)
+}
+
+.copy_built_vignettes_to_inst_doc <- function() {
+  if (!dir.exists("doc")) {
+    .local_warn("No 'doc/' directory found after vignette build; nothing to copy.")
+    return(invisible(FALSE))
+  }
+
+  if (!dir.exists(file.path("inst", "doc"))) {
+    dir.create(file.path("inst", "doc"), recursive = TRUE)
+  }
+
+  html_files <- list.files("doc", pattern = "\\.html$", full.names = TRUE)
+  if (length(html_files) > 0) {
+    file.copy(html_files, file.path("inst", "doc"), overwrite = TRUE)
+  }
+
+  invisible(TRUE)
 }
 
 # ==============================================================================
@@ -513,7 +540,7 @@ deep_clean <- function() {
 #' @param run_tests Logical. Run package tests before building? Default TRUE.
 #' @param run_checks Logical. Run R CMD check before publishing? Default TRUE.
 #' @param run_spell_check Logical. Run spelling check? Default FALSE.
-#' @param strict_quarto Logical. Fail if Quarto not found? Default TRUE.
+#' @param strict_quarto Logical. Fail if Quarto CLI / R package not found? Default TRUE.
 #' @param clean_site Logical. Remove old pkgdown output? Default TRUE.
 #' @param clean_vignettes Logical. Remove old vignette builds? Default TRUE.
 #' @param clean_check_artifacts Logical. Remove .Rcheck directories? Default TRUE.
@@ -521,27 +548,20 @@ deep_clean <- function() {
 #' @param clean_temp_files Logical. Remove temp files (.RData, etc.)? Default TRUE.
 #' @param render_readme Logical. Render README.Rmd if present? Default TRUE.
 #' @param check_args Character vector. Additional arguments for R CMD check.
-#'   Default includes `--ignore-vignettes` to work around a known Windows/Quarto
-#'   bug where system2() incorrectly passes env arguments. Vignettes are built
-#'   separately via devtools::build_vignettes() before the check runs.
+#' @param check_build_args Character vector. Build arguments for `R CMD build/check`.
+#'   Default includes `--no-build-vignettes` because vignettes are built explicitly
+#'   in this workflow before the check step.
 #' @param open_site Logical. Open site in browser when done? Default FALSE.
 #' @param verbose Logical. Print detailed progress? Default TRUE.
 #'
 #' @details
-#' ## Windows Quarto Workaround
+#' ## Windows/Quarto stability approach
 #'
-#' On Windows, R CMD check with Quarto vignettes fails with:
-#' ```
-#' ERROR: Unknown command "TMPDIR=...". Did you mean command "create"?
-#' ```
-#'
-#' This is a known bug in how system2() handles the `env` argument on Windows.
-#' The workaround used here is:
-#' 1. Build vignettes separately with `devtools::build_vignettes()` (before check)
-#' 2. Run R CMD check with `--ignore-vignettes` to skip re-building them
-#'
-#' The vignettes are still validated and included in the package; they're just
-#' not re-built during the check phase.
+#' On some Windows setups, rebuilding Quarto vignettes inside `R CMD check` can be
+#' brittle due to process spawning / cached paths. This workflow:
+#' 1. Builds vignettes explicitly via `tools::buildVignettes()` before the check step.
+#' 2. Runs `devtools::check()` with `build_args = "--no-build-vignettes"` so vignettes
+#'    are not rebuilt during check.
 #'
 #' @return Invisible TRUE on success.
 #' @export
@@ -555,7 +575,8 @@ build_pkgdown_site <- function(run_tests = TRUE,
                                clean_build_artifacts = TRUE,
                                clean_temp_files = TRUE,
                                render_readme = TRUE,
-                               check_args = c("--no-manual", "--as-cran", "--ignore-vignettes"),
+                               check_args = c("--no-manual", "--as-cran"),
+                               check_build_args = c("--no-build-vignettes"),
                                open_site = FALSE,
                                verbose = TRUE) {
 
@@ -566,34 +587,29 @@ build_pkgdown_site <- function(run_tests = TRUE,
   pkg_version <- .get_pkg_version()
   .local_message("Building documentation for ", pkg_name, " v", pkg_version)
 
-  # Count total steps for progress reporting
-  total_steps <- 6 + run_tests + run_checks + run_spell_check + render_readme
+  total_steps <- 6 + as.integer(run_tests) + as.integer(run_checks) +
+    as.integer(run_spell_check) + as.integer(render_readme)
   current_step <- 0
 
-  # --------------------------------------------------------------------------
   # PREFLIGHT CHECKS
-  # --------------------------------------------------------------------------
   current_step <- current_step + 1
   .local_step(current_step, total_steps, "Preflight checks")
 
   .check_pkgdown_config(strict = FALSE)
   .check_git_clean(strict = FALSE)
   .check_quarto_cli(strict = strict_quarto)
+  .check_quarto_r_pkg(strict = strict_quarto)
   .check_vignette_config(strict = FALSE)
   .check_namespace_current()
   .check_license()
   .check_readme()
 
-  # --------------------------------------------------------------------------
   # LOAD TOOLING
-  # --------------------------------------------------------------------------
   .require_pkg("devtools")
   .require_pkg("pkgdown")
   .require_pkg("roxygen2")
 
-  # --------------------------------------------------------------------------
   # CLEAN OLD ARTIFACTS
-  # --------------------------------------------------------------------------
   current_step <- current_step + 1
   .local_step(current_step, total_steps, "Cleaning build artifacts")
 
@@ -606,82 +622,75 @@ build_pkgdown_site <- function(run_tests = TRUE,
     verbose = verbose
   )
 
-  # --------------------------------------------------------------------------
-  # RENDER README (if applicable)
-  # --------------------------------------------------------------------------
+  # RENDER README
   if (isTRUE(render_readme)) {
     current_step <- current_step + 1
     .local_step(current_step, total_steps, "Rendering README")
     .render_readme()
   }
 
-  # --------------------------------------------------------------------------
-  # GENERATE DOCUMENTATION (roxygen2)
-  # --------------------------------------------------------------------------
+  # GENERATE DOCUMENTATION
   current_step <- current_step + 1
   .local_step(current_step, total_steps, "Generating Rd documentation (roxygen2)")
 
   devtools::document()
   .local_success("Documentation generated")
 
-  # --------------------------------------------------------------------------
   # RUN TESTS
-  # --------------------------------------------------------------------------
   if (isTRUE(run_tests)) {
     current_step <- current_step + 1
     .local_step(current_step, total_steps, "Running package tests")
     .run_tests(stop_on_failure = TRUE)
   }
 
-  # --------------------------------------------------------------------------
   # SPELL CHECK
-  # --------------------------------------------------------------------------
   if (isTRUE(run_spell_check)) {
     current_step <- current_step + 1
     .local_step(current_step, total_steps, "Running spell check")
     .run_spell_check(stop_on_failure = FALSE)
   }
 
-  # --------------------------------------------------------------------------
   # BUILD VIGNETTES
-  # --------------------------------------------------------------------------
   current_step <- current_step + 1
   .local_step(current_step, total_steps, "Building vignettes")
 
   tryCatch({
-    devtools::build_vignettes()
+    # Use tools::buildVignettes instead of devtools::build_vignettes for stability on Windows.
+    tools::buildVignettes(dir = ".")
+    .copy_built_vignettes_to_inst_doc()
     .local_success("Vignettes built successfully")
   }, error = function(e) {
     .local_stop("Vignette build failed: ", conditionMessage(e))
   })
 
-  # --------------------------------------------------------------------------
   # R CMD CHECK
-  # --------------------------------------------------------------------------
   if (isTRUE(run_checks)) {
     current_step <- current_step + 1
     .local_step(current_step, total_steps, "Running R CMD check")
 
-    # Log if using vignette workaround
-    if ("--ignore-vignettes" %in% check_args) {
-      .local_message("Using --ignore-vignettes (vignettes already built above)")
-      .local_message("This avoids the Windows/Quarto system2() env bug")
+    if (any(check_build_args == "--no-build-vignettes")) {
+      .local_message("Using --no-build-vignettes (vignettes already built above)")
     }
 
     check_result <- tryCatch({
-      devtools::check(args = check_args, check_dir = tempdir())
+      devtools::check(
+        args = check_args,
+        build_args = check_build_args,
+        check_dir = tempdir()
+      )
     }, error = function(e) {
       .local_stop("R CMD check failed: ", conditionMessage(e))
     })
 
-    # Check for errors/warnings
     if (!is.null(check_result)) {
       n_errors <- length(check_result$errors)
       n_warnings <- length(check_result$warnings)
       n_notes <- length(check_result$notes)
 
-      .local_message(sprintf("Check results: %d errors, %d warnings, %d notes",
-                             n_errors, n_warnings, n_notes))
+      .local_message(sprintf(
+        "Check results: %d errors, %d warnings, %d notes",
+        n_errors, n_warnings, n_notes
+      ))
 
       if (n_errors > 0) {
         .local_stop("R CMD check produced errors. Fix before publishing.")
@@ -689,18 +698,14 @@ build_pkgdown_site <- function(run_tests = TRUE,
     }
   }
 
-  # --------------------------------------------------------------------------
   # INSTALL PACKAGE
-  # --------------------------------------------------------------------------
   current_step <- current_step + 1
   .local_step(current_step, total_steps, "Installing package")
 
-  devtools::install(upgrade = "never", build_vignettes = TRUE, quiet = TRUE)
+  devtools::install(upgrade = "never", build_vignettes = FALSE, quiet = TRUE)
   .local_success("Package installed")
 
-  # --------------------------------------------------------------------------
   # BUILD PKGDOWN SITE
-  # --------------------------------------------------------------------------
   current_step <- current_step + 1
   .local_step(current_step, total_steps, "Building pkgdown site")
 
@@ -711,20 +716,19 @@ build_pkgdown_site <- function(run_tests = TRUE,
     .local_stop("pkgdown site build failed: ", conditionMessage(e))
   })
 
-  # --------------------------------------------------------------------------
   # SUMMARY
-  # --------------------------------------------------------------------------
   elapsed <- round(difftime(Sys.time(), start_time, units = "mins"), 1)
   .local_message("", prefix = "====")
-  .local_success(sprintf("Build complete for %s v%s in %.1f minutes", pkg_name, pkg_version, elapsed))
+  .local_success(sprintf(
+    "Build complete for %s v%s in %.1f minutes",
+    pkg_name, pkg_version, elapsed
+  ))
 
   if (file.exists("docs/index.html")) {
     .local_message("Site output: ", normalizePath("docs", mustWork = FALSE))
   }
 
-  # --------------------------------------------------------------------------
   # OPTIONAL: OPEN SITE
-  # --------------------------------------------------------------------------
   if (isTRUE(open_site)) {
     pkgdown::preview_site()
   }
@@ -738,12 +742,12 @@ build_pkgdown_site <- function(run_tests = TRUE,
 
 #' Publish Documentation (Full Workflow)
 #'
-#' Production-ready build with all checks enabled.
-#' Use before pushing to GitHub or releasing.
+#' Production-ready build with all checks enabled. Use before pushing to GitHub
+#' or releasing.
 #'
 #' @details
-#' Vignettes are built separately before R CMD check runs, then check is run
-#' with `--ignore-vignettes` to avoid the Windows/Quarto system2() bug.
+#' Vignettes are built explicitly before `R CMD check`. The check step uses
+#' `build_args = "--no-build-vignettes"` to avoid rebuilding vignettes during check.
 #'
 #' @export
 publish_docs <- function() {
@@ -758,15 +762,16 @@ publish_docs <- function() {
     clean_build_artifacts = TRUE,
     clean_temp_files = TRUE,
     render_readme = TRUE,
-    check_args = c("--no-manual", "--as-cran", "--ignore-vignettes"),
+    check_args = c("--no-manual", "--as-cran"),
+    check_build_args = c("--no-build-vignettes"),
     open_site = FALSE
   )
 }
 
 #' Quick Site Build (Development)
 #'
-#' Fast iteration build without tests or R CMD check.
-#' Use during active development to preview changes.
+#' Fast iteration build without tests or R CMD check. Use during active development
+#' to preview documentation changes.
 #'
 #' @param open Logical. Open site in browser? Default TRUE.
 #' @export
@@ -788,59 +793,49 @@ quick_site <- function(open = TRUE) {
 
 #' Build Vignettes Only
 #'
-#' Rebuild vignettes without full site build.
-#' Useful when iterating on vignette content.
+#' Rebuild vignettes without the full site build. Useful when iterating on vignette content.
 #'
 #' @param clean Logical. Clean old vignette builds first? Default TRUE.
 #' @export
 build_vignettes_only <- function(clean = TRUE) {
   .assert_pkg_root()
-  .require_pkg("devtools")
 
   if (isTRUE(clean)) {
     .clean_build_artifacts(clean_site = FALSE, clean_vignettes = TRUE, clean_check = FALSE)
   }
 
   .local_message("Building vignettes...")
-  devtools::build_vignettes()
-  .local_success("Vignettes built. Output in inst/doc/")
+
+  tools::buildVignettes(dir = ".")
+  .copy_built_vignettes_to_inst_doc()
+
+  .local_success("Vignettes built. Output in inst/doc/ (HTML)")
 
   invisible(TRUE)
 }
 
 #' Check Package Only
 #'
-#' Run R CMD check without building site.
+#' Run R CMD check without building the pkgdown site.
 #'
 #' @param as_cran Logical. Use CRAN check settings? Default TRUE.
-#' @param ignore_vignettes Logical. Skip vignette re-building during check?
-#'   Default TRUE to avoid Windows/Quarto system2() bug. Set to FALSE if you
-#'   don't use Quarto vignettes or are on Linux/macOS.
-#'
-#' @details
-#' By default, uses `--ignore-vignettes` to work around a known Windows bug
-#' where Quarto vignettes fail during R CMD check due to system2() incorrectly
-#' passing environment variables as command arguments.
-#'
-#' If you need to test vignette building during check, either:
-#' - Set `ignore_vignettes = FALSE` (may fail on Windows with Quarto)
-#' - Build vignettes separately with `build_vignettes_only()`
+#' @param build_vignettes Logical. Build vignettes during check build phase? Default FALSE.
+#'   If FALSE, passes `--no-build-vignettes` via `build_args`.
+#' @param document Logical. Run `devtools::document()` before check? Default TRUE.
 #'
 #' @export
-check_only <- function(as_cran = TRUE, ignore_vignettes = TRUE) {
+check_only <- function(as_cran = TRUE, build_vignettes = FALSE, document = TRUE) {
   .assert_pkg_root()
   .require_pkg("devtools")
 
-  devtools::document()
+  if (isTRUE(document)) devtools::document()
 
-  args <- "--no-manual"
+  args <- c("--no-manual")
   if (isTRUE(as_cran)) args <- c(args, "--as-cran")
-  if (isTRUE(ignore_vignettes)) {
-    args <- c(args, "--ignore-vignettes")
-    .local_message("Using --ignore-vignettes to avoid Windows/Quarto bug")
-  }
 
-  devtools::check(args = args)
+  build_args <- if (isTRUE(build_vignettes)) NULL else "--no-build-vignettes"
+
+  devtools::check(args = args, build_args = build_args)
 }
 
 # ==============================================================================

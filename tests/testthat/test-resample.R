@@ -94,6 +94,9 @@ testthat::test_that("calendar-year mode forbids observed Dec->Jan transitions", 
   obs_mon  <- as.integer(format(out, "%m"))
   obs_day  <- as.integer(format(out, "%d"))
 
+
+  testthat::expect_s3_class(out, "Date")
+
   dec31 <- which(obs_mon == 12 & obs_day == 31)
   if (length(dec31) > 0 && max(dec31) < length(out)) {
     testthat::expect_true(all(obs_year[dec31 + 1] == obs_year[dec31]))

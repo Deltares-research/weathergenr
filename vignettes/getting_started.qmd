@@ -21,7 +21,7 @@ execute:
   freeze: true
   execute-dir: project
 vignette: >
-  %\VignetteIndexEntry{Getting started}
+  %\VignetteIndexEntry{Getting Started with weathergenr}
   %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
 ---
@@ -64,7 +64,7 @@ library(ggplot2)
 
 For this tutorial, we use the ERA5 dataset (ECMWF Reanalysis v5) included with the package. The data covers the Ntoum Basin in Gabon, a tropical watershed in West Central Africa. The dataset includes daily precipitation, mean temperature, minimum temperature, and maximum temperature at a 0.25-degree spatial resolution.
 
-![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){width="40%" fig-align="left"}
+![Map of Ntoum Basin, Gabon](figures/ntoum_basin.png){width="65%", fig-align="left"}
 
 ## Loading NetCDF Data
 
