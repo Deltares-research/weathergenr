@@ -29,9 +29,6 @@ The generator represents climate variability across multiple time scales
 by coupling low-frequency climate dynamics with realistic daily weather
 sequences. It consists of three components:
 
-The generator combines low-frequency climate variability with realistic
-daily weather sequences using a three-stage approach:
-
 **1. Low-frequency climate variability (WARM)** Interannual to decadal
 variability is modeled with wavelet autoregressive methods applied to
 annual climate aggregates. This preserves persistence and spectral
