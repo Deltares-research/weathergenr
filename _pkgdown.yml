@@ -1,8 +1,16 @@
 url: https://deltares-research.github.io/weathergenr
-home:
-  source: README.md
+
 template:
   bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#0d6efd"
+    border-radius: 0.3rem
+    btn-border-radius: 0.3rem
+
+home:
+  title: weathergenr
+  description: Stochastic Weather Generation Using WARM Methodology
 
 navbar:
   structure:
@@ -12,3 +20,9 @@ navbar:
     articles:
       text: Articles
       menu: ~
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with
+
