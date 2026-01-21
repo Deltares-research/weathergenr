@@ -61,11 +61,12 @@ climate conditions.
 
 ## Key features
 
-- support for **gridded NetCDF inputs** and outputs
-- multivariate and multisite weather generation
-- explicit representation of low-frequency climate variability
-- efficient filtering and selection of stochastic realizations
-- designed for reproducible, scenario-based workflows
+- Support for **gridded NetCDF inputs** and outputs
+- Multivariate and multisite weather generation
+- Explicit representation of low-frequency climate variability
+- Efficient filtering and selection of stochastic realizations
+- Extensive visualization helper functions
+- Designed for reproducible, scenario-based workflows
 
 # Installation
 
@@ -78,7 +79,7 @@ Install the latest version from GitHub:
 
 # Getting started
 
-A worked end-to-end tutorial is available here:
+A quik tutorial is available here:  
 https://deltares-research.github.io/weathergenr/articles/getting_started.html
 
 # References
