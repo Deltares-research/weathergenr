@@ -1,6 +1,8 @@
 ---
 title: "Getting started"
-format: gfm
+format:
+  gfm:
+    execute: true
 ---
 
 [![R-CMD-check](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg?branch=master)](https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml?query=branch%3Amaster)
@@ -42,7 +44,7 @@ The resulting framework is intended for *bottom-up climate vulnerability assessm
 
 # Installation
 
-To install the development version from GitHub:
+Install the latest version from GitHub:
 
 ```{r, eval = FALSE}
 # install.packages("devtools")
@@ -52,10 +54,7 @@ To install the development version from GitHub:
 # Getting started
 
 A worked end-to-end tutorial is available here:
-
-- **Getting Started**  
-  https://deltares-research.github.io/weathergenr/articles/getting_started.html
-
+https://deltares-research.github.io/weathergenr/articles/getting_started.html
 
 
 # References

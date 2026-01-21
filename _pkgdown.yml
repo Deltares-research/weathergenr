@@ -3,6 +3,11 @@ url: https://deltares-research.github.io/weathergenr
 template:
   bootstrap: 5
 
+footer:
+  structure:
+    left: ~
+    right: built_with
+
 home:
   title: weathergenr
   description: Stochastic Weather Generation Using WARM Methodology
@@ -13,16 +18,8 @@ navbar:
     right: [search, github]
 
 articles:
-  - title: Getting Started
-    navbar: ~
+  - title: Articles
     contents:
-    - getting_started
-  - title: Guides
-    contents:
-    - climate_perturbation
-    - running_from_python
-
-footer:
-  structure:
-    right: built_with
-
+      - getting_started
+      - climate_perturbation
+      - running_from_python
