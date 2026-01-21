@@ -13,6 +13,7 @@ format:
     code-tools: true
     df-print: tibble
     self-contained: true
+engine: knitr
 execute:
   echo: true
   warning: false
