@@ -1,7 +1,7 @@
 Package: weathergenr
 Type: Package
 Title: Gridded semi-parametric weather generator
-Version: 1.0.0
+Version: 1.0.1
 Author: Mehmet Umit Taner
 Maintainer: M.Umit Taner <tanerumit@deltares.nl>
 Description: This is the gridded, recoded version of the stochastic weather generator 
