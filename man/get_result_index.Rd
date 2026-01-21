@@ -7,7 +7,8 @@
 get_result_index(idx, candidate_precip)
 }
 \arguments{
-\item{idx}{Integer. Proposed index for retrieving an element from `candidate_precip`.}
+\item{idx}{Integer-valued scalar. Proposed index for retrieving an element
+from `candidate_precip`. Non-integer or invalid values trigger resampling.}
 
 \item{candidate_precip}{Numeric vector. A set of candidate precipitation values (e.g., for the next day).}
 }

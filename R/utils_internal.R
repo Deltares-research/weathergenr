@@ -26,6 +26,7 @@ compute_skewness <- function(x) {
 
   m <- mean(x)
   s <- sd(x)
+  if (!is.finite(s) || s == 0) return(NA)
   sum((x - m)^3) / (n * s^3)
 }
 
@@ -52,6 +53,7 @@ compute_kurtosis <- function(x) {
 
   m <- mean(x)
   s <- sd(x)
+  if (!is.finite(s) || s == 0) return(NA)
   sum((x - m)^4) / (n * s^4) - 3  # Excess kurtosis
 }
 

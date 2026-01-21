@@ -203,7 +203,7 @@ First, define the output directory and specify which meteorological variables to
 
 ```{r setup_simulation}
 # Create a temporary directory for outputs
-output_path <- tempdir()
+output_dir <- tempdir()
 
 # Define variables to simulate
 variables <- c("precip", "temp", "temp_min", "temp_max")
@@ -254,7 +254,7 @@ stochastic_weather <- generate_weather(
   annual_knn_n = 100,
   wet_q = 0.2,
   extreme_q = 0.8,
-  out_dir = output_path,
+  out_dir = output_dir,
   seed = seed,
   parallel = FALSE,
   n_cores = NULL,
@@ -365,7 +365,7 @@ evaluation_plots <- evaluate_weather_generator(
   n_realizations = realization_num,
   wet_quantile = 0.3,
   extreme_quantile = 0.8,
-  output_path = NULL,
+  output_dir = NULL,
   save_plots = FALSE
 )
 ```
@@ -492,7 +492,7 @@ data_to_write <- lapply(synthetic_data[[1]], function(df) {
 write_netcdf(
   data = data_to_write,
   grid = ncdata$grid,
-  out_dir = output_path,
+  out_dir = output_dir,
   origin_date = stochastic_weather$dates[1],
   calendar = "noleap",
   template_path = ncfile,

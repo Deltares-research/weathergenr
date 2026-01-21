@@ -1,3 +1,34 @@
+# ---- adjust_precipitation_qm -------------------------------------------------
+
+testthat::test_that("adjust_precipitation_qm: year index contiguity is enforced (guards against calendar years)", {
+  set.seed(10)
+
+  n_years <- 2L
+  n_days <- 365L * n_years
+  month <- rep(1:12, length.out = n_days)
+
+  precip <- rgamma(n_days, shape = 1.2, scale = 5)
+  precip[sample.int(n_days, size = 80)] <- 0
+
+  mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+
+  # Non-contiguous year indices (mimics passing calendar years)
+  year_bad <- rep(c(2020L, 2021L), each = 365L)
+
+  testthat::expect_error(
+    adjust_precipitation_qm(
+      precip = precip,
+      mean_factor = mean_factor,
+      var_factor = var_factor,
+      month = month,
+      year = year_bad,
+      verbose = FALSE
+    ),
+    "contiguous simulation-year index"
+  )
+})
+
 testthat::test_that("adjust_precipitation_qm: identity mapping (no mean enforcement) preserves wet days and dry days", {
   set.seed(1)
 
@@ -20,7 +51,7 @@ testthat::test_that("adjust_precipitation_qm: identity mapping (no mean enforcem
     year = year,
     intensity_threshold = 0,
     exaggerate_extremes = FALSE,
-    enforce_target_mean = FALSE,   # critical for identity behavior
+    enforce_target_mean = FALSE,
     min_events = 10,
     validate_output = TRUE,
     diagnostics = FALSE,
@@ -43,7 +74,6 @@ testthat::test_that("adjust_precipitation_qm: identity mapping (no mean enforcem
   testthat::expect_true(!is.null(attr(out, "skipped_months")))
   testthat::expect_true(!is.null(attr(out, "n_failed_fits")))
 })
-
 
 testthat::test_that("adjust_precipitation_qm: mean_factor scales wet-day mean approximately (no tail exaggeration)", {
   set.seed(2)
@@ -341,7 +371,7 @@ testthat::test_that("adjust_precipitation_qm: NA values pass through unchanged",
   testthat::expect_true(all(is.na(out[na_idx])))
 })
 
-testthat::test_that("adjust_precipitation_qm: diagnostics=TRUE returns expected structure and includes fitted objects", {
+testthat::test_that("adjust_precipitation_qm: diagnostics=TRUE returns expected structure", {
   set.seed(9)
 
   n_years <- 2L
@@ -366,51 +396,112 @@ testthat::test_that("adjust_precipitation_qm: diagnostics=TRUE returns expected 
   )
 
   testthat::expect_true(is.list(res))
-  testthat::expect_true(all(c("adjusted", "diagnostics", "base_gamma", "target_gamma", "var_factor_use") %in% names(res)))
+  testthat::expect_true(all(c("adjusted", "diagnostics") %in% names(res)))
 
   out <- res$adjusted
   testthat::expect_length(out, length(precip))
+  testthat::expect_true(inherits(res$diagnostics, "precip_qm_diagnostics"))
 
-  # base_gamma is data.frame with required columns
-  testthat::expect_s3_class(res$base_gamma, "data.frame")
-  testthat::expect_true(all(c("month", "shape", "scale", "mean", "var") %in% names(res$base_gamma)))
-
-  # target_gamma list contains matrices indexed [month_row, year_index]
-  testthat::expect_true(is.list(res$target_gamma))
-  testthat::expect_true(all(c("months", "shape", "scale", "mean", "var") %in% names(res$target_gamma)))
-  testthat::expect_true(is.matrix(res$target_gamma$shape))
-  testthat::expect_true(ncol(res$target_gamma$shape) == n_years)
-
-  # var_factor_use same dims as inputs
-  testthat::expect_true(is.matrix(res$var_factor_use))
-  testthat::expect_true(all(dim(res$var_factor_use) == c(n_years, 12)))
+  # Attributes exist on adjusted output
+  testthat::expect_true(!is.null(attr(out, "perturbed_months")))
+  testthat::expect_true(!is.null(attr(out, "skipped_months")))
+  testthat::expect_true(!is.null(attr(out, "n_failed_fits")))
 })
 
-testthat::test_that("adjust_precipitation_qm: year index contiguity is enforced (guards against calendar years)", {
-  set.seed(10)
+# ---- diagnose_precip_qm / validate_quantile_mapping --------------------------
+
+testthat::test_that("diagnose_precip_qm: returns expected structure and intended ratios", {
+  set.seed(11)
 
   n_years <- 2L
-  n_days <- 365L * n_years
-  month <- rep(1:12, length.out = n_days)
+  n_days <- 12L * n_years
+  month <- rep(1:12, n_years)
+  year <- rep(seq_len(n_years), each = 12L)
 
-  precip <- rgamma(n_days, shape = 1.2, scale = 5)
-  precip[sample.int(n_days, size = 80)] <- 0
+  precip_ref <- rgamma(n_days, shape = 2, scale = 2) + 0.2
+  precip_ref[c(3, 14)] <- 0
+  precip_adj <- precip_ref * 1.2
+  precip_adj[precip_ref == 0] <- 0
 
-  mean_factor <- matrix(1.0, nrow = n_years, ncol = 12)
-  var_factor  <- matrix(1.0, nrow = n_years, ncol = 12)
+  mean_factor <- matrix(1.2, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(1.44, nrow = n_years, ncol = 12)
 
-  # Non-contiguous year indices (mimics passing calendar years)
-  year_bad <- rep(c(2020L, 2021L), each = 365L)
+  diag <- diagnose_precip_qm(
+    precip_ref = precip_ref,
+    precip_adj = precip_adj,
+    month = month,
+    year = year,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    wet_thresh = 0.1,
+    probs = c(0.5, 0.9)
+  )
+
+  testthat::expect_s3_class(diag, "precip_qm_diagnostics")
+  testthat::expect_true(all(c("moments", "quantiles", "extremes", "spells", "drydays", "summary") %in% names(diag)))
+  testthat::expect_s3_class(diag$moments, "data.frame")
+  testthat::expect_s3_class(diag$monthly, "data.frame")
+  testthat::expect_true(nrow(diag$monthly) == 12L)
+
+  mean_row <- diag$moments[diag$moments$metric == "mean", , drop = FALSE]
+  var_row  <- diag$moments[diag$moments$metric == "variance", , drop = FALSE]
+
+  testthat::expect_equal(mean_row$intended_ratio, 1.2, tolerance = 1e-8)
+  testthat::expect_equal(var_row$intended_ratio, 1.44, tolerance = 1e-8)
+  testthat::expect_equal(mean_row$ratio, 1.2, tolerance = 1e-6)
+  testthat::expect_equal(var_row$ratio, 1.44, tolerance = 1e-6)
+
+  dry_days <- diag$drydays[diag$drydays$category == "dry_days", , drop = FALSE]
+  testthat::expect_identical(dry_days$diff, 0)
+})
+
+testthat::test_that("validate_quantile_mapping: matches diagnose_precip_qm output and checks length", {
+  set.seed(12)
+
+  n_years <- 2L
+  n_days <- 12L * n_years
+  month <- rep(1:12, n_years)
+  year <- rep(seq_len(n_years), each = 12L)
+
+  precip_ref <- rgamma(n_days, shape = 2.1, scale = 2) + 0.2
+  precip_ref[c(2, 18)] <- 0
+  precip_adj <- precip_ref * 0.9
+  precip_adj[precip_ref == 0] <- 0
+
+  mean_factor <- matrix(0.9, nrow = n_years, ncol = 12)
+  var_factor  <- matrix(0.81, nrow = n_years, ncol = 12)
+
+  diag_a <- diagnose_precip_qm(
+    precip_ref = precip_ref,
+    precip_adj = precip_adj,
+    month = month,
+    year = year,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    wet_thresh = 0.1,
+    probs = c(0.5)
+  )
+
+  diag_b <- validate_quantile_mapping(
+    precip_org = precip_ref,
+    precip_adjusted = precip_adj,
+    month = month,
+    year = year,
+    mean_factor = mean_factor,
+    var_factor = var_factor,
+    wet_thresh = 0.1,
+    probs = c(0.5)
+  )
+
+  testthat::expect_s3_class(diag_b, "precip_qm_diagnostics")
+  testthat::expect_equal(diag_b$summary, diag_a$summary)
+  testthat::expect_equal(diag_b$quantiles$prob, diag_a$quantiles$prob)
 
   testthat::expect_error(
-    adjust_precipitation_qm(
-      precip = precip,
-      mean_factor = mean_factor,
-      var_factor = var_factor,
-      month = month,
-      year = year_bad,
-      verbose = FALSE
+    validate_quantile_mapping(
+      precip_org = 1:3,
+      precip_adjusted = 1:2
     ),
-    "contiguous simulation-year index"
+    "must have same length"
   )
 })

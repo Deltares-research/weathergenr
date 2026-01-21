@@ -12,7 +12,7 @@
 #'   \item daily KNN resampling of precipitation and temperature anomalies.
 #' }
 #'
-#' The simulation-year definitionis inferred from \code{year_start_month}:
+#' The simulation-year definition is inferred from \code{year_start_month}:
 #' \itemize{
 #'   \item \code{year_start_month == 1}: calendar-year simulation,
 #'   \item \code{year_start_month != 1}: water-year simulation starting in \code{year_start_month}.
@@ -67,6 +67,14 @@
 #'   low-frequency components in WARM.
 #' @param warm_pool_size Integer number of candidate annual traces to generate
 #'   before filtering down to \code{n_realizations}.
+#' @param warm_filter_bounds Named list of filtering thresholds and relaxation controls
+#'   forwarded to \code{\link{filter_warm_pool}} as \code{filter_bounds}. Any entry
+#'   overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}).
+#' @param warm_filter_relax_order Character vector giving the relaxation priority
+#'   for WARM filtering, forwarded to \code{\link{filter_warm_pool}} as \code{relax_order}.
+#'   Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
+#'   Filters are relaxed iteratively by loosening the currently most restrictive criterion
+#'   (lowest pass rate), subject to this priority ordering.
 #' @param annual_knn_n Integer number of historical analogue years considered in
 #'   the annual KNN step of the disaggregation.
 #' @param wet_q Numeric in (0,1). Wet-day threshold quantile used in the daily
@@ -143,6 +151,8 @@ generate_weather <- function(
   warm_var = "precip",
   warm_signif = 0.90,
   warm_pool_size = 5000,
+  warm_filter_bounds = list(),
+  warm_filter_relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   annual_knn_n = 120,
   wet_q = 0.3,
   extreme_q = 0.8,
@@ -183,8 +193,11 @@ generate_weather <- function(
     "extreme_q must be greater than wet_q" = extreme_q > wet_q,
     "warm_var must be in vars" = warm_var %in% vars,
     "obs_grid must have required columns" = all(c("xind", "yind", "x", "y") %in% names(obs_grid)),
-    "verbose must be TRUE or FALSE" = is.logical(verbose) && length(verbose) == 1L
+    "verbose must be TRUE or FALSE" = is.logical(verbose) && length(verbose) == 1L,
+    "warm_filter_bounds must be a list" = is.list(warm_filter_bounds),
+    "warm_filter_relax_order must be a character vector" = is.character(warm_filter_relax_order)
   )
+
 
   if (!("id" %in% names(obs_grid))) obs_grid$id <- seq_len(nrow(obs_grid))
 
@@ -199,12 +212,25 @@ generate_weather <- function(
   # WARM constants
   DETREND <- TRUE
   MIN_PERIOD <- 2
-  RELAX_ORDER <- c("wavelet", "sd", "tail_low", "tail_high", "mean")
 
   # ---------------------------------------------------------------------------
   # RNG management
   # ---------------------------------------------------------------------------
-  if (!is.null(seed)) set.seed(seed)
+
+  # save and restore state
+  if (!is.null(seed)) {
+    if (exists(".Random.seed", envir = .GlobalEnv)) {
+      old_rng_state <- .Random.seed
+      has_rng_state <- TRUE
+    } else {
+      has_rng_state <- FALSE
+    }
+    on.exit({
+      if (has_rng_state) .Random.seed <<- old_rng_state
+    }, add = TRUE)
+    set.seed(seed)
+  }
+
   warm_seed  <- sample.int(.Machine$integer.max, 1L)
   daily_seed <- sample.int(.Machine$integer.max, 1L)
 
@@ -253,7 +279,6 @@ generate_weather <- function(
   hist_dates <- build_historical_dates(obs_dates, year_start_month, verbose = verbose)
   dates_d      <- hist_dates$dates_df
   wyear_idx    <- hist_dates$wyear_idx
-  full_wyears  <- hist_dates$complete_wyears
 
   # 4c. Compute area averages
   area_avg <- compute_area_averages(obs_data, wyear_idx, dates_d$wyear, vars)
@@ -344,8 +369,8 @@ generate_weather <- function(
     n_select = n_realizations,
     seed = warm_seed + 1L,
     pad_periods = TRUE,
-    filter_bounds = list(),
-    relax_order = RELAX_ORDER,
+    filter_bounds = warm_filter_bounds,
+    relax_order = warm_filter_relax_order,
     make_plots = TRUE,
     wavelet_args = list(
       signif_level = warm_signif,
@@ -385,7 +410,6 @@ generate_weather <- function(
         obs_daily_precip  = climate_d_aavg$precip,
         obs_daily_temp  = climate_d_aavg$temp,
         year_start  = start_year,
-        realization_idx  = n,
         n_years     = n_years,
         obs_dates_df = dates_d,
         sim_dates_df = sim_dates_d,
@@ -414,7 +438,6 @@ generate_weather <- function(
         obs_daily_precip  = climate_d_aavg$precip,
         obs_daily_temp  = climate_d_aavg$temp,
         year_start  = start_year,
-        realization_idx  = n,
         n_years     = n_years,
         obs_dates_df = dates_d,
         sim_dates_df = sim_dates_d,
@@ -446,7 +469,7 @@ generate_weather <- function(
   # Outputs
   # ---------------------------------------------------------------------------
   tryCatch(
-    utils::write.csv(sim_dates_d$date, file.path(out_dir, "sim_dates.csv"), row.names = FALSE),
+    utils::write.csv(data.frame(date = sim_dates_d$date), file.path(out_dir, "sim_dates.csv"), row.names = FALSE),
     error = function(e) {
       msg <- paste0("Failed to write sim_dates.csv: ", conditionMessage(e))
       .log(msg, level = "error", verbose = verbose)

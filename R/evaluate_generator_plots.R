@@ -203,7 +203,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
                                    show_title, save_plots, output_dir) {
 
   data_mean <- daily_stats_season %>%
-    dplyr::filter(.data$stat == "mean")
+    dplyr::filter(stat == "mean")
 
   dummy_points <- generate_symmetric_dummy_points(
     df = data_mean,
@@ -212,7 +212,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     y_col = "Simulated"
   )
 
-  p <- ggplot(data_mean, aes(x = .data$Observed, y = .data$Simulated)) +
+  p <- ggplot(data_mean, aes(x = Observed, y = Simulated)) +
     plot_config$theme +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
@@ -260,7 +260,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
                                  show_title, save_plots, output_dir) {
 
   data_sd <- daily_stats_season %>%
-    dplyr::filter(.data$stat == "sd")
+    dplyr::filter(stat == "sd")
 
   dummy_points <- generate_symmetric_dummy_points(
     df = data_sd,
@@ -269,7 +269,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     y_col = "Simulated"
   )
 
-  p <- ggplot(data_sd, aes(x = .data$Observed, y = .data$Simulated)) +
+  p <- ggplot(data_sd, aes(x = Observed, y = Simulated)) +
     plot_config$theme +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
@@ -317,23 +317,23 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
                                      show_title, save_plots, output_dir) {
 
   data_spells <- stats_wetdry %>%
-    dplyr::filter(.data$type == "spells")
+    dplyr::filter(type == "spells")
 
   dummy_points <- data_spells %>%
-    dplyr::group_by(.data$stat) %>%
+    dplyr::group_by(stat) %>%
     dplyr::summarize(
-      minval = min(.data$Simulated, .data$Observed, na.rm = TRUE),
-      maxval = max(.data$Simulated, .data$Observed, na.rm = TRUE),
+      minval = min(Simulated, Observed, na.rm = TRUE),
+      maxval = max(Simulated, Observed, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     tidyr::pivot_longer(
-      cols = c(.data$minval, .data$maxval),
+      cols = c(minval, maxval),
       names_to = "type",
       values_to = "value"
     ) %>%
-    dplyr::select(.data$stat, Observed = .data$value, Simulated = .data$value)
+    dplyr::select(stat, Observed = value, Simulated = value)
 
-  p <- ggplot(data_spells, aes(x = .data$Observed, y = .data$Simulated)) +
+  p <- ggplot(data_spells, aes(x = Observed, y = Simulated)) +
     plot_config$theme +
     geom_abline(color = "blue") +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
@@ -381,23 +381,23 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
                                     show_title, save_plots, output_dir) {
 
   data_days <- stats_wetdry %>%
-    dplyr::filter(.data$type == "days")
+    dplyr::filter(type == "days")
 
   dummy_points <- data_days %>%
-    dplyr::group_by(.data$stat) %>%
+    dplyr::group_by(stat) %>%
     dplyr::summarize(
-      minval = min(.data$Simulated, .data$Observed, na.rm = TRUE),
-      maxval = max(.data$Simulated, .data$Observed, na.rm = TRUE),
+      minval = min(Simulated, Observed, na.rm = TRUE),
+      maxval = max(Simulated, Observed, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     tidyr::pivot_longer(
-      cols = c(.data$minval, .data$maxval),
+      cols = c(minval, maxval),
       names_to = "type",
       values_to = "value"
     ) %>%
-    dplyr::select(.data$stat, Observed = .data$value, Simulated = .data$value)
+    dplyr::select(stat, Observed = value, Simulated = value)
 
-  p <- ggplot(data_days, aes(x = .data$Observed, y = .data$Simulated)) +
+  p <- ggplot(data_days, aes(x = Observed, y = Simulated)) +
     plot_config$theme +
     geom_abline(color = "blue") +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
@@ -450,7 +450,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     y_col = "Simulated"
   )
 
-  p <- ggplot(stats_crosscor, aes(x = .data$Observed, y = .data$Simulated)) +
+  p <- ggplot(stats_crosscor, aes(x = Observed, y = Simulated)) +
     plot_config$theme +
     geom_abline(color = "blue") +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
@@ -503,7 +503,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     y_col = "Simulated"
   )
 
-  p <- ggplot(stats_intercor, aes(x = .data$Observed, y = .data$Simulated)) +
+  p <- ggplot(stats_intercor, aes(x = Observed, y = Simulated)) +
     plot_config$theme +
     geom_abline(color = "blue") +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
@@ -553,8 +553,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
                                         show_title, save_plots, output_dir) {
 
   dat <- stats_precip_cor_cond %>%
-    dplyr::mutate(variable = paste0(.data$variable1, ":", .data$variable2)) %>%
-    dplyr::filter(.data$id1 == .data$id2)
+    dplyr::mutate(variable = paste0(variable1, ":", variable2)) %>%
+    dplyr::filter(id1 == id2)
 
   dummy_points <- generate_symmetric_dummy_points(
     df = dat,
@@ -563,7 +563,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     y_col = "Simulated"
   )
 
-  p <- ggplot(dat, aes(x = .data$Observed, y = .data$Simulated)) +
+  p <- ggplot(dat, aes(x = Observed, y = Simulated)) +
     plot_config$theme +
     geom_abline(color = "blue") +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
@@ -613,26 +613,26 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
                                         show_title, save_plots, output_dir) {
 
   dat_sim <- stats_mon_aavg_sim %>%
-    dplyr::filter(.data$variable == !!variable) %>%
+    dplyr::filter(variable == !!variable) %>%
     dplyr::mutate(
-      rlz = as.integer(.data$rlz),
+      rlz = as.integer(rlz),
       type = "Simulated"
     ) %>%
-    dplyr::rename(value = .data$Simulated)
+    dplyr::rename(value = Simulated)
 
   dat_obs <- stats_mon_aavg_obs %>%
-    dplyr::mutate(rlz = 0L, .before = .data$year) %>%
-    dplyr::filter(.data$variable == !!variable, !is.nan(.data$Observed)) %>%
+    dplyr::mutate(rlz = 0L, .before = year) %>%
+    dplyr::filter(variable == !!variable, !is.nan(Observed)) %>%
     dplyr::mutate(type = "Observed") %>%
-    dplyr::rename(value = .data$Observed)
+    dplyr::rename(value = Observed)
 
   dat <- dplyr::bind_rows(dat_sim, dat_obs)
 
   p <- ggplot(dat, aes(
-    x = as.factor(.data$mon),
-    y = .data$value,
-    fill = .data$type,
-    color = .data$type
+    x = as.factor(mon),
+    y = value,
+    fill = type,
+    color = type
   )) +
     plot_config$theme +
     geom_boxplot(alpha = 0.2) +
@@ -687,21 +687,21 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
                                       show_title, save_plots, output_dir) {
 
   sim_avg <- daily_stats_season %>%
-    dplyr::group_by(.data$rlz, .data$mon, .data$variable) %>%
-    dplyr::filter(.data$stat == "mean") %>%
-    dplyr::summarize(value = mean(.data$Simulated, na.rm = TRUE), .groups = "drop") %>%
+    dplyr::group_by(rlz, mon, variable) %>%
+    dplyr::filter(stat == "mean") %>%
+    dplyr::summarize(value = mean(Simulated, na.rm = TRUE), .groups = "drop") %>%
     dplyr::mutate(type = "Simulated")
 
   obs_avg <- daily_stats_season %>%
-    dplyr::group_by(.data$mon, .data$variable) %>%
-    dplyr::filter(.data$stat == "mean") %>%
-    dplyr::summarize(value = mean(.data$Observed, na.rm = TRUE), .groups = "drop") %>%
+    dplyr::group_by(mon, variable) %>%
+    dplyr::filter(stat == "mean") %>%
+    dplyr::summarize(value = mean(Observed, na.rm = TRUE), .groups = "drop") %>%
     dplyr::mutate(type = "Observed")
 
-  p <- ggplot(sim_avg, aes(x = as.factor(.data$mon), y = .data$value)) +
+  p <- ggplot(sim_avg, aes(x = as.factor(mon), y = value)) +
     plot_config$theme +
     facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2) +
-    geom_line(aes(group = .data$rlz, color = .data$rlz), alpha = 0.8) +
+    geom_line(aes(group = rlz, color = rlz), alpha = 0.8) +
     geom_line(
       data = obs_avg,
       color = "black",
@@ -745,16 +745,16 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
                                       plot_config, show_title, save_plots, output_dir) {
 
   sim_precip <- stats_annual_aavg_sim %>%
-    dplyr::filter(.data$stat == "mean", .data$variable == "precip")
+    dplyr::filter(stat == "mean", variable == "precip")
 
   obs_precip <- stats_annual_aavg_obs %>%
-    dplyr::filter(.data$stat == "mean", .data$variable == "precip")
+    dplyr::filter(stat == "mean", variable == "precip")
 
   p <- ggplot2::ggplot() +
     plot_config$theme +
     ggplot2::geom_point(
       data = sim_precip,
-      ggplot2::aes(x = .data$year, y = .data$Simulated, group = .data$rlz),
+      ggplot2::aes(x = year, y = Simulated, group = rlz),
       size = 0.5,
       alpha = 0.3
     )
@@ -762,23 +762,15 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   p <- .add_line_if_possible(
     p = p,
     data = sim_precip,
-    mapping = ggplot2::aes(x = .data$year, y = .data$Simulated, group = .data$rlz),
+    mapping = ggplot2::aes(x = year, y = Simulated, group = rlz), alpha = 0.6,
     group_col = "rlz"
   )
 
   # observed
-  p <- p +
-    ggplot2::geom_point(
-      data = obs_precip,
-      ggplot2::aes(x = .data$year, y = .data$Observed),
-      size = 0.5,
-      alpha = 0.3
-    )
-
   if (nrow(obs_precip) >= 2) {
     p <- p + ggplot2::geom_line(
       data = obs_precip,
-      ggplot2::aes(x = .data$year, y = .data$Observed, group = 1),
+      ggplot2::aes(x = year, y = Observed, group = 1), color = "blue",
       linewidth = 1.25
     )
   }
@@ -857,8 +849,8 @@ generate_symmetric_dummy_points <- function(df, facet_var, x_col, y_col) {
 
   # two points per facet: (min,min) and (max,max)
   out <- dplyr::bind_rows(
-    out %>% dplyr::transmute(!!facet_var := .data[[facet_var]], !!x_col := .data$.min, !!y_col := .data$.min),
-    out %>% dplyr::transmute(!!facet_var := .data[[facet_var]], !!x_col := .data$.max, !!y_col := .data$.max)
+    out %>% dplyr::transmute(!!facet_var := .data[[facet_var]], !!x_col := .min, !!y_col := .min),
+    out %>% dplyr::transmute(!!facet_var := .data[[facet_var]], !!x_col := .max, !!y_col := .max)
   )
 
   out
@@ -866,7 +858,7 @@ generate_symmetric_dummy_points <- function(df, facet_var, x_col, y_col) {
 
 #' Add geom_line only for groups with >= 2 observations
 #' @keywords internal
-.add_line_if_possible <- function(p, data, mapping, group_col) {
+.add_line_if_possible <- function(p, data, mapping, group_col, ...) {
 
   if (is.null(data) || nrow(data) < 2) return(p)
   if (!group_col %in% names(data)) return(p)
@@ -880,7 +872,7 @@ generate_symmetric_dummy_points <- function(df, facet_var, x_col, y_col) {
   data2 <- data[data[[group_col]] %in% keep, , drop = FALSE]
   if (nrow(data2) < 2) return(p)
 
-  p + ggplot2::geom_line(data = data2, mapping = mapping, inherit.aes = FALSE)
+  p + ggplot2::geom_line(data = data2, mapping = mapping, inherit.aes = FALSE, ...)
 }
 
 

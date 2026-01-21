@@ -1,16 +1,15 @@
 ---
-title: "Climate Stress Testing with weathergenr"
-description: "Design climate stress-test scenarios, apply monthly perturbations to stochastic weather, and validate precipitation changes."
+title: "Perturbing long-term statistics of weather data"
+description: "Applying monthly perturbations to stochastic weather, and validate precipitation changes."
 format:
   html:
     toc: true
-    toc-location: right
+    toc-location: left
     toc-title: "Contents"
     toc-depth: 2
     toc-expand: 2
     page-layout: full
     number-sections: true
-    code-fold: true
     code-tools: true
     df-print: tibble
     self-contained: true
@@ -22,7 +21,7 @@ execute:
   freeze: true
   execute-dir: project
 vignette: >
-  %\VignetteIndexEntry{Climate stress testing}
+  %\VignetteIndexEntry{Climate Perturbation}
   %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
 ---
@@ -162,7 +161,7 @@ ggplot(plot_data_long, aes(x = Month, y = Precipitation, fill = Series)) +
     subtitle = "Observed vs. perturbed (30% reduction scenario)",
     y = "Precipitation (mm/day)", x = NULL
   ) +
-  theme_minimal() +
+  theme_bw() +
   theme(legend.position = "bottom")
 ```
 
@@ -190,15 +189,14 @@ ggplot(dist_data, aes(x = Precipitation, color = Series, fill = Series)) +
     title = "Wet-Day Precipitation Distribution",
     x = "Precipitation (mm/day)", y = "Density"
   ) +
-  theme_minimal() +
+  theme_bw() +
   theme(legend.position = "bottom")
 ```
 
 ## Temperature time series
 
 ```{r plot_temperature}
-n_plot <- min(365, nrow(obs_cell))
-plot_idx <- seq_len(n_plot)
+plot_idx <- seq_len(nrow(obs_cell))
 
 temp_ts <- data.frame(
   Day = plot_idx,
@@ -215,7 +213,7 @@ ggplot(temp_ts_long, aes(x = Day, y = Temperature, color = Series)) +
   scale_color_manual(values = c(Observed = "steelblue", Perturbed = "coral")) +
   labs(
     title = "Daily Temperature Time Series",
-    subtitle = paste0("First ", n_plot, " days: +2 deg C shift"),
+    subtitle = "Observed vs. +2 deg C shift scenario",
     x = "Day", y = "Temperature (deg C)"
   ) +
   theme_minimal() +
