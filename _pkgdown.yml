@@ -8,8 +8,7 @@ navbar:
   structure:
     left:  [intro, reference, articles, news]
     right: [search, github]
-
-articles:
-  - title: "Articles"
-    contents:
-      - getting_started
+  components:
+    articles:
+      text: Articles
+      menu: ~
