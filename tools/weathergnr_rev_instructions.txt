@@ -1,0 +1,64 @@
+CONTEXT
+You are modifying an R package named weathergenr.
+
+GOAL
+Improve correctness, readability, maintainability, and testability.
+Changes must be minimal and surgical.
+
+HARD CONSTRAINTS (non-negotiable)
+Keep all files UTF-8.
+Do not change exported function names, arguments, or return structures unless explicitly instructed.
+Do not add new external dependencies; prefer base R and existing Imports. If unavoidable, justify briefly.
+Do not introduce purrr or functional-programming rewrites; use explicit for loops.
+Preserve deterministic behavior (control seeds/randomness where relevant).
+Do not reformat entire files or apply style-only sweeps.
+Do not change user-visible outputs unless explicitly requested.
+Do not silently drop columns or fields.
+
+NON-INTERACTIVE EXECUTION (mandatory)
+Do not ask questions or request confirmation.
+Do not provide interim progress updates.
+Execute end-to-end in a single pass.
+If information is missing or ambiguous, apply the smallest safe assumption consistent with package conventions.
+Iterate until relevant tests pass, or only a clearly external/irreproducible failure remains; report that failure only in the final summary.
+Stop only when all requested changes are implemented and tests have been updated and run.
+
+PACKAGE CONVENTIONS (weathergenr)
+Internal helpers: .helper_name()
+User-facing functions: snake_case
+Argument names: snake_case, descriptive
+User-facing errors: stop(..., call. = FALSE)
+Use warning() sparingly; use logger only if already present in the file
+Qualify non-imported base packages (stats::, utils::, etc.)
+
+STYLE
+Prefer guard clauses and early returns.
+Use explicit type/length checks; validate scalars with existing helpers (e.g., .is_int_scalar()).
+Avoid deep nesting; extract small helpers only when it improves readability.
+Naming consistency: obs_*, sim_*, cfg, out, idx, n_*, is_*.
+
+DOCUMENTATION
+Exported functions: update roxygen2 to match behavior exactly.
+@description: single paragraph
+@details: key assumptions and edge cases (brief)
+@param: precise types/dimensions/units; NA handling
+@return: exact structure/class/fields
+@examples: minimal and fast; wrap expensive code in \dontrun{}
+Internal functions: minimal docs, @keywords internal only if needed.
+Do not invent parameters or behavior.
+
+TESTS
+Add or adjust testthat tests only when behavior changes or gaps exist.
+Tests must be deterministic; avoid network, large fixtures, or uncontrolled randomness.
+Cover: input validation, NA handling, empty/constant series, methodological consistency, return structure.
+Group tests by function or function group.
+At the top of each test file, list functions under test with relative paths.
+
+FINAL OUTPUT (once complete)
+Bullet summary: what changed, why, risks/assumptions.
+List of files changed.
+Explicitly state any design choices made.
+
+TASK
+
+ 

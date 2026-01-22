@@ -166,6 +166,7 @@ generate_weather <- function(
   verbose = FALSE
 ) {
 
+
   start_time <- Sys.time()
   verbose <- isTRUE(verbose)
 
@@ -203,7 +204,7 @@ generate_weather <- function(
   if (!("id" %in% names(obs_grid))) obs_grid$id <- seq_len(nrow(obs_grid))
 
   # ---------------------------------------------------------------------------
-  # CONSTANTS
+  # CONSTANTS -- no user-level change needed for now
   # ---------------------------------------------------------------------------
 
   ## GGPLOT constants
@@ -213,6 +214,7 @@ generate_weather <- function(
   # WARM constants
   DETREND <- TRUE
   MIN_PERIOD <- 2
+  WARM_FILTER <- "la8"
 
   # ---------------------------------------------------------------------------
   # RNG management
@@ -317,52 +319,86 @@ generate_weather <- function(
   if (anyNA(sim_dates_d$date)) stop("Internal error: sim_dates_d$date contains NA.", call. = FALSE)
 
   # ---------------------------------------------------------------------------
-  # Annual time-series generation (WARM)
+  # Annual time-series generation (WARM) - Hybrid CWT/MODWT approach
   # ---------------------------------------------------------------------------
   .log("Running annual WARM simulation", tag = "WARM", verbose = verbose)
 
-
+  # Mean-center (anomaly by mean only)
   warm_series_obs <- climate_a_aavg[[warm_var]]
+  warm_series_obs_mean <- mean(warm_series_obs)
+  warm_series_obs_anom <- warm_series_obs - warm_series_obs_mean
 
-  warm_power <- analyze_wavelet_spectrum(
-    series = warm_series_obs,
+  # Hybrid analysis: CWT for visualization, MODWT MRA for additive components
+  warm_analysis <- analyze_wavelet_additive(
+    series = warm_series_obs_anom,
     signif = warm_signif,
     noise = "red",
     min_period = MIN_PERIOD,
     detrend = DETREND,
-    mode = "complete")
+    filter = WARM_FILTER,
+    n_levels = NULL,
+    include_smooth = TRUE,
+    cwt_mode = "complete",
+    diagnostics = FALSE
+  )
 
+  # Use CWT results for power spectrum visualization
   p <- plot_wavelet_power(
     series = warm_series_obs,
     time = climate_a_aavg$wyear,
-    period = warm_power$period,
-    power = warm_power$power,
-    gws = warm_power$gws_unmasked,
-    gws_signif = warm_power$gws_signif_unmasked,
-    coi = warm_power$coi,
-    signif_mask = warm_power$sigm)
+    period = warm_analysis$cwt$period,
+    power = warm_analysis$cwt$power,
+    gws = warm_analysis$cwt$gws_unmasked,
+    gws_signif = warm_analysis$cwt$gws_signif_unmasked,
+    coi = warm_analysis$cwt$coi,
+    signif_mask = warm_analysis$cwt$sigm
+  )
 
   tryCatch(
     ggsave(file.path(out_dir, "global_wavelet_power_spectrum.png"), p, width = 8, height = 5),
     error = function(e) .log("Failed to save wavelet spectrum plot: {e$message}", level = "warn", verbose = verbose)
   )
 
-  if (any(!is.na(warm_power$signif_periods))) {
-    .log("Significant low-frequency components: {length(warm_power$comps_names) - 1}", tag = "WARM", verbose = verbose)
-    .log("Periodicity (years): {paste(round(warm_power$period[warm_power$signif_periods], 2), collapse = ', ')}",
-      tag = "WARM", verbose = verbose)
+  # Log significant periodicities from CWT analysis
+  if (warm_analysis$has_significance) {
+    .log(
+      "Significant periodicities (CWT): {length(warm_analysis$cwt_signif_periods)}",
+      tag = "WARM", verbose = verbose
+    )
+    .log(
+      "Periods (years): {paste(round(warm_analysis$cwt_signif_periods, 2), collapse = ', ')}",
+      tag = "WARM", verbose = verbose
+    )
+    .log(
+      "Mapped to MODWT levels: {paste(warm_analysis$cwt_to_modwt_map, collapse = ', ')}",
+      tag = "WARM", verbose = verbose
+    )
   } else {
     .log("No significant low-frequency periodicities detected", tag = "WARM", verbose = verbose)
   }
 
-  sim_annual <- simulate_warm(
-    components = warm_power$comps,
+  # Log MODWT MRA component information
+  .log(
+    "MODWT MRA: {ncol(warm_analysis$components)} components ({paste(warm_analysis$component_names, collapse = ', ')})",
+    tag = "WARM", verbose = verbose
+  )
+  .log(
+    "Filter: {warm_filter} (L={warm_analysis$filter_length}), {warm_analysis$n_levels} levels",
+    tag = "WARM", verbose = verbose
+  )
+
+  # Use MODWT MRA additive components for WARM simulation
+  sim_annual_anom <- simulate_warm(
+    components = warm_analysis$components,
     n = n_years,
     n_sim = warm_pool_size,
     seed = warm_seed,
     match_variance = TRUE,
     verbose = verbose
   )
+
+  # Add the mean back to get absolute annual precipitation
+  sim_annual <- sim_annual_anom + warm_series_obs_mean
 
   sim_annual_sub <- filter_warm_pool(
     obs_series = warm_series_obs,
