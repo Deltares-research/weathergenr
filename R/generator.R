@@ -405,7 +405,6 @@ generate_weather <- function(
     sim_series = sim_annual,
     n_select = n_realizations,
     seed = warm_seed + 1L,
-    pad_periods = TRUE,
     filter_bounds = warm_filter_bounds,
     relax_order = warm_filter_relax_order,
     make_plots = TRUE,

@@ -9,7 +9,7 @@ criteria_string_compact(
   bounds,
   tail_metrics,
   wavelet_active,
-  wavelet_pars
+  spectral_diag
 )
 }
 \description{

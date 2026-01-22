@@ -12,21 +12,7 @@ log_filtering_start(
   relax_priority
 )
 }
-\arguments{
-\item{n_obs}{Integer scalar. Number of observations in observed series.}
-
-\item{n_sim}{Integer scalar. Number of years in simulated series used after windowing.}
-
-\item{n_realizations}{Integer scalar. Number of candidate realizations.}
-
-\item{sample_target}{Integer scalar. Target number to select.}
-
-\item{relax_priority}{Character vector. Relaxation priority vector.}
-}
-\value{
-Invisibly returns NULL.
-}
 \description{
-Internal helper. Displays general information at the start of filtering.
+Log initial setup information
 }
 \keyword{internal}

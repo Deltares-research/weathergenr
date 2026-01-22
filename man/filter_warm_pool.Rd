@@ -2,18 +2,18 @@
 % Please edit documentation in R/warm_filtering.R
 \name{filter_warm_pool}
 \alias{filter_warm_pool}
-\title{Filter and sample WARM realizations using distributional, tail, and wavelet criteria}
+\title{Filter and sample WARM realizations using distributional, tail, and spectral criteria}
 \usage{
 filter_warm_pool(
   obs_series = NULL,
   sim_series = NULL,
   n_select = 5,
   seed = NULL,
-  pad_periods = TRUE,
   relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   filter_bounds = list(),
   wavelet_args = list(signif_level = 0.8, noise_type = "red", period_lower_limit = 2,
     detrend = TRUE),
+  modwt_n_levels = NULL,
   make_plots = FALSE,
   verbose = FALSE
 )
@@ -29,17 +29,19 @@ and realizations in columns.}
 \item{seed}{Optional integer scalar. Random seed used for window selection (if lengths differ)
 and for sampling from the final candidate pool.}
 
-\item{pad_periods}{Logical scalar. If \code{TRUE}, expands the observed significant-period
-band by one index on each side when checking simulated presence in the observed-relevant band.}
-
 \item{relax_order}{Character vector. Relaxation priority ordering for criteria.
 Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.}
 
 \item{filter_bounds}{Named list. Filtering thresholds and relaxation controls. Any entry
-overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}, not \code{tail.low.p}).}
+overrides internal defaults. Uses snake_case keys.}
 
 \item{wavelet_args}{Named list passed to \code{\link{analyze_wavelet_spectrum}} for
-observed and simulated series (e.g., \code{signif_level}, \code{noise_type}, \code{period_lower_limit}, \code{detrend}).}
+observed and simulated series (e.g., \code{signif_level}, \code{noise_type},
+\code{period_lower_limit}, \code{detrend}).}
+
+\item{modwt_n_levels}{Integer or NULL. Number of MODWT levels used in WARM simulation.
+Used to determine the low-frequency threshold period as 2^J. If NULL, estimated from
+series length.}
 
 \item{make_plots}{Logical scalar. If \code{TRUE}, returns diagnostic plots in \code{plots}.}
 
@@ -51,7 +53,8 @@ A list with:
   \item{pool}{Numeric matrix. Final candidate pool (subset of columns from \code{sim_series}).}
   \item{selected}{Numeric matrix. \code{n_select} realizations selected from the final pool.}
   \item{summary}{Data frame summarising pass counts/rates and selection mode.}
-  \item{diagnostics}{List with window metadata, indices, relaxation log, and final bounds.}
+  \item{diagnostics}{List with window metadata, indices, relaxation log, spectral metrics,
+    and final bounds.}
   \item{plots}{NULL or a named list of ggplot objects when \code{make_plots = TRUE}.}
 }
 }
@@ -61,7 +64,18 @@ annual series using three criterion families:
 \itemize{
   \item \strong{Distributional}: relative differences in mean and standard deviation.
   \item \strong{Tail behaviour}: lower/upper tail mass relative to observed quantile thresholds.
-  \item \strong{Spectral}: observed-relevant global wavelet spectrum (GWS) filtering.
+  \item \strong{Spectral matching}: direct comparison of simulated vs observed global
+    wavelet spectra, focusing on reproducing low-frequency structure and dominant peaks.
+}
+
+Spectral matching criteria include:
+\itemize{
+  \item \strong{Spectral correlation}: correlation between log-transformed GWS of
+    simulated and observed series.
+  \item \strong{Low-frequency fraction}: relative difference in variance fraction
+    at periods beyond a threshold tied to MODWT decomposition levels.
+  \item \strong{Peak matching}: verification that dominant peaks in observed spectrum
+    are reproduced in simulated spectrum within tolerance.
 }
 
 If fewer than \code{n_select} realizations pass, the function relaxes criteria

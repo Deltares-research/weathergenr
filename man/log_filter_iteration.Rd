@@ -13,35 +13,11 @@ log_filter_iteration(
   bounds,
   tail_metrics,
   wavelet_active,
-  wavelet_pars,
+  spectral_diag,
   note = NULL
 )
 }
-\arguments{
-\item{iter}{Integer scalar. Iteration number.}
-
-\item{passes}{Named list of logical vectors. Per-filter pass vectors.}
-
-\item{pool}{Integer vector. Pool indices passing all active filters.}
-
-\item{n_total}{Integer scalar. Total number of realizations.}
-
-\item{target}{Integer scalar. Target pool size.}
-
-\item{bounds}{Environment or list of bounds.}
-
-\item{tail_metrics}{List. Tail metrics used for criteria display.}
-
-\item{wavelet_active}{Logical scalar.}
-
-\item{wavelet_pars}{List. Wavelet parameter list.}
-
-\item{note}{Optional character scalar.}
-}
-\value{
-Invisibly returns NULL.
-}
 \description{
-Internal helper. Prints iteration diagnostics in a compact table-like format.
+Log filter iteration details
 }
 \keyword{internal}
