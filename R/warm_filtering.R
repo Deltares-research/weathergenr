@@ -1,4 +1,4 @@
-#' Filter and sample WARM realizations using distributional, tail, and wavelet criteria
+#' Filter and sample WARM realizations using distributional, tail, and spectral criteria
 #'
 #' @description
 #' Filters an ensemble of WARM-generated annual realizations against an observed
@@ -6,7 +6,18 @@
 #' \itemize{
 #'   \item \strong{Distributional}: relative differences in mean and standard deviation.
 #'   \item \strong{Tail behaviour}: lower/upper tail mass relative to observed quantile thresholds.
-#'   \item \strong{Spectral}: observed-relevant global wavelet spectrum (GWS) filtering.
+#'   \item \strong{Spectral matching}: direct comparison of simulated vs observed global
+#'     wavelet spectra, focusing on reproducing low-frequency structure and dominant peaks.
+#' }
+#'
+#' Spectral matching criteria include:
+#' \itemize{
+#'   \item \strong{Spectral correlation}: correlation between log-transformed GWS of
+#'     simulated and observed series.
+#'   \item \strong{Low-frequency fraction}: relative difference in variance fraction
+#'     at periods beyond a threshold tied to MODWT decomposition levels.
+#'   \item \strong{Peak matching}: verification that dominant peaks in observed spectrum
+#'     are reproduced in simulated spectrum within tolerance.
 #' }
 #'
 #' If fewer than \code{n_select} realizations pass, the function relaxes criteria
@@ -21,14 +32,16 @@
 #' @param n_select Integer scalar. Number of realizations to return in \code{selected}.
 #' @param seed Optional integer scalar. Random seed used for window selection (if lengths differ)
 #'   and for sampling from the final candidate pool.
-#' @param pad_periods Logical scalar. If \code{TRUE}, expands the observed significant-period
-#'   band by one index on each side when checking simulated presence in the observed-relevant band.
 #' @param relax_order Character vector. Relaxation priority ordering for criteria.
 #'   Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
 #' @param filter_bounds Named list. Filtering thresholds and relaxation controls. Any entry
-#'   overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}, not \code{tail.low.p}).
+#'   overrides internal defaults. Uses snake_case keys.
 #' @param wavelet_args Named list passed to \code{\link{analyze_wavelet_spectrum}} for
-#'   observed and simulated series (e.g., \code{signif_level}, \code{noise_type}, \code{period_lower_limit}, \code{detrend}).
+#'   observed and simulated series (e.g., \code{signif_level}, \code{noise_type},
+#'   \code{period_lower_limit}, \code{detrend}).
+#' @param modwt_n_levels Integer or NULL. Number of MODWT levels used in WARM simulation.
+#'   Used to determine the low-frequency threshold period as 2^J. If NULL, estimated from
+#'   series length.
 #' @param make_plots Logical scalar. If \code{TRUE}, returns diagnostic plots in \code{plots}.
 #' @param verbose Logical scalar. If \code{TRUE}, logs per-iteration pass rates and relaxation steps.
 #'
@@ -37,19 +50,19 @@
 #'   \item{pool}{Numeric matrix. Final candidate pool (subset of columns from \code{sim_series}).}
 #'   \item{selected}{Numeric matrix. \code{n_select} realizations selected from the final pool.}
 #'   \item{summary}{Data frame summarising pass counts/rates and selection mode.}
-#'   \item{diagnostics}{List with window metadata, indices, relaxation log, and final bounds.}
+#'   \item{diagnostics}{List with window metadata, indices, relaxation log, spectral metrics,
+#'     and final bounds.}
 #'   \item{plots}{NULL or a named list of ggplot objects when \code{make_plots = TRUE}.}
 #' }
 #'
 #' @importFrom utils modifyList
-#' @importFrom stats acf median runif setNames
+#' @importFrom stats acf median runif setNames cor var quantile
 #' @export
 filter_warm_pool <- function(
     obs_series = NULL,
     sim_series = NULL,
     n_select = 5,
     seed = NULL,
-    pad_periods = TRUE,
     relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
     filter_bounds = list(),
     wavelet_args = list(
@@ -58,6 +71,7 @@ filter_warm_pool <- function(
       period_lower_limit = 2,
       detrend = TRUE
     ),
+    modwt_n_levels = NULL,
     make_plots = FALSE,
     verbose = FALSE
 ) {
@@ -76,9 +90,6 @@ filter_warm_pool <- function(
   }
   n_select <- as.integer(n_select)
 
-  if (!is.logical(pad_periods) || length(pad_periods) != 1L) {
-    stop("'pad_periods' must be TRUE/FALSE.", call. = FALSE)
-  }
   make_plots <- isTRUE(make_plots)
   verbose <- isTRUE(verbose)
 
@@ -242,28 +253,29 @@ filter_warm_pool <- function(
   }
 
   # ---------------------------------------------------------------------------
-  # Wavelet metrics + caching (snake_case inside diagnostics)
+  # Spectral matching metrics
   # ---------------------------------------------------------------------------
+  .log("Computing spectral matching metrics", verbose = verbose, tag = "FILTER")
 
-  .log("Computing wavelet spectra", verbose = verbose, tag = "FILTER")
-
-  wavelet_results <- compute_wavelet_metrics(
+  spectral_results <- compute_spectral_metrics(
     obs_use = obs_use,
     sim_series_stats = sim_use,
     wavelet_pars = wavelet_args,
-    padding = pad_periods,
-    min_bg = b$wavelet_min_bg)
+    modwt_n_levels = modwt_n_levels,
+    n_top_peaks = b$n_top_peaks,
+    peak_prominence_frac = b$peak_prominence_frac,
+    peak_period_tol = b$peak_period_tol,
+    eps = b$spectral_eps
+  )
 
-  wavelet_active <- wavelet_results$active
-  wavelet_diag <- wavelet_results$diagnostics
+  wavelet_active <- spectral_results$active
+  spectral_metrics <- spectral_results$metrics
+  spectral_diag <- spectral_results$diagnostics
 
-  period <- wavelet_results$power_period
-  obs_power <- wavelet_results$power_obs
-  signif_unmasked <- wavelet_results$power_signif_unmasked
-
-  p_sim_reg <- wavelet_results$p_sim_reg
-  p_sim_bg <- wavelet_results$p_sim_bg
-  presence_rpad <- wavelet_results$presence_rpad
+  period <- spectral_results$period
+  gws_obs <- spectral_results$gws_obs
+  gws_signif <- spectral_results$gws_signif
+  gws_cache <- spectral_results$gws_cache
 
   # ---------------------------------------------------------------------------
   # Helpers
@@ -295,31 +307,24 @@ filter_warm_pool <- function(
 
     pass_wavelet <- rep(TRUE, n_rlz)
     if (isTRUE(wavelet_active)) {
-      if (!is.null(wavelet_diag$regions) && length(wavelet_diag$regions) > 0 &&
-          !is.null(p_sim_reg) && !is.null(p_sim_bg) &&
-          !is.null(wavelet_diag$p_obs_reg) && length(wavelet_diag$p_obs_reg) == ncol(p_sim_reg)) {
 
-        p_obs_reg <- as.numeric(wavelet_diag$p_obs_reg)
-        p_obs_bg  <- max(sum(fill_nearest(as.numeric(wavelet_diag$power_obs))[wavelet_diag$bg_idx], na.rm = TRUE), b$wavelet_min_bg)
+      # Primary criterion 1: spectral correlation
+      pass_cor <- is.finite(spectral_metrics$spectral_cor) &
+        (spectral_metrics$spectral_cor >= b$spectral_cor_min)
 
-        c_obs_reg <- p_obs_reg / p_obs_bg
-        C_sim_reg <- p_sim_reg / pmax(p_sim_bg, b$wavelet_min_bg)
+      # Primary criterion 2: low-frequency fraction difference
+      pass_lf <- is.finite(spectral_metrics$lf_frac_diff) &
+        (spectral_metrics$lf_frac_diff <= b$lf_frac_tol)
 
-        reg_power_ok <- abs(p_sim_reg - rep(p_obs_reg, each = n_rlz)) <= (b$wavelet_region_tol * rep(p_obs_reg, each = n_rlz))
-        reg_power_ok <- matrix(reg_power_ok, nrow = n_rlz)
-
-        reg_contrast_ok <- abs(C_sim_reg - matrix(rep(c_obs_reg, each = n_rlz), nrow = n_rlz)) <=
-          (b$wavelet_contrast_tol * matrix(rep(c_obs_reg, each = n_rlz), nrow = n_rlz))
-
-        reg_ok <- reg_power_ok & reg_contrast_ok
-        frac_ok <- rowMeans(reg_ok)
-
-        pass_wavelet <- frac_ok >= b$sig_frac
-
-        if (isTRUE(b$wavelet_require_presence) && !is.null(presence_rpad)) {
-          pass_wavelet <- pass_wavelet & as.logical(presence_rpad)
-        }
+      # Criterion 3: peak matching
+      if (isTRUE(b$peak_match_enabled) && !is.null(spectral_metrics$peak_match_frac)) {
+        pass_peak <- is.finite(spectral_metrics$peak_match_frac) &
+          (spectral_metrics$peak_match_frac >= b$peak_match_frac_min)
+      } else {
+        pass_peak <- rep(TRUE, n_rlz)
       }
+
+      pass_wavelet <- pass_cor & pass_lf & pass_peak
     }
 
     list(
@@ -344,7 +349,7 @@ filter_warm_pool <- function(
       bounds = b,
       tail_metrics = tail_stats,
       wavelet_active = wavelet_active,
-      wavelet_pars = wavelet_args,
+      spectral_diag = spectral_diag,
       note = "Initial evaluation."
     )
   }
@@ -393,7 +398,7 @@ filter_warm_pool <- function(
         bounds = b,
         tail_metrics = tail_stats,
         wavelet_active = wavelet_active,
-        wavelet_pars = wavelet_args,
+        spectral_diag = spectral_diag,
         note = note
       )
     }
@@ -417,10 +422,8 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   # Select from pool
   # ---------------------------------------------------------------------------
-
-
   .log("Selecting {format(n_select, big.mark = ',')} from pool of {format(length(pool_idx), big.mark = ',')}",
-    tag = "FILTER", verbose = verbose)
+       tag = "FILTER", verbose = verbose)
 
   idx_select <- if (length(pool_idx) == n_select) pool_idx else sample(pool_idx, size = n_select, replace = FALSE)
 
@@ -453,7 +456,7 @@ filter_warm_pool <- function(
   }
 
   # ---------------------------------------------------------------------------
-  # plots
+  # Plots
   # ---------------------------------------------------------------------------
   plots_out <- NULL
   if (make_plots) {
@@ -466,16 +469,16 @@ filter_warm_pool <- function(
     } else {
 
       plots_out <- plot_filter_diagnostics(
-        obs_series   = obs_use,
-        sim_series   = sim_use,
-        pool         = idx_select,
+        obs_series    = obs_use,
+        sim_series    = sim_use,
+        pool          = idx_select,
         rel_diff_mean = mean_rel_diff,
         rel_diff_sd   = sd_rel_diff,
         tail_metrics  = tail_stats,
         power_period  = period,
-        power_obs     = obs_power,
-        power_signif  = signif_unmasked,
-        gws_cache     = wavelet_results$gws_cache_unmasked,
+        power_obs     = gws_obs,
+        power_signif  = gws_signif,
+        gws_cache     = gws_cache,
         wavelet_q     = b$plot_wavelet_q
       )
     }
@@ -498,6 +501,8 @@ filter_warm_pool <- function(
       pool_idx = pool_idx,
       selected_idx = idx_select,
       relax_log = relax_log,
+      spectral_diag = spectral_diag,
+      spectral_metrics = spectral_metrics,
       final_bounds = as.list(b)
     ),
     plots = plots_out
@@ -506,7 +511,7 @@ filter_warm_pool <- function(
 
 
 # ==============================================================================
-# Helper Functions (snake_case keys + args)
+# Default Bounds
 # ==============================================================================
 
 #' WARM filtering default bounds
@@ -517,6 +522,7 @@ filter_warm_pool <- function(
 #'
 #' @return Named list of defaults (snake_case keys).
 #' @keywords internal
+#' @export
 filter_warm_bounds_defaults <- function() {
   list(
     # --- distributional tolerances (relative diff) ---
@@ -529,19 +535,23 @@ filter_warm_bounds_defaults <- function() {
     tail_tol_log = log(1.03),
     tail_eps     = 1e-5,
 
-    # --- wavelet (observed-relevant regions) ---
-    sig_frac                = 0.60,
-    wavelet_region_tol      = 0.50,
-    wavelet_contrast_tol    = 0.30,
-    wavelet_min_bg          = 1e-12,
-    wavelet_require_presence = TRUE,
-    wavelet_presence_frac   = NULL,
+    # --- spectral matching (primary criteria) ---
+    spectral_cor_min = 0.60,  # Min correlation of log-GWS
+    lf_frac_tol      = 0.25, # Max relative diff in LF variance fraction
+    spectral_eps     = 1e-10,
+
+    # --- peak matching ---
+    peak_match_enabled   = TRUE,
+    peak_match_frac_min  = 1.0,  # At least 50% of observed peaks must match
+    n_top_peaks          = 2L,    # Number of prominent peaks to detect
+    peak_prominence_frac = 0.10,  # Min prominence as fraction of max power
+    peak_period_tol      = 0.50,   # Period tolerance in log2 scale (octaves)
 
     # --- plotting diagnostics ---
     plot_wavelet_q = c(0.50, 0.95),
 
     # --- relaxation controls ---
-    relax_mult = 1.25,
+    relax_mult     = 1.25,
     relax_mean_max = 0.25,
     relax_sd_max   = 0.25,
 
@@ -550,16 +560,403 @@ filter_warm_bounds_defaults <- function() {
     relax_tail_p_low_max   = 0.40,
     relax_tail_p_high_min  = 0.40,
 
-    relax_wavelet_sig_frac_step     = 0.05,
-    relax_wavelet_sig_frac_min      = 0.30,
-    relax_wavelet_region_tol_step   = 0.10,
-    relax_wavelet_region_tol_max    = 1.00,
-    relax_wavelet_contrast_tol_step = 0.10,
-    relax_wavelet_contrast_tol_max  = 1.00,
+    # Spectral relaxation
+    relax_spectral_cor_step     = 0.05,
+    relax_spectral_cor_min      = 0.30,
+    relax_lf_frac_tol_step      = 0.10,
+    relax_lf_frac_tol_max       = 0.60,
+    relax_peak_match_frac_step  = 0.10,
+    relax_peak_match_frac_min   = 0.00,
 
     relax_max_iter = 20L
   )
 }
+
+
+# ==============================================================================
+# Spectral Matching Metrics
+# ==============================================================================
+
+#' Find local maxima (peaks) in a numeric vector
+#'
+#' @description
+#' Identifies indices of local maxima in a vector.
+#'
+#' @param x Numeric vector.
+#' @param strict Logical. If TRUE, requires strict inequality on both sides.
+#'
+#' @return Integer vector of peak indices.
+#' @keywords internal
+find_local_maxima <- function(x, strict = TRUE) {
+  n <- length(x)
+  if (n < 3L) return(integer(0))
+
+  peaks <- integer(0)
+  for (i in 2:(n - 1)) {
+    if (strict) {
+      if (x[i] > x[i - 1] && x[i] > x[i + 1]) {
+        peaks <- c(peaks, i)
+      }
+    } else {
+      if (x[i] >= x[i - 1] && x[i] >= x[i + 1] && (x[i] > x[i - 1] || x[i] > x[i + 1])) {
+        peaks <- c(peaks, i)
+      }
+    }
+  }
+  peaks
+}
+
+
+#' Identify prominent peaks in observed GWS
+#'
+#' @description
+#' Finds the top N peaks in the observed global wavelet spectrum that exceed
+#' a prominence threshold (relative to the mean power).
+#'
+#' @param gws Numeric vector. Global wavelet spectrum.
+#' @param period Numeric vector. Corresponding periods.
+#' @param n_top Integer. Maximum number of peaks to return.
+#' @param prominence_frac Numeric. Minimum prominence as fraction of max power.
+#'
+#' @return Data frame with columns: idx, period, power, prominence.
+#' @keywords internal
+identify_prominent_peaks <- function(gws, period, n_top = 3, prominence_frac = 0.10) {
+
+  if (length(gws) < 3 || all(!is.finite(gws))) {
+    return(data.frame(idx = integer(0), period = numeric(0),
+                      power = numeric(0), prominence = numeric(0)))
+  }
+
+  gws_clean <- fill_nearest(gws)
+  peak_idx <- find_local_maxima(gws_clean, strict = FALSE)
+
+  if (length(peak_idx) == 0) {
+    # No local maxima found - use global maximum
+    max_idx <- which.max(gws_clean)
+    return(data.frame(idx = max_idx, period = period[max_idx],
+                      power = gws_clean[max_idx], prominence = 1.0))
+  }
+
+  # Compute prominence for each peak
+  mean_power <- mean(gws_clean, na.rm = TRUE)
+  max_power <- max(gws_clean, na.rm = TRUE)
+  min_threshold <- prominence_frac * max_power
+
+  prominences <- numeric(length(peak_idx))
+  for (i in seq_along(peak_idx)) {
+    pi <- peak_idx[i]
+    peak_val <- gws_clean[pi]
+
+    # Find lowest point between this peak and neighbors
+    left_min <- if (pi > 1) min(gws_clean[1:(pi - 1)], na.rm = TRUE) else peak_val
+    right_min <- if (pi < length(gws_clean)) min(gws_clean[(pi + 1):length(gws_clean)], na.rm = TRUE) else peak_val
+
+    # Prominence is height above the higher of the two valleys
+    base <- max(left_min, right_min)
+    prominences[i] <- peak_val - base
+  }
+
+  # Filter by prominence and sort by power
+  keep <- prominences >= min_threshold & gws_clean[peak_idx] >= min_threshold
+  if (!any(keep)) {
+    # Keep at least the highest peak
+    keep[which.max(gws_clean[peak_idx])] <- TRUE
+  }
+
+  peak_idx <- peak_idx[keep]
+  prominences <- prominences[keep]
+
+  # Sort by power (descending) and take top N
+  ord <- order(gws_clean[peak_idx], decreasing = TRUE)
+  peak_idx <- peak_idx[ord]
+  prominences <- prominences[ord]
+
+  n_keep <- min(n_top, length(peak_idx))
+  peak_idx <- peak_idx[seq_len(n_keep)]
+  prominences <- prominences[seq_len(n_keep)]
+
+  data.frame(
+    idx = peak_idx,
+    period = period[peak_idx],
+    power = gws_clean[peak_idx],
+    prominence = prominences
+  )
+}
+
+
+#' Check if simulated spectrum matches observed peaks
+#'
+#' @description
+#' For each observed peak, checks if the simulated spectrum has elevated power
+#' at or near that period.
+#'
+#' @param gws_sim Numeric vector. Simulated GWS.
+#' @param gws_obs Numeric vector. Observed GWS.
+#' @param period Numeric vector. Periods.
+#' @param obs_peaks Data frame. Observed peak information from identify_prominent_peaks.
+#' @param period_tol Numeric. Relative tolerance for period matching (log2 scale).
+#'
+#' @return Numeric. Fraction of observed peaks matched (0 to 1).
+#' @keywords internal
+compute_peak_match_fraction <- function(gws_sim, gws_obs, period, obs_peaks, period_tol = 0.5) {
+
+  if (nrow(obs_peaks) == 0) return(1.0)
+
+  gws_sim_clean <- fill_nearest(gws_sim)
+  n_matched <- 0L
+
+  for (i in seq_len(nrow(obs_peaks))) {
+    obs_period <- obs_peaks$period[i]
+    obs_power <- obs_peaks$power[i]
+
+    # Find periods within tolerance (in log2 scale)
+    log2_diff <- abs(log2(period) - log2(obs_period))
+    within_tol <- which(log2_diff <= period_tol)
+
+    if (length(within_tol) > 0) {
+      # Check if simulated power in this region is reasonably elevated
+      sim_power_region <- max(gws_sim_clean[within_tol], na.rm = TRUE)
+
+      # Match if simulated power is at least 50% of observed peak power
+      # OR if it's a local maximum in the region
+      if (sim_power_region >= 0.5 * obs_power) {
+        n_matched <- n_matched + 1L
+      } else {
+        # Check if there's a local maximum in the region
+        region_max_idx <- within_tol[which.max(gws_sim_clean[within_tol])]
+        neighbors <- c(region_max_idx - 1L, region_max_idx + 1L)
+        neighbors <- neighbors[neighbors >= 1 & neighbors <= length(gws_sim_clean)]
+
+        if (length(neighbors) > 0 && all(gws_sim_clean[region_max_idx] >= gws_sim_clean[neighbors])) {
+          n_matched <- n_matched + 1L
+        }
+      }
+    }
+  }
+
+  n_matched / nrow(obs_peaks)
+}
+
+
+#' Compute spectral matching metrics for a single realization
+#'
+#' @description
+#' Computes direct spectral matching metrics between observed and simulated
+#' global wavelet spectra, focusing on reproducing observed low-frequency
+#' structure and dominant peaks.
+#'
+#' @param gws_obs Numeric vector. Observed global wavelet spectrum.
+#' @param gws_sim Numeric vector. Simulated global wavelet spectrum (same length).
+#' @param period Numeric vector. Periods corresponding to GWS values.
+#' @param lf_period_threshold Numeric. Period threshold defining low-frequency.
+#' @param obs_peaks Data frame. Observed peaks from identify_prominent_peaks.
+#' @param peak_period_tol Numeric. Period tolerance for peak matching.
+#' @param eps Numeric. Small constant for log stability.
+#'
+#' @return Named list with spectral matching metrics.
+#' @keywords internal
+compute_spectral_match_single <- function(gws_obs, gws_sim, period,
+                                          lf_period_threshold, obs_peaks,
+                                          peak_period_tol = 0.5, eps = 1e-10) {
+
+  gws_obs <- pmax(as.numeric(gws_obs), eps)
+  gws_sim <- pmax(as.numeric(gws_sim), eps)
+
+  # 1. Spectral shape correlation (log-space)
+  log_obs <- log(gws_obs)
+  log_sim <- log(gws_sim)
+
+  ok <- is.finite(log_obs) & is.finite(log_sim)
+  if (sum(ok) < 3L) {
+    spectral_cor <- NA_real_
+  } else {
+    spectral_cor <- stats::cor(log_sim[ok], log_obs[ok])
+  }
+
+  # 2. Low-frequency variance fraction matching
+  lf_idx <- which(period >= lf_period_threshold)
+  total_obs <- sum(gws_obs, na.rm = TRUE)
+  total_sim <- sum(gws_sim, na.rm = TRUE)
+
+  if (length(lf_idx) > 0 && total_obs > eps && total_sim > eps) {
+    lf_frac_obs <- sum(gws_obs[lf_idx], na.rm = TRUE) / total_obs
+    lf_frac_sim <- sum(gws_sim[lf_idx], na.rm = TRUE) / total_sim
+    lf_frac_diff <- abs(lf_frac_sim - lf_frac_obs) / max(lf_frac_obs, eps)
+  } else {
+    lf_frac_obs <- NA_real_
+    lf_frac_sim <- NA_real_
+    lf_frac_diff <- NA_real_
+  }
+
+  # 3. Peak matching
+  peak_match_frac <- compute_peak_match_fraction(
+    gws_sim = gws_sim,
+    gws_obs = gws_obs,
+    period = period,
+    obs_peaks = obs_peaks,
+    period_tol = peak_period_tol
+  )
+
+  list(
+    spectral_cor = spectral_cor,
+    lf_frac_obs = lf_frac_obs,
+    lf_frac_sim = lf_frac_sim,
+    lf_frac_diff = lf_frac_diff,
+    peak_match_frac = peak_match_frac
+  )
+}
+
+
+#' Compute spectral metrics for all realizations
+#'
+#' @description
+#' Performs wavelet analysis on observed series and all simulated realizations,
+#' then computes spectral matching metrics for filtering.
+#'
+#' @param obs_use Numeric vector. Observed values.
+#' @param sim_series_stats Numeric matrix. Simulated values (n_use x n_realizations).
+#' @param wavelet_pars List of wavelet parameters (signif_level, noise_type, etc.).
+#' @param modwt_n_levels Integer or NULL. MODWT levels from WARM. If NULL, estimated.
+#' @param n_top_peaks Integer. Number of top peaks to match.
+#' @param peak_prominence_frac Numeric. Minimum prominence for peak detection.
+#' @param peak_period_tol Numeric. Period tolerance for peak matching.
+#' @param eps Numeric. Small constant for stability.
+#'
+#' @return List with spectral filter diagnostics, metrics, and cached spectra.
+#' @keywords internal
+#' @export
+compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
+                                     modwt_n_levels = NULL,
+                                     n_top_peaks = 3L,
+                                     peak_prominence_frac = 0.10,
+                                     peak_period_tol = 0.50,
+                                     eps = 1e-10) {
+
+  n_use <- length(obs_use)
+  n_realizations <- ncol(sim_series_stats)
+
+  # Estimate MODWT levels if not provided
+  if (is.null(modwt_n_levels) || !is.finite(modwt_n_levels) || modwt_n_levels < 1) {
+    modwt_n_levels <- max(2L, floor(log2(n_use)) - 1L)
+  }
+  modwt_n_levels <- as.integer(modwt_n_levels)
+
+  # Low-frequency threshold: periods >= 2^J (smooth component threshold)
+  lf_period_threshold <- 2^modwt_n_levels
+
+  # Observed wavelet analysis
+  wv_obs <- analyze_wavelet_spectrum(
+    obs_use,
+    signif = wavelet_pars$signif_level,
+    noise = wavelet_pars$noise_type,
+    min_period = wavelet_pars$period_lower_limit,
+    detrend = isTRUE(wavelet_pars$detrend),
+    mode = "fast"
+  )
+
+  if (is.null(wv_obs$period) || !is.numeric(wv_obs$period)) {
+    stop("analyze_wavelet_spectrum(obs) must return numeric $period.", call. = FALSE)
+  }
+
+  period <- as.numeric(wv_obs$period)
+
+  # Use unmasked GWS for matching
+  gws_obs <- if (!is.null(wv_obs$gws_unmasked) && is.numeric(wv_obs$gws_unmasked)) {
+    as.numeric(wv_obs$gws_unmasked)
+  } else {
+    as.numeric(wv_obs$gws)
+  }
+
+  gws_signif <- wv_obs$gws_signif_unmasked
+  if (is.null(gws_signif)) gws_signif <- wv_obs$gws_signif
+
+  # Ensure matching lengths
+  if (length(gws_obs) != length(period)) {
+    gws_obs <- gws_regrid(wv_obs, period, use_unmasked = TRUE)
+  }
+
+  gws_obs <- fill_nearest(gws_obs)
+
+  # Identify prominent peaks in observed spectrum
+  obs_peaks <- identify_prominent_peaks(
+    gws = gws_obs,
+    period = period,
+    n_top = n_top_peaks,
+    prominence_frac = peak_prominence_frac
+  )
+
+  # Cache simulated GWS and compute metrics
+  gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
+
+  spectral_cor    <- rep(NA_real_, n_realizations)
+  lf_frac_obs_vec <- rep(NA_real_, n_realizations)
+  lf_frac_sim_vec <- rep(NA_real_, n_realizations)
+  lf_frac_diff    <- rep(NA_real_, n_realizations)
+  peak_match_frac <- rep(NA_real_, n_realizations)
+
+  for (j in seq_len(n_realizations)) {
+    wv_sim <- analyze_wavelet_spectrum(
+      sim_series_stats[, j],
+      signif = wavelet_pars$signif_level,
+      noise = wavelet_pars$noise_type,
+      min_period = wavelet_pars$period_lower_limit,
+      detrend = isTRUE(wavelet_pars$detrend),
+      mode = "fast"
+    )
+
+    gws_sim <- gws_regrid(wv_sim, period, use_unmasked = TRUE)
+    gws_sim <- fill_nearest(gws_sim)
+    gws_cache[, j] <- gws_sim
+
+    m <- compute_spectral_match_single(
+      gws_obs = gws_obs,
+      gws_sim = gws_sim,
+      period = period,
+      lf_period_threshold = lf_period_threshold,
+      obs_peaks = obs_peaks,
+      peak_period_tol = peak_period_tol,
+      eps = eps
+    )
+
+    spectral_cor[j]    <- m$spectral_cor
+    lf_frac_obs_vec[j] <- m$lf_frac_obs
+    lf_frac_sim_vec[j] <- m$lf_frac_sim
+    lf_frac_diff[j]    <- m$lf_frac_diff
+    peak_match_frac[j] <- m$peak_match_frac
+  }
+
+  # Diagnostics
+  spectral_diag <- list(
+    modwt_n_levels = modwt_n_levels,
+    lf_period_threshold = lf_period_threshold,
+    n_periods = length(period),
+    obs_peaks = obs_peaks,
+    gws_obs_summary = c(min = min(gws_obs, na.rm = TRUE),
+                        median = stats::median(gws_obs, na.rm = TRUE),
+                        max = max(gws_obs, na.rm = TRUE))
+  )
+
+  list(
+    active = TRUE,
+    period = period,
+    gws_obs = gws_obs,
+    gws_signif = gws_signif,
+    gws_cache = gws_cache,
+    metrics = list(
+      spectral_cor = spectral_cor,
+      lf_frac_obs = lf_frac_obs_vec,
+      lf_frac_sim = lf_frac_sim_vec,
+      lf_frac_diff = lf_frac_diff,
+      peak_match_frac = peak_match_frac
+    ),
+    diagnostics = spectral_diag
+  )
+}
+
+
+# ==============================================================================
+# Tail-mass Metrics
+# ==============================================================================
 
 #' Compute tail-mass metrics for filtering
 #'
@@ -640,171 +1037,10 @@ compute_tailmass_metrics <- function(obs_use, sim_series_stats,
   )
 }
 
-#' Compute wavelet metrics for all realizations
-#'
-#' @description
-#' performs wavelet analysis on observed series and all simulated realizations.
-#' Identifies significant periods, computes regional power and contrast metrics,
-#' and caches both masked (for filtering) and unmasked (for plotting) GWS.
-#'
-#' @param obs_use Numeric vector of observed values.
-#' @param sim_series_stats Numeric matrix of simulated values.
-#' @param wavelet_pars List of wavelet parameters (signif_level, noise_type, etc.).
-#' @param padding Logical for period padding.
-#' @param min_bg Minimum background power threshold.
-#'
-#' @return List with wavelet filter diagnostics and cached spectra.
-#' @keywords internal
-#' @export
-compute_wavelet_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
-                                    padding, min_bg) {
 
-  n_realizations <- ncol(sim_series_stats)
-
-  # Observed wavelet analysis
-  wv_obs <- analyze_wavelet_spectrum(
-    obs_use,
-    signif = wavelet_pars$signif_level,
-    noise = wavelet_pars$noise_type,
-    min_period = wavelet_pars$period_lower_limit,
-    detrend = isTRUE(wavelet_pars$detrend),
-    mode = "fast"
-  )
-
-  if (is.null(wv_obs$period) || !is.numeric(wv_obs$period)) {
-    stop("analyze_wavelet_spectrum(obs) must return numeric $period.", call. = FALSE)
-  }
-  if (is.null(wv_obs$gws) || !is.numeric(wv_obs$gws)) {
-    stop("analyze_wavelet_spectrum(obs) must return numeric $gws.", call. = FALSE)
-  }
-
-  power_period <- as.numeric(wv_obs$period)
-
-  # Use unmasked observed GWS when available
-  power_obs <- if (!is.null(wv_obs$gws_unmasked) && is.numeric(wv_obs$gws_unmasked)) {
-    as.numeric(wv_obs$gws_unmasked)
-  } else {
-    as.numeric(wv_obs$gws)
-  }
-
-  power_signif <- wv_obs$gws_signif
-  power_signif_unmasked <- wv_obs$gws_signif_unmasked
-
-  if (length(power_obs) != length(power_period)) {
-    power_obs <- gws_regrid(wv_obs, power_period, use_unmasked = TRUE)
-  }
-  if (length(power_signif) != length(power_period)) {
-    stop("Observed significance curve length does not match observed period.", call. = FALSE)
-  }
-
-  signif_grid <- fill_nearest(as.numeric(power_signif))
-  gws_obs_grid <- fill_nearest(as.numeric(power_obs))
-
-  R_obs <- gws_obs_grid / signif_grid
-  periods_sig_core <- which(is.finite(R_obs) & (R_obs > 1))
-
-  split_regions <- function(idx) {
-    idx <- sort(unique(as.integer(idx)))
-    if (length(idx) == 0) return(list())
-    brk <- c(TRUE, diff(idx) != 1L)
-    split(idx, cumsum(brk))
-  }
-
-  wavelet_active <- TRUE
-  wavelet_diag <- list(
-    power_period = power_period,
-    power_obs = power_obs,
-    power_signif = power_signif,
-    periods_sig_core = periods_sig_core,
-    regions = list(),
-    p_obs_reg = numeric(0),
-    c_obs_reg = numeric(0)
-  )
-
-  p_sim_reg <- NULL
-  p_sim_bg  <- NULL
-  presence_rpad <- NULL
-
-  # ALWAYS cache
-  gws_cache <- matrix(NA_real_, nrow = length(power_period), ncol = n_realizations)
-  gws_cache_unmasked <- matrix(NA_real_, nrow = length(power_period), ncol = n_realizations)
-
-  for (j in seq_len(n_realizations)) {
-    wv <- analyze_wavelet_spectrum(
-      sim_series_stats[, j],
-      signif = wavelet_pars$signif_level,
-      noise = wavelet_pars$noise_type,
-      min_period = wavelet_pars$period_lower_limit,
-      detrend = isTRUE(wavelet_pars$detrend),
-      mode = "fast"
-    )
-
-    gws_cache[, j] <- gws_regrid(wv, power_period, use_unmasked = FALSE)
-    gws_cache_unmasked[, j] <- gws_regrid(wv, power_period, use_unmasked = TRUE)
-  }
-
-  if (length(periods_sig_core) == 0) {
-    wavelet_active <- FALSE
-  } else {
-    regions <- split_regions(periods_sig_core)
-    n_regions <- length(regions)
-
-    core_union <- sort(unique(unlist(regions, use.names = FALSE)))
-    bg_idx <- setdiff(seq_along(power_period), core_union)
-
-    p_obs_reg <- vapply(regions, function(ii) sum(gws_obs_grid[ii], na.rm = TRUE), FUN.VALUE = numeric(1))
-    p_obs_bg <- max(sum(gws_obs_grid[bg_idx], na.rm = TRUE), min_bg)
-    c_obs_reg <- p_obs_reg / p_obs_bg
-
-    periods_sig_pad <- periods_sig_core
-    if (isTRUE(padding)) {
-      n_periods <- length(power_period)
-      periods_sig_pad <- unique(sort(c(
-        pmax(periods_sig_core - 1L, 1L),
-        periods_sig_core,
-        pmin(periods_sig_core + 1L, n_periods)
-      )))
-    }
-
-    p_sim_reg <- matrix(NA_real_, nrow = n_realizations, ncol = n_regions)
-    p_sim_bg  <- rep(NA_real_, n_realizations)
-    presence_rpad <- rep(FALSE, n_realizations)
-
-    for (j in seq_len(n_realizations)) {
-      gj_masked <- gws_cache[, j]
-
-      bg <- max(sum(gj_masked[bg_idx], na.rm = TRUE), min_bg)
-      p_sim_bg[j] <- bg
-
-      for (r in seq_len(n_regions)) {
-        p_sim_reg[j, r] <- sum(gj_masked[regions[[r]]], na.rm = TRUE)
-      }
-
-      rpad <- gj_masked[periods_sig_pad] / signif_grid[periods_sig_pad]
-      presence_rpad[j] <- any(is.finite(rpad) & (rpad > 1))
-    }
-
-    wavelet_diag$regions <- regions
-    wavelet_diag$p_obs_reg <- p_obs_reg
-    wavelet_diag$c_obs_reg <- c_obs_reg
-    wavelet_diag$bg_idx <- bg_idx
-    wavelet_diag$periods_sig_pad <- periods_sig_pad
-  }
-
-  list(
-    active = wavelet_active,
-    diagnostics = wavelet_diag,
-    power_period = power_period,
-    power_obs = power_obs,
-    power_signif = power_signif,
-    power_signif_unmasked = power_signif_unmasked,
-    p_sim_reg = p_sim_reg,
-    p_sim_bg = p_sim_bg,
-    presence_rpad = presence_rpad,
-    gws_cache = gws_cache,
-    gws_cache_unmasked = gws_cache_unmasked
-  )
-}
+# ==============================================================================
+# Relaxation Logic
+# ==============================================================================
 
 #' Relax bounds for one filter
 #'
@@ -879,39 +1115,52 @@ relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
 
     if (!isTRUE(wavelet_active)) {
       msg <- "wavelet already inactive"
-    } else if (b$sig_frac > b$relax_wavelet_sig_frac_min + 1e-15) {
-      old <- b$sig_frac
-      b$sig_frac <- max(b$sig_frac - b$relax_wavelet_sig_frac_step, b$relax_wavelet_sig_frac_min)
+
+    } else if (b$spectral_cor_min > b$relax_spectral_cor_min + 1e-15) {
+      # First relax: spectral correlation threshold
+      old <- b$spectral_cor_min
+      b$spectral_cor_min <- max(b$spectral_cor_min - b$relax_spectral_cor_step,
+                                b$relax_spectral_cor_min)
       changed <- TRUE
-      msg <- sprintf("sig_frac %.2f -> %.2f", old, b$sig_frac)
-    } else if (b$wavelet_region_tol < b$relax_wavelet_region_tol_max - 1e-15) {
-      old <- b$wavelet_region_tol
-      b$wavelet_region_tol <- min(b$wavelet_region_tol + b$relax_wavelet_region_tol_step,
-                                  b$relax_wavelet_region_tol_max)
+      msg <- sprintf("spectral_cor_min %.2f -> %.2f", old, b$spectral_cor_min)
+
+    } else if (b$lf_frac_tol < b$relax_lf_frac_tol_max - 1e-15) {
+      # Second relax: LF fraction tolerance
+      old <- b$lf_frac_tol
+      b$lf_frac_tol <- min(b$lf_frac_tol + b$relax_lf_frac_tol_step,
+                           b$relax_lf_frac_tol_max)
       changed <- TRUE
-      msg <- sprintf("wavelet_region_tol %.2f -> %.2f", old, b$wavelet_region_tol)
-    } else if (b$wavelet_contrast_tol < b$relax_wavelet_contrast_tol_max - 1e-15) {
-      old <- b$wavelet_contrast_tol
-      b$wavelet_contrast_tol <- min(b$wavelet_contrast_tol + b$relax_wavelet_contrast_tol_step,
-                                    b$relax_wavelet_contrast_tol_max)
+      msg <- sprintf("lf_frac_tol %.2f -> %.2f", old, b$lf_frac_tol)
+
+    } else if (isTRUE(b$peak_match_enabled) &&
+               b$peak_match_frac_min > b$relax_peak_match_frac_min + 1e-15) {
+      # Third relax: peak match fraction
+      old <- b$peak_match_frac_min
+      b$peak_match_frac_min <- max(b$peak_match_frac_min - b$relax_peak_match_frac_step,
+                                   b$relax_peak_match_frac_min)
       changed <- TRUE
-      msg <- sprintf("wavelet_contrast_tol %.2f -> %.2f", old, b$wavelet_contrast_tol)
-    } else if (isTRUE(b$wavelet_require_presence)) {
-      b$wavelet_require_presence <- FALSE
+      msg <- sprintf("peak_match_frac_min %.2f -> %.2f", old, b$peak_match_frac_min)
+
+    } else if (isTRUE(b$peak_match_enabled)) {
+      # Fourth relax: disable peak matching
+      b$peak_match_enabled <- FALSE
       changed <- TRUE
-      msg <- "wavelet_require_presence TRUE -> FALSE"
+      msg <- "peak_match_enabled TRUE -> FALSE"
+
     } else {
+      # Final: disable wavelet filter entirely
       assign("wavelet_active", FALSE, envir = wavelet_active_env)
       changed <- TRUE
-      msg <- "wavelet disabled"
+      msg <- "wavelet filter disabled"
     }
   }
 
   list(changed = changed, msg = msg)
 }
 
+
 # ==============================================================================
-# Logging helpers: only changed criteria_string_compact() to snake_case bounds keys
+# Logging Helpers
 # ==============================================================================
 
 #' Compact criteria string for a filter
@@ -919,7 +1168,7 @@ relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
 #' @keywords internal
 #' @export
 criteria_string_compact <- function(filter_name, bounds, tail_metrics,
-                                    wavelet_active, wavelet_pars) {
+                                    wavelet_active, spectral_diag) {
 
   if (filter_name == "mean") return(sprintf("tol = %.4f", bounds$mean))
   if (filter_name == "sd")   return(sprintf("tol = %.4f", bounds$sd))
@@ -934,29 +1183,23 @@ criteria_string_compact <- function(filter_name, bounds, tail_metrics,
 
   if (filter_name == "wavelet") {
     if (!isTRUE(wavelet_active)) return("inactive")
-    return(sprintf("sig_frac >= %.2f", bounds$sig_frac))
+
+    peak_str <- if (isTRUE(bounds$peak_match_enabled)) {
+      sprintf(", pk>=%.0f%%", bounds$peak_match_frac_min * 100)
+    } else {
+      ""
+    }
+
+    return(sprintf("cor>=%.2f, lf<=%.2f%s",
+                   bounds$spectral_cor_min, bounds$lf_frac_tol, peak_str))
   }
 
   "NA"
 }
 
 
-# ==============================================================================
-# Logging helpers for filter_warm_pool()
-# ==============================================================================
-
 #' Log initial setup information
 #'
-#' @description
-#' Internal helper. Displays general information at the start of filtering.
-#'
-#' @param n_obs Integer scalar. Number of observations in observed series.
-#' @param n_sim Integer scalar. Number of years in simulated series used after windowing.
-#' @param n_realizations Integer scalar. Number of candidate realizations.
-#' @param sample_target Integer scalar. Target number to select.
-#' @param relax_priority Character vector. Relaxation priority vector.
-#'
-#' @return Invisibly returns NULL.
 #' @keywords internal
 log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, relax_priority) {
 
@@ -973,26 +1216,12 @@ log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, rel
   invisible(NULL)
 }
 
+
 #' Log filter iteration details
 #'
-#' @description
-#' Internal helper. Prints iteration diagnostics in a compact table-like format.
-#'
-#' @param iter Integer scalar. Iteration number.
-#' @param passes Named list of logical vectors. Per-filter pass vectors.
-#' @param pool Integer vector. Pool indices passing all active filters.
-#' @param n_total Integer scalar. Total number of realizations.
-#' @param target Integer scalar. Target pool size.
-#' @param bounds Environment or list of bounds.
-#' @param tail_metrics List. Tail metrics used for criteria display.
-#' @param wavelet_active Logical scalar.
-#' @param wavelet_pars List. Wavelet parameter list.
-#' @param note Optional character scalar.
-#'
-#' @return Invisibly returns NULL.
 #' @keywords internal
 log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
-                                 tail_metrics, wavelet_active, wavelet_pars,
+                                 tail_metrics, wavelet_active, spectral_diag,
                                  note = NULL) {
 
   active <- names(passes)[!vapply(passes, is.null, logical(1))]
@@ -1016,14 +1245,14 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
   show_filters <- intersect(filter_order, active)
 
   if (length(show_filters) > 0) {
-    .log("[FILTER] {sprintf('%-12s %10s %8s  %-30s', 'Filter', 'Passed', 'Rate', 'Criteria')}")
+    .log("[FILTER] {sprintf('%-12s %10s %8s  %-40s', 'Filter', 'Passed', 'Rate', 'Criteria')}")
     .log("[FILTER] ---------------------------------------------------------------------------")
 
     for (nm in show_filters) {
       n_pass <- sum(passes[[nm]])
       rate <- 100 * mean(passes[[nm]])
-      crit <- criteria_string_compact(nm, bounds, tail_metrics, wavelet_active, wavelet_pars)
-      .log("[FILTER] {sprintf('%-12s %10s %7.1f%%  %-30s', nm, format(n_pass, big.mark = ','), rate, crit)}")
+      crit <- criteria_string_compact(nm, bounds, tail_metrics, wavelet_active, spectral_diag)
+      .log("[FILTER] {sprintf('%-12s %10s %7.1f%%  %-40s', nm, format(n_pass, big.mark = ','), rate, crit)}")
     }
     .log("[FILTER] ---------------------------------------------------------------------------")
   }
@@ -1036,17 +1265,9 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
   invisible(NULL)
 }
 
+
 #' Log final filtering summary
 #'
-#' @description
-#' Internal helper. Displays final filtering results.
-#'
-#' @param pool_size Integer scalar. Final pool size.
-#' @param n_total Integer scalar. Total realizations.
-#' @param n_sampled Integer scalar. Number sampled.
-#' @param relaxation_level Character scalar. Selection mode / relaxation level reached.
-#'
-#' @return Invisibly returns NULL.
 #' @keywords internal
 log_final_summary <- function(pool_size, n_total, n_sampled, relaxation_level) {
 

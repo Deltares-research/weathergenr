@@ -6,19 +6,7 @@
 \usage{
 log_final_summary(pool_size, n_total, n_sampled, relaxation_level)
 }
-\arguments{
-\item{pool_size}{Integer scalar. Final pool size.}
-
-\item{n_total}{Integer scalar. Total realizations.}
-
-\item{n_sampled}{Integer scalar. Number sampled.}
-
-\item{relaxation_level}{Character scalar. Selection mode / relaxation level reached.}
-}
-\value{
-Invisibly returns NULL.
-}
 \description{
-Internal helper. Displays final filtering results.
+Log final filtering summary
 }
 \keyword{internal}

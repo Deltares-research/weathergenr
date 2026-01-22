@@ -1,78 +1,71 @@
-# ==============================================================================
-# Wavelet Autoregressive Modeling (WARM) Simulation
-# ==============================================================================
-#
-# Stochastic simulation of time series using wavelet-decomposed components.
-#
-# Key behavior:
-# - If n < 25: bypass wavelet-component simulation and fit a simple AR/ARMA model
-#   directly to the original series (reconstructed from components if needed).
-# - Otherwise: fit ARIMA models to each wavelet component and sum simulations.
-#
-# Dependencies:
-# - forecast (auto.arima)
-# - stats (simulate, sd, var, Box.test)
-#
-# Notes:
-# - MODWT-MRA components are additive but not orthogonal; independent modeling
-#   will not preserve cross-component covariance without an external coupling step.
-# - Smooth components (names starting with "S") are constrained to AR(1) to reduce
-#   spurious low-frequency resonances on short/medium records.
-#
-# ==============================================================================
-
-
-#' Wavelet Autoregressive Modeling (WARM)
+#' Simulate synthetic series with Wavelet Autoregressive Modeling (WARM)
 #'
 #' @description
-#' Simulates synthetic series by either:
-#' \enumerate{
-#'   \item (Default, n >= 25) Modeling each wavelet component with an ARIMA model,
-#'   simulating each component forward, and summing across components; or
-#'   \item (Fallback, n < 25) Bypassing wavelet modeling and fitting a simple AR/ARMA
-#'   model directly on the original series, then simulating forward.
-#' }
+#' Generates \code{n_sim} synthetic realizations of length \code{n} based on an observed
+#' time series represented by wavelet components.
 #'
-#' @param components Matrix, data.frame, or list of numeric vectors. Wavelet components.
-#'   If \code{n < 25}, components are used only to reconstruct the original series if
-#'   \code{series_obs} is not supplied.
+#' Two operating modes are supported:
+#'
+#' - Component mode (\code{n >= bypass_n}): each wavelet component is fit with an ARIMA model,
+#'   simulated forward, and then components are summed to reconstruct synthetic series.
+#'
+#' - Bypass mode (\code{n < bypass_n}): component-level simulation is skipped. A stationary
+#'   AR/ARMA model is fit to the original series and simulated directly. This is intended
+#'   to avoid unstable low-frequency behavior on short records.
+#'
+#' @param components Matrix, data.frame, or list of numeric vectors. Wavelet components
+#'   (for example, MODWT-MRA detail and smooth components). In component mode, each component
+#'   must have length \code{n}. In bypass mode, components are only used to reconstruct the
+#'   original series if \code{series_obs} is not provided.
 #' @param n Integer. Length of each simulated series.
-#' @param n_sim Integer. Number of realizations to generate. Default is 1000.
-#' @param seed Optional integer. Base RNG seed for reproducibility.
-#' @param series_obs Optional numeric vector. Observed original series. Recommended when
-#'   \code{n < 25} so bypass-mode does not rely on reconstructing from components.
-#' @param bypass_n Integer. If \code{n < bypass_n}, bypass wavelet-component modeling and
-#'   fit AR/ARMA on the original series. Default is 25.
-#' @param match_variance Logical. If \code{TRUE} (default), rescales each simulated
-#'   component (or bypass-series) to match the observed standard deviation when the
-#'   relative difference exceeds \code{var_tol}.
-#' @param var_tol Numeric in [0, 1]. Relative tolerance used to trigger variance rescaling.
-#'   Default is 0.1 (10 percent).
-#' @param check_diagnostics Logical. If \code{TRUE}, runs simple ARIMA diagnostics (Ljung-Box)
-#'   and warns on issues. Default is \code{FALSE}.
-#' @param verbose Logical. If \code{TRUE} (default), emits informational logs.
+#' @param n_sim Integer. Number of realizations to generate. Default is \code{1000}.
+#' @param seed Optional integer. Base RNG seed for reproducibility. If provided, seeds are set
+#'   deterministically per component in component mode.
+#' @param series_obs Optional numeric vector. Observed original series. Recommended in bypass
+#'   mode so the function does not depend on reconstructing the original series from
+#'   \code{components}.
+#' @param bypass_n Integer. Threshold for bypass mode. If \code{n < bypass_n}, fit AR/ARMA
+#'   directly to the original series. Default is \code{25}.
+#' @param match_variance Logical. If \code{TRUE} (default), variance matching may be applied
+#'   to simulated outputs when relative SD mismatch exceeds \code{var_tol}.
+#' @param var_tol Numeric in [0, 1]. Relative tolerance for SD mismatch that triggers variance
+#'   rescaling. Default is \code{0.1} (10\%).
+#' @param check_diagnostics Logical. If \code{TRUE}, runs a simple residual autocorrelation
+#'   check (Ljung-Box) on fitted ARIMA models and warns if residual structure remains. Default
+#'   is \code{FALSE}.
+#' @param verbose Logical. If \code{TRUE} (default), prints informational messages.
 #'
-#' @return Numeric matrix of dimension \code{n x n_sim}. Each column is a simulated realization.
+#' @return A numeric matrix of dimension \code{n x n_sim}. Each column is a simulated realization.
 #'
 #' @details
-#' Key implementation choices (component mode, n >= bypass_n):
-#' \itemize{
-#'   \item Components are simulated independently and summed.
-#'   \item Components are centered before ARIMA fitting; the observed component mean is re-added.
-#'   \item Smooth components (names starting with \code{"S"}) are constrained to AR(1)
-#'     (\code{max.p=1, max.q=0}) to reduce spurious low-frequency oscillations.
-#'   \item Mean/drift terms are disabled in ARIMA fitting (\code{include.mean=FALSE},
-#'     \code{allowdrift=FALSE}) because components are explicitly centered.
-#'   \item If ARIMA fitting fails for a component, the component is simulated by bootstrap
-#'     resampling with replacement from the observed component values.
-#' }
+#' Component mode (\code{n >= bypass_n})
 #'
-#' Bypass mode (n < bypass_n):
-#' \itemize{
-#'   \item A simple stationary AR/ARMA model is fit to the original series.
-#'   \item The model is simulated forward using \code{stats::simulate}.
-#'   \item Optional variance matching is applied to the simulated series.
-#' }
+#' - Each component is centered prior to ARIMA fitting; the observed component mean is
+#'   re-added after simulation.
+#' - Components are simulated independently and then summed. Because MODWT-MRA components are
+#'   additive but not orthogonal, this does not preserve cross-component covariance unless an
+#'   explicit coupling step is implemented externally.
+#' - Smooth components (names starting with \code{"S"}) are constrained to AR(1)
+#'   (\code{max.p = 1, max.q = 0}) to reduce spurious low-frequency oscillations.
+#' - Mean and drift terms are disabled during fitting (\code{include.mean = FALSE},
+#'   \code{allowdrift = FALSE}) because components are explicitly centered.
+#' - If ARIMA fitting fails for a component, the function falls back to bootstrap resampling
+#'   (with replacement) from the observed component values.
+#' - If \code{match_variance = TRUE}, simulated component variance may be rescaled to match the
+#'   observed component SD when relative mismatch exceeds \code{var_tol}.
+#'
+#' Bypass mode (\code{n < bypass_n})
+#'
+#' - Fits a stationary AR/ARMA model (\code{max.p = 2, max.q = 2}) to the original series and
+#'   simulates forward using \code{stats::simulate()}.
+#' - If model fitting fails, the function falls back to bootstrap resampling from the observed
+#'   series.
+#' - Optional variance matching is applied to the simulated series when enabled.
+#'
+#' @section When to use bypass mode:
+#' Use bypass mode for short records where component-level ARIMA fits are unstable and may
+#' introduce artificial low-frequency resonance. Provide \code{series_obs} explicitly to avoid
+#' ambiguity from reconstructing the original series from \code{components}.
 #'
 #' @importFrom stats sd simulate Box.test var
 #' @importFrom forecast auto.arima

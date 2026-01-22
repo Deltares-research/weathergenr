@@ -55,8 +55,7 @@ config <- list(
   # WARM parameters
   warm_var       = "precip",     # Variable for annual wavelet analysis
   warm_signif    = 0.80,         # Wavelet significance threshold
-  warm_pool_size = 20000,        # Candidate realizations before filtering
-  warm_filter_bounds = list(),
+  warm_pool_size = 30000,        # Candidate realizations before filtering
   warm_filter_relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   # Resampling parameters
   n_realizations = 3,            # Number of synthetic series to generate
@@ -72,7 +71,53 @@ config <- list(
   parallel = FALSE,
   n_cores  = NULL,
   seed     = 1030,
-  verbose  = TRUE
+  verbose  = TRUE,
+
+  warm_filter_bounds = list(
+
+    # --- distributional tolerances (relative diff) ---
+    mean = 0.03,
+    sd   = 0.03,
+
+    # --- tail behaviour (quantile-defined tails + log-distance tol) ---
+    tail_low_p   = 0.20,
+    tail_high_p  = 0.80,
+    tail_tol_log = log(1.03),
+    tail_eps     = 1e-5,
+
+    # --- spectral matching (primary criteria) ---
+    spectral_cor_min = 0.60,  # Min correlation of log-GWS
+    lf_frac_tol      = 0.20, # Max relative diff in LF variance fraction
+    spectral_eps     = 1e-10,
+
+    # --- peak matching ---
+    peak_match_enabled   = TRUE,
+    peak_match_frac_min  = 1.0,  # At least 50% of observed peaks must match
+    n_top_peaks          = 1L,    # Number of prominent peaks to detect
+    peak_prominence_frac = 0.80,  # Min prominence as fraction of max power
+    peak_period_tol      = 0.50,   # Period tolerance in log2 scale (octaves)
+
+    # --- plotting diagnostics ---
+    plot_wavelet_q = c(0.05, 0.995),
+
+    # --- relaxation controls ---
+    relax_mult     = 1.25,
+    relax_mean_max = 0.25,
+    relax_sd_max   = 0.25,
+    relax_tail_tol_log_max = log(2.0),
+    relax_tail_p_step      = 0.02,
+    relax_tail_p_low_max   = 0.40,
+    relax_tail_p_high_min  = 0.40,
+
+    # Spectral relaxation
+    relax_spectral_cor_step     = 0.05,
+    relax_spectral_cor_min      = 0.30,
+    relax_lf_frac_tol_step      = 0.10,
+    relax_lf_frac_tol_max       = 0.60,
+    relax_peak_match_frac_step  = 0.10,
+    relax_peak_match_frac_min   = 0.00,
+    relax_max_iter = 20L
+  )
 )
 
 # =============================================================================
