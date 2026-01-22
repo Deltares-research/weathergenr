@@ -14,7 +14,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 multivariate, multisite stochastic weather generator designed for
 climate risk and stress-testing applications. The approach is
 conceptually based on the framework of Steinschneider & Brown (2013) and
-is adapted here for gridded datasets and modern NetCDF-based workflows.
+is adapted here for gridded datasets and netcdf-based workflows.
 
 The package is intended for workflows such as:
 
@@ -27,9 +27,6 @@ The package is intended for workflows such as:
 The generator represents climate variability across multiple time scales
 by coupling low-frequency climate dynamics with realistic daily weather
 sequences. It consists of three components:
-
-The generator combines low-frequency climate variability with realistic
-daily weather sequences using a three-stage approach:
 
 **1. Low-frequency climate variability (WARM)** Interannual to decadal
 variability is modeled with wavelet autoregressive methods applied to
@@ -73,7 +70,7 @@ Install the latest version from GitHub:
 
 # Getting started
 
-A quick tutorial is available here:
+A quick tutorial is available here:  
 <https://deltares-research.github.io/weathergenr/articles/getting_started.html>
 
 # References

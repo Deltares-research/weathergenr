@@ -28,7 +28,7 @@ year_start_month <- 10
 
 ### ---> FOR VECHTE DATA
 ncfile_dir   <- "C:/Users/taner/WS/Spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
-output_dir <- file.path("C:/TEMP/vechte/", year_start_month)
+out_dir <- file.path("C:/TEMP/vechte/", year_start_month)
 ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir),
     var = c("precip", "temp", "tn", "tx"),
     var_name = c(tn = "temp_min", tx = "temp_max"))
@@ -56,7 +56,8 @@ config <- list(
   warm_var       = "precip",     # Variable for annual wavelet analysis
   warm_signif    = 0.80,         # Wavelet significance threshold
   warm_pool_size = 20000,        # Candidate realizations before filtering
-
+  warm_filter_bounds = list(),
+  warm_filter_relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   # Resampling parameters
   n_realizations = 3,            # Number of synthetic series to generate
   annual_knn_n   = 100,          # K for annual KNN matching
@@ -78,6 +79,31 @@ config <- list(
 # Step 2: Generate Synthetic Weather
 # =============================================================================
 
+obs_data         = ncdata$data
+obs_grid         = ncdata$grid
+obs_dates        = ncdata$date
+vars             = config$vars
+n_years          = config$n_years
+start_year       = config$start_year
+year_start_month = config$year_start_month
+n_realizations   = config$n_realizations
+warm_var         = config$warm_var
+warm_signif      = config$warm_signif
+warm_pool_size   = config$warm_pool_size
+warm_filter_bounds = config$warm_filter_bounds
+warm_filter_relax_order = config$warm_filter_relax_order
+annual_knn_n     = config$annual_knn_n
+wet_q            = config$wet_q
+extreme_q        = config$extreme_q
+dry_spell_factor = config$dry_spell_factor
+wet_spell_factor = config$wet_spell_factor
+out_dir          = out_dir
+parallel         = config$parallel
+n_cores          = config$n_cores
+seed             = config$seed
+verbose          = config$verbose
+
+
 stochastic_weather <- generate_weather(
   obs_data         = ncdata$data,
   obs_grid         = ncdata$grid,
@@ -90,12 +116,13 @@ stochastic_weather <- generate_weather(
   warm_var         = config$warm_var,
   warm_signif      = config$warm_signif,
   warm_pool_size   = config$warm_pool_size,
+  warm_filter_bounds = config$warm_filter_bounds,
   annual_knn_n     = config$annual_knn_n,
   wet_q            = config$wet_q,
   extreme_q        = config$extreme_q,
   dry_spell_factor = config$dry_spell_factor,
   wet_spell_factor = config$wet_spell_factor,
-  out_dir          = output_dir,
+  out_dir          = out_dir,
   parallel         = config$parallel,
   n_cores          = config$n_cores,
   seed             = config$seed,
@@ -127,7 +154,7 @@ evaluation <- evaluate_weather_generator(
   n_realizations   = config$n_realizations,
   wet_quantile     = config$wet_q,
   extreme_quantile = config$extreme_q,
-  output_dir      = output_dir,
+  output_dir      = out_dir,
   save_plots       = TRUE,
   max_grids        = 25,
   seed             = NULL

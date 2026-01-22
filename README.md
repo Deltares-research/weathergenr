@@ -15,7 +15,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 multivariate, multisite stochastic weather generator designed for
 climate risk and stress-testing applications. The approach is
 conceptually based on the framework of Steinschneider & Brown (2013) and
-is adapted here for gridded datasets and modern NetCDF-based workflows.
+is adapted here for gridded datasets and netcdf-based workflows.
 
 The package is intended for workflows such as:
 
