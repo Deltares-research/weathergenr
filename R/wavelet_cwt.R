@@ -515,10 +515,11 @@ analyze_wavelet_spectrum <- function(
  fourier_factor <- params["fourier_factor"]
  coi_base <- params["coi"]
 
- wave <- t(sapply(seq_len(J + 1), function(a1) {
+ wave <- matrix(0 + 0i, nrow = J + 1, ncol = n)
+ for (a1 in seq_len(J + 1)) {
    daughter <- morlet_wavelet(k, scale[a1], k0 = 6)
-   stats::fft(f * daughter, inverse = TRUE) / n
- }))
+   wave[a1, ] <- stats::fft(f * daughter, inverse = TRUE) / n
+ }
 
  period <- fourier_factor * scale
 

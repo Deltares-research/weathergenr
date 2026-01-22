@@ -328,10 +328,16 @@ read_netcdf <- function(
   if (length(kept_vars) == 0L) {
     for (k in seq_len(ncell)) data[[k]] <- data.frame()
   } else {
+    var_mats_use <- var_mats[kept_vars]
+    n_vars <- length(kept_vars)
+    n_time <- nrow(var_mats_use[[1]])
     for (k in seq_len(ncell)) {
-      dfk <- as.data.frame(lapply(var_mats, function(m) as.numeric(m[, k])),
-                           stringsAsFactors = FALSE)
-      dfk <- dfk[, kept_vars, drop = FALSE]
+      cell_mat <- matrix(NA_real_, nrow = n_time, ncol = n_vars)
+      for (v in seq_len(n_vars)) {
+        cell_mat[, v] <- as.numeric(var_mats_use[[v]][, k])
+      }
+      dfk <- as.data.frame(cell_mat, stringsAsFactors = FALSE)
+      names(dfk) <- kept_vars
       data[[k]] <- dfk
     }
   }

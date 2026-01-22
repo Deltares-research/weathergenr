@@ -14,7 +14,6 @@ Imports:
     dplyr,
     e1071,
     fitdistrplus,
-    forecast,
     foreach,
     ggplot2,
     ncdf4,
@@ -28,6 +27,7 @@ Imports:
     scales
 Suggests:
     devtools,
+    forecast,
     quarto,
     rmarkdown,
     knitr,

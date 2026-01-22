@@ -45,7 +45,8 @@ testthat::test_that("compute_spectral_metrics returns cached spectra", {
       noise_type = "white",
       period_lower_limit = 2,
       detrend = FALSE
-    )
+    ),
+    cache_gws = TRUE
   )
 
   testthat::expect_true(all(c("period", "gws_cache", "metrics") %in% names(out)))

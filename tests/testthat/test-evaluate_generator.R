@@ -81,7 +81,8 @@ make_test_grid_df <- function(dates, id_shift = 0) {
   }
 
   # Minimal simulated results structure
-  .mock_summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds) {
+  .mock_summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds,
+                                             parallel = FALSE, n_cores = NULL, seed = NULL) {
 
     empty_tbl <- dplyr::tibble()
 
@@ -314,6 +315,50 @@ testthat::test_that("evaluate_weather_generator validates quantile parameters", 
       verbose = FALSE
     ),
     "wet_quantile"
+  )
+})
+
+# ==============================================================================
+# TEST: Input validation - parallel options
+# ==============================================================================
+
+testthat::test_that("evaluate_weather_generator validates parallel arguments", {
+
+  dates <- seq.Date(as.Date("2001-01-01"), as.Date("2002-12-31"), by = "day")
+  dates <- dates[format(dates, "%m-%d") != "02-29"]
+
+  df <- data.frame(
+    date = dates,
+    precip = rep(1, length(dates)),
+    temp = rep(10, length(dates))
+  )
+
+  daily_obs <- list(df, df)
+  daily_sim <- list(list(df, df))
+
+  testthat::expect_error(
+    evaluate_weather_generator(
+      daily_sim = daily_sim,
+      daily_obs = daily_obs,
+      variables = c("precip", "temp"),
+      n_realizations = 1,
+      parallel = "yes",
+      verbose = FALSE
+    ),
+    "parallel"
+  )
+
+  testthat::expect_error(
+    evaluate_weather_generator(
+      daily_sim = daily_sim,
+      daily_obs = daily_obs,
+      variables = c("precip", "temp"),
+      n_realizations = 1,
+      parallel = TRUE,
+      n_cores = 0,
+      verbose = FALSE
+    ),
+    "n_cores"
   )
 })
 

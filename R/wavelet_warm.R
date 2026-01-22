@@ -40,6 +40,8 @@
 #' @details
 #' Component mode (\code{n >= bypass_n})
 #'
+#' Requires the \pkg{forecast} package for ARIMA fitting.
+#'
 #' - Each component is centered prior to ARIMA fitting; the observed component mean is
 #'   re-added after simulation.
 #' - Components are simulated independently and then summed. Because MODWT-MRA components are
@@ -68,7 +70,6 @@
 #' ambiguity from reconstructing the original series from \code{components}.
 #'
 #' @importFrom stats sd simulate Box.test var
-#' @importFrom forecast auto.arima
 #' @export
 simulate_warm <- function(
     components = NULL,
@@ -105,6 +106,11 @@ simulate_warm <- function(
 
   if (!is.logical(check_diagnostics) || length(check_diagnostics) != 1L) {
     stop("'check_diagnostics' must be TRUE/FALSE.", call. = FALSE)
+  }
+
+  has_forecast <- suppressMessages(requireNamespace("forecast", quietly = TRUE))
+  if (!has_forecast) {
+    stop("Package 'forecast' is required for simulate_warm(). Install it to use this function.", call. = FALSE)
   }
 
   # RNG state management (restore old seed on exit)

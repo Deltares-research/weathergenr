@@ -11,7 +11,9 @@
   n_realizations,
   wet_quantile,
   extreme_quantile,
-  verbose
+  verbose,
+  parallel,
+  n_cores
 )
 }
 \description{

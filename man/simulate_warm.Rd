@@ -68,6 +68,8 @@ Two operating modes are supported:
 \details{
 Component mode (\code{n >= bypass_n})
 
+Requires the \pkg{forecast} package for ARIMA fitting.
+
 - Each component is centered prior to ARIMA fitting; the observed component mean is
   re-added after simulation.
 - Components are simulated independently and then summed. Because MODWT-MRA components are
