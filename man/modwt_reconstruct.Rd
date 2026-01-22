@@ -7,13 +7,13 @@
 modwt_reconstruct(wt)
 }
 \arguments{
-\item{wt}{A list of class \code{"modwt_result"} from \code{\link{modwt_decompose}},
-or a raw waveslim modwt object.}
+\item{wt}{Either a \code{"modwt_result"} object returned by \code{\link{modwt_decompose}},
+or a raw \code{waveslim::modwt()} output list containing W* and VJ (or V<level>) entries.}
 }
 \value{
 Numeric vector. Reconstructed time series.
 }
 \description{
-Reconstructs a time series from its MODWT coefficients.
+Reconstructs a time series from MODWT coefficients.
 }
 \keyword{internal}

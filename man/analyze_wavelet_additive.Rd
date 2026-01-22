@@ -2,7 +2,7 @@
 % Please edit documentation in R/wavelet_modwt.R
 \name{analyze_wavelet_additive}
 \alias{analyze_wavelet_additive}
-\title{Additive Wavelet Analysis with CWT Diagnostics}
+\title{Additive wavelet analysis with CWT diagnostics}
 \usage{
 analyze_wavelet_additive(
   series,
@@ -24,30 +24,49 @@ analyze_wavelet_additive(
 
 \item{signif}{Numeric scalar in (0, 1). Significance level for CWT.}
 
-\item{noise}{Character. Background noise model for CWT significance testing ("white" or "red").}
+\item{noise}{Character. Background noise model for CWT significance testing. Typically
+\code{"white"} or \code{"red"}.}
 
-\item{min_period}{Numeric. Minimum Fourier period for CWT.}
+\item{min_period}{Numeric scalar. Minimum Fourier period for CWT.}
 
-\item{detrend}{Logical. If TRUE, removes linear trend before CWT.}
+\item{detrend}{Logical. If TRUE, removes a linear trend before CWT.}
 
-\item{filter}{Character. MODWT filter.}
+\item{filter}{Character. MODWT filter name. One of \code{"la8"} (default), \code{"haar"},
+\code{"d4"}, \code{"d6"}, \code{"d8"}, \code{"la16"}.}
 
-\item{n_levels}{Integer or NULL. MODWT levels. If NULL, selected from CWT + caps.}
+\item{n_levels}{Integer scalar or NULL. MODWT levels. If NULL, chosen from CWT significance
+(when available) and constrained by stability and max-period caps.}
 
-\item{boundary}{Character. Only "periodic" supported.}
+\item{boundary}{Character. Boundary handling method. Only \code{"periodic"} is supported.}
 
-\item{include_smooth}{Logical. If TRUE, include smooth component SJ.}
+\item{include_smooth}{Logical. If TRUE, includes the smooth component SJ.}
 
-\item{max_period_frac}{Numeric in (0, 1]. No structure beyond this fraction of n (default 1/3).}
+\item{max_period_frac}{Numeric scalar in (0, 1]. No structure beyond this fraction of n.
+Default is \code{1/3}.}
 
-\item{cwt_mode}{Character. "fast" or "complete" for CWT routine.}
+\item{cwt_mode}{Character. CWT routine mode. One of \code{"fast"} or \code{"complete"}.}
 
-\item{diagnostics}{Logical. If TRUE, attach extra diagnostics (cov matrix, caps, etc.).}
+\item{diagnostics}{Logical. If TRUE, attaches additional diagnostics (caps and covariance).}
 }
 \value{
-A list of class "wavelet_additive".
+A list with class \code{"wavelet_additive"}. The object contains:
+- \code{cwt}: output from \code{analyze_wavelet_spectrum()}
+- \code{components}: additive MODWT MRA components (matrix)
+- \code{component_names}: component column names
+- \code{periods}: representative MODWT periods per component
+- \code{variance}, \code{variance_fraction}: component variance and fraction of total
+- \code{n_levels}, \code{filter}, \code{filter_length}, \code{boundary}, \code{include_smooth},
+  \code{max_period_frac}
+- \code{has_significance}, \code{cwt_signif_periods}: CWT significance flags and periods
+- \code{cwt_to_modwt_map}: MODWT levels implied by significant CWT periods (under caps)
+- variance-accounting fields copied from \code{modwt_mra()}
+- optional \code{diagnostics} list when requested
 }
 \description{
-Combines CWT analysis (visualization + significance) with MODWT MRA (additive components).
-CWT is used only for diagnostics; MODWT MRA provides additive component extraction.
+Combines CWT analysis (visualization and significance testing) with MODWT MRA (additive
+components). CWT is used for diagnostics only; MODWT MRA provides the additive component
+extraction used downstream.
+
+This function expects \code{analyze_wavelet_spectrum()} to be available elsewhere in the
+package.
 }

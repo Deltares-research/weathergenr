@@ -2,41 +2,87 @@
 % Please edit documentation in R/warm_filtering.R
 \name{compute_spectral_metrics}
 \alias{compute_spectral_metrics}
-\title{Compute spectral metrics for all realizations}
+\title{Compute spectral metrics for an ensemble of realizations}
 \usage{
 compute_spectral_metrics(
   obs_use,
   sim_series_stats,
   wavelet_pars,
   modwt_n_levels = NULL,
-  n_top_peaks = 3L,
-  peak_prominence_frac = 0.1,
+  n_sig_peaks_max = 2L,
   peak_period_tol = 0.5,
-  eps = 1e-10
+  peak_mag_tol_log = log(1.5),
+  eps = 1e-10,
+  parallel = FALSE,
+  n_cores = NULL,
+  cache_gws = FALSE
 )
 }
 \arguments{
-\item{obs_use}{Numeric vector. Observed values.}
+\item{obs_use}{Numeric vector. Observed annual series after any window
+alignment performed by the caller.}
 
-\item{sim_series_stats}{Numeric matrix. Simulated values (n_use x n_realizations).}
+\item{sim_series_stats}{Numeric matrix. Simulated ensemble after any window
+alignment performed by the caller. Rows are years and columns are
+realizations.}
 
-\item{wavelet_pars}{List of wavelet parameters (signif_level, noise_type, etc.).}
+\item{wavelet_pars}{Named list. Parameters passed to
+\code{analyze_wavelet_spectrum()}. Expected entries include \code{signif_level},
+\code{noise_type}, \code{period_lower_limit}, and \code{detrend}.}
 
-\item{modwt_n_levels}{Integer or NULL. MODWT levels from WARM. If NULL, estimated.}
+\item{modwt_n_levels}{Integer or NULL. Number of MODWT levels used in WARM.
+Used only for diagnostics. If NULL, a value is estimated from series length.}
 
-\item{n_top_peaks}{Integer. Number of top peaks to match.}
+\item{n_sig_peaks_max}{Integer scalar. Maximum number of significant observed
+peaks to enforce when computing peak matching metrics.}
 
-\item{peak_prominence_frac}{Numeric. Minimum prominence for peak detection.}
+\item{peak_period_tol}{Numeric scalar. Period matching tolerance in log2
+period space.}
 
-\item{peak_period_tol}{Numeric. Period tolerance for peak matching.}
+\item{peak_mag_tol_log}{Numeric scalar. Magnitude matching tolerance as an
+absolute log ratio.}
 
-\item{eps}{Numeric. Small constant for stability.}
+\item{eps}{Numeric scalar. Positive constant used for numerical stability in
+log transforms and ratios.}
+
+\item{parallel}{Logical scalar. If TRUE, compute per realization spectra and
+metrics in parallel.}
+
+\item{n_cores}{Integer scalar or NULL. Number of worker processes to use when
+\code{parallel = TRUE}. If NULL, an internal default is used.}
+
+\item{cache_gws}{Logical scalar. If TRUE, store simulated global wavelet
+spectra in \code{gws_cache}. This can be memory intensive for large
+ensembles.}
 }
 \value{
-List with spectral filter diagnostics, metrics, and cached spectra.
+Named list with:
+\describe{
+  \item{active}{Logical scalar. TRUE when wavelet metrics were computed.}
+  \item{period}{Numeric vector. Period grid used for all spectra.}
+  \item{gws_obs}{Numeric vector. Observed global wavelet spectrum on \code{period}.}
+  \item{gws_signif}{Numeric vector or NULL. Significance curve on \code{period}.}
+  \item{gws_cache}{Numeric matrix or NULL. Simulated spectra on \code{period}
+  for each realization when \code{cache_gws = TRUE}.}
+  \item{metrics}{List with numeric vectors \code{spectral_cor},
+  \code{peak_match_frac}, and \code{peak_mag_mean_abs_log_ratio}.}
+  \item{diagnostics}{List. Summary information including significant peaks
+  and observed spectrum summary statistics.}
+}
 }
 \description{
-Performs wavelet analysis on observed series and all simulated realizations,
-then computes spectral matching metrics for filtering.
+Computes wavelet based spectral similarity metrics between an observed annual
+series and each realization in a simulated ensemble.
+
+The observed series is analyzed once to obtain a period grid, an observed
+global wavelet spectrum, a significance curve, and a set of significant peaks.
+Each simulated realization is then analyzed on the same period grid and is
+scored using:
+1) correlation between log transformed spectra, and
+2) significant peak match fraction and magnitude agreement.
+
+If \code{parallel = TRUE}, the per realization computation can run in parallel.
+Parallel execution uses a PSOCK cluster created by the base parallel package,
+which is typically the most portable option across operating systems.
 }
 \keyword{internal}

@@ -14,7 +14,7 @@ plot_filter_diagnostics(
   power_period,
   power_obs,
   power_signif,
-  gws_cache,
+  wavelet_pars,
   wavelet_q = c(0.05, 0.95)
 )
 }
@@ -37,7 +37,8 @@ plot_filter_diagnostics(
 
 \item{power_signif}{Significance curve}
 
-\item{gws_cache}{Cached GWS matrix (n_periods x n_realizations)}
+\item{wavelet_pars}{Named list. Wavelet settings passed to analyze_wavelet_spectrum() (signif_level,
+noise_type, period_lower_limit, detrend).}
 
 \item{wavelet_q}{Two quantiles for ribbon (e.g., c(0.50, 0.95))}
 }

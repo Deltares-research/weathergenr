@@ -2,7 +2,7 @@
 % Please edit documentation in R/warm_filtering.R
 \name{criteria_string_compact}
 \alias{criteria_string_compact}
-\title{Compact criteria string for a filter}
+\title{Create compact criteria text for logging}
 \usage{
 criteria_string_compact(
   filter_name,
@@ -12,7 +12,24 @@ criteria_string_compact(
   spectral_diag
 )
 }
+\arguments{
+\item{filter_name}{Character scalar. Filter family name.}
+
+\item{bounds}{List or environment. Bounds values used to build the criteria
+string.}
+
+\item{tail_metrics}{List. Tail metrics produced by \code{compute_tailmass_metrics()}.}
+
+\item{wavelet_active}{Logical scalar. TRUE if wavelet filtering is active.}
+
+\item{spectral_diag}{List. Spectral diagnostics returned by
+\code{compute_spectral_metrics()}.}
+}
+\value{
+Character scalar. A compact criteria string.
+}
 \description{
-Compact criteria string for a filter
+Builds a compact one line string describing the current criteria for a given
+filter family. Used by the logging helpers in this script.
 }
 \keyword{internal}

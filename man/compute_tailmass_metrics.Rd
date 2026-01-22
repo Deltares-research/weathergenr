@@ -2,7 +2,7 @@
 % Please edit documentation in R/warm_filtering.R
 \name{compute_tailmass_metrics}
 \alias{compute_tailmass_metrics}
-\title{Compute tail-mass metrics for filtering}
+\title{Compute tail mass metrics for filtering}
 \usage{
 compute_tailmass_metrics(
   obs_use,
@@ -13,22 +13,47 @@ compute_tailmass_metrics(
 )
 }
 \arguments{
-\item{obs_use}{Numeric vector of observed values.}
+\item{obs_use}{Numeric vector. Observed annual values after any window
+alignment performed by the caller.}
 
-\item{sim_series_stats}{Numeric matrix of simulated values (n_use x n_realizations).}
+\item{sim_series_stats}{Numeric matrix. Simulated values aligned to
+\code{obs_use}. Rows are years and columns are realizations.}
 
-\item{tail_low_p}{Lower tail quantile probability (e.g., 0.10).}
+\item{tail_low_p}{Numeric scalar. Lower tail quantile probability used to
+compute the low threshold on the observed series.}
 
-\item{tail_high_p}{Upper tail quantile probability (e.g., 0.90).}
+\item{tail_high_p}{Numeric scalar. Upper tail quantile probability used to
+compute the high threshold on the observed series.}
 
-\item{tail_eps}{Epsilon for log transform to avoid log(0).}
+\item{tail_eps}{Numeric scalar. Positive constant added inside log transforms
+to avoid log of zero.}
 }
 \value{
-List with tail thresholds, scale, masses, and log-distance metrics.
+Named list with tail thresholds, scale, observed and simulated tail
+  mass metrics, and log difference vectors:
+\describe{
+  \item{thr_low}{Lower threshold from the observed series.}
+  \item{thr_high}{Upper threshold from the observed series.}
+  \item{scale_obs}{Robust scale used for normalization.}
+  \item{M_obs_low}{Observed low tail deficit mass.}
+  \item{M_obs_high}{Observed high tail excess mass.}
+  \item{M_sim_low}{Vector of simulated low tail deficit masses.}
+  \item{M_sim_high}{Vector of simulated high tail excess masses.}
+  \item{logdiff_low}{Vector of absolute log differences for low tail mass.}
+  \item{logdiff_high}{Vector of absolute log differences for high tail mass.}
+}
 }
 \description{
-Computes tail-mass metrics based on lower and upper tail quantile thresholds.
-Uses robust scale estimation (IQR -> MAD -> SD fallback) and normalizes
-tail deficit/excess masses by series length and scale.
+Computes tail mass metrics for an observed series and a simulated ensemble.
+Tail mass metrics quantify how much probability mass lies beyond observed
+quantile thresholds, expressed as normalized deficit or excess mass.
+
+The method uses robust scale estimation for normalization. The scale is chosen
+as IQR when available, otherwise MAD, otherwise standard deviation, otherwise 1.
+Tail masses are normalized by series length and scale to make values more
+comparable across datasets.
+
+The returned log difference vectors are used by \code{filter_warm_pool()} to
+decide whether a realization passes tail filters.
 }
 \keyword{internal}

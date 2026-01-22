@@ -2,7 +2,7 @@
 % Please edit documentation in R/warm_filtering.R
 \name{log_filter_iteration}
 \alias{log_filter_iteration}
-\title{Log filter iteration details}
+\title{Log one filtering iteration summary}
 \usage{
 log_filter_iteration(
   iter,
@@ -17,7 +17,36 @@ log_filter_iteration(
   note = NULL
 )
 }
+\arguments{
+\item{iter}{Integer scalar. Iteration number. Use 0 for the initial evaluation.}
+
+\item{passes}{Named list. Logical vectors indicating pass or fail for each
+filter family.}
+
+\item{pool}{Integer vector. Indices of realizations currently in the pool.}
+
+\item{n_total}{Integer scalar. Total number of realizations evaluated.}
+
+\item{target}{Integer scalar. Target pool size.}
+
+\item{bounds}{Environment. Current bounds values.}
+
+\item{tail_metrics}{List. Tail metrics produced by \code{compute_tailmass_metrics()}.}
+
+\item{wavelet_active}{Logical scalar. TRUE if wavelet filtering is active.}
+
+\item{spectral_diag}{List. Spectral diagnostics returned by
+\code{compute_spectral_metrics()}.}
+
+\item{note}{Character scalar or NULL. Optional message describing the action
+taken in this iteration.}
+}
+\value{
+Invisibly returns NULL.
+}
 \description{
-Log filter iteration details
+Writes a compact per iteration summary showing pass counts, pass rates, and
+current criteria for each active filter family, followed by the current pool
+size relative to the target.
 }
 \keyword{internal}

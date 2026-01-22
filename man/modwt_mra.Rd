@@ -2,7 +2,7 @@
 % Please edit documentation in R/wavelet_modwt.R
 \name{modwt_mra}
 \alias{modwt_mra}
-\title{MODWT Multiresolution Analysis (MRA)}
+\title{MODWT multiresolution analysis (MRA)}
 \usage{
 modwt_mra(
   x,
@@ -14,26 +14,38 @@ modwt_mra(
 )
 }
 \arguments{
-\item{x}{Numeric vector. Input time series.}
+\item{x}{Numeric vector. Input time series. Must contain no missing values.}
 
-\item{filter}{Character. Wavelet filter name.}
+\item{filter}{Character. Wavelet filter name. One of \code{"la8"} (default), \code{"haar"},
+\code{"d4"}, \code{"d6"}, \code{"d8"}, \code{"la16"}.}
 
-\item{n_levels}{Integer. Number of decomposition levels (J). If \code{NULL},
-automatically determined based on series length, filter length, and max-period cap.}
+\item{n_levels}{Integer scalar or NULL. Number of decomposition levels (J). If NULL, a
+conservative default is selected subject to stability and max-period caps.}
 
-\item{boundary}{Character. Boundary handling. Only \code{"periodic"} is supported.}
+\item{boundary}{Character. Boundary handling method. Only \code{"periodic"} is supported.}
 
-\item{include_smooth}{Logical. If \code{TRUE}, includes the smooth (approximation)
-component at the coarsest level (SJ).}
+\item{include_smooth}{Logical. If TRUE, includes the smooth (approximation) component at
+the coarsest level (SJ).}
 
-\item{max_period_frac}{Numeric in (0, 1]. Maximum allowed represented period as a
-fraction of record length. Default is 1/3 (no structure beyond n/3).}
+\item{max_period_frac}{Numeric scalar in (0, 1]. Maximum represented period as a fraction
+of record length. Default is \code{1/3}, meaning no structure beyond approximately n/3.}
 }
 \value{
-A list with additive components, periods, variance accounting, and diagnostics.
+A list with additive components and summary diagnostics. The list contains:
+- \code{components}: numeric matrix (n x n_components) with columns D1..DJ and optionally SJ
+- \code{periods}: numeric vector of representative periods per component
+- \code{variance}: component variances
+- \code{variance_fraction}: component variance divided by total variance of x
+- \code{total_variance}: variance of x
+- \code{sum_component_variance}: sum of component variances
+- \code{cross_covariance_sum}: sum of cross-covariances (pairwise, without doubles)
+- \code{variance_identity_error}: total_var - (sum_var + 2 * cross_cov_sum)
+- \code{reconstruction_error}: max absolute error between x and reconstructed series
+- \code{n_levels}, \code{filter}, \code{filter_length}, \code{boundary}, \code{include_smooth},
+  \code{max_period_frac}, and \code{is_additive}
 }
 \description{
-Extracts additive time-domain components from MODWT decomposition using
-multiresolution analysis. Each component captures variance at a specific
-dyadic scale band. The components sum exactly to the original series.
+Extracts additive time-domain components from a MODWT decomposition using multiresolution
+analysis. Each component captures variance within a dyadic scale band. The components
+sum (approximately, under periodic boundary handling) to the original series.
 }

@@ -7,16 +7,16 @@
 .max_levels_by_period_frac(n, max_period_frac)
 }
 \arguments{
-\item{n}{Integer. Series length.}
+\item{n}{Integer scalar. Series length.}
 
-\item{max_period_frac}{Numeric in (0, 1]. Maximum allowed period as a fraction of n.}
+\item{max_period_frac}{Numeric scalar in (0, 1]. Maximum allowed period as a fraction of n.}
 }
 \value{
-Integer. Maximum allowed J (n_levels), at least 1.
+Integer scalar. Maximum allowed number of levels (J), at least 1.
 }
 \description{
 Ensures the smooth threshold period 2^(J+1) does not exceed floor(n * max_period_frac).
-This prevents representing variability at periods longer than a chosen fraction
-of record length.
+This prevents representing variability at periods longer than a chosen fraction of the
+record length.
 }
 \keyword{internal}

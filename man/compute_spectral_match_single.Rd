@@ -2,39 +2,48 @@
 % Please edit documentation in R/warm_filtering.R
 \name{compute_spectral_match_single}
 \alias{compute_spectral_match_single}
-\title{Compute spectral matching metrics for a single realization}
+\title{Compute spectral match metrics for one realization}
 \usage{
 compute_spectral_match_single(
   gws_obs,
   gws_sim,
   period,
-  lf_period_threshold,
   obs_peaks,
   peak_period_tol = 0.5,
+  peak_mag_tol_log = log(1.5),
   eps = 1e-10
 )
 }
 \arguments{
-\item{gws_obs}{Numeric vector. Observed global wavelet spectrum.}
+\item{gws_obs}{Numeric vector. Observed global wavelet spectrum aligned to
+\code{period}.}
 
-\item{gws_sim}{Numeric vector. Simulated global wavelet spectrum (same length).}
+\item{gws_sim}{Numeric vector. Simulated global wavelet spectrum aligned to
+\code{period}.}
 
-\item{period}{Numeric vector. Periods corresponding to GWS values.}
+\item{period}{Numeric vector. Period grid for both spectra.}
 
-\item{lf_period_threshold}{Numeric. Period threshold defining low-frequency.}
+\item{obs_peaks}{Data frame. Significant observed peaks returned by
+\code{identify_significant_peaks()}.}
 
-\item{obs_peaks}{Data frame. Observed peaks from identify_prominent_peaks.}
+\item{peak_period_tol}{Numeric scalar. Period matching tolerance in log2
+period space.}
 
-\item{peak_period_tol}{Numeric. Period tolerance for peak matching.}
+\item{peak_mag_tol_log}{Numeric scalar. Magnitude matching tolerance as an
+absolute log ratio.}
 
-\item{eps}{Numeric. Small constant for log stability.}
+\item{eps}{Numeric scalar. Positive constant used to avoid log of zero.}
 }
 \value{
-Named list with spectral matching metrics.
+Named list with:
+  \code{spectral_cor} correlation between log transformed spectra,
+  \code{peak_match_frac} fraction of significant observed peaks matched,
+  \code{peak_mag_mean_abs_log_ratio} mean absolute log ratio for matched peaks.
 }
 \description{
-Computes direct spectral matching metrics between observed and simulated
-global wavelet spectra, focusing on reproducing observed low-frequency
-structure and dominant peaks.
+Computes two spectral similarity metrics between an observed and a simulated
+global wavelet spectrum:
+1) correlation between log transformed spectra, and
+2) significant peak match metrics relative to significant observed peaks.
 }
 \keyword{internal}

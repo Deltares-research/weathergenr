@@ -12,42 +12,38 @@ modwt_decompose(
 )
 }
 \arguments{
-\item{x}{Numeric vector. Input time series.}
+\item{x}{Numeric vector. Input time series. Must be regularly spaced and contain no missing
+values.}
 
-\item{filter}{Character. Wavelet filter name. One of:
-\code{"haar"}, \code{"d4"}, \code{"d6"}, \code{"d8"},
-\code{"la8"}, \code{"la16"} (default: \code{"la8"}).}
+\item{filter}{Character. Wavelet filter name. One of \code{"la8"} (default), \code{"haar"},
+\code{"d4"}, \code{"d6"}, \code{"d8"}, \code{"la16"}.}
 
-\item{n_levels}{Integer. Number of decomposition levels. If \code{NULL},
-uses a conservative default based on series length and filter width.
-This is a stability heuristic, not a mathematical requirement of MODWT.}
+\item{n_levels}{Integer scalar or NULL. Number of decomposition levels (J). If NULL, a
+conservative default is used based on series length and filter width.}
 
-\item{boundary}{Character. Boundary handling method. Currently only
-\code{"periodic"} is supported (circular convolution).}
+\item{boundary}{Character. Boundary handling method. Only \code{"periodic"} is supported.}
 }
 \value{
-A list of class \code{"modwt_result"} containing:
-\describe{
-  \item{coefficients}{List from waveslim::modwt with W1...WJ and VJ (scaling).}
-  \item{filter}{Character. Filter name used.}
-  \item{n_levels}{Integer. Number of decomposition levels (J).}
-  \item{n}{Integer. Original series length.}
-  \item{boundary}{Character. Boundary method used.}
-  \item{filter_length}{Integer. Length of the wavelet filter.}
-}
+A list with class \code{"modwt_result"}.
+The object contains:
+- \code{coefficients}: coefficients returned by \code{waveslim::modwt()} (W1...WJ and VJ)
+- \code{filter}: filter name used
+- \code{n_levels}: number of decomposition levels (J)
+- \code{n}: series length
+- \code{boundary}: boundary method
+- \code{filter_length}: length of the wavelet filter
 }
 \description{
-Performs the Maximal Overlap Discrete Wavelet Transform using a specified
-wavelet filter. MODWT is shift-invariant and provides additive multi-resolution
-decomposition at dyadic scales (powers of 2).
+Performs the Maximal Overlap Discrete Wavelet Transform using a specified wavelet filter.
+MODWT is shift-invariant and provides additive multi-resolution decomposition at dyadic
+scales (powers of 2).
 
-This function wraps \code{waveslim::modwt()} with additional input validation
-and a standardized return structure.
+This function wraps \code{waveslim::modwt()} with input validation and a standardized
+return object.
 }
 \details{
-The number of decomposition levels is capped using a stability heuristic:
-\code{min(floor(log2(n)), floor(log2((n-1)/(L-1)+1)))} where L is the filter
-length. This ensures the effective filter support does not dominate the
-series length, reducing boundary artifacts.
+The recommended maximum number of levels is capped using a stability heuristic based on
+series length and filter width. The cap is intended to reduce boundary artifacts and
+unstable behavior on short records; it is not a mathematical requirement of MODWT.
 }
 \keyword{internal}

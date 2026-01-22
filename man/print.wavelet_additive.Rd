@@ -2,7 +2,7 @@
 % Please edit documentation in R/wavelet_modwt.R
 \name{print.wavelet_additive}
 \alias{print.wavelet_additive}
-\title{Print Method for Additive Wavelet Analysis}
+\title{Print method for additive wavelet analysis}
 \usage{
 \method{print}{wavelet_additive}(x, ...)
 }
@@ -12,8 +12,8 @@
 \item{...}{Ignored.}
 }
 \value{
-Invisibly returns x.
+Invisibly returns \code{x}.
 }
 \description{
-Print Method for Additive Wavelet Analysis
+Prints a compact summary of a \code{"wavelet_additive"} object.
 }

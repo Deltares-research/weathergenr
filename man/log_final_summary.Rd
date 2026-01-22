@@ -6,7 +6,20 @@
 \usage{
 log_final_summary(pool_size, n_total, n_sampled, relaxation_level)
 }
+\arguments{
+\item{pool_size}{Integer scalar. Final candidate pool size.}
+
+\item{n_total}{Integer scalar. Total number of candidate realizations.}
+
+\item{n_sampled}{Integer scalar. Number of realizations sampled.}
+
+\item{relaxation_level}{Character scalar. Label describing the selection mode.}
+}
+\value{
+Invisibly returns NULL.
+}
 \description{
-Log final filtering summary
+Writes a footer block summarizing the final pool size, number sampled, and the
+selection mode that was used.
 }
 \keyword{internal}
