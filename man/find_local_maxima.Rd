@@ -2,19 +2,23 @@
 % Please edit documentation in R/warm_filtering.R
 \name{find_local_maxima}
 \alias{find_local_maxima}
-\title{Find local maxima (peaks) in a numeric vector}
+\title{Find local maxima indices in a numeric vector}
 \usage{
 find_local_maxima(x, strict = TRUE)
 }
 \arguments{
-\item{x}{Numeric vector.}
+\item{x}{Numeric vector. Values to scan for local maxima.}
 
-\item{strict}{Logical. If TRUE, requires strict inequality on both sides.}
+\item{strict}{Logical scalar. If TRUE, requires strict inequality on both
+sides. If FALSE, allows ties but still requires at least one strict
+inequality so flat plateaus do not produce multiple peaks.}
 }
 \value{
-Integer vector of peak indices.
+Integer vector of peak indices. Returns an empty integer vector if
+  fewer than three values are available.
 }
 \description{
-Identifies indices of local maxima in a vector.
+Scans a numeric vector and returns indices of local maxima. A local maximum is
+defined by comparing each element to its immediate neighbors.
 }
 \keyword{internal}

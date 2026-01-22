@@ -15,72 +15,87 @@ filter_warm_pool(
     detrend = TRUE),
   modwt_n_levels = NULL,
   make_plots = FALSE,
+  parallel = FALSE,
+  n_cores = NULL,
   verbose = FALSE
 )
 }
 \arguments{
-\item{obs_series}{Numeric vector. Observed annual series used as the reference.}
+\item{obs_series}{Numeric vector. Observed annual series used as the
+reference target.}
 
-\item{sim_series}{Numeric matrix. Simulated annual realizations with years in rows
-and realizations in columns.}
+\item{sim_series}{Numeric matrix. Simulated annual realizations with years
+in rows and realizations in columns.}
 
-\item{n_select}{Integer scalar. Number of realizations to return in \code{selected}.}
+\item{n_select}{Integer scalar. Number of realizations to return in the
+\code{selected} element.}
 
-\item{seed}{Optional integer scalar. Random seed used for window selection (if lengths differ)
-and for sampling from the final candidate pool.}
+\item{seed}{Integer scalar or NULL. If provided, sets the random seed used
+for selecting alignment windows when \code{obs_series} and \code{sim_series}
+have different lengths, and for sampling within the final candidate pool.}
 
-\item{relax_order}{Character vector. Relaxation priority ordering for criteria.
-Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.}
+\item{relax_order}{Character vector. Relaxation priority ordering for the
+filter families. Must contain exactly: \code{"mean"}, \code{"sd"},
+\code{"tail_low"}, \code{"tail_high"}, \code{"wavelet"}.}
 
-\item{filter_bounds}{Named list. Filtering thresholds and relaxation controls. Any entry
-overrides internal defaults. Uses snake_case keys.}
+\item{filter_bounds}{Named list. Overrides for filtering thresholds and
+relaxation controls. Keys must be snake case and match those returned by
+\code{filter_warm_bounds_defaults()}.}
 
-\item{wavelet_args}{Named list passed to \code{\link{analyze_wavelet_spectrum}} for
-observed and simulated series (e.g., \code{signif_level}, \code{noise_type},
-\code{period_lower_limit}, \code{detrend}).}
+\item{wavelet_args}{Named list. Parameters passed to
+\code{analyze_wavelet_spectrum()} for observed and simulated series.
+Expected entries include \code{signif_level}, \code{noise_type},
+\code{period_lower_limit}, and \code{detrend}.}
 
-\item{modwt_n_levels}{Integer or NULL. Number of MODWT levels used in WARM simulation.
-Used to determine the low-frequency threshold period as 2^J. If NULL, estimated from
-series length.}
+\item{modwt_n_levels}{Integer or NULL. Number of MODWT levels used in WARM.
+This value is used only for diagnostics. If NULL, a value is estimated from
+the series length.}
 
-\item{make_plots}{Logical scalar. If \code{TRUE}, returns diagnostic plots in \code{plots}.}
+\item{make_plots}{Logical scalar. If TRUE, compute diagnostic plots for the
+selected realizations and return them in \code{plots}.}
 
-\item{verbose}{Logical scalar. If \code{TRUE}, logs per-iteration pass rates and relaxation steps.}
+\item{parallel}{Logical scalar. If TRUE, allows spectral metrics to be
+computed in parallel inside \code{compute_spectral_metrics()}.}
+
+\item{n_cores}{Integer scalar or NULL. Number of worker processes to use for
+parallel execution. If NULL, an internal default is used.}
+
+\item{verbose}{Logical scalar. If TRUE, logs setup information, per iteration
+pass rates, and relaxation actions.}
 }
 \value{
-A list with:
+Named list with the following elements:
 \describe{
-  \item{pool}{Numeric matrix. Final candidate pool (subset of columns from \code{sim_series}).}
-  \item{selected}{Numeric matrix. \code{n_select} realizations selected from the final pool.}
-  \item{summary}{Data frame summarising pass counts/rates and selection mode.}
-  \item{diagnostics}{List with window metadata, indices, relaxation log, spectral metrics,
-    and final bounds.}
-  \item{plots}{NULL or a named list of ggplot objects when \code{make_plots = TRUE}.}
+  \item{pool}{Numeric matrix. Candidate pool of realizations that passed the
+  final set of filters. Subset of columns from \code{sim_series}.}
+  \item{selected}{Numeric matrix. The \code{n_select} realizations chosen from
+  the pool. Subset of columns from \code{sim_series}.}
+  \item{summary}{Data frame. Pass counts and pass rates for each filter
+  family, plus the selection mode used.}
+  \item{diagnostics}{List. Window metadata, relaxation log, spectral
+  diagnostics, spectral metrics, and the final bounds used.}
+  \item{plots}{NULL or a named list of ggplot objects when
+  \code{make_plots = TRUE}.}
 }
 }
 \description{
-Filters an ensemble of WARM-generated annual realizations against an observed
-annual series using three criterion families:
-\itemize{
-  \item \strong{Distributional}: relative differences in mean and standard deviation.
-  \item \strong{Tail behaviour}: lower/upper tail mass relative to observed quantile thresholds.
-  \item \strong{Spectral matching}: direct comparison of simulated vs observed global
-    wavelet spectra, focusing on reproducing low-frequency structure and dominant peaks.
-}
+Filters an ensemble of annual WARM realizations against an observed annual
+reference series. Filtering is based on three families of criteria:
+distributional moments, tail mass behavior, and spectral similarity from the
+global wavelet spectrum.
 
-Spectral matching criteria include:
-\itemize{
-  \item \strong{Spectral correlation}: correlation between log-transformed GWS of
-    simulated and observed series.
-  \item \strong{Low-frequency fraction}: relative difference in variance fraction
-    at periods beyond a threshold tied to MODWT decomposition levels.
-  \item \strong{Peak matching}: verification that dominant peaks in observed spectrum
-    are reproduced in simulated spectrum within tolerance.
-}
+The function computes pass or fail vectors for each filter family and builds
+a candidate pool. If the pool is smaller than the requested sample size, the
+function relaxes thresholds iteratively until enough candidates are found or
+the maximum number of relaxation iterations is reached.
 
-If fewer than \code{n_select} realizations pass, the function relaxes criteria
-iteratively (up to \code{filter_bounds$relax_max_iter}) by loosening the currently
-most restrictive active filter (lowest pass rate). If still insufficient, a
-deterministic fallback returns the \code{n_select} realizations with the smallest
-absolute relative mean difference.
+Relaxation is adaptive. At each iteration, the currently most restrictive
+active filter is relaxed, defined as the filter with the lowest pass rate
+among the active filters. This is constrained by the relaxation order given
+in \code{relax_order}, which sets which filters are eligible to be relaxed
+and how wavelet relaxation is parameterized.
+
+If the pool is still smaller than \code{n_select} after relaxation, a
+deterministic fallback selects the \code{n_select} realizations with the
+smallest absolute relative mean difference.
 }

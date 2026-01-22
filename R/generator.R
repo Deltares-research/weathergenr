@@ -216,6 +216,7 @@ generate_weather <- function(
   MIN_PERIOD <- 2
   WARM_FILTER <- "la8"
 
+
   # ---------------------------------------------------------------------------
   # RNG management
   # ---------------------------------------------------------------------------
@@ -414,7 +415,9 @@ generate_weather <- function(
       period_lower_limit = 2,
       detrend = DETREND
     ),
-    verbose = verbose
+    verbose = verbose,
+    parallel = parallel,
+    n_cores  = n_cores
   )
 
   tryCatch(

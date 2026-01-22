@@ -2,7 +2,7 @@
 % Please edit documentation in R/warm_filtering.R
 \name{relax_bounds_one_filter}
 \alias{relax_bounds_one_filter}
-\title{Relax bounds for one filter}
+\title{Relax bounds for one filter family}
 \usage{
 relax_bounds_one_filter(
   filter_name,
@@ -12,18 +12,38 @@ relax_bounds_one_filter(
 )
 }
 \arguments{
-\item{filter_name}{Character. Name of filter to relax.}
+\item{filter_name}{Character scalar. Filter family to relax. Must be one of
+\code{"mean"}, \code{"sd"}, \code{"tail_low"}, \code{"tail_high"},
+\code{"wavelet"}.}
 
-\item{bounds_env}{Environment containing bounds (snake_case keys).}
+\item{bounds_env}{Environment. Environment containing the current bounds using
+snake case keys. Updated in place.}
 
-\item{wavelet_active_env}{Environment containing wavelet_active flag.}
+\item{wavelet_active_env}{Environment. Environment containing a logical
+\code{wavelet_active} flag. May be updated in place.}
 
-\item{recompute_tailmass_fn}{Function to recompute tail mass when thresholds change.}
+\item{recompute_tailmass_fn}{Function. Callback used to recompute tail mass
+metrics when tail quantile thresholds change.}
 }
 \value{
-List with changed (logical) and msg (character).
+Named list with:
+  \code{changed} logical scalar indicating whether a bound was changed,
+  \code{msg} character message describing the applied change.
 }
 \description{
-Applies one relaxation step to a single filter. Updates bounds in place.
+Applies one relaxation step for a single filter family and updates the bounds
+environment in place. This function is called by \code{filter_warm_pool()}.
+
+Relaxation behavior by filter family:
+\describe{
+  \item{mean}{Increases the mean tolerance up to \code{relax_mean_max}.}
+  \item{sd}{Increases the sd tolerance up to \code{relax_sd_max}.}
+  \item{tail_low}{First increases tail tolerance, then increases
+  \code{tail_low_p} in steps, recomputing tail metrics after changes.}
+  \item{tail_high}{First increases tail tolerance, then decreases
+  \code{tail_high_p} in steps, recomputing tail metrics after changes.}
+  \item{wavelet}{Relaxes spectral correlation threshold, then relaxes peak
+  match fraction, then disables peak matching, then disables wavelet filtering.}
+}
 }
 \keyword{internal}

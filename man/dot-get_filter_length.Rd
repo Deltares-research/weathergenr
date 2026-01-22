@@ -2,17 +2,17 @@
 % Please edit documentation in R/wavelet_modwt.R
 \name{.get_filter_length}
 \alias{.get_filter_length}
-\title{Get Wavelet Filter Length}
+\title{Get wavelet filter length}
 \usage{
 .get_filter_length(filter)
 }
 \arguments{
-\item{filter}{Character. Filter name.}
+\item{filter}{Character scalar. Filter name.}
 }
 \value{
-Integer. Filter length.
+Integer scalar. Filter length.
 }
 \description{
-Returns the filter length for a named wavelet filter.
+Returns the filter length for a named wavelet filter used by MODWT/MRA routines.
 }
 \keyword{internal}

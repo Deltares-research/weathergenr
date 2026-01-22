@@ -1,58 +1,69 @@
 #' Filter and sample WARM realizations using distributional, tail, and spectral criteria
 #'
 #' @description
-#' Filters an ensemble of WARM-generated annual realizations against an observed
-#' annual series using three criterion families:
-#' \itemize{
-#'   \item \strong{Distributional}: relative differences in mean and standard deviation.
-#'   \item \strong{Tail behaviour}: lower/upper tail mass relative to observed quantile thresholds.
-#'   \item \strong{Spectral matching}: direct comparison of simulated vs observed global
-#'     wavelet spectra, focusing on reproducing low-frequency structure and dominant peaks.
-#' }
+#' Filters an ensemble of annual WARM realizations against an observed annual
+#' reference series. Filtering is based on three families of criteria:
+#' distributional moments, tail mass behavior, and spectral similarity from the
+#' global wavelet spectrum.
 #'
-#' Spectral matching criteria include:
-#' \itemize{
-#'   \item \strong{Spectral correlation}: correlation between log-transformed GWS of
-#'     simulated and observed series.
-#'   \item \strong{Low-frequency fraction}: relative difference in variance fraction
-#'     at periods beyond a threshold tied to MODWT decomposition levels.
-#'   \item \strong{Peak matching}: verification that dominant peaks in observed spectrum
-#'     are reproduced in simulated spectrum within tolerance.
-#' }
+#' The function computes pass or fail vectors for each filter family and builds
+#' a candidate pool. If the pool is smaller than the requested sample size, the
+#' function relaxes thresholds iteratively until enough candidates are found or
+#' the maximum number of relaxation iterations is reached.
 #'
-#' If fewer than \code{n_select} realizations pass, the function relaxes criteria
-#' iteratively (up to \code{filter_bounds$relax_max_iter}) by loosening the currently
-#' most restrictive active filter (lowest pass rate). If still insufficient, a
-#' deterministic fallback returns the \code{n_select} realizations with the smallest
-#' absolute relative mean difference.
+#' Relaxation is adaptive. At each iteration, the currently most restrictive
+#' active filter is relaxed, defined as the filter with the lowest pass rate
+#' among the active filters. This is constrained by the relaxation order given
+#' in \code{relax_order}, which sets which filters are eligible to be relaxed
+#' and how wavelet relaxation is parameterized.
 #'
-#' @param obs_series Numeric vector. Observed annual series used as the reference.
-#' @param sim_series Numeric matrix. Simulated annual realizations with years in rows
-#'   and realizations in columns.
-#' @param n_select Integer scalar. Number of realizations to return in \code{selected}.
-#' @param seed Optional integer scalar. Random seed used for window selection (if lengths differ)
-#'   and for sampling from the final candidate pool.
-#' @param relax_order Character vector. Relaxation priority ordering for criteria.
-#'   Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
-#' @param filter_bounds Named list. Filtering thresholds and relaxation controls. Any entry
-#'   overrides internal defaults. Uses snake_case keys.
-#' @param wavelet_args Named list passed to \code{\link{analyze_wavelet_spectrum}} for
-#'   observed and simulated series (e.g., \code{signif_level}, \code{noise_type},
-#'   \code{period_lower_limit}, \code{detrend}).
-#' @param modwt_n_levels Integer or NULL. Number of MODWT levels used in WARM simulation.
-#'   Used to determine the low-frequency threshold period as 2^J. If NULL, estimated from
-#'   series length.
-#' @param make_plots Logical scalar. If \code{TRUE}, returns diagnostic plots in \code{plots}.
-#' @param verbose Logical scalar. If \code{TRUE}, logs per-iteration pass rates and relaxation steps.
+#' If the pool is still smaller than \code{n_select} after relaxation, a
+#' deterministic fallback selects the \code{n_select} realizations with the
+#' smallest absolute relative mean difference.
 #'
-#' @return A list with:
+#' @param obs_series Numeric vector. Observed annual series used as the
+#'   reference target.
+#' @param sim_series Numeric matrix. Simulated annual realizations with years
+#'   in rows and realizations in columns.
+#' @param n_select Integer scalar. Number of realizations to return in the
+#'   \code{selected} element.
+#' @param seed Integer scalar or NULL. If provided, sets the random seed used
+#'   for selecting alignment windows when \code{obs_series} and \code{sim_series}
+#'   have different lengths, and for sampling within the final candidate pool.
+#' @param relax_order Character vector. Relaxation priority ordering for the
+#'   filter families. Must contain exactly: \code{"mean"}, \code{"sd"},
+#'   \code{"tail_low"}, \code{"tail_high"}, \code{"wavelet"}.
+#' @param filter_bounds Named list. Overrides for filtering thresholds and
+#'   relaxation controls. Keys must be snake case and match those returned by
+#'   \code{filter_warm_bounds_defaults()}.
+#' @param wavelet_args Named list. Parameters passed to
+#'   \code{analyze_wavelet_spectrum()} for observed and simulated series.
+#'   Expected entries include \code{signif_level}, \code{noise_type},
+#'   \code{period_lower_limit}, and \code{detrend}.
+#' @param modwt_n_levels Integer or NULL. Number of MODWT levels used in WARM.
+#'   This value is used only for diagnostics. If NULL, a value is estimated from
+#'   the series length.
+#' @param make_plots Logical scalar. If TRUE, compute diagnostic plots for the
+#'   selected realizations and return them in \code{plots}.
+#' @param parallel Logical scalar. If TRUE, allows spectral metrics to be
+#'   computed in parallel inside \code{compute_spectral_metrics()}.
+#' @param n_cores Integer scalar or NULL. Number of worker processes to use for
+#'   parallel execution. If NULL, an internal default is used.
+#' @param verbose Logical scalar. If TRUE, logs setup information, per iteration
+#'   pass rates, and relaxation actions.
+#'
+#' @return Named list with the following elements:
 #' \describe{
-#'   \item{pool}{Numeric matrix. Final candidate pool (subset of columns from \code{sim_series}).}
-#'   \item{selected}{Numeric matrix. \code{n_select} realizations selected from the final pool.}
-#'   \item{summary}{Data frame summarising pass counts/rates and selection mode.}
-#'   \item{diagnostics}{List with window metadata, indices, relaxation log, spectral metrics,
-#'     and final bounds.}
-#'   \item{plots}{NULL or a named list of ggplot objects when \code{make_plots = TRUE}.}
+#'   \item{pool}{Numeric matrix. Candidate pool of realizations that passed the
+#'   final set of filters. Subset of columns from \code{sim_series}.}
+#'   \item{selected}{Numeric matrix. The \code{n_select} realizations chosen from
+#'   the pool. Subset of columns from \code{sim_series}.}
+#'   \item{summary}{Data frame. Pass counts and pass rates for each filter
+#'   family, plus the selection mode used.}
+#'   \item{diagnostics}{List. Window metadata, relaxation log, spectral
+#'   diagnostics, spectral metrics, and the final bounds used.}
+#'   \item{plots}{NULL or a named list of ggplot objects when
+#'   \code{make_plots = TRUE}.}
 #' }
 #'
 #' @importFrom utils modifyList
@@ -73,6 +84,8 @@ filter_warm_pool <- function(
     ),
     modwt_n_levels = NULL,
     make_plots = FALSE,
+    parallel = FALSE,
+    n_cores = NULL,
     verbose = FALSE
 ) {
 
@@ -92,6 +105,14 @@ filter_warm_pool <- function(
 
   make_plots <- isTRUE(make_plots)
   verbose <- isTRUE(verbose)
+
+  parallel <- isTRUE(parallel)
+  if (!is.null(n_cores)) {
+    if (!is.numeric(n_cores) || length(n_cores) != 1L || !is.finite(n_cores) || n_cores < 1) {
+      stop("'n_cores' must be a positive integer or NULL.", call. = FALSE)
+    }
+    n_cores <- as.integer(n_cores)
+  }
 
   n_obs0 <- length(obs_series)
   n_sim0 <- nrow(sim_series)
@@ -262,10 +283,12 @@ filter_warm_pool <- function(
     sim_series_stats = sim_use,
     wavelet_pars = wavelet_args,
     modwt_n_levels = modwt_n_levels,
-    n_top_peaks = b$n_top_peaks,
-    peak_prominence_frac = b$peak_prominence_frac,
+    n_sig_peaks_max = b$n_sig_peaks_max,
     peak_period_tol = b$peak_period_tol,
-    eps = b$spectral_eps
+    peak_mag_tol_log = b$peak_mag_tol_log,
+    eps = b$spectral_eps,
+    parallel = parallel,
+    n_cores = n_cores
   )
 
   wavelet_active <- spectral_results$active
@@ -308,23 +331,19 @@ filter_warm_pool <- function(
     pass_wavelet <- rep(TRUE, n_rlz)
     if (isTRUE(wavelet_active)) {
 
-      # Primary criterion 1: spectral correlation
       pass_cor <- is.finite(spectral_metrics$spectral_cor) &
         (spectral_metrics$spectral_cor >= b$spectral_cor_min)
 
-      # Primary criterion 2: low-frequency fraction difference
-      pass_lf <- is.finite(spectral_metrics$lf_frac_diff) &
-        (spectral_metrics$lf_frac_diff <= b$lf_frac_tol)
+      pass_peak <- rep(TRUE, n_rlz)
+      n_sig <- 0L
+      if (!is.null(spectral_diag$n_sig_peaks_found)) n_sig <- as.integer(spectral_diag$n_sig_peaks_found)
 
-      # Criterion 3: peak matching
-      if (isTRUE(b$peak_match_enabled) && !is.null(spectral_metrics$peak_match_frac)) {
+      if (n_sig > 0L) {
         pass_peak <- is.finite(spectral_metrics$peak_match_frac) &
           (spectral_metrics$peak_match_frac >= b$peak_match_frac_min)
-      } else {
-        pass_peak <- rep(TRUE, n_rlz)
       }
 
-      pass_wavelet <- pass_cor & pass_lf & pass_peak
+      pass_wavelet <- pass_cor & pass_peak
     }
 
     list(
@@ -425,7 +444,34 @@ filter_warm_pool <- function(
   .log("Selecting {format(n_select, big.mark = ',')} from pool of {format(length(pool_idx), big.mark = ',')}",
        tag = "FILTER", verbose = verbose)
 
-  idx_select <- if (length(pool_idx) == n_select) pool_idx else sample(pool_idx, size = n_select, replace = FALSE)
+  # Prefer best peak matching first, then overall spectral shape.
+  # If no significant peaks exist, fall back to spectral correlation only.
+  idx_pool <- pool_idx
+
+  peak_score <- spectral_metrics$peak_match_frac[idx_pool]
+  cor_score  <- spectral_metrics$spectral_cor[idx_pool]
+
+  has_sig_peaks <- !is.null(spectral_diag$n_sig_peaks_found) &&
+    is.finite(spectral_diag$n_sig_peaks_found) &&
+    as.integer(spectral_diag$n_sig_peaks_found) > 0L
+
+  if (has_sig_peaks) {
+
+    # Order: highest peak_match_frac, then highest spectral_cor
+    ord <- order(
+      -ifelse(is.finite(peak_score), peak_score, -Inf),
+      -ifelse(is.finite(cor_score),  cor_score,  -Inf)
+    )
+
+  } else {
+
+    # No significant peaks to enforce: rank by overall spectral shape only
+    ord <- order(-ifelse(is.finite(cor_score), cor_score, -Inf))
+  }
+
+  idx_select <- idx_pool[ord][seq_len(n_select)]
+  selection_mode <- if (selection_mode == "tiered") "ranked_wavelet_priority" else selection_mode
+
 
   # ---------------------------------------------------------------------------
   # Summary table
@@ -478,7 +524,7 @@ filter_warm_pool <- function(
         power_period  = period,
         power_obs     = gws_obs,
         power_signif  = gws_signif,
-        gws_cache     = gws_cache,
+        wavelet_pars  = wavelet_args,
         wavelet_q     = b$plot_wavelet_q
       )
     }
@@ -510,17 +556,95 @@ filter_warm_pool <- function(
 }
 
 
-# ==============================================================================
-# Default Bounds
-# ==============================================================================
-
 #' WARM filtering default bounds
 #'
 #' @description
-#' Internal defaults for filter_warm_pool() bounds. Users should usually override
-#' only a few entries via filter_bounds = list(...).
+#' Returns internal default bounds for \code{filter_warm_pool()}.
 #'
-#' @return Named list of defaults (snake_case keys).
+#' The defaults are designed to be moderately selective for annual records on the
+#' order of 50 to 100 years. Typical usage is to override only a small subset of
+#' entries via \code{filter_bounds = list(...)} while keeping the remaining
+#' defaults unchanged.
+#'
+#' @details
+#' The returned list contains thresholds and controls used by the filtering and
+#' relaxation logic.
+#'
+#' Distributional tolerances:
+#' \describe{
+#'   \item{mean}{Maximum absolute relative difference in the mean between a
+#'   simulated realization and the observed series. Default 0.03.}
+#'   \item{sd}{Maximum absolute relative difference in standard deviation between
+#'   a simulated realization and the observed series. Default 0.03.}
+#' }
+#'
+#' Tail mass behavior:
+#' \describe{
+#'   \item{tail_low_p}{Lower quantile used to define the low tail threshold in the
+#'   observed series. Default 0.20.}
+#'   \item{tail_high_p}{Upper quantile used to define the high tail threshold in
+#'   the observed series. Default 0.80.}
+#'   \item{tail_tol_log}{Maximum absolute log difference between simulated and
+#'   observed tail mass metrics. Default log(1.03).}
+#'   \item{tail_eps}{Positive constant used for numerical stability in log
+#'   transforms. Default 1e-5.}
+#' }
+#'
+#' Spectral similarity:
+#' \describe{
+#'   \item{spectral_cor_min}{Minimum correlation between log transformed observed
+#'   and simulated global wavelet spectra. Default 0.60.}
+#'   \item{spectral_eps}{Positive constant used for numerical stability in
+#'   spectral log transforms. Default 1e-10.}
+#' }
+#'
+#' Peak matching:
+#' \describe{
+#'   \item{n_sig_peaks_max}{Maximum number of significant observed spectral peaks
+#'   to enforce. Default 2.}
+#'   \item{peak_period_tol}{Tolerance for matching peak periods in log2 period
+#'   space. Default 0.50.}
+#'   \item{peak_mag_tol_log}{Tolerance for matching peak magnitudes as the
+#'   absolute log ratio between simulated and observed peak power. Default
+#'   log(1.5).}
+#'   \item{peak_match_frac_min}{Minimum fraction of significant observed peaks
+#'   that must be matched. Default 1.0.}
+#' }
+#'
+#' Plot controls:
+#' \describe{
+#'   \item{plot_wavelet_q}{Two probabilities used to summarize simulated spectra
+#'   in diagnostic plots. Default c(0.50, 0.95).}
+#' }
+#'
+#' Relaxation controls:
+#' \describe{
+#'   \item{relax_mult}{Multiplicative factor applied when relaxing some bounds.
+#'   Default 1.25.}
+#'   \item{relax_mean_max}{Maximum allowed mean tolerance during relaxation.
+#'   Default 0.25.}
+#'   \item{relax_sd_max}{Maximum allowed sd tolerance during relaxation.
+#'   Default 0.25.}
+#'   \item{relax_tail_tol_log_max}{Maximum tail tolerance during relaxation.
+#'   Default log(2.0).}
+#'   \item{relax_tail_p_step}{Step size for relaxing tail quantiles. Default
+#'   0.02.}
+#'   \item{relax_tail_p_low_max}{Maximum lower tail quantile during relaxation.
+#'   Default 0.40.}
+#'   \item{relax_tail_p_high_min}{Minimum upper tail quantile during relaxation.
+#'   Default 0.40.}
+#'   \item{relax_spectral_cor_step}{Decrement applied to spectral_cor_min during
+#'   wavelet relaxation. Default 0.05.}
+#'   \item{relax_spectral_cor_min}{Minimum spectral_cor_min allowed during
+#'   relaxation. Default 0.30.}
+#'   \item{relax_peak_match_frac_step}{Decrement applied to peak_match_frac_min
+#'   during wavelet relaxation. Default 0.10.}
+#'   \item{relax_peak_match_frac_min}{Minimum peak_match_frac_min allowed during
+#'   relaxation. Default 0.00.}
+#'   \item{relax_max_iter}{Maximum number of relaxation iterations. Default 20.}
+#' }
+#'
+#' @return Named list of default bounds using snake case keys.
 #' @keywords internal
 #' @export
 filter_warm_bounds_defaults <- function() {
@@ -529,23 +653,21 @@ filter_warm_bounds_defaults <- function() {
     mean = 0.03,
     sd   = 0.03,
 
-    # --- tail behaviour (quantile-defined tails + log-distance tol) ---
+    # --- tail behaviour ---
     tail_low_p   = 0.20,
     tail_high_p  = 0.80,
     tail_tol_log = log(1.03),
     tail_eps     = 1e-5,
 
-    # --- spectral matching (primary criteria) ---
-    spectral_cor_min = 0.60,  # Min correlation of log-GWS
-    lf_frac_tol      = 0.25, # Max relative diff in LF variance fraction
+    # --- spectral matching (overall shape) ---
+    spectral_cor_min = 0.60,
     spectral_eps     = 1e-10,
 
-    # --- peak matching ---
-    peak_match_enabled   = TRUE,
-    peak_match_frac_min  = 1.0,  # At least 50% of observed peaks must match
-    n_top_peaks          = 2L,    # Number of prominent peaks to detect
-    peak_prominence_frac = 0.10,  # Min prominence as fraction of max power
-    peak_period_tol      = 0.50,   # Period tolerance in log2 scale (octaves)
+    # --- peak matching (significant observed peaks only) ---
+    n_sig_peaks_max      = 2L,
+    peak_period_tol      = 0.50,     # tolerance in log2(period) (octaves)
+    peak_mag_tol_log     = log(1.5), # abs(log(sim/obs)) <= log(1.5) => within 50%
+    peak_match_frac_min  = 1.0,      # require all significant peaks found to match (set <1 to relax)
 
     # --- plotting diagnostics ---
     plot_wavelet_q = c(0.50, 0.95),
@@ -563,29 +685,31 @@ filter_warm_bounds_defaults <- function() {
     # Spectral relaxation
     relax_spectral_cor_step     = 0.05,
     relax_spectral_cor_min      = 0.30,
-    relax_lf_frac_tol_step      = 0.10,
-    relax_lf_frac_tol_max       = 0.60,
     relax_peak_match_frac_step  = 0.10,
     relax_peak_match_frac_min   = 0.00,
-
     relax_max_iter = 20L
   )
 }
+
 
 
 # ==============================================================================
 # Spectral Matching Metrics
 # ==============================================================================
 
-#' Find local maxima (peaks) in a numeric vector
+#' Find local maxima indices in a numeric vector
 #'
 #' @description
-#' Identifies indices of local maxima in a vector.
+#' Scans a numeric vector and returns indices of local maxima. A local maximum is
+#' defined by comparing each element to its immediate neighbors.
 #'
-#' @param x Numeric vector.
-#' @param strict Logical. If TRUE, requires strict inequality on both sides.
+#' @param x Numeric vector. Values to scan for local maxima.
+#' @param strict Logical scalar. If TRUE, requires strict inequality on both
+#'   sides. If FALSE, allows ties but still requires at least one strict
+#'   inequality so flat plateaus do not produce multiple peaks.
 #'
-#' @return Integer vector of peak indices.
+#' @return Integer vector of peak indices. Returns an empty integer vector if
+#'   fewer than three values are available.
 #' @keywords internal
 find_local_maxima <- function(x, strict = TRUE) {
   n <- length(x)
@@ -607,248 +731,322 @@ find_local_maxima <- function(x, strict = TRUE) {
 }
 
 
-#' Identify prominent peaks in observed GWS
+#' Identify significant peaks in an observed global wavelet spectrum
 #'
 #' @description
-#' Finds the top N peaks in the observed global wavelet spectrum that exceed
-#' a prominence threshold (relative to the mean power).
+#' Detects local maxima in an observed global wavelet spectrum and keeps only
+#' those peaks whose power exceeds the corresponding significance curve value.
 #'
-#' @param gws Numeric vector. Global wavelet spectrum.
-#' @param period Numeric vector. Corresponding periods.
-#' @param n_top Integer. Maximum number of peaks to return.
-#' @param prominence_frac Numeric. Minimum prominence as fraction of max power.
+#' Peaks are ranked by signal to noise ratio defined as power divided by
+#' significance, then by power. Up to \code{n_max} peaks are returned.
 #'
-#' @return Data frame with columns: idx, period, power, prominence.
+#' If the significance curve is missing or is not aligned to \code{gws}, the
+#' function returns an empty result, treating the significance information as
+#' unavailable.
+#'
+#' @param gws Numeric vector. Observed global wavelet spectrum values.
+#' @param gws_signif Numeric vector or NULL. Significance curve aligned to
+#'   \code{gws}. Must have the same length as \code{gws}.
+#' @param period Numeric vector. Period values associated with \code{gws}. Must
+#'   have the same length as \code{gws}.
+#' @param n_max Integer scalar. Maximum number of significant peaks to return.
+#'
+#' @return Data frame with one row per selected peak and columns:
+#'   \code{idx} index in the spectrum,
+#'   \code{period} the period at the peak,
+#'   \code{power} the peak power,
+#'   \code{signif} the significance curve value at the peak,
+#'   \code{snr} signal to noise ratio.
+#'   Returns a data frame with zero rows if no significant peaks are found.
 #' @keywords internal
-identify_prominent_peaks <- function(gws, period, n_top = 3, prominence_frac = 0.10) {
+identify_significant_peaks <- function(gws, gws_signif, period, n_max = 3L) {
 
-  if (length(gws) < 3 || all(!is.finite(gws))) {
+  if (length(gws) < 3L || length(period) != length(gws)) {
     return(data.frame(idx = integer(0), period = numeric(0),
-                      power = numeric(0), prominence = numeric(0)))
+                      power = numeric(0), signif = numeric(0), snr = numeric(0)))
   }
 
-  gws_clean <- fill_nearest(gws)
+  gws_clean <- fill_nearest(as.numeric(gws))
+
+  # If signif is missing or wrong length: treat as "no significance available"
+  if (is.null(gws_signif) || !is.numeric(gws_signif) || length(gws_signif) != length(gws_clean)) {
+    return(data.frame(idx = integer(0), period = numeric(0),
+                      power = numeric(0), signif = numeric(0), snr = numeric(0)))
+  }
+
+  signif_clean <- fill_nearest(as.numeric(gws_signif))
+
   peak_idx <- find_local_maxima(gws_clean, strict = FALSE)
-
-  if (length(peak_idx) == 0) {
-    # No local maxima found - use global maximum
-    max_idx <- which.max(gws_clean)
-    return(data.frame(idx = max_idx, period = period[max_idx],
-                      power = gws_clean[max_idx], prominence = 1.0))
+  if (length(peak_idx) == 0L) {
+    return(data.frame(idx = integer(0), period = numeric(0),
+                      power = numeric(0), signif = numeric(0), snr = numeric(0)))
   }
 
-  # Compute prominence for each peak
-  mean_power <- mean(gws_clean, na.rm = TRUE)
-  max_power <- max(gws_clean, na.rm = TRUE)
-  min_threshold <- prominence_frac * max_power
-
-  prominences <- numeric(length(peak_idx))
-  for (i in seq_along(peak_idx)) {
-    pi <- peak_idx[i]
-    peak_val <- gws_clean[pi]
-
-    # Find lowest point between this peak and neighbors
-    left_min <- if (pi > 1) min(gws_clean[1:(pi - 1)], na.rm = TRUE) else peak_val
-    right_min <- if (pi < length(gws_clean)) min(gws_clean[(pi + 1):length(gws_clean)], na.rm = TRUE) else peak_val
-
-    # Prominence is height above the higher of the two valleys
-    base <- max(left_min, right_min)
-    prominences[i] <- peak_val - base
-  }
-
-  # Filter by prominence and sort by power
-  keep <- prominences >= min_threshold & gws_clean[peak_idx] >= min_threshold
-  if (!any(keep)) {
-    # Keep at least the highest peak
-    keep[which.max(gws_clean[peak_idx])] <- TRUE
-  }
+  # Significant peaks only
+  keep <- is.finite(gws_clean[peak_idx]) & is.finite(signif_clean[peak_idx]) &
+    (gws_clean[peak_idx] > signif_clean[peak_idx])
 
   peak_idx <- peak_idx[keep]
-  prominences <- prominences[keep]
+  if (length(peak_idx) == 0L) {
+    return(data.frame(idx = integer(0), period = numeric(0),
+                      power = numeric(0), signif = numeric(0), snr = numeric(0)))
+  }
 
-  # Sort by power (descending) and take top N
-  ord <- order(gws_clean[peak_idx], decreasing = TRUE)
+  snr <- gws_clean[peak_idx] / pmax(signif_clean[peak_idx], 1e-12)
+
+  # Rank by SNR then by power
+  ord <- order(snr, gws_clean[peak_idx], decreasing = TRUE)
   peak_idx <- peak_idx[ord]
-  prominences <- prominences[ord]
+  snr <- snr[ord]
 
-  n_keep <- min(n_top, length(peak_idx))
+  n_keep <- min(as.integer(n_max), length(peak_idx))
   peak_idx <- peak_idx[seq_len(n_keep)]
-  prominences <- prominences[seq_len(n_keep)]
+  snr <- snr[seq_len(n_keep)]
 
   data.frame(
     idx = peak_idx,
     period = period[peak_idx],
     power = gws_clean[peak_idx],
-    prominence = prominences
+    signif = signif_clean[peak_idx],
+    snr = snr
   )
 }
 
 
-#' Check if simulated spectrum matches observed peaks
+#' Compute significant peak match metrics for one simulated spectrum
 #'
 #' @description
-#' For each observed peak, checks if the simulated spectrum has elevated power
-#' at or near that period.
+#' Compares a simulated global wavelet spectrum to a set of significant observed
+#' peaks. For each observed peak, a match is declared if the simulated spectrum
+#' contains a local maximum within a period tolerance and the matched power is
+#' within a magnitude tolerance.
 #'
-#' @param gws_sim Numeric vector. Simulated GWS.
-#' @param gws_obs Numeric vector. Observed GWS.
-#' @param period Numeric vector. Periods.
-#' @param obs_peaks Data frame. Observed peak information from identify_prominent_peaks.
-#' @param period_tol Numeric. Relative tolerance for period matching (log2 scale).
+#' Period tolerance is measured in log2 period space. Magnitude tolerance is
+#' measured as the absolute log ratio between simulated and observed power.
 #'
-#' @return Numeric. Fraction of observed peaks matched (0 to 1).
+#' @param gws_sim Numeric vector. Simulated global wavelet spectrum aligned to
+#'   \code{period}.
+#' @param period Numeric vector. Period grid for \code{gws_sim}.
+#' @param obs_peaks Data frame. Significant observed peaks returned by
+#'   \code{identify_significant_peaks()}.
+#' @param period_tol Numeric scalar. Maximum allowed absolute difference in
+#'   log2 period between an observed peak period and a simulated candidate period.
+#' @param mag_tol_log Numeric scalar. Maximum allowed absolute log ratio between
+#'   simulated and observed peak power.
+#' @param eps Numeric scalar. Positive constant used for numerical stability.
+#'
+#' @return Named list with:
+#'   \code{peak_match_frac} fraction of observed peaks that were matched,
+#'   \code{peak_mag_mean_abs_log_ratio} mean absolute log ratio for matched peaks,
+#'   or NA if no peaks were matched.
 #' @keywords internal
-compute_peak_match_fraction <- function(gws_sim, gws_obs, period, obs_peaks, period_tol = 0.5) {
+compute_peak_match_metrics <- function(gws_sim, period, obs_peaks,
+                                       period_tol = 0.5,
+                                       mag_tol_log = log(1.5),
+                                       eps = 1e-10) {
 
-  if (nrow(obs_peaks) == 0) return(1.0)
+  if (is.null(obs_peaks) || nrow(obs_peaks) == 0L) {
+    return(list(peak_match_frac = 1.0, peak_mag_mean_abs_log_ratio = NA_real_))
+  }
 
-  gws_sim_clean <- fill_nearest(gws_sim)
+  gws_sim_clean <- fill_nearest(as.numeric(gws_sim))
+
   n_matched <- 0L
+  abs_log_ratios <- numeric(0)
 
   for (i in seq_len(nrow(obs_peaks))) {
     obs_period <- obs_peaks$period[i]
-    obs_power <- obs_peaks$power[i]
+    obs_power  <- obs_peaks$power[i]
 
-    # Find periods within tolerance (in log2 scale)
+    # candidate indices within period tolerance (log2 space)
     log2_diff <- abs(log2(period) - log2(obs_period))
-    within_tol <- which(log2_diff <= period_tol)
+    within_tol <- which(is.finite(log2_diff) & (log2_diff <= period_tol))
 
-    if (length(within_tol) > 0) {
-      # Check if simulated power in this region is reasonably elevated
-      sim_power_region <- max(gws_sim_clean[within_tol], na.rm = TRUE)
+    if (length(within_tol) == 0L) next
 
-      # Match if simulated power is at least 50% of observed peak power
-      # OR if it's a local maximum in the region
-      if (sim_power_region >= 0.5 * obs_power) {
-        n_matched <- n_matched + 1L
-      } else {
-        # Check if there's a local maximum in the region
-        region_max_idx <- within_tol[which.max(gws_sim_clean[within_tol])]
-        neighbors <- c(region_max_idx - 1L, region_max_idx + 1L)
-        neighbors <- neighbors[neighbors >= 1 & neighbors <= length(gws_sim_clean)]
+    sim_power <- max(gws_sim_clean[within_tol], na.rm = TRUE)
+    if (!is.finite(sim_power) || !is.finite(obs_power)) next
 
-        if (length(neighbors) > 0 && all(gws_sim_clean[region_max_idx] >= gws_sim_clean[neighbors])) {
-          n_matched <- n_matched + 1L
-        }
-      }
+    abs_log_ratio <- abs(log((sim_power + eps) / (obs_power + eps)))
+
+    # Match requires magnitude agreement within tolerance
+    if (abs_log_ratio <= mag_tol_log) {
+      n_matched <- n_matched + 1L
+      abs_log_ratios <- c(abs_log_ratios, abs_log_ratio)
     }
   }
 
-  n_matched / nrow(obs_peaks)
+  frac <- n_matched / nrow(obs_peaks)
+  mean_abs <- if (length(abs_log_ratios) > 0L) mean(abs_log_ratios) else NA_real_
+
+  list(
+    peak_match_frac = frac,
+    peak_mag_mean_abs_log_ratio = mean_abs
+  )
 }
 
 
-#' Compute spectral matching metrics for a single realization
+
+#' Compute spectral match metrics for one realization
 #'
 #' @description
-#' Computes direct spectral matching metrics between observed and simulated
-#' global wavelet spectra, focusing on reproducing observed low-frequency
-#' structure and dominant peaks.
+#' Computes two spectral similarity metrics between an observed and a simulated
+#' global wavelet spectrum:
+#' 1) correlation between log transformed spectra, and
+#' 2) significant peak match metrics relative to significant observed peaks.
 #'
-#' @param gws_obs Numeric vector. Observed global wavelet spectrum.
-#' @param gws_sim Numeric vector. Simulated global wavelet spectrum (same length).
-#' @param period Numeric vector. Periods corresponding to GWS values.
-#' @param lf_period_threshold Numeric. Period threshold defining low-frequency.
-#' @param obs_peaks Data frame. Observed peaks from identify_prominent_peaks.
-#' @param peak_period_tol Numeric. Period tolerance for peak matching.
-#' @param eps Numeric. Small constant for log stability.
+#' @param gws_obs Numeric vector. Observed global wavelet spectrum aligned to
+#'   \code{period}.
+#' @param gws_sim Numeric vector. Simulated global wavelet spectrum aligned to
+#'   \code{period}.
+#' @param period Numeric vector. Period grid for both spectra.
+#' @param obs_peaks Data frame. Significant observed peaks returned by
+#'   \code{identify_significant_peaks()}.
+#' @param peak_period_tol Numeric scalar. Period matching tolerance in log2
+#'   period space.
+#' @param peak_mag_tol_log Numeric scalar. Magnitude matching tolerance as an
+#'   absolute log ratio.
+#' @param eps Numeric scalar. Positive constant used to avoid log of zero.
 #'
-#' @return Named list with spectral matching metrics.
+#' @return Named list with:
+#'   \code{spectral_cor} correlation between log transformed spectra,
+#'   \code{peak_match_frac} fraction of significant observed peaks matched,
+#'   \code{peak_mag_mean_abs_log_ratio} mean absolute log ratio for matched peaks.
 #' @keywords internal
 compute_spectral_match_single <- function(gws_obs, gws_sim, period,
-                                          lf_period_threshold, obs_peaks,
-                                          peak_period_tol = 0.5, eps = 1e-10) {
+                                          obs_peaks,
+                                          peak_period_tol = 0.5,
+                                          peak_mag_tol_log = log(1.5),
+                                          eps = 1e-10) {
 
   gws_obs <- pmax(as.numeric(gws_obs), eps)
   gws_sim <- pmax(as.numeric(gws_sim), eps)
 
-  # 1. Spectral shape correlation (log-space)
+  # Overall spectral shape match (log-space correlation)
   log_obs <- log(gws_obs)
   log_sim <- log(gws_sim)
-
   ok <- is.finite(log_obs) & is.finite(log_sim)
-  if (sum(ok) < 3L) {
-    spectral_cor <- NA_real_
-  } else {
-    spectral_cor <- stats::cor(log_sim[ok], log_obs[ok])
-  }
 
-  # 2. Low-frequency variance fraction matching
-  lf_idx <- which(period >= lf_period_threshold)
-  total_obs <- sum(gws_obs, na.rm = TRUE)
-  total_sim <- sum(gws_sim, na.rm = TRUE)
+  spectral_cor <- if (sum(ok) < 3L) NA_real_ else stats::cor(log_sim[ok], log_obs[ok])
 
-  if (length(lf_idx) > 0 && total_obs > eps && total_sim > eps) {
-    lf_frac_obs <- sum(gws_obs[lf_idx], na.rm = TRUE) / total_obs
-    lf_frac_sim <- sum(gws_sim[lf_idx], na.rm = TRUE) / total_sim
-    lf_frac_diff <- abs(lf_frac_sim - lf_frac_obs) / max(lf_frac_obs, eps)
-  } else {
-    lf_frac_obs <- NA_real_
-    lf_frac_sim <- NA_real_
-    lf_frac_diff <- NA_real_
-  }
-
-  # 3. Peak matching
-  peak_match_frac <- compute_peak_match_fraction(
+  # Significant-peak matching (period + magnitude)
+  pk <- compute_peak_match_metrics(
     gws_sim = gws_sim,
-    gws_obs = gws_obs,
     period = period,
     obs_peaks = obs_peaks,
-    period_tol = peak_period_tol
+    period_tol = peak_period_tol,
+    mag_tol_log = peak_mag_tol_log,
+    eps = eps
   )
 
   list(
     spectral_cor = spectral_cor,
-    lf_frac_obs = lf_frac_obs,
-    lf_frac_sim = lf_frac_sim,
-    lf_frac_diff = lf_frac_diff,
-    peak_match_frac = peak_match_frac
+    peak_match_frac = pk$peak_match_frac,
+    peak_mag_mean_abs_log_ratio = pk$peak_mag_mean_abs_log_ratio
   )
 }
 
 
-#' Compute spectral metrics for all realizations
+
+#' Compute spectral metrics for an ensemble of realizations
 #'
 #' @description
-#' Performs wavelet analysis on observed series and all simulated realizations,
-#' then computes spectral matching metrics for filtering.
+#' Computes wavelet based spectral similarity metrics between an observed annual
+#' series and each realization in a simulated ensemble.
 #'
-#' @param obs_use Numeric vector. Observed values.
-#' @param sim_series_stats Numeric matrix. Simulated values (n_use x n_realizations).
-#' @param wavelet_pars List of wavelet parameters (signif_level, noise_type, etc.).
-#' @param modwt_n_levels Integer or NULL. MODWT levels from WARM. If NULL, estimated.
-#' @param n_top_peaks Integer. Number of top peaks to match.
-#' @param peak_prominence_frac Numeric. Minimum prominence for peak detection.
-#' @param peak_period_tol Numeric. Period tolerance for peak matching.
-#' @param eps Numeric. Small constant for stability.
+#' The observed series is analyzed once to obtain a period grid, an observed
+#' global wavelet spectrum, a significance curve, and a set of significant peaks.
+#' Each simulated realization is then analyzed on the same period grid and is
+#' scored using:
+#' 1) correlation between log transformed spectra, and
+#' 2) significant peak match fraction and magnitude agreement.
 #'
-#' @return List with spectral filter diagnostics, metrics, and cached spectra.
+#' If \code{parallel = TRUE}, the per realization computation can run in parallel.
+#' Parallel execution uses a PSOCK cluster created by the base parallel package,
+#' which is typically the most portable option across operating systems.
+#'
+#' @param obs_use Numeric vector. Observed annual series after any window
+#'   alignment performed by the caller.
+#' @param sim_series_stats Numeric matrix. Simulated ensemble after any window
+#'   alignment performed by the caller. Rows are years and columns are
+#'   realizations.
+#' @param wavelet_pars Named list. Parameters passed to
+#'   \code{analyze_wavelet_spectrum()}. Expected entries include \code{signif_level},
+#'   \code{noise_type}, \code{period_lower_limit}, and \code{detrend}.
+#' @param modwt_n_levels Integer or NULL. Number of MODWT levels used in WARM.
+#'   Used only for diagnostics. If NULL, a value is estimated from series length.
+#' @param n_sig_peaks_max Integer scalar. Maximum number of significant observed
+#'   peaks to enforce when computing peak matching metrics.
+#' @param peak_period_tol Numeric scalar. Period matching tolerance in log2
+#'   period space.
+#' @param peak_mag_tol_log Numeric scalar. Magnitude matching tolerance as an
+#'   absolute log ratio.
+#' @param eps Numeric scalar. Positive constant used for numerical stability in
+#'   log transforms and ratios.
+#' @param parallel Logical scalar. If TRUE, compute per realization spectra and
+#'   metrics in parallel.
+#' @param n_cores Integer scalar or NULL. Number of worker processes to use when
+#'   \code{parallel = TRUE}. If NULL, an internal default is used.
+#' @param cache_gws Logical scalar. If TRUE, store simulated global wavelet
+#'   spectra in \code{gws_cache}. This can be memory intensive for large
+#'   ensembles.
+#'
+#' @return Named list with:
+#' \describe{
+#'   \item{active}{Logical scalar. TRUE when wavelet metrics were computed.}
+#'   \item{period}{Numeric vector. Period grid used for all spectra.}
+#'   \item{gws_obs}{Numeric vector. Observed global wavelet spectrum on \code{period}.}
+#'   \item{gws_signif}{Numeric vector or NULL. Significance curve on \code{period}.}
+#'   \item{gws_cache}{Numeric matrix or NULL. Simulated spectra on \code{period}
+#'   for each realization when \code{cache_gws = TRUE}.}
+#'   \item{metrics}{List with numeric vectors \code{spectral_cor},
+#'   \code{peak_match_frac}, and \code{peak_mag_mean_abs_log_ratio}.}
+#'   \item{diagnostics}{List. Summary information including significant peaks
+#'   and observed spectrum summary statistics.}
+#' }
+#'
 #' @keywords internal
 #' @export
 compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
                                      modwt_n_levels = NULL,
-                                     n_top_peaks = 3L,
-                                     peak_prominence_frac = 0.10,
+                                     n_sig_peaks_max = 2L,
                                      peak_period_tol = 0.50,
-                                     eps = 1e-10) {
+                                     peak_mag_tol_log = log(1.5),
+                                     eps = 1e-10,
+                                     parallel = FALSE,
+                                     n_cores = NULL,
+                                     cache_gws = FALSE) {
+
+
+  parallel <- isTRUE(parallel)
+  cache_gws <- isTRUE(cache_gws)
+  gws_cache <- NULL
+  if (cache_gws) {
+    gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
+  }
+
+  if (!is.null(n_cores)) {
+    if (!is.numeric(n_cores) || length(n_cores) != 1L || !is.finite(n_cores) || n_cores < 1) {
+      stop("'n_cores' must be a positive integer or NULL.", call. = FALSE)
+    }
+    n_cores <- as.integer(n_cores)
+  }
 
   n_use <- length(obs_use)
   n_realizations <- ncol(sim_series_stats)
 
-  # Estimate MODWT levels if not provided
   if (is.null(modwt_n_levels) || !is.finite(modwt_n_levels) || modwt_n_levels < 1) {
     modwt_n_levels <- max(2L, floor(log2(n_use)) - 1L)
   }
   modwt_n_levels <- as.integer(modwt_n_levels)
 
-  # Low-frequency threshold: periods >= 2^J (smooth component threshold)
-  lf_period_threshold <- 2^modwt_n_levels
-
-  # Observed wavelet analysis
+  # -------------------------------------------------------------------------
+  # Observed wavelet analysis (sequential; only once)
+  # -------------------------------------------------------------------------
   wv_obs <- analyze_wavelet_spectrum(
     obs_use,
     signif = wavelet_pars$signif_level,
-    noise = wavelet_pars$noise_type,
+    noise  = wavelet_pars$noise_type,
     min_period = wavelet_pars$period_lower_limit,
     detrend = isTRUE(wavelet_pars$detrend),
     mode = "fast"
@@ -860,45 +1058,45 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
 
   period <- as.numeric(wv_obs$period)
 
-  # Use unmasked GWS for matching
+  # Observed GWS (use unmasked when available)
   gws_obs <- if (!is.null(wv_obs$gws_unmasked) && is.numeric(wv_obs$gws_unmasked)) {
     as.numeric(wv_obs$gws_unmasked)
   } else {
     as.numeric(wv_obs$gws)
   }
+  gws_obs <- gws_regrid(wv_obs, period, use_unmasked = TRUE)
+  gws_obs <- fill_nearest(gws_obs)
 
+  # Significance curve aligned to 'period' (single regrid only)
   gws_signif <- wv_obs$gws_signif_unmasked
   if (is.null(gws_signif)) gws_signif <- wv_obs$gws_signif
 
-  # Ensure matching lengths
-  if (length(gws_obs) != length(period)) {
-    gws_obs <- gws_regrid(wv_obs, period, use_unmasked = TRUE)
+  if (!is.null(gws_signif) && is.numeric(gws_signif)) {
+    wv_sig <- list(period = wv_obs$period, gws = as.numeric(gws_signif))
+    gws_signif <- gws_regrid(wv_sig, target_period = period, use_unmasked = FALSE)
+    gws_signif <- fill_nearest(as.numeric(gws_signif))
+  } else {
+    gws_signif <- NULL
   }
 
-  gws_obs <- fill_nearest(gws_obs)
-
-  # Identify prominent peaks in observed spectrum
-  obs_peaks <- identify_prominent_peaks(
+  # Significant observed peaks only
+  obs_peaks_sig <- identify_significant_peaks(
     gws = gws_obs,
+    gws_signif = gws_signif,
     period = period,
-    n_top = n_top_peaks,
-    prominence_frac = peak_prominence_frac
+    n_max = n_sig_peaks_max
   )
 
-  # Cache simulated GWS and compute metrics
-  gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
+  # -------------------------------------------------------------------------
+  # Worker function: analyze one simulation column
+  # -------------------------------------------------------------------------
+  one_sim <- function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
+                      peak_period_tol, peak_mag_tol_log, eps) {
 
-  spectral_cor    <- rep(NA_real_, n_realizations)
-  lf_frac_obs_vec <- rep(NA_real_, n_realizations)
-  lf_frac_sim_vec <- rep(NA_real_, n_realizations)
-  lf_frac_diff    <- rep(NA_real_, n_realizations)
-  peak_match_frac <- rep(NA_real_, n_realizations)
-
-  for (j in seq_len(n_realizations)) {
     wv_sim <- analyze_wavelet_spectrum(
       sim_series_stats[, j],
       signif = wavelet_pars$signif_level,
-      noise = wavelet_pars$noise_type,
+      noise  = wavelet_pars$noise_type,
       min_period = wavelet_pars$period_lower_limit,
       detrend = isTRUE(wavelet_pars$detrend),
       mode = "fast"
@@ -906,34 +1104,159 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
 
     gws_sim <- gws_regrid(wv_sim, period, use_unmasked = TRUE)
     gws_sim <- fill_nearest(gws_sim)
-    gws_cache[, j] <- gws_sim
 
     m <- compute_spectral_match_single(
       gws_obs = gws_obs,
       gws_sim = gws_sim,
       period = period,
-      lf_period_threshold = lf_period_threshold,
-      obs_peaks = obs_peaks,
+      obs_peaks = obs_peaks_sig,
       peak_period_tol = peak_period_tol,
+      peak_mag_tol_log = peak_mag_tol_log,
       eps = eps
     )
 
-    spectral_cor[j]    <- m$spectral_cor
-    lf_frac_obs_vec[j] <- m$lf_frac_obs
-    lf_frac_sim_vec[j] <- m$lf_frac_sim
-    lf_frac_diff[j]    <- m$lf_frac_diff
-    peak_match_frac[j] <- m$peak_match_frac
+    list(
+      gws_sim = gws_sim,
+      spectral_cor = m$spectral_cor,
+      peak_match_frac = m$peak_match_frac,
+      peak_mag_mean_abs_log_ratio = m$peak_mag_mean_abs_log_ratio
+    )
   }
 
-  # Diagnostics
+  # -------------------------------------------------------------------------
+  # Run loop: sequential or parallel
+  # -------------------------------------------------------------------------
+  gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
+  spectral_cor <- rep(NA_real_, n_realizations)
+  peak_match_frac <- rep(NA_real_, n_realizations)
+  peak_mag_mean_abs_log_ratio <- rep(NA_real_, n_realizations)
+
+  if (!parallel || n_realizations < 2L) {
+
+    for (j in seq_len(n_realizations)) {
+      res <- one_sim(
+        j = j,
+        sim_series_stats = sim_series_stats,
+        wavelet_pars = wavelet_pars,
+        period = period,
+        gws_obs = gws_obs,
+        obs_peaks_sig = obs_peaks_sig,
+        peak_period_tol = peak_period_tol,
+        peak_mag_tol_log = peak_mag_tol_log,
+        eps = eps
+      )
+
+      if (cache_gws) gws_cache[, j] <- res$gws_sim
+      spectral_cor[j] <- res$spectral_cor
+      peak_match_frac[j] <- res$peak_match_frac
+      peak_mag_mean_abs_log_ratio[j] <- res$peak_mag_mean_abs_log_ratio
+    }
+
+  } else {
+
+    # robust core selection
+    max_cores <- parallel::detectCores(logical = TRUE)
+    if (!is.finite(max_cores) || max_cores < 1L) max_cores <- 1L
+
+    use_cores <- if (is.null(n_cores)) max_cores else min(n_cores, max_cores)
+    use_cores <- max(1L, as.integer(use_cores))
+
+    if (use_cores == 1L) {
+      for (j in seq_len(n_realizations)) {
+        res <- one_sim(
+          j = j,
+          sim_series_stats = sim_series_stats,
+          wavelet_pars = wavelet_pars,
+          period = period,
+          gws_obs = gws_obs,
+          obs_peaks_sig = obs_peaks_sig,
+          peak_period_tol = peak_period_tol,
+          peak_mag_tol_log = peak_mag_tol_log,
+          eps = eps
+        )
+
+        if (cache_gws) gws_cache[, j] <- res$gws_sim
+        spectral_cor[j] <- res$spectral_cor
+        peak_match_frac[j] <- res$peak_match_frac
+        peak_mag_mean_abs_log_ratio[j] <- res$peak_mag_mean_abs_log_ratio
+      }
+
+    } else {
+
+      cl <- parallel::makeCluster(use_cores)
+      on.exit(try(parallel::stopCluster(cl), silent = TRUE), add = TRUE)
+
+      # Ensure worker sessions can see required functions/objects.
+      # Use explicit var list; this avoids "object not found" on Windows PSOCK.
+      parallel::clusterExport(
+        cl,
+        varlist = c(
+          "analyze_wavelet_spectrum",
+          "gws_regrid",
+          "fill_nearest",
+          "compute_spectral_match_single",
+          "compute_peak_match_metrics",
+          "identify_significant_peaks",
+          "find_local_maxima",
+          "one_sim"
+        ),
+        envir = environment()
+      )
+
+      # Load required namespaces on workers (safe even if already loaded)
+      parallel::clusterEvalQ(cl, {
+        NULL
+      })
+
+      idx <- as.integer(seq_len(n_realizations))
+
+      res_list <- parallel::parLapply(
+        cl,
+        X = idx,
+        fun = function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
+                       peak_period_tol, peak_mag_tol_log, eps) {
+          one_sim(
+            j = j,
+            sim_series_stats = sim_series_stats,
+            wavelet_pars = wavelet_pars,
+            period = period,
+            gws_obs = gws_obs,
+            obs_peaks_sig = obs_peaks_sig,
+            peak_period_tol = peak_period_tol,
+            peak_mag_tol_log = peak_mag_tol_log,
+            eps = eps
+          )
+        },
+        sim_series_stats = sim_series_stats,
+        wavelet_pars = wavelet_pars,
+        period = period,
+        gws_obs = gws_obs,
+        obs_peaks_sig = obs_peaks_sig,
+        peak_period_tol = peak_period_tol,
+        peak_mag_tol_log = peak_mag_tol_log,
+        eps = eps
+      )
+
+      for (j in seq_len(n_realizations)) {
+        res <- res_list[[j]]
+        gws_cache[, j] <- res$gws_sim
+        spectral_cor[j] <- res$spectral_cor
+        peak_match_frac[j] <- res$peak_match_frac
+        peak_mag_mean_abs_log_ratio[j] <- res$peak_mag_mean_abs_log_ratio
+      }
+    }
+  }
+
   spectral_diag <- list(
     modwt_n_levels = modwt_n_levels,
-    lf_period_threshold = lf_period_threshold,
     n_periods = length(period),
-    obs_peaks = obs_peaks,
-    gws_obs_summary = c(min = min(gws_obs, na.rm = TRUE),
-                        median = stats::median(gws_obs, na.rm = TRUE),
-                        max = max(gws_obs, na.rm = TRUE))
+    obs_peaks_sig = obs_peaks_sig,
+    n_sig_peaks_found = nrow(obs_peaks_sig),
+    gws_obs_summary = c(
+      min = min(gws_obs, na.rm = TRUE),
+      median = stats::median(gws_obs, na.rm = TRUE),
+      max = max(gws_obs, na.rm = TRUE)
+    )
   )
 
   list(
@@ -944,34 +1267,59 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
     gws_cache = gws_cache,
     metrics = list(
       spectral_cor = spectral_cor,
-      lf_frac_obs = lf_frac_obs_vec,
-      lf_frac_sim = lf_frac_sim_vec,
-      lf_frac_diff = lf_frac_diff,
-      peak_match_frac = peak_match_frac
+      peak_match_frac = peak_match_frac,
+      peak_mag_mean_abs_log_ratio = peak_mag_mean_abs_log_ratio
     ),
     diagnostics = spectral_diag
   )
 }
 
 
+
 # ==============================================================================
 # Tail-mass Metrics
 # ==============================================================================
 
-#' Compute tail-mass metrics for filtering
+#' Compute tail mass metrics for filtering
 #'
 #' @description
-#' Computes tail-mass metrics based on lower and upper tail quantile thresholds.
-#' Uses robust scale estimation (IQR -> MAD -> SD fallback) and normalizes
-#' tail deficit/excess masses by series length and scale.
+#' Computes tail mass metrics for an observed series and a simulated ensemble.
+#' Tail mass metrics quantify how much probability mass lies beyond observed
+#' quantile thresholds, expressed as normalized deficit or excess mass.
 #'
-#' @param obs_use Numeric vector of observed values.
-#' @param sim_series_stats Numeric matrix of simulated values (n_use x n_realizations).
-#' @param tail_low_p Lower tail quantile probability (e.g., 0.10).
-#' @param tail_high_p Upper tail quantile probability (e.g., 0.90).
-#' @param tail_eps Epsilon for log transform to avoid log(0).
+#' The method uses robust scale estimation for normalization. The scale is chosen
+#' as IQR when available, otherwise MAD, otherwise standard deviation, otherwise 1.
+#' Tail masses are normalized by series length and scale to make values more
+#' comparable across datasets.
 #'
-#' @return List with tail thresholds, scale, masses, and log-distance metrics.
+#' The returned log difference vectors are used by \code{filter_warm_pool()} to
+#' decide whether a realization passes tail filters.
+#'
+#' @param obs_use Numeric vector. Observed annual values after any window
+#'   alignment performed by the caller.
+#' @param sim_series_stats Numeric matrix. Simulated values aligned to
+#'   \code{obs_use}. Rows are years and columns are realizations.
+#' @param tail_low_p Numeric scalar. Lower tail quantile probability used to
+#'   compute the low threshold on the observed series.
+#' @param tail_high_p Numeric scalar. Upper tail quantile probability used to
+#'   compute the high threshold on the observed series.
+#' @param tail_eps Numeric scalar. Positive constant added inside log transforms
+#'   to avoid log of zero.
+#'
+#' @return Named list with tail thresholds, scale, observed and simulated tail
+#'   mass metrics, and log difference vectors:
+#' \describe{
+#'   \item{thr_low}{Lower threshold from the observed series.}
+#'   \item{thr_high}{Upper threshold from the observed series.}
+#'   \item{scale_obs}{Robust scale used for normalization.}
+#'   \item{M_obs_low}{Observed low tail deficit mass.}
+#'   \item{M_obs_high}{Observed high tail excess mass.}
+#'   \item{M_sim_low}{Vector of simulated low tail deficit masses.}
+#'   \item{M_sim_high}{Vector of simulated high tail excess masses.}
+#'   \item{logdiff_low}{Vector of absolute log differences for low tail mass.}
+#'   \item{logdiff_high}{Vector of absolute log differences for high tail mass.}
+#' }
+#'
 #' @keywords internal
 #' @export
 compute_tailmass_metrics <- function(obs_use, sim_series_stats,
@@ -1042,17 +1390,37 @@ compute_tailmass_metrics <- function(obs_use, sim_series_stats,
 # Relaxation Logic
 # ==============================================================================
 
-#' Relax bounds for one filter
+#' Relax bounds for one filter family
 #'
 #' @description
-#' Applies one relaxation step to a single filter. Updates bounds in place.
+#' Applies one relaxation step for a single filter family and updates the bounds
+#' environment in place. This function is called by \code{filter_warm_pool()}.
 #'
-#' @param filter_name Character. Name of filter to relax.
-#' @param bounds_env Environment containing bounds (snake_case keys).
-#' @param wavelet_active_env Environment containing wavelet_active flag.
-#' @param recompute_tailmass_fn Function to recompute tail mass when thresholds change.
+#' Relaxation behavior by filter family:
+#' \describe{
+#'   \item{mean}{Increases the mean tolerance up to \code{relax_mean_max}.}
+#'   \item{sd}{Increases the sd tolerance up to \code{relax_sd_max}.}
+#'   \item{tail_low}{First increases tail tolerance, then increases
+#'   \code{tail_low_p} in steps, recomputing tail metrics after changes.}
+#'   \item{tail_high}{First increases tail tolerance, then decreases
+#'   \code{tail_high_p} in steps, recomputing tail metrics after changes.}
+#'   \item{wavelet}{Relaxes spectral correlation threshold, then relaxes peak
+#'   match fraction, then disables peak matching, then disables wavelet filtering.}
+#' }
 #'
-#' @return List with changed (logical) and msg (character).
+#' @param filter_name Character scalar. Filter family to relax. Must be one of
+#'   \code{"mean"}, \code{"sd"}, \code{"tail_low"}, \code{"tail_high"},
+#'   \code{"wavelet"}.
+#' @param bounds_env Environment. Environment containing the current bounds using
+#'   snake case keys. Updated in place.
+#' @param wavelet_active_env Environment. Environment containing a logical
+#'   \code{wavelet_active} flag. May be updated in place.
+#' @param recompute_tailmass_fn Function. Callback used to recompute tail mass
+#'   metrics when tail quantile thresholds change.
+#'
+#' @return Named list with:
+#'   \code{changed} logical scalar indicating whether a bound was changed,
+#'   \code{msg} character message describing the applied change.
 #' @keywords internal
 #' @export
 relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
@@ -1117,43 +1485,40 @@ relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
       msg <- "wavelet already inactive"
 
     } else if (b$spectral_cor_min > b$relax_spectral_cor_min + 1e-15) {
-      # First relax: spectral correlation threshold
+      # 1) Relax spectral correlation threshold
       old <- b$spectral_cor_min
-      b$spectral_cor_min <- max(b$spectral_cor_min - b$relax_spectral_cor_step,
-                                b$relax_spectral_cor_min)
+      b$spectral_cor_min <- max(
+        b$spectral_cor_min - b$relax_spectral_cor_step,
+        b$relax_spectral_cor_min
+      )
       changed <- TRUE
       msg <- sprintf("spectral_cor_min %.2f -> %.2f", old, b$spectral_cor_min)
 
-    } else if (b$lf_frac_tol < b$relax_lf_frac_tol_max - 1e-15) {
-      # Second relax: LF fraction tolerance
-      old <- b$lf_frac_tol
-      b$lf_frac_tol <- min(b$lf_frac_tol + b$relax_lf_frac_tol_step,
-                           b$relax_lf_frac_tol_max)
-      changed <- TRUE
-      msg <- sprintf("lf_frac_tol %.2f -> %.2f", old, b$lf_frac_tol)
-
     } else if (isTRUE(b$peak_match_enabled) &&
                b$peak_match_frac_min > b$relax_peak_match_frac_min + 1e-15) {
-      # Third relax: peak match fraction
+      # 2) Relax peak match fraction (only while enabled)
       old <- b$peak_match_frac_min
-      b$peak_match_frac_min <- max(b$peak_match_frac_min - b$relax_peak_match_frac_step,
-                                   b$relax_peak_match_frac_min)
+      b$peak_match_frac_min <- max(
+        b$peak_match_frac_min - b$relax_peak_match_frac_step,
+        b$relax_peak_match_frac_min
+      )
       changed <- TRUE
       msg <- sprintf("peak_match_frac_min %.2f -> %.2f", old, b$peak_match_frac_min)
 
     } else if (isTRUE(b$peak_match_enabled)) {
-      # Fourth relax: disable peak matching
+      # 3) Disable peak matching
       b$peak_match_enabled <- FALSE
       changed <- TRUE
       msg <- "peak_match_enabled TRUE -> FALSE"
 
     } else {
-      # Final: disable wavelet filter entirely
+      # 4) Disable wavelet filter entirely
       assign("wavelet_active", FALSE, envir = wavelet_active_env)
       changed <- TRUE
       msg <- "wavelet filter disabled"
     }
   }
+
 
   list(changed = changed, msg = msg)
 }
@@ -1163,8 +1528,21 @@ relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
 # Logging Helpers
 # ==============================================================================
 
-#' Compact criteria string for a filter
+#' Create compact criteria text for logging
 #'
+#' @description
+#' Builds a compact one line string describing the current criteria for a given
+#' filter family. Used by the logging helpers in this script.
+#'
+#' @param filter_name Character scalar. Filter family name.
+#' @param bounds List or environment. Bounds values used to build the criteria
+#'   string.
+#' @param tail_metrics List. Tail metrics produced by \code{compute_tailmass_metrics()}.
+#' @param wavelet_active Logical scalar. TRUE if wavelet filtering is active.
+#' @param spectral_diag List. Spectral diagnostics returned by
+#'   \code{compute_spectral_metrics()}.
+#'
+#' @return Character scalar. A compact criteria string.
 #' @keywords internal
 #' @export
 criteria_string_compact <- function(filter_name, bounds, tail_metrics,
@@ -1190,16 +1568,39 @@ criteria_string_compact <- function(filter_name, bounds, tail_metrics,
       ""
     }
 
-    return(sprintf("cor>=%.2f, lf<=%.2f%s",
-                   bounds$spectral_cor_min, bounds$lf_frac_tol, peak_str))
+    if (filter_name == "wavelet") {
+      if (!isTRUE(wavelet_active)) return("inactive")
+
+      peak_str <- if (isTRUE(bounds$peak_match_enabled)) {
+        sprintf(", pk>=%.0f%%", bounds$peak_match_frac_min * 100)
+      } else {
+        ""
+      }
+
+      return(sprintf("cor>=%.2f%s", bounds$spectral_cor_min, peak_str))
+    }
+
+
   }
 
   "NA"
 }
 
 
-#' Log initial setup information
+#' Log filtering setup information
 #'
+#' @description
+#' Writes a header block describing the filtering configuration. This includes
+#' series lengths, the number of candidate realizations, the selection target,
+#' and the relaxation priority.
+#'
+#' @param n_obs Integer scalar. Length of the observed series in years.
+#' @param n_sim Integer scalar. Length of the simulated series in years.
+#' @param n_realizations Integer scalar. Number of candidate realizations.
+#' @param sample_target Integer scalar. Number of realizations requested.
+#' @param relax_priority Character vector. Relaxation priority ordering.
+#'
+#' @return Invisibly returns NULL.
 #' @keywords internal
 log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, relax_priority) {
 
@@ -1217,8 +1618,28 @@ log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, rel
 }
 
 
-#' Log filter iteration details
+#' Log one filtering iteration summary
 #'
+#' @description
+#' Writes a compact per iteration summary showing pass counts, pass rates, and
+#' current criteria for each active filter family, followed by the current pool
+#' size relative to the target.
+#'
+#' @param iter Integer scalar. Iteration number. Use 0 for the initial evaluation.
+#' @param passes Named list. Logical vectors indicating pass or fail for each
+#'   filter family.
+#' @param pool Integer vector. Indices of realizations currently in the pool.
+#' @param n_total Integer scalar. Total number of realizations evaluated.
+#' @param target Integer scalar. Target pool size.
+#' @param bounds Environment. Current bounds values.
+#' @param tail_metrics List. Tail metrics produced by \code{compute_tailmass_metrics()}.
+#' @param wavelet_active Logical scalar. TRUE if wavelet filtering is active.
+#' @param spectral_diag List. Spectral diagnostics returned by
+#'   \code{compute_spectral_metrics()}.
+#' @param note Character scalar or NULL. Optional message describing the action
+#'   taken in this iteration.
+#'
+#' @return Invisibly returns NULL.
 #' @keywords internal
 log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
                                  tail_metrics, wavelet_active, spectral_diag,
@@ -1268,6 +1689,16 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
 
 #' Log final filtering summary
 #'
+#' @description
+#' Writes a footer block summarizing the final pool size, number sampled, and the
+#' selection mode that was used.
+#'
+#' @param pool_size Integer scalar. Final candidate pool size.
+#' @param n_total Integer scalar. Total number of candidate realizations.
+#' @param n_sampled Integer scalar. Number of realizations sampled.
+#' @param relaxation_level Character scalar. Label describing the selection mode.
+#'
+#' @return Invisibly returns NULL.
 #' @keywords internal
 log_final_summary <- function(pool_size, n_total, n_sampled, relaxation_level) {
 
