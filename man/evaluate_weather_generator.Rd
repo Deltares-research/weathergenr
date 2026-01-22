@@ -16,6 +16,8 @@ evaluate_weather_generator(
   save_plots = TRUE,
   show_title = TRUE,
   verbose = TRUE,
+  parallel = FALSE,
+  n_cores = NULL,
   max_grids = 25,
   seed = NULL
 )
@@ -50,6 +52,12 @@ plots are not saved to disk.}
 
 \item{verbose}{Logical. Whether to emit console messages and the fit summary table.}
 
+\item{parallel}{Logical. Whether to parallelize per-realization summaries
+(default = `FALSE`).}
+
+\item{n_cores}{Optional integer. Number of cores to use when `parallel = TRUE`.
+Defaults to available physical cores and is capped at `n_realizations`.}
+
 \item{max_grids}{Integer. Maximum number of grid cells to evaluate (default = 25).
 If more grids are provided, a random subsample is used to control memory.}
 
@@ -77,8 +85,12 @@ The function standardizes simulated and observed series to full-year windows
 (after leap-day removal), optionally subsamples grid cells to manage memory,
 and returns diagnostic plots alongside a summarized fit table. Missing values
 are ignored in summary statistics (`na.rm = TRUE`), and correlations use
-pairwise complete observations. Use `seed` for reproducible subsampling and
-window selection; the original RNG state is restored on exit.
+pairwise complete observations. If `parallel = TRUE`, per-realization summaries
+run on a cluster via `parallel::makeCluster()`; `n_cores` defaults to available
+physical cores and is capped at `n_realizations`. For small/medium workloads,
+cluster startup overhead can outweigh gains; parallelization is most beneficial
+with many realizations and/or large grid counts. Use `seed` for reproducible
+subsampling and window selection; the original RNG state is restored on exit.
 }
 \examples{
 set.seed(1)

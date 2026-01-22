@@ -12,8 +12,12 @@
 #' (after leap-day removal), optionally subsamples grid cells to manage memory,
 #' and returns diagnostic plots alongside a summarized fit table. Missing values
 #' are ignored in summary statistics (`na.rm = TRUE`), and correlations use
-#' pairwise complete observations. Use `seed` for reproducible subsampling and
-#' window selection; the original RNG state is restored on exit.
+#' pairwise complete observations. If `parallel = TRUE`, per-realization summaries
+#' run on a cluster via `parallel::makeCluster()`; `n_cores` defaults to available
+#' physical cores and is capped at `n_realizations`. For small/medium workloads,
+#' cluster startup overhead can outweigh gains; parallelization is most beneficial
+#' with many realizations and/or large grid counts. Use `seed` for reproducible
+#' subsampling and window selection; the original RNG state is restored on exit.
 #'
 #' @param daily_sim List of simulated weather realizations. Each element should be
 #'   a list of data frames (one per grid cell), containing daily values and a `date` column.
@@ -33,6 +37,10 @@
 #' @param save_plots Logical. Whether to save plots to `output_dir` (default = `TRUE`).
 #' @param show_title Logical. Whether to display titles in plots (default = `TRUE`).
 #' @param verbose Logical. Whether to emit console messages and the fit summary table.
+#' @param parallel Logical. Whether to parallelize per-realization summaries
+#'   (default = `FALSE`).
+#' @param n_cores Optional integer. Number of cores to use when `parallel = TRUE`.
+#'   Defaults to available physical cores and is capped at `n_realizations`.
 #' @param max_grids Integer. Maximum number of grid cells to evaluate (default = 25).
 #'   If more grids are provided, a random subsample is used to control memory.
 #' @param seed Optional integer. Random seed for reproducible grid subsampling and
@@ -90,6 +98,8 @@ evaluate_weather_generator <- function(
     save_plots = TRUE,
     show_title = TRUE,
     verbose = TRUE,
+    parallel = FALSE,
+    n_cores = NULL,
     max_grids = 25,
     seed = NULL
 ) {
@@ -105,7 +115,9 @@ evaluate_weather_generator <- function(
     n_realizations = n_realizations,
     wet_quantile = wet_quantile,
     extreme_quantile = extreme_quantile,
-    verbose = verbose
+    verbose = verbose,
+    parallel = parallel,
+    n_cores = n_cores
   )
 
   if (!.is_int_scalar(max_grids) || max_grids < 1L) {
@@ -240,7 +252,10 @@ evaluate_weather_generator <- function(
     daily_sim = daily_sim,
     n_realizations = n_realizations,
     variables = variables,
-    mc_thresholds = obs_results$mc_thresholds)
+    mc_thresholds = obs_results$mc_thresholds,
+    parallel = parallel,
+    n_cores = n_cores,
+    seed = seed)
 
   # ============================================================================
   # MERGE AND PREPARE PLOT DATA
@@ -646,7 +661,9 @@ evaluate_weather_generator <- function(
     n_realizations,
     wet_quantile,
     extreme_quantile,
-    verbose
+    verbose,
+    parallel,
+    n_cores
 ) {
 
   if (is.null(daily_sim)) stop("'daily_sim' must not be NULL", call. = FALSE)
@@ -701,6 +718,16 @@ evaluate_weather_generator <- function(
 
   if (!is.logical(verbose) || length(verbose) != 1L) {
     stop("'verbose' must be TRUE or FALSE", call. = FALSE)
+  }
+
+  if (!is.logical(parallel) || length(parallel) != 1L) {
+    stop("'parallel' must be TRUE or FALSE", call. = FALSE)
+  }
+
+  if (!is.null(n_cores)) {
+    if (!.is_int_scalar(n_cores) || n_cores < 1L) {
+      stop("'n_cores' must be NULL or a positive integer", call. = FALSE)
+    }
   }
 
   invisible(TRUE)
@@ -761,7 +788,8 @@ evaluate_weather_generator <- function(
 
 #' Summarize simulated weather data
 #' @keywords internal
-.summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds) {
+.summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds,
+                                      parallel = FALSE, n_cores = NULL, seed = NULL) {
 
   sim.datemat <- dplyr::tibble(
     date = daily_sim[[1]][[1]]$date,
@@ -770,20 +798,56 @@ evaluate_weather_generator <- function(
     day = as.integer(format(date, "%d"))
   )
 
-  sim <- lapply(seq_len(n_realizations), function(i) {
-    daily_sim[[i]] %>%
-      dplyr::bind_rows(.id = "id") %>%
-      dplyr::mutate(id = as.integer(.data$id)) %>%
-      dplyr::left_join(sim.datemat, by = "date")
-  })
+  .summarize_one_realization <- function(i, daily_sim, variables, mc_thresholds, sim.datemat) {
+    sim_i <- dplyr::bind_rows(daily_sim[[i]], .id = "id")
+    sim_i <- dplyr::mutate(sim_i, id = as.integer(.data$id))
+    sim_i <- dplyr::left_join(sim_i, sim.datemat, by = "date")
 
-  sim.stats.list <- lapply(seq_len(n_realizations), function(i) {
     .compute_timeseries_stats(
-      data = sim[[i]],
+      data = sim_i,
       variables = variables,
       mc_thresholds = mc_thresholds
     )
-  })
+  }
+
+  n_cores_use <- n_cores
+  if (is.null(n_cores_use)) {
+    n_cores_use <- parallel::detectCores(logical = FALSE)
+    if (!is.finite(n_cores_use) || n_cores_use < 1L) {
+      n_cores_use <- 1L
+    }
+  }
+  n_cores_use <- min(as.integer(n_cores_use), n_realizations)
+  use_parallel <- isTRUE(parallel) && n_cores_use > 1L && n_realizations > 1L
+
+  if (use_parallel) {
+    cl <- parallel::makeCluster(n_cores_use)
+    on.exit(parallel::stopCluster(cl), add = TRUE)
+    parallel::clusterEvalQ(cl, { suppressPackageStartupMessages(library(weathergenr)) })
+    if (!is.null(seed)) {
+      parallel::clusterSetRNGStream(cl, seed)
+    }
+    sim.stats.list <- parallel::parLapply(
+      cl,
+      seq_len(n_realizations),
+      .summarize_one_realization,
+      daily_sim = daily_sim,
+      variables = variables,
+      mc_thresholds = mc_thresholds,
+      sim.datemat = sim.datemat
+    )
+  } else {
+    sim.stats.list <- vector("list", n_realizations)
+    for (i in seq_len(n_realizations)) {
+      sim.stats.list[[i]] <- .summarize_one_realization(
+        i = i,
+        daily_sim = daily_sim,
+        variables = variables,
+        mc_thresholds = mc_thresholds,
+        sim.datemat = sim.datemat
+      )
+    }
+  }
 
   list(
     stats.season = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.season"), .id = "rlz") %>%

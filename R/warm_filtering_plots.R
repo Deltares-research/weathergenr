@@ -74,9 +74,6 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
                          sd   = rel_diff_sd[pool]   * 100, tail_low  = (exp(lr_low)  - 1) * 100,
                          tail_high = (exp(lr_high) - 1) * 100)
 
-  stats_pool_long <- stats_df |>
-    tidyr::pivot_longer(cols = -idx, names_to = "par", values_to = "value")
-
   # Compute pool GWS on demand (selected/pool indices only)
   if (is.null(wavelet_pars) || !is.list(wavelet_pars)) {
     stop("wavelet_pars must be a named list (signif_level, noise_type, period_lower_limit, detrend).",
@@ -86,23 +83,38 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
   target_period <- as.numeric(power_period)
   n_pool <- length(pool)
 
-  gws_pool_mat <- matrix(NA_real_, nrow = length(target_period), ncol = n_pool)
-  colnames(gws_pool_mat) <- paste0("rlz_", pool)
+  gws_cache <- NULL
+  if (!is.null(wavelet_pars$gws_cache)) {
+    gws_cache <- wavelet_pars$gws_cache
+    if (!is.matrix(gws_cache) ||
+        nrow(gws_cache) != length(target_period) ||
+        max(pool) > ncol(gws_cache)) {
+      gws_cache <- NULL
+    }
+  }
 
-  for (k in seq_len(n_pool)) {
-    j <- pool[k]
+  if (!is.null(gws_cache)) {
+    gws_pool_mat <- gws_cache[, pool, drop = FALSE]
+    colnames(gws_pool_mat) <- paste0("rlz_", pool)
+  } else {
+    gws_pool_mat <- matrix(NA_real_, nrow = length(target_period), ncol = n_pool)
+    colnames(gws_pool_mat) <- paste0("rlz_", pool)
 
-    wv_sim <- analyze_wavelet_spectrum(
-      sim_series[, j],
-      signif = wavelet_pars$signif_level,
-      noise  = wavelet_pars$noise_type,
-      min_period = wavelet_pars$period_lower_limit,
-      detrend = isTRUE(wavelet_pars$detrend),
-      mode = "fast"
-    )
+    for (k in seq_len(n_pool)) {
+      j <- pool[k]
 
-    gws_sim <- gws_regrid(wv_sim, target_period = target_period, use_unmasked = TRUE)
-    gws_pool_mat[, k] <- fill_nearest(as.numeric(gws_sim))
+      wv_sim <- analyze_wavelet_spectrum(
+        sim_series[, j],
+        signif = wavelet_pars$signif_level,
+        noise  = wavelet_pars$noise_type,
+        min_period = wavelet_pars$period_lower_limit,
+        detrend = isTRUE(wavelet_pars$detrend),
+        mode = "fast"
+      )
+
+      gws_sim <- gws_regrid(wv_sim, target_period = target_period, use_unmasked = TRUE)
+      gws_pool_mat[, k] <- fill_nearest(as.numeric(gws_sim))
+    }
   }
 
   gws_pool_mean <- fill_nearest(rowMeans(gws_pool_mat, na.rm = TRUE))

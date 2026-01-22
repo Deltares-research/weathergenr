@@ -288,7 +288,8 @@ filter_warm_pool <- function(
     peak_mag_tol_log = b$peak_mag_tol_log,
     eps = b$spectral_eps,
     parallel = parallel,
-    n_cores = n_cores
+    n_cores = n_cores,
+    cache_gws = make_plots
   )
 
   wavelet_active <- spectral_results$active
@@ -514,6 +515,11 @@ filter_warm_pool <- function(
       warning("make_plots=TRUE but final pool is empty; plots=NULL.", call. = FALSE)
     } else {
 
+      wavelet_pars_plot <- wavelet_args
+      if (!is.null(gws_cache) && is.matrix(gws_cache)) {
+        wavelet_pars_plot$gws_cache <- gws_cache
+      }
+
       plots_out <- plot_filter_diagnostics(
         obs_series    = obs_use,
         sim_series    = sim_use,
@@ -524,7 +530,7 @@ filter_warm_pool <- function(
         power_period  = period,
         power_obs     = gws_obs,
         power_signif  = gws_signif,
-        wavelet_pars  = wavelet_args,
+        wavelet_pars  = wavelet_pars_plot,
         wavelet_q     = b$plot_wavelet_q
       )
     }
@@ -1020,10 +1026,6 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
 
   parallel <- isTRUE(parallel)
   cache_gws <- isTRUE(cache_gws)
-  gws_cache <- NULL
-  if (cache_gws) {
-    gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
-  }
 
   if (!is.null(n_cores)) {
     if (!is.numeric(n_cores) || length(n_cores) != 1L || !is.finite(n_cores) || n_cores < 1) {
@@ -1126,7 +1128,10 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
   # -------------------------------------------------------------------------
   # Run loop: sequential or parallel
   # -------------------------------------------------------------------------
-  gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
+  gws_cache <- NULL
+  if (cache_gws) {
+    gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
+  }
   spectral_cor <- rep(NA_real_, n_realizations)
   peak_match_frac <- rep(NA_real_, n_realizations)
   peak_mag_mean_abs_log_ratio <- rep(NA_real_, n_realizations)
@@ -1239,7 +1244,7 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
 
       for (j in seq_len(n_realizations)) {
         res <- res_list[[j]]
-        gws_cache[, j] <- res$gws_sim
+        if (cache_gws) gws_cache[, j] <- res$gws_sim
         spectral_cor[j] <- res$spectral_cor
         peak_match_frac[j] <- res$peak_match_frac
         peak_mag_mean_abs_log_ratio[j] <- res$peak_mag_mean_abs_log_ratio
