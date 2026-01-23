@@ -17,6 +17,7 @@ filter_warm_pool(
   make_plots = FALSE,
   parallel = FALSE,
   n_cores = NULL,
+  cache_gws = FALSE,
   verbose = FALSE
 )
 }
@@ -60,6 +61,9 @@ computed in parallel inside \code{compute_spectral_metrics()}.}
 \item{n_cores}{Integer scalar or NULL. Number of worker processes to use for
 parallel execution. If NULL, an internal default is used.}
 
+\item{cache_gws}{Logical scalar. If TRUE, cache simulated global wavelet
+spectra for diagnostics; this can increase memory use.}
+
 \item{verbose}{Logical scalar. If TRUE, logs setup information, per iteration
 pass rates, and relaxation actions.}
 }
@@ -73,7 +77,8 @@ Named list with the following elements:
   \item{summary}{Data frame. Pass counts and pass rates for each filter
   family, plus the selection mode used.}
   \item{diagnostics}{List. Window metadata, relaxation log, spectral
-  diagnostics, spectral metrics, and the final bounds used.}
+  diagnostics, spectral metrics, and the final bounds used. When
+  \code{cache_gws = TRUE}, includes \code{gws_cache}.}
   \item{plots}{NULL or a named list of ggplot objects when
   \code{make_plots = TRUE}.}
 }

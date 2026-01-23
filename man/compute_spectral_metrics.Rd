@@ -52,8 +52,8 @@ metrics in parallel.}
 \code{parallel = TRUE}. If NULL, an internal default is used.}
 
 \item{cache_gws}{Logical scalar. If TRUE, store simulated global wavelet
-spectra in \code{gws_cache}. This can be memory intensive for large
-ensembles.}
+spectra in \code{gws_cache}. When FALSE, \code{gws_cache} is returned as
+NULL and simulated spectra are not retained.}
 }
 \value{
 Named list with:
@@ -63,7 +63,7 @@ Named list with:
   \item{gws_obs}{Numeric vector. Observed global wavelet spectrum on \code{period}.}
   \item{gws_signif}{Numeric vector or NULL. Significance curve on \code{period}.}
   \item{gws_cache}{Numeric matrix or NULL. Simulated spectra on \code{period}
-  for each realization when \code{cache_gws = TRUE}.}
+  for each realization when \code{cache_gws = TRUE}; otherwise NULL.}
   \item{metrics}{List with numeric vectors \code{spectral_cor},
   \code{peak_match_frac}, and \code{peak_mag_mean_abs_log_ratio}.}
   \item{diagnostics}{List. Summary information including significant peaks
