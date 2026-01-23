@@ -11,7 +11,7 @@ integer typing is not required but integer-valued numerics are acceptable."></he
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,7 @@ integer typing is not required but integer-valued numerics are acceptable."></he
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Test Whether an Object Is a Finite Integer Scalar</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Deltares-research/weathergenr/blob/HEAD/R/utils_internal.R" class="external-link"><code>R/utils_internal.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Deltares-research/weathergenr/blob/HEAD/R/utils_internal.R" class="external-link"><code>R/utils_internal.R</code></a>, <a href="https://github.com/Deltares-research/weathergenr/blob/HEAD/R/wavelet_warm.R" class="external-link"><code>R/wavelet_warm.R</code></a></small>
       <div class="d-none name"><code>dot-is_int_scalar.Rd</code></div>
     </div>
 
@@ -45,7 +45,9 @@ integer typing is not required but integer-valued numerics are acceptable.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.is_int_scalar</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.is_int_scalar</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">.is_int_scalar</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -53,12 +55,13 @@ integer typing is not required but integer-valued numerics are acceptable.</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>Object to test.</p></dd>
+<dd><p>Object.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Logical scalar indicating whether <code>x</code> is a finite integer-valued scalar.</p>
+<p>Logical scalar.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

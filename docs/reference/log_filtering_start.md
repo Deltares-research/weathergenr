@@ -1,6 +1,8 @@
-# Log initial setup information
+# Log filtering setup information
 
-Internal helper. Displays general information at the start of filtering.
+Writes a header block describing the filtering configuration. This
+includes series lengths, the number of candidate realizations, the
+selection target, and the relaxation priority.
 
 ## Usage
 
@@ -18,12 +20,11 @@ log_filtering_start(
 
 - n_obs:
 
-  Integer scalar. Number of observations in observed series.
+  Integer scalar. Length of the observed series in years.
 
 - n_sim:
 
-  Integer scalar. Number of years in simulated series used after
-  windowing.
+  Integer scalar. Length of the simulated series in years.
 
 - n_realizations:
 
@@ -31,11 +32,11 @@ log_filtering_start(
 
 - sample_target:
 
-  Integer scalar. Target number to select.
+  Integer scalar. Number of realizations requested.
 
 - relax_priority:
 
-  Character vector. Relaxation priority vector.
+  Character vector. Relaxation priority ordering.
 
 ## Value
 

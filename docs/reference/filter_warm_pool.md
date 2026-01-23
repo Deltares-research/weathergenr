@@ -1,22 +1,25 @@
-# Filter and sample WARM realizations using distributional, tail, and wavelet criteria
+# Filter and sample WARM realizations using distributional, tail, and spectral criteria
 
-Filters an ensemble of WARM-generated annual realizations against an
-observed annual series using three criterion families:
+Filters an ensemble of annual WARM realizations against an observed
+annual reference series. Filtering is based on three families of
+criteria: distributional moments, tail mass behavior, and spectral
+similarity from the global wavelet spectrum.
 
-- **Distributional**: relative differences in mean and standard
-  deviation.
+The function computes pass or fail vectors for each filter family and
+builds a candidate pool. If the pool is smaller than the requested
+sample size, the function relaxes thresholds iteratively until enough
+candidates are found or the maximum number of relaxation iterations is
+reached.
 
-- **Tail behaviour**: lower/upper tail mass relative to observed
-  quantile thresholds.
+Relaxation is adaptive. At each iteration, the currently most
+restrictive active filter is relaxed, defined as the filter with the
+lowest pass rate among the active filters. This is constrained by the
+relaxation order given in `relax_order`, which sets which filters are
+eligible to be relaxed and how wavelet relaxation is parameterized.
 
-- **Spectral**: observed-relevant global wavelet spectrum (GWS)
-  filtering.
-
-If fewer than `n_select` realizations pass, the function relaxes
-criteria iteratively (up to `filter_bounds$relax_max_iter`) by loosening
-the currently most restrictive active filter (lowest pass rate). If
-still insufficient, a deterministic fallback returns the `n_select`
-realizations with the smallest absolute relative mean difference.
+If the pool is still smaller than `n_select` after relaxation, a
+deterministic fallback selects the `n_select` realizations with the
+smallest absolute relative mean difference.
 
 ## Usage
 
@@ -26,12 +29,15 @@ filter_warm_pool(
   sim_series = NULL,
   n_select = 5,
   seed = NULL,
-  pad_periods = TRUE,
   relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   filter_bounds = list(),
   wavelet_args = list(signif_level = 0.8, noise_type = "red", period_lower_limit = 2,
     detrend = TRUE),
+  modwt_n_levels = NULL,
   make_plots = FALSE,
+  parallel = FALSE,
+  n_cores = NULL,
+  cache_gws = FALSE,
   verbose = FALSE
 )
 ```
@@ -40,7 +46,7 @@ filter_warm_pool(
 
 - obs_series:
 
-  Numeric vector. Observed annual series used as the reference.
+  Numeric vector. Observed annual series used as the reference target.
 
 - sim_series:
 
@@ -49,67 +55,90 @@ filter_warm_pool(
 
 - n_select:
 
-  Integer scalar. Number of realizations to return in `selected`.
+  Integer scalar. Number of realizations to return in the `selected`
+  element.
 
 - seed:
 
-  Optional integer scalar. Random seed used for window selection (if
-  lengths differ) and for sampling from the final candidate pool.
-
-- pad_periods:
-
-  Logical scalar. If `TRUE`, expands the observed significant-period
-  band by one index on each side when checking simulated presence in the
-  observed-relevant band.
+  Integer scalar or NULL. If provided, sets the random seed used for
+  selecting alignment windows when `obs_series` and `sim_series` have
+  different lengths, and for sampling within the final candidate pool.
 
 - relax_order:
 
-  Character vector. Relaxation priority ordering for criteria. Must
-  contain each of `c("mean","sd","tail_low","tail_high","wavelet")`
-  exactly once.
+  Character vector. Relaxation priority ordering for the filter
+  families. Must contain exactly: `"mean"`, `"sd"`, `"tail_low"`,
+  `"tail_high"`, `"wavelet"`.
 
 - filter_bounds:
 
-  Named list. Filtering thresholds and relaxation controls. Any entry
-  overrides internal defaults. Uses snake_case keys (e.g. `tail_low_p`,
-  not `tail.low.p`).
+  Named list. Overrides for filtering thresholds and relaxation
+  controls. Keys must be snake case and match those returned by
+  [`filter_warm_bounds_defaults()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_bounds_defaults.md).
 
 - wavelet_args:
 
-  Named list passed to
-  [`analyze_wavelet_spectrum`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.md)
-  for observed and simulated series (e.g., `signif_level`, `noise_type`,
-  `period_lower_limit`, `detrend`).
+  Named list. Parameters passed to
+  [`analyze_wavelet_spectrum()`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.md)
+  for observed and simulated series. Expected entries include
+  `signif_level`, `noise_type`, `period_lower_limit`, and `detrend`.
+
+- modwt_n_levels:
+
+  Integer or NULL. Number of MODWT levels used in WARM. This value is
+  used only for diagnostics. If NULL, a value is estimated from the
+  series length.
 
 - make_plots:
 
-  Logical scalar. If `TRUE`, returns diagnostic plots in `plots`.
+  Logical scalar. If TRUE, compute diagnostic plots for the selected
+  realizations and return them in `plots`.
+
+- parallel:
+
+  Logical scalar. If TRUE, allows spectral metrics to be computed in
+  parallel inside
+  [`compute_spectral_metrics()`](https://deltares-research.github.io/weathergenr/reference/compute_spectral_metrics.md).
+
+- n_cores:
+
+  Integer scalar or NULL. Number of worker processes to use for parallel
+  execution. If NULL, an internal default is used.
+
+- cache_gws:
+
+  Logical scalar. If TRUE, cache simulated global wavelet spectra for
+  diagnostics; this can increase memory use.
 
 - verbose:
 
-  Logical scalar. If `TRUE`, logs per-iteration pass rates and
-  relaxation steps.
+  Logical scalar. If TRUE, logs setup information, per iteration pass
+  rates, and relaxation actions.
 
 ## Value
 
-A list with:
+Named list with the following elements:
 
 - pool:
 
-  Numeric matrix. Final candidate pool (subset of columns from
-  `sim_series`).
+  Numeric matrix. Candidate pool of realizations that passed the final
+  set of filters. Subset of columns from `sim_series`.
 
 - selected:
 
-  Numeric matrix. `n_select` realizations selected from the final pool.
+  Numeric matrix. The `n_select` realizations chosen from the pool.
+  Subset of columns from `sim_series`.
 
 - summary:
 
-  Data frame summarising pass counts/rates and selection mode.
+  Data frame. Pass counts and pass rates for each filter family, plus
+  the selection mode used.
 
 - diagnostics:
 
-  List with window metadata, indices, relaxation log, and final bounds.
+  List. Window metadata, relaxation log, spectral diagnostics, spectral
+  metrics, and the final bounds used. When `cache_gws = TRUE`, includes
+  `gws_cache`.
 
 - plots:
 

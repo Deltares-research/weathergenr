@@ -7,16 +7,18 @@
 evaluate_weather_generator(
   daily_sim = NULL,
   daily_obs = NULL,
-  variables = NULL,
+  vars = NULL,
   variable_labels = NULL,
   n_realizations = NULL,
-  wet_quantile = 0.2,
-  extreme_quantile = 0.8,
+  wet_q = 0.2,
+  extreme_q = 0.8,
   output_dir = NULL,
   save_plots = TRUE,
   show_title = TRUE,
   verbose = TRUE,
-  max_grids = 25,
+  parallel = FALSE,
+  n_cores = NULL,
+  eval_max_grids = 25,
   seed = NULL
 )
 }
@@ -25,20 +27,20 @@ evaluate_weather_generator(
 a list of data frames (one per grid cell), containing daily values and a `date` column.}
 
 \item{daily_obs}{List of observed weather data frames (one per grid cell). Each
-should contain a `date` column and the variables specified in `variables`.}
+should contain a `date` column and the variables specified in `vars`.}
 
-\item{variables}{Character vector of variable names to evaluate (e.g., `c("precip", "temp")`).
+\item{vars}{Character vector of variable names to evaluate (e.g., `c("precip", "temp")`).
 Must include "precip" for wet/dry spell analysis.}
 
 \item{variable_labels}{Optional character vector of variable labels for plots.
-Defaults to `variables` if `NULL`.}
+Defaults to `vars` if `NULL`.}
 
 \item{n_realizations}{Integer. Number of synthetic realizations in `daily_sim`.}
 
-\item{wet_quantile}{Numeric between 0 and 1. Quantile threshold for wet days
+\item{wet_q}{Numeric between 0 and 1. Quantile threshold for wet days
 (default = 0.2).}
 
-\item{extreme_quantile}{Numeric between 0 and 1. Quantile threshold for extremely
+\item{extreme_q}{Numeric between 0 and 1. Quantile threshold for extremely
 wet days (default = 0.8).}
 
 \item{output_dir}{Character. Directory path to save generated plots. If `NULL`,
@@ -50,7 +52,13 @@ plots are not saved to disk.}
 
 \item{verbose}{Logical. Whether to emit console messages and the fit summary table.}
 
-\item{max_grids}{Integer. Maximum number of grid cells to evaluate (default = 25).
+\item{parallel}{Logical. Whether to parallelize per-realization summaries
+(default = `FALSE`).}
+
+\item{n_cores}{Optional integer. Number of cores to use when `parallel = TRUE`.
+Defaults to available physical cores and is capped at `n_realizations`.}
+
+\item{eval_max_grids}{Integer. Maximum number of grid cells to evaluate (default = 25).
 If more grids are provided, a random subsample is used to control memory.}
 
 \item{seed}{Optional integer. Random seed for reproducible grid subsampling and
@@ -77,8 +85,12 @@ The function standardizes simulated and observed series to full-year windows
 (after leap-day removal), optionally subsamples grid cells to manage memory,
 and returns diagnostic plots alongside a summarized fit table. Missing values
 are ignored in summary statistics (`na.rm = TRUE`), and correlations use
-pairwise complete observations. Use `seed` for reproducible subsampling and
-window selection; the original RNG state is restored on exit.
+pairwise complete observations. If `parallel = TRUE`, per-realization summaries
+run on a cluster via `parallel::makeCluster()`; `n_cores` defaults to available
+physical cores and is capped at `n_realizations`. For small/medium workloads,
+cluster startup overhead can outweigh gains; parallelization is most beneficial
+with many realizations and/or large grid counts. Use `seed` for reproducible
+subsampling and window selection; the original RNG state is restored on exit.
 }
 \examples{
 set.seed(1)
@@ -97,7 +109,7 @@ sim_grid <- list(list(data.frame(
 out <- evaluate_weather_generator(
   daily_sim = sim_grid,
   daily_obs = obs_grid,
-  variables = c("precip", "temp"),
+  vars = c("precip", "temp"),
   n_realizations = 1,
   output_dir = NULL,
   save_plots = FALSE,

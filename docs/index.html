@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -54,7 +54,7 @@
 <div class="section level1">
 <h1 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h1>
-<p><strong>weathergenr</strong> is an R package that implements a semiparametric, multivariate, multisite stochastic weather generator designed for climate risk and stress-testing applications. The approach is conceptually based on the framework of Steinschneider &amp; Brown (2013) and is adapted here for gridded datasets and modern NetCDF-based workflows.</p>
+<p><strong>weathergenr</strong> is an R package that implements a semiparametric, multivariate, multisite stochastic weather generator designed for climate risk and stress-testing applications. The approach is conceptually based on the framework of Steinschneider &amp; Brown (2013) and is adapted here for gridded datasets and netcdf-based workflows.</p>
 <p>The package is intended for workflows such as:</p>
 <ul>
 <li>climate risk and stress testing</li>
@@ -65,7 +65,6 @@
 <h2 id="methodological-framework">Methodological framework<a class="anchor" aria-label="anchor" href="#methodological-framework"></a>
 </h2>
 <p>The generator represents climate variability across multiple time scales by coupling low-frequency climate dynamics with realistic daily weather sequences. It consists of three components:</p>
-<p>The generator combines low-frequency climate variability with realistic daily weather sequences using a three-stage approach:</p>
 <p><strong>1. Low-frequency climate variability (WARM)</strong> Interannual to decadal variability is modeled with wavelet autoregressive methods applied to annual climate aggregates. This preserves persistence and spectral structure and defines annual climate states that condition daily weather.</p>
 <p><strong>2. Daily weather generation (Markov chain + KNN)</strong> Wet-dry persistence is simulated with a multi-state Markov chain, while daily precipitation and temperature values are generated via K-nearest-neighbour resampling. This maintains seasonality, cross-variable dependence, and spatial coherence.</p>
 <p><strong>3. Climate perturbation and stress testing</strong> Quantile-based perturbations impose controlled changes in means, variability, and extremes, enabling systematic climate stress testing while preserving internal consistency.</p>
@@ -96,7 +95,7 @@
 <div class="section level1">
 <h1 id="getting-started-1">Getting started<a class="anchor" aria-label="anchor" href="#getting-started-1"></a>
 </h1>
-<p>A quick tutorial is available here: <a href="https://deltares-research.github.io/weathergenr/articles/getting_started.html" class="uri">https://deltares-research.github.io/weathergenr/articles/getting_started.html</a></p>
+<p>A quick tutorial is available here:<br><a href="https://deltares-research.github.io/weathergenr/articles/getting_started.html" class="uri">https://deltares-research.github.io/weathergenr/articles/getting_started.html</a></p>
 </div>
 <div class="section level1">
 <h1 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

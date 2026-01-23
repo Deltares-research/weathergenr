@@ -5,5 +5,13 @@ Summarize simulated weather data
 ## Usage
 
 ``` r
-.summarize_simulated_data(daily_sim, n_realizations, variables, mc_thresholds)
+.summarize_simulated_data(
+  daily_sim,
+  n_realizations,
+  variables,
+  mc_thresholds,
+  parallel = FALSE,
+  n_cores = NULL,
+  seed = NULL
+)
 ```

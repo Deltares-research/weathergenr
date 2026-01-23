@@ -35,7 +35,7 @@ year_start_month != 1: water-year simulation starting in year_start_month.
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -88,7 +88,7 @@ The workflow combines:</p><ul><li><p>Wavelet Autoregressive Modeling (WARM) on a
 <span>  warm_signif <span class="op">=</span> <span class="fl">0.9</span>,</span>
 <span>  warm_pool_size <span class="op">=</span> <span class="fl">5000</span>,</span>
 <span>  warm_filter_bounds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  warm_filter_relax_order <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wavelet"</span>, <span class="st">"sd"</span>, <span class="st">"tail_low"</span>, <span class="st">"tail_high"</span>, <span class="st">"mean"</span><span class="op">)</span>,</span>
+<span>  relax_priority <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wavelet"</span>, <span class="st">"sd"</span>, <span class="st">"tail_low"</span>, <span class="st">"tail_high"</span>, <span class="st">"mean"</span><span class="op">)</span>,</span>
 <span>  annual_knn_n <span class="op">=</span> <span class="fl">120</span>,</span>
 <span>  wet_q <span class="op">=</span> <span class="fl">0.3</span>,</span>
 <span>  extreme_q <span class="op">=</span> <span class="fl">0.8</span>,</span>
@@ -98,7 +98,8 @@ The workflow combines:</p><ul><li><p>Wavelet Autoregressive Modeling (WARM) on a
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  parallel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  n_cores <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  save_plots <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -171,7 +172,7 @@ forwarded to <code><a href="filter_warm_pool.html">filter_warm_pool</a></code> a
 overrides internal defaults. Uses snake_case keys (e.g. <code>tail_low_p</code>).</p></dd>
 
 
-<dt id="arg-warm-filter-relax-order">warm_filter_relax_order<a class="anchor" aria-label="anchor" href="#arg-warm-filter-relax-order"></a></dt>
+<dt id="arg-relax-priority">relax_priority<a class="anchor" aria-label="anchor" href="#arg-relax-priority"></a></dt>
 <dd><p>Character vector giving the relaxation priority
 for WARM filtering, forwarded to <code><a href="filter_warm_pool.html">filter_warm_pool</a></code> as <code>relax_order</code>.
 Must contain each of <code>c("mean","sd","tail_low","tail_high","wavelet")</code> exactly once.

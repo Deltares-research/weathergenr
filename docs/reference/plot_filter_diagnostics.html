@@ -9,7 +9,7 @@ Shows time series, statistics scatter, and wavelet GWS comparisons."></head><bod
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,7 +52,7 @@ Shows time series, statistics scatter, and wavelet GWS comparisons.</p>
 <span>  <span class="va">power_period</span>,</span>
 <span>  <span class="va">power_obs</span>,</span>
 <span>  <span class="va">power_signif</span>,</span>
-<span>  <span class="va">gws_cache</span>,</span>
+<span>  <span class="va">wavelet_pars</span>,</span>
 <span>  wavelet_q <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.95</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -97,8 +97,9 @@ Shows time series, statistics scatter, and wavelet GWS comparisons.</p>
 <dd><p>Significance curve</p></dd>
 
 
-<dt id="arg-gws-cache">gws_cache<a class="anchor" aria-label="anchor" href="#arg-gws-cache"></a></dt>
-<dd><p>Cached GWS matrix (n_periods x n_realizations)</p></dd>
+<dt id="arg-wavelet-pars">wavelet_pars<a class="anchor" aria-label="anchor" href="#arg-wavelet-pars"></a></dt>
+<dd><p>Named list. Wavelet settings passed to analyze_wavelet_spectrum() (signif_level,
+noise_type, period_lower_limit, detrend).</p></dd>
 
 
 <dt id="arg-wavelet-q">wavelet_q<a class="anchor" aria-label="anchor" href="#arg-wavelet-q"></a></dt>

@@ -9,7 +9,7 @@ format:
 
 # Overview
 
-**weathergenr** is an R package that implements a semiparametric, multivariate, multisite stochastic weather generator designed for climate risk and stress-testing applications. The approach is conceptually based on the framework of Steinschneider & Brown (2013) and is adapted here for gridded datasets and modern NetCDF-based workflows.
+**weathergenr** is an R package that implements a semiparametric, multivariate, multisite stochastic weather generator designed for climate risk and stress-testing applications. The approach is conceptually based on the framework of Steinschneider & Brown (2013) and is adapted here for gridded datasets and netcdf-based workflows.
 
 The package is intended for workflows such as:
 

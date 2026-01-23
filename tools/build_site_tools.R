@@ -26,6 +26,9 @@
     return(invisible(FALSE))
   }
 
+  # helper for concatenation
+  `%+%` <- function(a, b) paste0(a, b)
+
   shim_dir <- file.path(tempdir(), "quarto_shim")
   dir.create(shim_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -50,8 +53,6 @@
     "exit /b %ERRORLEVEL%"
   )
 
-  # helper for concatenation
-  `%+%` <- function(a, b) paste0(a, b)
 
   writeLines(shim, shim_path, useBytes = TRUE)
 

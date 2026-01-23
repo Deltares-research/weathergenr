@@ -9,7 +9,10 @@ optional scale-component reconstruction in mode = "complete".
 
 
 This function is intended for detection and diagnostic analysis of dominant
-time scales. Reconstructed scale components are additive but not orthogonal.'><meta property="og:description" content='Performs continuous wavelet transform (CWT) analysis using a Morlet mother wavelet
+time scales. Reconstructed scale components are additive but not orthogonal.
+For truly orthogonal decomposition suitable for ARIMA modeling, see
+analyze_wavelet_orthogonal which combines CWT diagnostics with
+MODWT-based orthogonal component extraction.'><meta property="og:description" content='Performs continuous wavelet transform (CWT) analysis using a Morlet mother wavelet
 (Torrence &amp;amp; Compo, 1998) and returns wavelet power, cone of influence (COI),
 global wavelet spectrum (GWS), and significance thresholds. The implementation includes:
 COI-aware global spectrum estimation,
@@ -19,7 +22,10 @@ optional scale-component reconstruction in mode = "complete".
 
 
 This function is intended for detection and diagnostic analysis of dominant
-time scales. Reconstructed scale components are additive but not orthogonal.'></head><body>
+time scales. Reconstructed scale components are additive but not orthogonal.
+For truly orthogonal decomposition suitable for ARIMA modeling, see
+analyze_wavelet_orthogonal which combines CWT diagnostics with
+MODWT-based orthogonal component extraction.'></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -27,7 +33,7 @@ time scales. Reconstructed scale components are additive but not orthogonal.'></
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,7 +55,7 @@ time scales. Reconstructed scale components are additive but not orthogonal.'></
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Continuous Wavelet Spectral Analysis with COI-Aware Significance</h1>
-      <small class="dont-index">Source: <a href="https://github.com/Deltares-research/weathergenr/blob/HEAD/R/wavelet.R" class="external-link"><code>R/wavelet.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Deltares-research/weathergenr/blob/HEAD/R/wavelet_cwt.R" class="external-link"><code>R/wavelet_cwt.R</code></a></small>
       <div class="d-none name"><code>analyze_wavelet_spectrum.Rd</code></div>
     </div>
 
@@ -61,7 +67,10 @@ global wavelet spectrum (GWS), and significance thresholds. The implementation i
 <li><p>AR(1) red-noise background estimation (Yule-Walker),</p></li>
 <li><p>optional scale-component reconstruction in <code>mode = "complete"</code>.</p></li>
 </ul><p>This function is intended for detection and diagnostic analysis of dominant
-time scales. Reconstructed scale components are additive but not orthogonal.</p>
+time scales. Reconstructed scale components are additive but not orthogonal.
+For truly orthogonal decomposition suitable for ARIMA modeling, see
+<code>analyze_wavelet_orthogonal</code> which combines CWT diagnostics with
+MODWT-based orthogonal component extraction.</p>
     </div>
 
     <div class="section level2">
@@ -228,6 +237,7 @@ required to trigger a warning.</p></dd>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="morlet_wavelet.html">morlet_wavelet</a></code>, <code><a href="extract_wavelet_components.html">extract_wavelet_components</a></code>,
+  <code>analyze_wavelet_orthogonal</code>,
   <code><a href="plot_wavelet_power.html">plot_wavelet_power</a></code>, <code><a href="plot_wavelet_global_spectrum.html">plot_wavelet_global_spectrum</a></code></p></div>
     </div>
 

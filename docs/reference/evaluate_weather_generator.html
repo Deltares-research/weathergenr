@@ -15,7 +15,7 @@ stochastic weather generator performance."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -54,16 +54,18 @@ stochastic weather generator performance.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">evaluate_weather_generator</span><span class="op">(</span></span>
 <span>  daily_sim <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  daily_obs <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  variable_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  n_realizations <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  wet_quantile <span class="op">=</span> <span class="fl">0.2</span>,</span>
-<span>  extreme_quantile <span class="op">=</span> <span class="fl">0.8</span>,</span>
+<span>  wet_q <span class="op">=</span> <span class="fl">0.2</span>,</span>
+<span>  extreme_q <span class="op">=</span> <span class="fl">0.8</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  save_plots <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  show_title <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  max_grids <span class="op">=</span> <span class="fl">25</span>,</span>
+<span>  parallel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  n_cores <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  eval_max_grids <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -79,29 +81,29 @@ a list of data frames (one per grid cell), containing daily values and a `date` 
 
 <dt id="arg-daily-obs">daily_obs<a class="anchor" aria-label="anchor" href="#arg-daily-obs"></a></dt>
 <dd><p>List of observed weather data frames (one per grid cell). Each
-should contain a `date` column and the variables specified in `variables`.</p></dd>
+should contain a `date` column and the variables specified in `vars`.</p></dd>
 
 
-<dt id="arg-variables">variables<a class="anchor" aria-label="anchor" href="#arg-variables"></a></dt>
+<dt id="arg-vars">vars<a class="anchor" aria-label="anchor" href="#arg-vars"></a></dt>
 <dd><p>Character vector of variable names to evaluate (e.g., `c("precip", "temp")`).
 Must include "precip" for wet/dry spell analysis.</p></dd>
 
 
 <dt id="arg-variable-labels">variable_labels<a class="anchor" aria-label="anchor" href="#arg-variable-labels"></a></dt>
 <dd><p>Optional character vector of variable labels for plots.
-Defaults to `variables` if `NULL`.</p></dd>
+Defaults to `vars` if `NULL`.</p></dd>
 
 
 <dt id="arg-n-realizations">n_realizations<a class="anchor" aria-label="anchor" href="#arg-n-realizations"></a></dt>
 <dd><p>Integer. Number of synthetic realizations in `daily_sim`.</p></dd>
 
 
-<dt id="arg-wet-quantile">wet_quantile<a class="anchor" aria-label="anchor" href="#arg-wet-quantile"></a></dt>
+<dt id="arg-wet-q">wet_q<a class="anchor" aria-label="anchor" href="#arg-wet-q"></a></dt>
 <dd><p>Numeric between 0 and 1. Quantile threshold for wet days
 (default = 0.2).</p></dd>
 
 
-<dt id="arg-extreme-quantile">extreme_quantile<a class="anchor" aria-label="anchor" href="#arg-extreme-quantile"></a></dt>
+<dt id="arg-extreme-q">extreme_q<a class="anchor" aria-label="anchor" href="#arg-extreme-q"></a></dt>
 <dd><p>Numeric between 0 and 1. Quantile threshold for extremely
 wet days (default = 0.8).</p></dd>
 
@@ -123,7 +125,17 @@ plots are not saved to disk.</p></dd>
 <dd><p>Logical. Whether to emit console messages and the fit summary table.</p></dd>
 
 
-<dt id="arg-max-grids">max_grids<a class="anchor" aria-label="anchor" href="#arg-max-grids"></a></dt>
+<dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
+<dd><p>Logical. Whether to parallelize per-realization summaries
+(default = `FALSE`).</p></dd>
+
+
+<dt id="arg-n-cores">n_cores<a class="anchor" aria-label="anchor" href="#arg-n-cores"></a></dt>
+<dd><p>Optional integer. Number of cores to use when `parallel = TRUE`.
+Defaults to available physical cores and is capped at `n_realizations`.</p></dd>
+
+
+<dt id="arg-eval-max-grids">eval_max_grids<a class="anchor" aria-label="anchor" href="#arg-eval-max-grids"></a></dt>
 <dd><p>Integer. Maximum number of grid cells to evaluate (default = 25).
 If more grids are provided, a random subsample is used to control memory.</p></dd>
 
@@ -146,8 +158,12 @@ year window selection. If NULL, results will vary between runs.</p></dd>
 (after leap-day removal), optionally subsamples grid cells to manage memory,
 and returns diagnostic plots alongside a summarized fit table. Missing values
 are ignored in summary statistics (`na.rm = TRUE`), and correlations use
-pairwise complete observations. Use `seed` for reproducible subsampling and
-window selection; the original RNG state is restored on exit.</p>
+pairwise complete observations. If `parallel = TRUE`, per-realization summaries
+run on a cluster via `parallel::makeCluster()`; `n_cores` defaults to available
+physical cores and is capped at `n_realizations`. For small/medium workloads,
+cluster startup overhead can outweigh gains; parallelization is most beneficial
+with many realizations and/or large grid counts. Use `seed` for reproducible
+subsampling and window selection; the original RNG state is restored on exit.</p>
     </div>
 
     <div class="section level2">
@@ -168,21 +184,19 @@ window selection; the original RNG state is restored on exit.</p>
 <span class="r-in"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">evaluate_weather_generator</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  daily_sim <span class="op">=</span> <span class="va">sim_grid</span>,</span></span>
 <span class="r-in"><span>  daily_obs <span class="op">=</span> <span class="va">obs_grid</span>,</span></span>
-<span class="r-in"><span>  variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"precip"</span>, <span class="st">"temp"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"precip"</span>, <span class="st">"temp"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  n_realizations <span class="op">=</span> <span class="fl">1</span>,</span></span>
 <span class="r-in"><span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span></span>
 <span class="r-in"><span>  save_plots <span class="op">=</span> <span class="cn">FALSE</span>,</span></span>
 <span class="r-in"><span>  show_title <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Start | grids = 1 | realizations = 1</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Variables = precip,temp</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Standardizing obs/sim periods to full years and equal length</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Processing observed data</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Processing simulated data (1 realizations)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Preparing diagnostic data for plotting</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:50] [EVAL] Generating diagnostic plots</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:22] [EVAL] Evaluation Started: Variables = precip,temp</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:22] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:22] [EVAL] Standardizing obs/sim periods to full years and equal length</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:22] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:22] [EVAL] Processing observed data</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:23] [EVAL] Processing simulated data (1 realizations)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:23] [EVAL] Generating diagnostic plots</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>There were 2 warnings in `dplyr::summarise()`.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> The first warning was:</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm</span>
@@ -190,15 +204,14 @@ window selection; the original RNG state is restored on exit.</p>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Caused by warning in `min()`:</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> no non-missing arguments to min; returning Inf</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Run <a href="x-r-run:dplyr::last_dplyr_warnings()">dplyr::last_dplyr_warnings()</a> to see the 1 remaining warning.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:51] [EVAL] Generated 11 diagnostic plots.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:51] [EVAL] Computing fit metrics for all realizations</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:24] [EVAL] Computing fit metrics for all realizations</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>There were 2 warnings in `dplyr::mutate()`.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> The first warning was:</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> In argument: `dplyr::across(...)`.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Caused by warning in `min()`:</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> no non-missing arguments to min; returning Inf</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Run <a href="x-r-run:dplyr::last_dplyr_warnings()">dplyr::last_dplyr_warnings()</a> to see the 1 remaining warning.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:51] [EVAL] Displaying fit assessment summary</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:24] [EVAL] Displaying fit assessment summary</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> =============================================================================================== </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS</span>
@@ -225,7 +238,7 @@ window selection; the original RNG state is restored on exit.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   - Worst realization : 1 (score = 0.0000)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   - Median score      : 0.0000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-21 23:25:51] [EVAL] Assessment completed successfully</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [2026-01-23 20:53:24] [EVAL] Assessment completed successfully</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "weather_assessment" "list"              </span>
 <span class="r-in"><span></span></span>

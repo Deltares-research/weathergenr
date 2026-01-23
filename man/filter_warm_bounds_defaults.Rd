@@ -7,10 +7,92 @@
 filter_warm_bounds_defaults()
 }
 \value{
-Named list of defaults (snake_case keys).
+Named list of default bounds using snake case keys.
 }
 \description{
-Internal defaults for filter_warm_pool() bounds. Users should usually override
-only a few entries via filter_bounds = list(...).
+Returns internal default bounds for \code{filter_warm_pool()}.
+
+The defaults are designed to be moderately selective for annual records on the
+order of 50 to 100 years. Typical usage is to override only a small subset of
+entries via \code{filter_bounds = list(...)} while keeping the remaining
+defaults unchanged.
+}
+\details{
+The returned list contains thresholds and controls used by the filtering and
+relaxation logic.
+
+Distributional tolerances:
+\describe{
+  \item{mean}{Maximum absolute relative difference in the mean between a
+  simulated realization and the observed series. Default 0.03.}
+  \item{sd}{Maximum absolute relative difference in standard deviation between
+  a simulated realization and the observed series. Default 0.03.}
+}
+
+Tail mass behavior:
+\describe{
+  \item{tail_low_p}{Lower quantile used to define the low tail threshold in the
+  observed series. Default 0.20.}
+  \item{tail_high_p}{Upper quantile used to define the high tail threshold in
+  the observed series. Default 0.80.}
+  \item{tail_tol_log}{Maximum absolute log difference between simulated and
+  observed tail mass metrics. Default log(1.03).}
+  \item{tail_eps}{Positive constant used for numerical stability in log
+  transforms. Default 1e-5.}
+}
+
+Spectral similarity:
+\describe{
+  \item{spectral_cor_min}{Minimum correlation between log transformed observed
+  and simulated global wavelet spectra. Default 0.60.}
+  \item{spectral_eps}{Positive constant used for numerical stability in
+  spectral log transforms. Default 1e-10.}
+}
+
+Peak matching:
+\describe{
+  \item{n_sig_peaks_max}{Maximum number of significant observed spectral peaks
+  to enforce. Default 2.}
+  \item{peak_period_tol}{Tolerance for matching peak periods in log2 period
+  space. Default 0.50.}
+  \item{peak_mag_tol_log}{Tolerance for matching peak magnitudes as the
+  absolute log ratio between simulated and observed peak power. Default
+  log(1.5).}
+  \item{peak_match_frac_min}{Minimum fraction of significant observed peaks
+  that must be matched. Default 1.0.}
+}
+
+Plot controls:
+\describe{
+  \item{plot_wavelet_q}{Two probabilities used to summarize simulated spectra
+  in diagnostic plots. Default c(0.50, 0.95).}
+}
+
+Relaxation controls:
+\describe{
+  \item{relax_mult}{Multiplicative factor applied when relaxing some bounds.
+  Default 1.25.}
+  \item{relax_mean_max}{Maximum allowed mean tolerance during relaxation.
+  Default 0.25.}
+  \item{relax_sd_max}{Maximum allowed sd tolerance during relaxation.
+  Default 0.25.}
+  \item{relax_tail_tol_log_max}{Maximum tail tolerance during relaxation.
+  Default log(2.0).}
+  \item{relax_tail_p_step}{Step size for relaxing tail quantiles. Default
+  0.02.}
+  \item{relax_tail_p_low_max}{Maximum lower tail quantile during relaxation.
+  Default 0.40.}
+  \item{relax_tail_p_high_min}{Minimum upper tail quantile during relaxation.
+  Default 0.40.}
+  \item{relax_spectral_cor_step}{Decrement applied to spectral_cor_min during
+  wavelet relaxation. Default 0.05.}
+  \item{relax_spectral_cor_min}{Minimum spectral_cor_min allowed during
+  relaxation. Default 0.30.}
+  \item{relax_peak_match_frac_step}{Decrement applied to peak_match_frac_min
+  during wavelet relaxation. Default 0.10.}
+  \item{relax_peak_match_frac_min}{Minimum peak_match_frac_min allowed during
+  relaxation. Default 0.00.}
+  \item{relax_max_iter}{Maximum number of relaxation iterations. Default 20.}
+}
 }
 \keyword{internal}

@@ -17,7 +17,7 @@ generate_weather(
   warm_signif = 0.9,
   warm_pool_size = 5000,
   warm_filter_bounds = list(),
-  warm_filter_relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+  relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   annual_knn_n = 120,
   wet_q = 0.3,
   extreme_q = 0.8,
@@ -27,7 +27,8 @@ generate_weather(
   seed = NULL,
   parallel = FALSE,
   n_cores = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  save_plots = TRUE
 )
 }
 \arguments{
@@ -72,7 +73,7 @@ before filtering down to \code{n_realizations}.}
 forwarded to \code{\link{filter_warm_pool}} as \code{filter_bounds}. Any entry
 overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}).}
 
-\item{warm_filter_relax_order}{Character vector giving the relaxation priority
+\item{relax_priority}{Character vector giving the relaxation priority
 for WARM filtering, forwarded to \code{\link{filter_warm_pool}} as \code{relax_order}.
 Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
 Filters are relaxed iteratively by loosening the currently most restrictive criterion

@@ -12,28 +12,36 @@
 #' (after leap-day removal), optionally subsamples grid cells to manage memory,
 #' and returns diagnostic plots alongside a summarized fit table. Missing values
 #' are ignored in summary statistics (`na.rm = TRUE`), and correlations use
-#' pairwise complete observations. Use `seed` for reproducible subsampling and
-#' window selection; the original RNG state is restored on exit.
+#' pairwise complete observations. If `parallel = TRUE`, per-realization summaries
+#' run on a cluster via `parallel::makeCluster()`; `n_cores` defaults to available
+#' physical cores and is capped at `n_realizations`. For small/medium workloads,
+#' cluster startup overhead can outweigh gains; parallelization is most beneficial
+#' with many realizations and/or large grid counts. Use `seed` for reproducible
+#' subsampling and window selection; the original RNG state is restored on exit.
 #'
 #' @param daily_sim List of simulated weather realizations. Each element should be
 #'   a list of data frames (one per grid cell), containing daily values and a `date` column.
 #' @param daily_obs List of observed weather data frames (one per grid cell). Each
-#'   should contain a `date` column and the variables specified in `variables`.
-#' @param variables Character vector of variable names to evaluate (e.g., `c("precip", "temp")`).
+#'   should contain a `date` column and the variables specified in `vars`.
+#' @param vars Character vector of variable names to evaluate (e.g., `c("precip", "temp")`).
 #'   Must include "precip" for wet/dry spell analysis.
 #' @param variable_labels Optional character vector of variable labels for plots.
-#'   Defaults to `variables` if `NULL`.
+#'   Defaults to `vars` if `NULL`.
 #' @param n_realizations Integer. Number of synthetic realizations in `daily_sim`.
-#' @param wet_quantile Numeric between 0 and 1. Quantile threshold for wet days
+#' @param wet_q Numeric between 0 and 1. Quantile threshold for wet days
 #'   (default = 0.2).
-#' @param extreme_quantile Numeric between 0 and 1. Quantile threshold for extremely
+#' @param extreme_q Numeric between 0 and 1. Quantile threshold for extremely
 #'   wet days (default = 0.8).
 #' @param output_dir Character. Directory path to save generated plots. If `NULL`,
 #'   plots are not saved to disk.
 #' @param save_plots Logical. Whether to save plots to `output_dir` (default = `TRUE`).
 #' @param show_title Logical. Whether to display titles in plots (default = `TRUE`).
 #' @param verbose Logical. Whether to emit console messages and the fit summary table.
-#' @param max_grids Integer. Maximum number of grid cells to evaluate (default = 25).
+#' @param parallel Logical. Whether to parallelize per-realization summaries
+#'   (default = `FALSE`).
+#' @param n_cores Optional integer. Number of cores to use when `parallel = TRUE`.
+#'   Defaults to available physical cores and is capped at `n_realizations`.
+#' @param eval_max_grids Integer. Maximum number of grid cells to evaluate (default = 25).
 #'   If more grids are provided, a random subsample is used to control memory.
 #' @param seed Optional integer. Random seed for reproducible grid subsampling and
 #'   year window selection. If NULL, results will vary between runs.
@@ -63,7 +71,7 @@
 #' out <- evaluate_weather_generator(
 #'   daily_sim = sim_grid,
 #'   daily_obs = obs_grid,
-#'   variables = c("precip", "temp"),
+#'   vars = c("precip", "temp"),
 #'   n_realizations = 1,
 #'   output_dir = NULL,
 #'   save_plots = FALSE,
@@ -81,16 +89,18 @@
 evaluate_weather_generator <- function(
     daily_sim = NULL,
     daily_obs = NULL,
-    variables = NULL,
+    vars = NULL,
     variable_labels = NULL,
     n_realizations = NULL,
-    wet_quantile = 0.2,
-    extreme_quantile = 0.8,
+    wet_q = 0.2,
+    extreme_q = 0.8,
     output_dir = NULL,
     save_plots = TRUE,
     show_title = TRUE,
     verbose = TRUE,
-    max_grids = 25,
+    parallel = FALSE,
+    n_cores = NULL,
+    eval_max_grids = 25,
     seed = NULL
 ) {
 
@@ -101,15 +111,17 @@ evaluate_weather_generator <- function(
   .validate_assessment_inputs(
     daily_sim = daily_sim,
     daily_obs = daily_obs,
-    variables = variables,
+    vars = vars,
     n_realizations = n_realizations,
-    wet_quantile = wet_quantile,
-    extreme_quantile = extreme_quantile,
-    verbose = verbose
+    wet_q = wet_q,
+    extreme_q = extreme_q,
+    verbose = verbose,
+    parallel = parallel,
+    n_cores = n_cores
   )
 
-  if (!.is_int_scalar(max_grids) || max_grids < 1L) {
-    stop("'max_grids' must be a positive integer", call. = FALSE)
+  if (!.is_int_scalar(eval_max_grids) || eval_max_grids < 1L) {
+    stop("'eval_max_grids' must be a positive integer", call. = FALSE)
   }
 
   # ============================================================================
@@ -136,24 +148,17 @@ evaluate_weather_generator <- function(
 
   .log(
     paste0(
-      "[EVAL] Start | grids = {format(length(daily_obs), big.mark = ',')} | ",
-      "realizations = {format(n_realizations, big.mark = ',')}"
+      "[EVAL] Evaluation Started: Variables = {paste(vars, collapse = ',')}"
     ),
     verbose = verbose
   )
   .log(
-    paste0(
-      "[EVAL] Variables = {paste(variables, collapse = ',')}"
-    ),
-    verbose = verbose
-  )
-  .log(
-    paste0("[EVAL] Parameters: wet.q = {wet_quantile} | extreme.q = {extreme_quantile}"),
+    paste0("[EVAL] Parameters: wet.q = {wet_q} | extreme.q = {extreme_q}"),
     verbose = verbose
   )
 
 
-  if (is.null(variable_labels)) variable_labels <- variables
+  if (is.null(variable_labels)) variable_labels <- vars
 
   if (!is.null(output_dir)) {
     if (!dir.exists(output_dir)) {
@@ -185,9 +190,9 @@ evaluate_weather_generator <- function(
   grid_count <- length(daily_obs)
   grid_count_original <- grid_count
 
-  if (grid_count > max_grids) {
+  if (grid_count > eval_max_grids) {
 
-    sel.grids <- sort(sample(seq_len(grid_count), max_grids))
+    sel.grids <- sort(sample(seq_len(grid_count), eval_max_grids))
     daily_obs <- daily_obs[sel.grids]
     daily_sim <- lapply(daily_sim, function(rlz) rlz[sel.grids])
     grid_count <- length(daily_obs)
@@ -205,7 +210,7 @@ evaluate_weather_generator <- function(
     daily_obs = daily_obs,
     daily_sim = daily_sim,
     n_realizations = n_realizations,
-    variables = variables
+    variables = vars
   )
 
   daily_obs <- std$daily_obs
@@ -225,10 +230,10 @@ evaluate_weather_generator <- function(
 
   obs_results <- .summarize_observed_data(
     daily_obs = daily_obs,
-    variables = variables,
+    variables = vars,
     grid_count = grid_count,
-    wet_quantile = wet_quantile,
-    extreme_quantile = extreme_quantile)
+    wet_quantile = wet_q,
+    extreme_quantile = extreme_q)
 
   # ============================================================================
   # PROCESS SIMULATED DATA
@@ -239,19 +244,20 @@ evaluate_weather_generator <- function(
   sim_results <- .summarize_simulated_data(
     daily_sim = daily_sim,
     n_realizations = n_realizations,
-    variables = variables,
-    mc_thresholds = obs_results$mc_thresholds)
+    variables = vars,
+    mc_thresholds = obs_results$mc_thresholds,
+    parallel = parallel,
+    n_cores = n_cores,
+    seed = seed)
 
   # ============================================================================
   # MERGE AND PREPARE PLOT DATA
   # ============================================================================
 
-  .log("[EVAL] Preparing diagnostic data for plotting", verbose = verbose)
-
   plot_data <- .build_plot_data(
     obs_results = obs_results,
     sim_results = sim_results,
-    variables = variables
+    variables = vars
   )
 
   # ============================================================================
@@ -263,15 +269,14 @@ evaluate_weather_generator <- function(
   plots <- create_all_diagnostic_plots(
     plot_data = plot_data,
     plot_config = plot_config,
-    variables = variables,
+    variables = vars,
     show_title = show_title,
     save_plots = save_plots,
     output_dir = output_dir
   )
 
-  .log("[EVAL] Generated {format(length(plots), big.mark = ',')} diagnostic plots.", verbose = verbose)
   if (save_plots) {
-    .log("[EVAL] Plots saved to: {output_dir}", verbose = verbose)
+    .log("[EVAL] Generated {format(length(plots): {output_dir}, big.mark = ',')} diagnostic plots.", verbose = verbose)
   }
 
   # ============================================================================
@@ -283,7 +288,7 @@ evaluate_weather_generator <- function(
   fit_summary <- .summarize_realization_fit(
     obs_results = obs_results,
     sim_results = sim_results,
-    variables = variables
+    variables = vars
   )
 
   # ============================================================================
@@ -305,7 +310,7 @@ evaluate_weather_generator <- function(
     metadata = list(
       n_grids = grid_count,
       n_realizations = n_realizations,
-      variables = variables,
+      variables = vars,
       assessment_date = Sys.Date()
     )
   )
@@ -642,21 +647,23 @@ evaluate_weather_generator <- function(
 .validate_assessment_inputs <- function(
     daily_sim,
     daily_obs,
-    variables,
+    vars,
     n_realizations,
-    wet_quantile,
-    extreme_quantile,
-    verbose
+    wet_q,
+    extreme_q,
+    verbose,
+    parallel,
+    n_cores
 ) {
 
   if (is.null(daily_sim)) stop("'daily_sim' must not be NULL", call. = FALSE)
   if (is.null(daily_obs)) stop("'daily_obs' must not be NULL", call. = FALSE)
-  if (is.null(variables)) stop("'variables' must not be NULL", call. = FALSE)
+  if (is.null(vars)) stop("'vars' must not be NULL", call. = FALSE)
   if (is.null(n_realizations)) stop("'n_realizations' must not be NULL", call. = FALSE)
 
   if (!is.list(daily_sim)) stop("'daily_sim' must be a list", call. = FALSE)
   if (!is.list(daily_obs)) stop("'daily_obs' must be a list", call. = FALSE)
-  if (!is.character(variables)) stop("'variables' must be a character vector", call. = FALSE)
+  if (!is.character(vars)) stop("'vars' must be a character vector", call. = FALSE)
   if (!.is_int_scalar(n_realizations) || n_realizations < 1L) {
     stop("'n_realizations' must be a positive integer", call. = FALSE)
   }
@@ -669,13 +676,13 @@ evaluate_weather_generator <- function(
     stop("'daily_obs' must contain at least one grid cell", call. = FALSE)
   }
 
-  if (!"precip" %in% variables) {
-    stop("'variables' must include 'precip' for wet/dry spell analysis", call. = FALSE)
+  if (!"precip" %in% vars) {
+    stop("'vars' must include 'precip' for wet/dry spell analysis", call. = FALSE)
   }
 
-  missing.vars <- setdiff(variables, names(daily_obs[[1]]))
+  missing.vars <- setdiff(vars, names(daily_obs[[1]]))
   if (length(missing.vars) > 0) {
-    stop("Variables not found in daily_obs: ", paste(missing.vars, collapse = ", "), call. = FALSE)
+    stop("Vars not found in daily_obs: ", paste(missing.vars, collapse = ", "), call. = FALSE)
   }
 
   if (!"date" %in% names(daily_obs[[1]])) {
@@ -685,22 +692,32 @@ evaluate_weather_generator <- function(
     stop("'daily_sim' must contain a 'date' column", call. = FALSE)
   }
 
-  if (!is.numeric(wet_quantile) || !is.finite(wet_quantile) ||
-      wet_quantile <= 0 || wet_quantile >= 1) {
-    stop("'wet_quantile' must be between 0 and 1", call. = FALSE)
+  if (!is.numeric(wet_q) || !is.finite(wet_q) ||
+      wet_q <= 0 || wet_q >= 1) {
+    stop("'wet_q' must be between 0 and 1", call. = FALSE)
   }
 
-  if (!is.numeric(extreme_quantile) || !is.finite(extreme_quantile) ||
-      extreme_quantile <= 0 || extreme_quantile >= 1) {
-    stop("'extreme_quantile' must be between 0 and 1", call. = FALSE)
+  if (!is.numeric(extreme_q) || !is.finite(extreme_q) ||
+      extreme_q <= 0 || extreme_q >= 1) {
+    stop("'extreme_q' must be between 0 and 1", call. = FALSE)
   }
 
-  if (extreme_quantile <= wet_quantile) {
-    stop("'extreme_quantile' must be greater than 'wet_quantile'", call. = FALSE)
+  if (extreme_q <= wet_q) {
+    stop("'extreme_q' must be greater than 'wet_q'", call. = FALSE)
   }
 
   if (!is.logical(verbose) || length(verbose) != 1L) {
     stop("'verbose' must be TRUE or FALSE", call. = FALSE)
+  }
+
+  if (!is.logical(parallel) || length(parallel) != 1L) {
+    stop("'parallel' must be TRUE or FALSE", call. = FALSE)
+  }
+
+  if (!is.null(n_cores)) {
+    if (!.is_int_scalar(n_cores) || n_cores < 1L) {
+      stop("'n_cores' must be NULL or a positive integer", call. = FALSE)
+    }
   }
 
   invisible(TRUE)
@@ -761,7 +778,8 @@ evaluate_weather_generator <- function(
 
 #' Summarize simulated weather data
 #' @keywords internal
-.summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds) {
+.summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds,
+                                      parallel = FALSE, n_cores = NULL, seed = NULL) {
 
   sim.datemat <- dplyr::tibble(
     date = daily_sim[[1]][[1]]$date,
@@ -770,20 +788,56 @@ evaluate_weather_generator <- function(
     day = as.integer(format(date, "%d"))
   )
 
-  sim <- lapply(seq_len(n_realizations), function(i) {
-    daily_sim[[i]] %>%
-      dplyr::bind_rows(.id = "id") %>%
-      dplyr::mutate(id = as.integer(.data$id)) %>%
-      dplyr::left_join(sim.datemat, by = "date")
-  })
+  .summarize_one_realization <- function(i, daily_sim, variables, mc_thresholds, sim.datemat) {
+    sim_i <- dplyr::bind_rows(daily_sim[[i]], .id = "id")
+    sim_i <- dplyr::mutate(sim_i, id = as.integer(.data$id))
+    sim_i <- dplyr::left_join(sim_i, sim.datemat, by = "date")
 
-  sim.stats.list <- lapply(seq_len(n_realizations), function(i) {
     .compute_timeseries_stats(
-      data = sim[[i]],
+      data = sim_i,
       variables = variables,
       mc_thresholds = mc_thresholds
     )
-  })
+  }
+
+  n_cores_use <- n_cores
+  if (is.null(n_cores_use)) {
+    n_cores_use <- parallel::detectCores(logical = FALSE)
+    if (!is.finite(n_cores_use) || n_cores_use < 1L) {
+      n_cores_use <- 1L
+    }
+  }
+  n_cores_use <- min(as.integer(n_cores_use), n_realizations)
+  use_parallel <- isTRUE(parallel) && n_cores_use > 1L && n_realizations > 1L
+
+  if (use_parallel) {
+    cl <- parallel::makeCluster(n_cores_use)
+    on.exit(parallel::stopCluster(cl), add = TRUE)
+    parallel::clusterEvalQ(cl, { suppressPackageStartupMessages(library(weathergenr)) })
+    if (!is.null(seed)) {
+      parallel::clusterSetRNGStream(cl, seed)
+    }
+    sim.stats.list <- parallel::parLapply(
+      cl,
+      seq_len(n_realizations),
+      .summarize_one_realization,
+      daily_sim = daily_sim,
+      variables = variables,
+      mc_thresholds = mc_thresholds,
+      sim.datemat = sim.datemat
+    )
+  } else {
+    sim.stats.list <- vector("list", n_realizations)
+    for (i in seq_len(n_realizations)) {
+      sim.stats.list[[i]] <- .summarize_one_realization(
+        i = i,
+        daily_sim = daily_sim,
+        variables = variables,
+        mc_thresholds = mc_thresholds,
+        sim.datemat = sim.datemat
+      )
+    }
+  }
 
   list(
     stats.season = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.season"), .id = "rlz") %>%

@@ -2,7 +2,7 @@
 % Please edit documentation in R/warm_filtering.R
 \name{log_filtering_start}
 \alias{log_filtering_start}
-\title{Log initial setup information}
+\title{Log filtering setup information}
 \usage{
 log_filtering_start(
   n_obs,
@@ -13,20 +13,22 @@ log_filtering_start(
 )
 }
 \arguments{
-\item{n_obs}{Integer scalar. Number of observations in observed series.}
+\item{n_obs}{Integer scalar. Length of the observed series in years.}
 
-\item{n_sim}{Integer scalar. Number of years in simulated series used after windowing.}
+\item{n_sim}{Integer scalar. Length of the simulated series in years.}
 
 \item{n_realizations}{Integer scalar. Number of candidate realizations.}
 
-\item{sample_target}{Integer scalar. Target number to select.}
+\item{sample_target}{Integer scalar. Number of realizations requested.}
 
-\item{relax_priority}{Character vector. Relaxation priority vector.}
+\item{relax_priority}{Character vector. Relaxation priority ordering.}
 }
 \value{
 Invisibly returns NULL.
 }
 \description{
-Internal helper. Displays general information at the start of filtering.
+Writes a header block describing the filtering configuration. This includes
+series lengths, the number of candidate realizations, the selection target,
+and the relaxation priority.
 }
 \keyword{internal}

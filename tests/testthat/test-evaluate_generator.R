@@ -1,6 +1,9 @@
 # ==============================================================================
 # Tests for evaluate_weather_generator()
 # ==============================================================================
+# Functions under test:
+# - R/evaluate_generator.R: evaluate_weather_generator()
+# - R/evaluate_generator_plots.R: create_all_diagnostic_plots(), generate_symmetric_dummy_points()
 #
 # Objective: keep unit coverage while preventing CI/runtime termination.
 # Strategy:
@@ -81,7 +84,8 @@ make_test_grid_df <- function(dates, id_shift = 0) {
   }
 
   # Minimal simulated results structure
-  .mock_summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds) {
+  .mock_summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds,
+                                             parallel = FALSE, n_cores = NULL, seed = NULL) {
 
     empty_tbl <- dplyr::tibble()
 
@@ -157,14 +161,14 @@ testthat::test_that("evaluate_weather_generator returns weather_assessment with 
     out <- evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = n_realizations,
-      wet_quantile = 0.2,
-      extreme_quantile = 0.8,
+      wet_q = 0.2,
+      extreme_q = 0.8,
       output_dir = NULL,
       save_plots = FALSE,
       show_title = FALSE,
-      max_grids = 25,
+      eval_max_grids = 25,
       verbose = FALSE
     )
 
@@ -194,10 +198,10 @@ testthat::test_that("evaluate_weather_generator returns weather_assessment with 
 })
 
 # ==============================================================================
-# TEST: Grid subsampling when exceeding max_grids
+# TEST: Grid subsampling when exceeding eval_max_grids
 # ==============================================================================
 
-testthat::test_that("evaluate_weather_generator subsamples grids when exceeding max_grids", {
+testthat::test_that("evaluate_weather_generator subsamples grids when exceeding eval_max_grids", {
 
   .with_fast_eval_mocks({
 
@@ -211,7 +215,7 @@ testthat::test_that("evaluate_weather_generator subsamples grids when exceeding 
     dates_sim <- dates_sim[format(dates_sim, "%m-%d") != "02-29"]
 
     n_grid <- 10
-    max_grids <- 4
+    eval_max_grids <- 4
     n_realizations <- 2
 
     daily_obs <- lapply(seq_len(n_grid), function(i) {
@@ -227,18 +231,18 @@ testthat::test_that("evaluate_weather_generator subsamples grids when exceeding 
     out <- evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = n_realizations,
       output_dir = NULL,
       save_plots = FALSE,
       show_title = FALSE,
-      max_grids = max_grids,
+      eval_max_grids = eval_max_grids,
       verbose = FALSE
     )
 
     # Check that grid count was reduced
     metadata <- attr(out, "metadata")
-    testthat::expect_equal(metadata$n_grids, max_grids)
+    testthat::expect_equal(metadata$n_grids, eval_max_grids)
   })
 })
 
@@ -260,46 +264,46 @@ testthat::test_that("evaluate_weather_generator validates quantile parameters", 
   daily_obs <- list(df, df)
   daily_sim <- list(list(df, df))
 
-  # extreme_quantile must be greater than wet_quantile
+  # extreme_q must be greater than wet_q
   testthat::expect_error(
     evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = 1,
-      wet_quantile = 0.9,
-      extreme_quantile = 0.8,
+      wet_q = 0.9,
+      extreme_q = 0.8,
       verbose = FALSE
     ),
-    "extreme_quantile"
+    "extreme_q"
   )
 
-  # wet_quantile = 0 is invalid (must be strictly between 0 and 1)
+  # wet_q = 0 is invalid (must be strictly between 0 and 1)
   testthat::expect_error(
     evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = 1,
-      wet_quantile = 0,
-      extreme_quantile = 0.8,
+      wet_q = 0,
+      extreme_q = 0.8,
       verbose = FALSE
     ),
-    "wet_quantile"
+    "wet_q"
   )
 
-  # extreme_quantile = 1 is invalid (must be strictly between 0 and 1)
+  # extreme_q = 1 is invalid (must be strictly between 0 and 1)
   testthat::expect_error(
     evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = 1,
-      wet_quantile = 0.2,
-      extreme_quantile = 1,
+      wet_q = 0.2,
+      extreme_q = 1,
       verbose = FALSE
     ),
-    "extreme_quantile"
+    "extreme_q"
   )
 
   # NA values should error
@@ -307,13 +311,57 @@ testthat::test_that("evaluate_weather_generator validates quantile parameters", 
     evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = 1,
-      wet_quantile = NA_real_,
-      extreme_quantile = 0.8,
+      wet_q = NA_real_,
+      extreme_q = 0.8,
       verbose = FALSE
     ),
-    "wet_quantile"
+    "wet_q"
+  )
+})
+
+# ==============================================================================
+# TEST: Input validation - parallel options
+# ==============================================================================
+
+testthat::test_that("evaluate_weather_generator validates parallel arguments", {
+
+  dates <- seq.Date(as.Date("2001-01-01"), as.Date("2002-12-31"), by = "day")
+  dates <- dates[format(dates, "%m-%d") != "02-29"]
+
+  df <- data.frame(
+    date = dates,
+    precip = rep(1, length(dates)),
+    temp = rep(10, length(dates))
+  )
+
+  daily_obs <- list(df, df)
+  daily_sim <- list(list(df, df))
+
+  testthat::expect_error(
+    evaluate_weather_generator(
+      daily_sim = daily_sim,
+      daily_obs = daily_obs,
+      vars = c("precip", "temp"),
+      n_realizations = 1,
+      parallel = "yes",
+      verbose = FALSE
+    ),
+    "parallel"
+  )
+
+  testthat::expect_error(
+    evaluate_weather_generator(
+      daily_sim = daily_sim,
+      daily_obs = daily_obs,
+      vars = c("precip", "temp"),
+      n_realizations = 1,
+      parallel = TRUE,
+      n_cores = 0,
+      verbose = FALSE
+    ),
+    "n_cores"
   )
 })
 
@@ -340,7 +388,7 @@ testthat::test_that("evaluate_weather_generator validates daily_sim length", {
     evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = 2,
       verbose = FALSE
     ),
@@ -378,7 +426,7 @@ testthat::test_that("evaluate_weather_generator requires date column in data", {
     evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = 1,
       verbose = FALSE
     ),
@@ -393,7 +441,7 @@ testthat::test_that("evaluate_weather_generator requires date column in data", {
     evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = 1,
       verbose = FALSE
     ),
@@ -433,7 +481,7 @@ testthat::test_that("evaluate_weather_generator handles leap days without error"
     out <- evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = n_realizations,
       output_dir = NULL,
       save_plots = FALSE,
@@ -465,7 +513,7 @@ testthat::test_that("evaluate_weather_generator produces reproducible results wi
 
     n_grid <- 5
     n_realizations <- 2
-    max_grids <- 3
+    eval_max_grids <- 3
 
     # Create data with enough grids to trigger subsampling
     daily_obs <- lapply(seq_len(n_grid), function(i) {
@@ -482,9 +530,9 @@ testthat::test_that("evaluate_weather_generator produces reproducible results wi
     out1 <- evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = n_realizations,
-      max_grids = max_grids,
+      eval_max_grids = eval_max_grids,
       seed = 12345,
       output_dir = NULL,
       save_plots = FALSE,
@@ -494,9 +542,9 @@ testthat::test_that("evaluate_weather_generator produces reproducible results wi
     out2 <- evaluate_weather_generator(
       daily_sim = daily_sim,
       daily_obs = daily_obs,
-      variables = c("precip", "temp"),
+      vars = c("precip", "temp"),
       n_realizations = n_realizations,
-      max_grids = max_grids,
+      eval_max_grids = eval_max_grids,
       seed = 12345,
       output_dir = NULL,
       save_plots = FALSE,
