@@ -48,7 +48,8 @@ generate_weather(
   seed = NULL,
   parallel = FALSE,
   n_cores = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  save_plots = TRUE
 )
 ```
 

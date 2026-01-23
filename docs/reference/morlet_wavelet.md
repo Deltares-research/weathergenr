@@ -26,3 +26,14 @@ morlet_wavelet(k, scale, k0 = 6)
 ## Value
 
 Numeric vector (complex). Morlet wavelet in Fourier space.
+
+## References
+
+Torrence, C., & Compo, G. P. (1998). A practical guide to wavelet
+analysis. *Bulletin of the American Meteorological Society*, 79(1),
+61-78.
+
+## See also
+
+[`morlet_parameters`](https://deltares-research.github.io/weathergenr/reference/morlet_parameters.md),
+[`analyze_wavelet_spectrum`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.md)
