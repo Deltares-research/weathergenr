@@ -147,6 +147,33 @@ testthat::test_that("filter_warm_pool returns expected structure", {
   testthat::expect_equal(ncol(out$selected), 2)
   testthat::expect_equal(nrow(out$summary), 5)
   testthat::expect_equal(length(out$diagnostics$selected_idx), 2)
+  testthat::expect_false("gws_cache" %in% names(out$diagnostics))
+})
+
+testthat::test_that("filter_warm_pool caches gws only when requested", {
+  set.seed(2)
+  obs_series <- sin(seq(0, 2 * pi, length.out = 32))
+  sim_series <- sapply(1:3, function(i) obs_series + rnorm(32, sd = 0.05))
+
+  out <- filter_warm_pool(
+    obs_series = obs_series,
+    sim_series = sim_series,
+    n_select = 2,
+    seed = 11,
+    wavelet_args = list(
+      signif_level = 0.8,
+      noise_type = "white",
+      period_lower_limit = 2,
+      detrend = FALSE
+    ),
+    cache_gws = TRUE,
+    make_plots = FALSE,
+    verbose = FALSE
+  )
+
+  testthat::expect_true("gws_cache" %in% names(out$diagnostics))
+  testthat::expect_true(is.matrix(out$diagnostics$gws_cache))
+  testthat::expect_equal(ncol(out$diagnostics$gws_cache), ncol(sim_series))
 })
 
 testthat::test_that("plot_filter_diagnostics returns ggplot list", {

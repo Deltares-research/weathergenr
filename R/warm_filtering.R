@@ -49,6 +49,8 @@
 #'   computed in parallel inside \code{compute_spectral_metrics()}.
 #' @param n_cores Integer scalar or NULL. Number of worker processes to use for
 #'   parallel execution. If NULL, an internal default is used.
+#' @param cache_gws Logical scalar. If TRUE, cache simulated global wavelet
+#'   spectra for diagnostics; this can increase memory use.
 #' @param verbose Logical scalar. If TRUE, logs setup information, per iteration
 #'   pass rates, and relaxation actions.
 #'
@@ -61,7 +63,8 @@
 #'   \item{summary}{Data frame. Pass counts and pass rates for each filter
 #'   family, plus the selection mode used.}
 #'   \item{diagnostics}{List. Window metadata, relaxation log, spectral
-#'   diagnostics, spectral metrics, and the final bounds used.}
+#'   diagnostics, spectral metrics, and the final bounds used. When
+#'   \code{cache_gws = TRUE}, includes \code{gws_cache}.}
 #'   \item{plots}{NULL or a named list of ggplot objects when
 #'   \code{make_plots = TRUE}.}
 #' }
@@ -86,6 +89,7 @@ filter_warm_pool <- function(
     make_plots = FALSE,
     parallel = FALSE,
     n_cores = NULL,
+    cache_gws = FALSE,
     verbose = FALSE
 ) {
 
@@ -107,6 +111,7 @@ filter_warm_pool <- function(
   verbose <- isTRUE(verbose)
 
   parallel <- isTRUE(parallel)
+  cache_gws <- isTRUE(cache_gws)
   if (!is.null(n_cores)) {
     if (!is.numeric(n_cores) || length(n_cores) != 1L || !is.finite(n_cores) || n_cores < 1) {
       stop("'n_cores' must be a positive integer or NULL.", call. = FALSE)
@@ -289,7 +294,7 @@ filter_warm_pool <- function(
     eps = b$spectral_eps,
     parallel = parallel,
     n_cores = n_cores,
-    cache_gws = make_plots
+    cache_gws = cache_gws
   )
 
   wavelet_active <- spectral_results$active
@@ -299,8 +304,6 @@ filter_warm_pool <- function(
   period <- spectral_results$period
   gws_obs <- spectral_results$gws_obs
   gws_signif <- spectral_results$gws_signif
-  gws_cache <- spectral_results$gws_cache
-
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
@@ -515,11 +518,6 @@ filter_warm_pool <- function(
       warning("make_plots=TRUE but final pool is empty; plots=NULL.", call. = FALSE)
     } else {
 
-      wavelet_pars_plot <- wavelet_args
-      if (!is.null(gws_cache) && is.matrix(gws_cache)) {
-        wavelet_pars_plot$gws_cache <- gws_cache
-      }
-
       plots_out <- plot_filter_diagnostics(
         obs_series    = obs_use,
         sim_series    = sim_use,
@@ -530,7 +528,7 @@ filter_warm_pool <- function(
         power_period  = period,
         power_obs     = gws_obs,
         power_signif  = gws_signif,
-        wavelet_pars  = wavelet_pars_plot,
+        wavelet_pars  = wavelet_args,
         wavelet_q     = b$plot_wavelet_q
       )
     }
@@ -539,24 +537,30 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   # Return
   # ---------------------------------------------------------------------------
+  diagnostics <- list(
+    n_obs_original = n_obs0,
+    n_sim_original = n_sim0,
+    n_use = n_use,
+    n_periods = length(period),
+    obs_window = obs_window,
+    window_index = window_index,
+    pool_idx = pool_idx,
+    selected_idx = idx_select,
+    relax_log = relax_log,
+    spectral_diag = spectral_diag,
+    spectral_metrics = spectral_metrics,
+    final_bounds = as.list(b)
+  )
+
+  if (cache_gws) {
+    diagnostics$gws_cache <- spectral_results$gws_cache
+  }
+
   list(
     pool = sim_series[, pool_idx, drop = FALSE],
     selected = sim_series[, idx_select, drop = FALSE],
     summary = summary,
-    diagnostics = list(
-      n_obs_original = n_obs0,
-      n_sim_original = n_sim0,
-      n_use = n_use,
-      n_periods = length(period),
-      obs_window = obs_window,
-      window_index = window_index,
-      pool_idx = pool_idx,
-      selected_idx = idx_select,
-      relax_log = relax_log,
-      spectral_diag = spectral_diag,
-      spectral_metrics = spectral_metrics,
-      final_bounds = as.list(b)
-    ),
+    diagnostics = diagnostics,
     plots = plots_out
   )
 }
@@ -994,8 +998,8 @@ compute_spectral_match_single <- function(gws_obs, gws_sim, period,
 #' @param n_cores Integer scalar or NULL. Number of worker processes to use when
 #'   \code{parallel = TRUE}. If NULL, an internal default is used.
 #' @param cache_gws Logical scalar. If TRUE, store simulated global wavelet
-#'   spectra in \code{gws_cache}. This can be memory intensive for large
-#'   ensembles.
+#'   spectra in \code{gws_cache}. When FALSE, \code{gws_cache} is returned as
+#'   NULL and simulated spectra are not retained.
 #'
 #' @return Named list with:
 #' \describe{
@@ -1004,7 +1008,7 @@ compute_spectral_match_single <- function(gws_obs, gws_sim, period,
 #'   \item{gws_obs}{Numeric vector. Observed global wavelet spectrum on \code{period}.}
 #'   \item{gws_signif}{Numeric vector or NULL. Significance curve on \code{period}.}
 #'   \item{gws_cache}{Numeric matrix or NULL. Simulated spectra on \code{period}
-#'   for each realization when \code{cache_gws = TRUE}.}
+#'   for each realization when \code{cache_gws = TRUE}; otherwise NULL.}
 #'   \item{metrics}{List with numeric vectors \code{spectral_cor},
 #'   \code{peak_match_frac}, and \code{peak_mag_mean_abs_log_ratio}.}
 #'   \item{diagnostics}{List. Summary information including significant peaks
@@ -1093,7 +1097,7 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
   # Worker function: analyze one simulation column
   # -------------------------------------------------------------------------
   one_sim <- function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
-                      peak_period_tol, peak_mag_tol_log, eps) {
+                      peak_period_tol, peak_mag_tol_log, eps, cache_gws) {
 
     wv_sim <- analyze_wavelet_spectrum(
       sim_series_stats[, j],
@@ -1117,12 +1121,13 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
       eps = eps
     )
 
-    list(
-      gws_sim = gws_sim,
+    out <- list(
       spectral_cor = m$spectral_cor,
       peak_match_frac = m$peak_match_frac,
       peak_mag_mean_abs_log_ratio = m$peak_mag_mean_abs_log_ratio
     )
+    if (isTRUE(cache_gws)) out$gws_sim <- gws_sim
+    out
   }
 
   # -------------------------------------------------------------------------
@@ -1139,17 +1144,18 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
   if (!parallel || n_realizations < 2L) {
 
     for (j in seq_len(n_realizations)) {
-      res <- one_sim(
-        j = j,
-        sim_series_stats = sim_series_stats,
-        wavelet_pars = wavelet_pars,
-        period = period,
-        gws_obs = gws_obs,
-        obs_peaks_sig = obs_peaks_sig,
-        peak_period_tol = peak_period_tol,
-        peak_mag_tol_log = peak_mag_tol_log,
-        eps = eps
-      )
+        res <- one_sim(
+          j = j,
+          sim_series_stats = sim_series_stats,
+          wavelet_pars = wavelet_pars,
+          period = period,
+          gws_obs = gws_obs,
+          obs_peaks_sig = obs_peaks_sig,
+          peak_period_tol = peak_period_tol,
+          peak_mag_tol_log = peak_mag_tol_log,
+          eps = eps,
+          cache_gws = cache_gws
+        )
 
       if (cache_gws) gws_cache[, j] <- res$gws_sim
       spectral_cor[j] <- res$spectral_cor
@@ -1177,7 +1183,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
           obs_peaks_sig = obs_peaks_sig,
           peak_period_tol = peak_period_tol,
           peak_mag_tol_log = peak_mag_tol_log,
-          eps = eps
+          eps = eps,
+          cache_gws = cache_gws
         )
 
         if (cache_gws) gws_cache[, j] <- res$gws_sim
@@ -1219,7 +1226,7 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
         cl,
         X = idx,
         fun = function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
-                       peak_period_tol, peak_mag_tol_log, eps) {
+                       peak_period_tol, peak_mag_tol_log, eps, cache_gws) {
           one_sim(
             j = j,
             sim_series_stats = sim_series_stats,
@@ -1229,7 +1236,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
             obs_peaks_sig = obs_peaks_sig,
             peak_period_tol = peak_period_tol,
             peak_mag_tol_log = peak_mag_tol_log,
-            eps = eps
+            eps = eps,
+            cache_gws = cache_gws
           )
         },
         sim_series_stats = sim_series_stats,
@@ -1239,7 +1247,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
         obs_peaks_sig = obs_peaks_sig,
         peak_period_tol = peak_period_tol,
         peak_mag_tol_log = peak_mag_tol_log,
-        eps = eps
+        eps = eps,
+        cache_gws = cache_gws
       )
 
       for (j in seq_len(n_realizations)) {
