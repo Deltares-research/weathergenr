@@ -15,9 +15,10 @@ thresholds. The implementation includes:
 
 This function is intended for detection and diagnostic analysis of
 dominant time scales. Reconstructed scale components are additive but
-not orthogonal. For truly orthogonal decomposition suitable for ARIMA
-modeling, see `analyze_wavelet_orthogonal` which combines CWT
-diagnostics with MODWT-based orthogonal component extraction.
+not orthogonal. For MODWT additive decomposition suitable for ARIMA
+modeling, see
+[`analyze_wavelet_additive`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_additive.md)
+which combines CWT diagnostics with MODWT-based component extraction.
 
 ## Usage
 
@@ -212,6 +213,6 @@ analysis. *Bulletin of the American Meteorological Society*, 79(1),
 
 [`morlet_wavelet`](https://deltares-research.github.io/weathergenr/reference/morlet_wavelet.md),
 [`extract_wavelet_components`](https://deltares-research.github.io/weathergenr/reference/extract_wavelet_components.md),
-`analyze_wavelet_orthogonal`,
+[`analyze_wavelet_additive`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_additive.md),
 [`plot_wavelet_power`](https://deltares-research.github.io/weathergenr/reference/plot_wavelet_power.md),
 [`plot_wavelet_global_spectrum`](https://deltares-research.github.io/weathergenr/reference/plot_wavelet_global_spectrum.md)

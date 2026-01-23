@@ -153,13 +153,13 @@ out <- evaluate_weather_generator(
   save_plots = FALSE,
   show_title = FALSE
 )
-#> [2026-01-23 20:53:22] [EVAL] Evaluation Started: Variables = precip,temp
-#> [2026-01-23 20:53:22] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8
-#> [2026-01-23 20:53:22] [EVAL] Standardizing obs/sim periods to full years and equal length
-#> [2026-01-23 20:53:22] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
-#> [2026-01-23 20:53:22] [EVAL] Processing observed data
-#> [2026-01-23 20:53:23] [EVAL] Processing simulated data (1 realizations)
-#> [2026-01-23 20:53:23] [EVAL] Generating diagnostic plots
+#> [2026-01-23 22:15:26] [EVAL] Evaluation Started: Variables = precip,temp
+#> [2026-01-23 22:15:26] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8
+#> [2026-01-23 22:15:26] [EVAL] Standardizing obs/sim periods to full years and equal length
+#> [2026-01-23 22:15:26] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
+#> [2026-01-23 22:15:26] [EVAL] Processing observed data
+#> [2026-01-23 22:15:26] [EVAL] Processing simulated data (1 realizations)
+#> [2026-01-23 22:15:26] [EVAL] Generating diagnostic plots
 #> Warning: There were 2 warnings in `dplyr::summarise()`.
 #> The first warning was:
 #> ℹ In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm
@@ -167,14 +167,14 @@ out <- evaluate_weather_generator(
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> [2026-01-23 20:53:24] [EVAL] Computing fit metrics for all realizations
+#> [2026-01-23 22:15:26] [EVAL] Computing fit metrics for all realizations
 #> Warning: There were 2 warnings in `dplyr::mutate()`.
 #> The first warning was:
 #> ℹ In argument: `dplyr::across(...)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> [2026-01-23 20:53:24] [EVAL] Displaying fit assessment summary
+#> [2026-01-23 22:15:27] [EVAL] Displaying fit assessment summary
 #> 
 #> =============================================================================================== 
 #>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS
@@ -201,7 +201,7 @@ out <- evaluate_weather_generator(
 #>   - Worst realization : 1 (score = 0.0000)
 #>   - Median score      : 0.0000
 #> 
-#> [2026-01-23 20:53:24] [EVAL] Assessment completed successfully
+#> [2026-01-23 22:15:27] [EVAL] Assessment completed successfully
 class(out)
 #> [1] "weather_assessment" "list"              
 ```

@@ -182,6 +182,10 @@ generate_weather(
   Logical; if `TRUE`, emits progress logs via
   [`.log()`](https://deltares-research.github.io/weathergenr/reference/dot-log.md).
 
+- save_plots:
+
+  Logical; if `TRUE`, writes plot to `output_dir`.
+
 ## Value
 
 A list with:
