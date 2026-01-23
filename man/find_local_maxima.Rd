@@ -20,5 +20,7 @@ Integer vector of peak indices. Returns an empty integer vector if
 \description{
 Scans a numeric vector and returns indices of local maxima. A local maximum is
 defined by comparing each element to its immediate neighbors.
+
+Uses vectorized operations for O(n) complexity instead of loop-based O(n^2).
 }
 \keyword{internal}

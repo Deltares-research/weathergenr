@@ -310,29 +310,38 @@ compute_area_averages <- function(obs_data, wyear_idx, wyear, vars) {
 
   level <- match.arg(level)
 
+  # Coerce safely to a scalar character string
+  if (length(msg) != 1L) msg <- paste(msg, collapse = " ")
+  msg <- as.character(msg)
+
   # ---------------------------------------------------------------------------
-  # Simple brace interpolation using base R
+  # Simple brace interpolation using base R (caller env)
   # ---------------------------------------------------------------------------
   rendered <- msg
   env <- parent.frame()
 
-  # Find all {expression} patterns
   matches <- gregexpr("\\{[^}]+\\}", msg)
   if (matches[[1]][1] != -1L) {
     exprs <- regmatches(msg, matches)[[1]]
+
     for (expr in exprs) {
       var_expr <- substr(expr, 2L, nchar(expr) - 1L)
+
       value <- tryCatch(
         eval(parse(text = var_expr), envir = env),
         error = function(e) expr
       )
-      rendered <- sub(expr, as.character(value), rendered, fixed = TRUE)
+
+      # Ensure replacement is a scalar string
+      if (length(value) != 1L) value <- paste(value, collapse = ", ")
+      value <- as.character(value)
+
+      # Replace all occurrences of the exact token (fixed)
+      rendered <- gsub(expr, value, rendered, fixed = TRUE)
     }
   }
 
-  # Build prefix: timestamp + optional tag
   timestamp <- format(Sys.time(), "[%Y-%m-%d %H:%M:%S]")
-
   if (!is.null(tag) && nzchar(tag)) {
     prefix <- paste0(timestamp, " [", tag, "] ")
   } else {
@@ -341,9 +350,6 @@ compute_area_averages <- function(obs_data, wyear_idx, wyear, vars) {
 
   rendered <- paste0(prefix, rendered)
 
-  # ---------------------------------------------------------------------------
-  # Emit via base R
-  # ---------------------------------------------------------------------------
   switch(
     level,
     info  = message(rendered),
@@ -381,5 +387,3 @@ format_elapsed <- function(start_time) {
     sprintf("%d hr %d min", hrs, mins)
   }
 }
-
-

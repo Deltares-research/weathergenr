@@ -146,14 +146,16 @@ base = importr("base")
 weathergenr = importr("weathergenr")
 
 ncfile = base.system_file("extdata", "ntoum_era5_data.nc", package="weathergenr")
-ncdata = weathergenr.readNetcdf(ncfile)
+ncdata = weathergenr.read_netcdf(ncfile)
 
 outdir = Path(os.environ.get("WEATHERGENR_OUTDIR", "weathergenr-output")).resolve()
 outdir.mkdir(parents=True, exist_ok=True)
 
 variables = ro.StrVector(["precip", "temp", "temp_min", "temp_max"])
 
-stochastic_weather <- weathergenr.generate_weather(
+seed = 123
+
+stochastic_weather = weathergenr.generate_weather(
   obs_data = ncdata[0],
   obs_grid = ncdata[1],
   obs_dates = ncdata[2],
@@ -168,7 +170,7 @@ stochastic_weather <- weathergenr.generate_weather(
   annual_knn_n = 100,
   wet_q = 0.2,
   extreme_q = 0.8,
-  output_path = str(outdir),
+  out_dir = str(outdir),
   seed = seed,
   parallel = False,
   verbose = False

@@ -750,19 +750,12 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   obs_precip <- stats_annual_aavg_obs %>%
     dplyr::filter(stat == "mean", variable == "precip")
 
-  p <- ggplot2::ggplot() +
-    plot_config$theme +
-    ggplot2::geom_point(
-      data = sim_precip,
-      ggplot2::aes(x = year, y = Simulated, group = rlz),
-      size = 0.5,
-      alpha = 0.3
-    )
-
+  p <- ggplot2::ggplot()
   p <- .add_line_if_possible(
     p = p,
     data = sim_precip,
-    mapping = ggplot2::aes(x = year, y = Simulated, group = rlz), alpha = 0.6,
+    mapping = ggplot2::aes(x = year, y = Simulated, group = rlz),
+    alpha = 0.5,
     group_col = "rlz"
   )
 

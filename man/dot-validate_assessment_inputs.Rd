@@ -7,10 +7,10 @@
 .validate_assessment_inputs(
   daily_sim,
   daily_obs,
-  variables,
+  vars,
   n_realizations,
-  wet_quantile,
-  extreme_quantile,
+  wet_q,
+  extreme_q,
   verbose,
   parallel,
   n_cores

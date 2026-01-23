@@ -70,7 +70,7 @@
 #' @param warm_filter_bounds Named list of filtering thresholds and relaxation controls
 #'   forwarded to \code{\link{filter_warm_pool}} as \code{filter_bounds}. Any entry
 #'   overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}).
-#' @param warm_filter_relax_order Character vector giving the relaxation priority
+#' @param relax_priority Character vector giving the relaxation priority
 #'   for WARM filtering, forwarded to \code{\link{filter_warm_pool}} as \code{relax_order}.
 #'   Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
 #'   Filters are relaxed iteratively by loosening the currently most restrictive criterion
@@ -153,7 +153,7 @@ generate_weather <- function(
   warm_signif = 0.90,
   warm_pool_size = 5000,
   warm_filter_bounds = list(),
-  warm_filter_relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+  relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
   annual_knn_n = 120,
   wet_q = 0.3,
   extreme_q = 0.8,
@@ -163,12 +163,14 @@ generate_weather <- function(
   seed = NULL,
   parallel = FALSE,
   n_cores = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  save_plots = TRUE
 ) {
 
 
   start_time <- Sys.time()
   verbose <- isTRUE(verbose)
+  save_plots <- isTRUE(save_plots)
 
   # ---------------------------------------------------------------------------
   # Setup
@@ -197,7 +199,7 @@ generate_weather <- function(
     "obs_grid must have required columns" = all(c("xind", "yind", "x", "y") %in% names(obs_grid)),
     "verbose must be TRUE or FALSE" = is.logical(verbose) && length(verbose) == 1L,
     "warm_filter_bounds must be a list" = is.list(warm_filter_bounds),
-    "warm_filter_relax_order must be a character vector" = is.character(warm_filter_relax_order)
+    "relax_priority must be a character vector" = is.character(relax_priority)
   )
 
 
@@ -261,14 +263,26 @@ generate_weather <- function(
   # ---------------------------------------------------------------------------
 
   n_grids <- length(obs_data)
+
+  # General info
+  .log("Historical period: {obs_dates[1]} to {obs_dates[length(obs_dates)]}", tag = "INIT", verbose = verbose)
+  .log(paste0("Variables: ", paste(as.character(vars), collapse = ", ")), tag = "INIT", verbose = verbose)
+  .log("Grid cells: {n_grids}", tag = "INIT", verbose = verbose)
+
+  # Calendar / water-year logic
+  .log("Year logic: {if (as.integer(year_start_month) == 1L) 'calendar year (Jan-Dec)' else paste0('water year (start month = ', as.integer(year_start_month), ')')}",
+       tag = "INIT", verbose = verbose)
+
+  # Output directory
+  .log("Output directory: {normalizePath(out_dir, winslash = '/', mustWork = FALSE)}",
+       tag = "INIT", verbose = verbose)
+
+  # Seed information
   if (!is.null(seed)) {
     .log("Seed: {seed}", tag = "INIT", verbose = verbose)
   } else {
     .log("Seed: not set (non-reproducible)", tag = "INIT", verbose = verbose)
   }
-  .log(paste0("Variables: ", paste(as.character(vars), collapse = ", ")), tag = "INIT", verbose = verbose)
-  .log("Grid cells: {n_grids}", tag = "INIT", verbose = verbose)
-  .log("Historical period: {obs_dates[1]} to {obs_dates[length(obs_dates)]}", tag = "INIT", verbose = verbose)
 
   # ---------------------------------------------------------------------------
   # Preprocessing
@@ -343,50 +357,38 @@ generate_weather <- function(
     diagnostics = FALSE
   )
 
-  # Use CWT results for power spectrum visualization
-  p <- plot_wavelet_power(
-    series = warm_series_obs,
-    time = climate_a_aavg$wyear,
-    period = warm_analysis$cwt$period,
-    power = warm_analysis$cwt$power,
-    gws = warm_analysis$cwt$gws_unmasked,
-    gws_signif = warm_analysis$cwt$gws_signif_unmasked,
-    coi = warm_analysis$cwt$coi,
-    signif_mask = warm_analysis$cwt$sigm
-  )
+  if(save_plots) {
 
-  tryCatch(
-    ggsave(file.path(out_dir, "global_wavelet_power_spectrum.png"), p, width = 8, height = 5),
-    error = function(e) .log("Failed to save wavelet spectrum plot: {e$message}", level = "warn", verbose = verbose)
-  )
+    # Use CWT results for power spectrum visualization
+    p <- plot_wavelet_power(
+      series = warm_series_obs,
+      time = climate_a_aavg$wyear,
+      period = warm_analysis$cwt$period,
+      power = warm_analysis$cwt$power,
+      gws = warm_analysis$cwt$gws_unmasked,
+      gws_signif = warm_analysis$cwt$gws_signif_unmasked,
+      coi = warm_analysis$cwt$coi,
+      signif_mask = warm_analysis$cwt$sigm
+    )
+
+    tryCatch(
+      ggsave(file.path(out_dir, "obs_power_spectra.png"), p, width = 8, height = 5),
+      error = function(e) .log("Failed to save wavelet spectra plot: {e$message}", level = "warn", verbose = verbose)
+    )
+
+  }
 
   # Log significant periodicities from CWT analysis
   if (warm_analysis$has_significance) {
-    .log(
-      "Significant periodicities (CWT): {length(warm_analysis$cwt_signif_periods)}",
-      tag = "WARM", verbose = verbose
-    )
-    .log(
-      "Periods (years): {paste(round(warm_analysis$cwt_signif_periods, 2), collapse = ', ')}",
-      tag = "WARM", verbose = verbose
-    )
-    .log(
-      "Mapped to MODWT levels: {paste(warm_analysis$cwt_to_modwt_map, collapse = ', ')}",
-      tag = "WARM", verbose = verbose
-    )
+    .log("Significant periodicities (CWT): {length(warm_analysis$cwt_signif_periods)}", tag = "WARM", verbose = verbose)
+    .log("Periods (years): {paste(round(warm_analysis$cwt_signif_periods, 2), collapse = ', ')}", tag = "WARM", verbose = verbose)
   } else {
     .log("No significant low-frequency periodicities detected", tag = "WARM", verbose = verbose)
   }
 
   # Log MODWT MRA component information
-  .log(
-    "MODWT MRA: {ncol(warm_analysis$components)} components ({paste(warm_analysis$component_names, collapse = ', ')})",
-    tag = "WARM", verbose = verbose
-  )
-  .log(
-    "Filter: {warm_filter} (L={warm_analysis$filter_length}), {warm_analysis$n_levels} levels",
-    tag = "WARM", verbose = verbose
-  )
+  .log("Wavelet (MODWT): {ncol(warm_analysis$components)} components ({paste(warm_analysis$component_names, collapse = ', ')})",
+    tag = "WARM", verbose = verbose)
 
   # Use MODWT MRA additive components for WARM simulation
   sim_annual_anom <- simulate_warm(
@@ -395,8 +397,7 @@ generate_weather <- function(
     n_sim = warm_pool_size,
     seed = warm_seed,
     match_variance = TRUE,
-    verbose = verbose
-  )
+    verbose = verbose)
 
   # Add the mean back to get absolute annual precipitation
   sim_annual <- sim_annual_anom + warm_series_obs_mean
@@ -407,30 +408,30 @@ generate_weather <- function(
     n_select = n_realizations,
     seed = warm_seed + 1L,
     filter_bounds = warm_filter_bounds,
-    relax_order = warm_filter_relax_order,
+    relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
     make_plots = TRUE,
     wavelet_args = list(
       signif_level = warm_signif,
       noise_type = "red",
       period_lower_limit = 2,
-      detrend = DETREND
-    ),
+      detrend = DETREND),
     verbose = verbose,
     parallel = parallel,
-    n_cores  = n_cores
-  )
+    n_cores  = n_cores)
 
-  tryCatch(
-    {
-      ggsave(file.path(out_dir, "warm_annual_series.png"),
-             sim_annual_sub$plots[[1]], width = pl_width, height = pl_height)
-      ggsave(file.path(out_dir, "warm_annual_statistics.png"),
-             sim_annual_sub$plots[[2]], width = pl_width, height = pl_height)
-      ggsave(file.path(out_dir, "warm_annual_wavelet.png"),
-             sim_annual_sub$plots[[3]], width = pl_width, height = pl_height)
-    },
-    error = function(e) .log("Failed to save warm plots: {e$message}", level = "warn")
-  )
+  if(save_plots) {
+    tryCatch(
+      {
+        ggsave(file.path(out_dir, "warm_annual_precip.png"),
+               sim_annual_sub$plots[[1]], width = pl_width, height = pl_height)
+        ggsave(file.path(out_dir, "warm_annual_stats.png"),
+               sim_annual_sub$plots[[2]], width = pl_width, height = pl_height)
+        ggsave(file.path(out_dir, "warm_annual_wavelet.png"),
+               sim_annual_sub$plots[[3]], width = pl_width, height = pl_height)
+      },
+      error = function(e) .log("Failed to save warm filtering plots: {e$message}", level = "warn")
+    )
+  }
 
   # ---------------------------------------------------------------------------
   # Daily disaggregation (KNN + Markov chain) -> resampled historical dates
@@ -527,4 +528,280 @@ generate_weather <- function(
   .log("Elapsed time: {format_elapsed(start_time)}", tag = "COMPLETE", verbose = verbose)
 
   list(resampled = resampled_dates, dates = sim_dates_d$dateo)
+}
+
+
+
+#' Run weathergenr end-to-end (generate and evaluate)
+#'
+#' @description
+#' Top-level convenience wrapper that runs:
+#' \code{generate_weather()}
+#' \code{prepare_evaluation_data()}
+#' \code{evaluate_weather_generator()}
+#'
+#' All execution and evaluation settings are taken from \code{config}.
+#' Optional logging writes console output to a timestamped file in \code{out_dir}
+#' while continuing to display output on the console.
+#'
+#' @param obs_data Observed data (e.g. \code{ncdata$data}).
+#' @param obs_grid Observed grid metadata (e.g. \code{ncdata$grid}).
+#' @param obs_dates Observed dates (e.g. \code{ncdata$date}).
+#' @param out_dir Character. Output directory.
+#' @param config List. Full simulation/evaluation configuration.
+#' @param eval_max_grids Integer. Maximum number of grids to evaluate.
+#' @param log_messages Logical. If TRUE, save console output to
+#'   \code{log_YYYYMMDD_HHMMSS.txt} in \code{out_dir}.
+#'
+#' @return A list with components:
+#' \itemize{
+#'   \item \code{gen_output}: output of \code{generate_weather()}
+#'   \item \code{evaluation}: output of \code{evaluate_weather_generator()}
+#'   \item \code{log_path}: path to the log file (or NULL if \code{log_messages=FALSE})
+#' }
+#'
+#' @export
+run_weather_generator <- function(
+    obs_data,
+    obs_grid,
+    obs_dates,
+    out_dir,
+    config,
+    eval_max_grids = 25L,
+    log_messages = FALSE
+) {
+  if (!is.list(config)) {
+    stop("'config' must be a list.", call. = FALSE)
+  }
+  if (is.null(config$vars) || length(config$vars) == 0) {
+    stop("'config$vars' must be provided.", call. = FALSE)
+  }
+  if (is.null(config$n_realizations)) {
+    stop("'config$n_realizations' must be provided.", call. = FALSE)
+  }
+
+  # ---------------------------------------------------------------------------
+  # Optional console logging (console + file)
+  # ---------------------------------------------------------------------------
+
+  .strip_ansi <- function(x) gsub("\033\\[[0-9;]*[A-Za-z]", "", x)
+
+  log_path <- NULL
+  con <- NULL
+  msg_con <- NULL
+  msg_file <- NULL
+
+  if (isTRUE(log_messages)) {
+    if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+    if (file.access(out_dir, 2) != 0) {
+      stop(
+        "Cannot write to out_dir: ",
+        normalizePath(out_dir, winslash = "/", mustWork = FALSE),
+        call. = FALSE
+      )
+    }
+
+    ts <- format(Sys.time(), "%Y%m%d_%H%M%S")
+    log_path <- file.path(out_dir, paste0("log_", ts, ".txt"))
+    msg_file <- file.path(out_dir, paste0("log_", ts, "_messages.txt"))
+
+    # Main log connection (regular output via sink)
+    con <- file(log_path, open = "wt", encoding = "UTF-8")
+    writeLines(
+      c(
+        "weathergenr run log",
+        paste0("started: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S")),
+        paste0("out_dir: ", normalizePath(out_dir, winslash = "/", mustWork = FALSE)),
+        ""
+      ),
+      con = con,
+      useBytes = TRUE
+    )
+    flush(con)
+
+    # Mirror regular output (cat/print) to file while keeping console output visible
+    sink(con, split = TRUE)
+
+    # Messages/warnings are captured separately via handlers (Windows limitation)
+    msg_con <- file(msg_file, open = "wt", encoding = "UTF-8")
+    writeLines(
+      c(
+        "MESSAGES/WARNINGS (captured separately)",
+        ""
+      ),
+      con = msg_con,
+      useBytes = TRUE
+    )
+    flush(msg_con)
+
+    on.exit({
+      # Unwind sink stack (regular output only)
+      while (sink.number() > 0) sink(NULL)
+
+      if (!is.null(con) && isOpen(con)) close(con)
+      if (!is.null(msg_con) && isOpen(msg_con)) close(msg_con)
+
+      # Sanitize and merge messages into main log, then remove message temp file
+      if (!is.null(log_path) && file.exists(log_path)) {
+        main <- readLines(log_path, warn = FALSE, encoding = "UTF-8")
+        main <- .strip_ansi(main)
+        main <- gsub("\r$", "", main)
+
+        if (!is.null(msg_file) && file.exists(msg_file)) {
+          msgs <- readLines(msg_file, warn = FALSE, encoding = "UTF-8")
+          msgs <- .strip_ansi(msgs)
+          msgs <- gsub("\r$", "", msgs)
+
+          out <- c(main, "----- MESSAGES/WARNINGS -----", msgs)
+          writeLines(out, log_path, useBytes = TRUE)
+
+          suppressWarnings(file.remove(msg_file))
+        } else {
+          writeLines(main, log_path, useBytes = TRUE)
+        }
+      }
+    }, add = TRUE)
+  }
+
+  # ---------------------------------------------------------------------------
+  # Run body (wrapped so we can tee messages/warnings without modifying internals)
+  # ---------------------------------------------------------------------------
+
+  run_body <- function() {
+    # -------------------------------------------------------------------------
+    # Derive grid IDs
+    # -------------------------------------------------------------------------
+    derive_grid_ids <- function(grid) {
+      if (is.list(grid) && !is.null(grid$id)) return(grid$id)
+      if (is.data.frame(grid) && "id" %in% names(grid)) return(grid$id)
+
+      n <- NA_integer_
+      if (is.data.frame(grid)) n <- nrow(grid)
+      if (is.matrix(grid)) n <- nrow(grid)
+      if (is.list(grid) && !is.null(grid$lon) && !is.null(grid$lat)) {
+        if (is.numeric(grid$lon) && is.numeric(grid$lat)) {
+          n <- length(grid$lon)
+        }
+      }
+
+      if (is.na(n) || n <= 0L) {
+        stop(
+          "Unable to derive grid IDs from 'obs_grid'. ",
+          "Provide 'obs_grid$id' or a data.frame with column 'id'.",
+          call. = FALSE
+        )
+      }
+      seq_len(n)
+    }
+
+    grid_ids <- derive_grid_ids(obs_grid)
+
+    # -------------------------------------------------------------------------
+    # Step 1: Generate synthetic weather
+    # -------------------------------------------------------------------------
+    gen_output <- generate_weather(
+      obs_data           = obs_data,
+      obs_grid           = obs_grid,
+      obs_dates          = obs_dates,
+      vars               = config$vars,
+      n_years            = config$n_years,
+      start_year         = config$start_year,
+      year_start_month   = config$year_start_month,
+      n_realizations     = config$n_realizations,
+      warm_var           = config$warm_var,
+      warm_signif        = config$warm_signif,
+      warm_pool_size     = config$warm_pool_size,
+      warm_filter_bounds = config$warm_filter_bounds,
+      annual_knn_n       = config$annual_knn_n,
+      wet_q              = config$wet_q,
+      extreme_q          = config$extreme_q,
+      dry_spell_factor   = config$dry_spell_factor,
+      wet_spell_factor   = config$wet_spell_factor,
+      out_dir            = out_dir,
+      parallel           = config$parallel,
+      n_cores            = config$n_cores,
+      seed               = config$seed,
+      verbose            = config$verbose,
+      save_plots         = config$save_plots
+    )
+
+    # -------------------------------------------------------------------------
+    # Step 2: Prepare evaluation data (internal)
+    # -------------------------------------------------------------------------
+    eval_data <- prepare_evaluation_data(
+      gen_output = gen_output,
+      obs_data   = obs_data,
+      obs_dates  = obs_dates,
+      grid_ids   = grid_ids,
+      variables  = config$vars,
+      verbose    = isTRUE(config$verbose)
+    )
+
+    # -------------------------------------------------------------------------
+    # Step 3: Evaluate generator performance
+    # -------------------------------------------------------------------------
+    evaluation <- evaluate_weather_generator(
+      daily_sim       = eval_data$sim_data,
+      daily_obs       = eval_data$obs_data,
+      vars            = config$vars,
+      variable_labels = NULL,
+      n_realizations  = config$n_realizations,
+      eval_max_grids  = eval_max_grids,
+      wet_q           = config$wet_q,
+      extreme_q       = config$extreme_q,
+      output_dir      = out_dir,
+      save_plots      = isTRUE(config$save_plots),
+      seed            = config$seed
+    )
+
+    list(
+      gen_output = gen_output,
+      evaluation = evaluation
+    )
+  }
+
+  if (!isTRUE(log_messages)) {
+    res <- run_body()
+    res$log_path <- NULL
+    return(res)
+  }
+
+  # With logging: tee messages/warnings to msg_file while keeping console output.
+  res <- withCallingHandlers(
+    run_body(),
+
+    message = function(m) {
+      # Let R print the message normally (do NOT call message() here)
+      txt <- conditionMessage(m)
+
+      # Write a clean single line to msg_file
+      if (!is.null(msg_con) && isOpen(msg_con)) {
+        txt2 <- sub("[\r\n]+$", "", txt)          # remove trailing newline(s) only
+        cat(.strip_ansi(txt2), "\n", file = msg_con)
+        flush(msg_con)
+      }
+
+      # Do NOT muffle -> message continues to console once
+      NULL
+    },
+
+    warning = function(w) {
+      # Let R print the warning normally (do NOT call warning() here)
+      txt <- conditionMessage(w)
+
+      if (!is.null(msg_con) && isOpen(msg_con)) {
+        txt2 <- sub("[\r\n]+$", "", txt)
+        cat("WARNING: ", .strip_ansi(txt2), "\n", file = msg_con, sep = "")
+        flush(msg_con)
+      }
+
+      # Do NOT muffle -> warning continues to console once
+      NULL
+    }
+  )
+
+
+  res$log_path <- log_path
+  res
 }
