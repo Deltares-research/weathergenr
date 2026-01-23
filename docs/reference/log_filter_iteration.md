@@ -1,7 +1,8 @@
-# Log filter iteration details
+# Log one filtering iteration summary
 
-Internal helper. Prints iteration diagnostics in a compact table-like
-format.
+Writes a compact per iteration summary showing pass counts, pass rates,
+and current criteria for each active filter family, followed by the
+current pool size relative to the target.
 
 ## Usage
 
@@ -15,7 +16,7 @@ log_filter_iteration(
   bounds,
   tail_metrics,
   wavelet_active,
-  wavelet_pars,
+  spectral_diag,
   note = NULL
 )
 ```
@@ -24,19 +25,20 @@ log_filter_iteration(
 
 - iter:
 
-  Integer scalar. Iteration number.
+  Integer scalar. Iteration number. Use 0 for the initial evaluation.
 
 - passes:
 
-  Named list of logical vectors. Per-filter pass vectors.
+  Named list. Logical vectors indicating pass or fail for each filter
+  family.
 
 - pool:
 
-  Integer vector. Pool indices passing all active filters.
+  Integer vector. Indices of realizations currently in the pool.
 
 - n_total:
 
-  Integer scalar. Total number of realizations.
+  Integer scalar. Total number of realizations evaluated.
 
 - target:
 
@@ -44,23 +46,26 @@ log_filter_iteration(
 
 - bounds:
 
-  Environment or list of bounds.
+  Environment. Current bounds values.
 
 - tail_metrics:
 
-  List. Tail metrics used for criteria display.
+  List. Tail metrics produced by
+  [`compute_tailmass_metrics()`](https://deltares-research.github.io/weathergenr/reference/compute_tailmass_metrics.md).
 
 - wavelet_active:
 
-  Logical scalar.
+  Logical scalar. TRUE if wavelet filtering is active.
 
-- wavelet_pars:
+- spectral_diag:
 
-  List. Wavelet parameter list.
+  List. Spectral diagnostics returned by
+  [`compute_spectral_metrics()`](https://deltares-research.github.io/weathergenr/reference/compute_spectral_metrics.md).
 
 - note:
 
-  Optional character scalar.
+  Character scalar or NULL. Optional message describing the action taken
+  in this iteration.
 
 ## Value
 

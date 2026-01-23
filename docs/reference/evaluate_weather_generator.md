@@ -12,16 +12,18 @@ stochastic weather generator performance.
 evaluate_weather_generator(
   daily_sim = NULL,
   daily_obs = NULL,
-  variables = NULL,
+  vars = NULL,
   variable_labels = NULL,
   n_realizations = NULL,
-  wet_quantile = 0.2,
-  extreme_quantile = 0.8,
+  wet_q = 0.2,
+  extreme_q = 0.8,
   output_dir = NULL,
   save_plots = TRUE,
   show_title = TRUE,
   verbose = TRUE,
-  max_grids = 25,
+  parallel = FALSE,
+  n_cores = NULL,
+  eval_max_grids = 25,
   seed = NULL
 )
 ```
@@ -37,10 +39,9 @@ evaluate_weather_generator(
 - daily_obs:
 
   List of observed weather data frames (one per grid cell). Each should
-  contain a \`date\` column and the variables specified in
-  \`variables\`.
+  contain a \`date\` column and the variables specified in \`vars\`.
 
-- variables:
+- vars:
 
   Character vector of variable names to evaluate (e.g., \`c("precip",
   "temp")\`). Must include "precip" for wet/dry spell analysis.
@@ -48,18 +49,18 @@ evaluate_weather_generator(
 - variable_labels:
 
   Optional character vector of variable labels for plots. Defaults to
-  \`variables\` if \`NULL\`.
+  \`vars\` if \`NULL\`.
 
 - n_realizations:
 
   Integer. Number of synthetic realizations in \`daily_sim\`.
 
-- wet_quantile:
+- wet_q:
 
   Numeric between 0 and 1. Quantile threshold for wet days (default =
   0.2).
 
-- extreme_quantile:
+- extreme_q:
 
   Numeric between 0 and 1. Quantile threshold for extremely wet days
   (default = 0.8).
@@ -81,7 +82,18 @@ evaluate_weather_generator(
 
   Logical. Whether to emit console messages and the fit summary table.
 
-- max_grids:
+- parallel:
+
+  Logical. Whether to parallelize per-realization summaries (default =
+  \`FALSE\`).
+
+- n_cores:
+
+  Optional integer. Number of cores to use when \`parallel = TRUE\`.
+  Defaults to available physical cores and is capped at
+  \`n_realizations\`.
+
+- eval_max_grids:
 
   Integer. Maximum number of grid cells to evaluate (default = 25). If
   more grids are provided, a random subsample is used to control memory.
@@ -107,9 +119,14 @@ The function standardizes simulated and observed series to full-year
 windows (after leap-day removal), optionally subsamples grid cells to
 manage memory, and returns diagnostic plots alongside a summarized fit
 table. Missing values are ignored in summary statistics (\`na.rm =
-TRUE\`), and correlations use pairwise complete observations. Use
-\`seed\` for reproducible subsampling and window selection; the original
-RNG state is restored on exit.
+TRUE\`), and correlations use pairwise complete observations. If
+\`parallel = TRUE\`, per-realization summaries run on a cluster via
+\`parallel::makeCluster()\`; \`n_cores\` defaults to available physical
+cores and is capped at \`n_realizations\`. For small/medium workloads,
+cluster startup overhead can outweigh gains; parallelization is most
+beneficial with many realizations and/or large grid counts. Use \`seed\`
+for reproducible subsampling and window selection; the original RNG
+state is restored on exit.
 
 ## Examples
 
@@ -130,21 +147,19 @@ sim_grid <- list(list(data.frame(
 out <- evaluate_weather_generator(
   daily_sim = sim_grid,
   daily_obs = obs_grid,
-  variables = c("precip", "temp"),
+  vars = c("precip", "temp"),
   n_realizations = 1,
   output_dir = NULL,
   save_plots = FALSE,
   show_title = FALSE
 )
-#> [2026-01-21 23:38:12] [EVAL] Start | grids = 1 | realizations = 1
-#> [2026-01-21 23:38:12] [EVAL] Variables = precip,temp
-#> [2026-01-21 23:38:12] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8
-#> [2026-01-21 23:38:12] [EVAL] Standardizing obs/sim periods to full years and equal length
-#> [2026-01-21 23:38:12] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
-#> [2026-01-21 23:38:12] [EVAL] Processing observed data
-#> [2026-01-21 23:38:13] [EVAL] Processing simulated data (1 realizations)
-#> [2026-01-21 23:38:13] [EVAL] Preparing diagnostic data for plotting
-#> [2026-01-21 23:38:13] [EVAL] Generating diagnostic plots
+#> [2026-01-23 20:53:22] [EVAL] Evaluation Started: Variables = precip,temp
+#> [2026-01-23 20:53:22] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8
+#> [2026-01-23 20:53:22] [EVAL] Standardizing obs/sim periods to full years and equal length
+#> [2026-01-23 20:53:22] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
+#> [2026-01-23 20:53:22] [EVAL] Processing observed data
+#> [2026-01-23 20:53:23] [EVAL] Processing simulated data (1 realizations)
+#> [2026-01-23 20:53:23] [EVAL] Generating diagnostic plots
 #> Warning: There were 2 warnings in `dplyr::summarise()`.
 #> The first warning was:
 #> ℹ In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm
@@ -152,15 +167,14 @@ out <- evaluate_weather_generator(
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> [2026-01-21 23:38:13] [EVAL] Generated 11 diagnostic plots.
-#> [2026-01-21 23:38:13] [EVAL] Computing fit metrics for all realizations
+#> [2026-01-23 20:53:24] [EVAL] Computing fit metrics for all realizations
 #> Warning: There were 2 warnings in `dplyr::mutate()`.
 #> The first warning was:
 #> ℹ In argument: `dplyr::across(...)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> [2026-01-21 23:38:13] [EVAL] Displaying fit assessment summary
+#> [2026-01-23 20:53:24] [EVAL] Displaying fit assessment summary
 #> 
 #> =============================================================================================== 
 #>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS
@@ -187,7 +201,7 @@ out <- evaluate_weather_generator(
 #>   - Worst realization : 1 (score = 0.0000)
 #>   - Median score      : 0.0000
 #> 
-#> [2026-01-21 23:38:13] [EVAL] Assessment completed successfully
+#> [2026-01-23 20:53:24] [EVAL] Assessment completed successfully
 class(out)
 #> [1] "weather_assessment" "list"              
 ```

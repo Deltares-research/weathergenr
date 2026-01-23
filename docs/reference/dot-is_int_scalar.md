@@ -9,17 +9,21 @@ are acceptable.
 
 ``` r
 .is_int_scalar(x)
+
+.is_int_scalar(x)
 ```
 
 ## Arguments
 
 - x:
 
-  Object to test.
+  Object.
 
 ## Value
 
 Logical scalar indicating whether `x` is a finite integer-valued scalar.
+
+Logical scalar.
 
 ## Details
 
