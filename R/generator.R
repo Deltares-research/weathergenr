@@ -95,6 +95,7 @@
 #'   \code{NULL} and \code{parallel = TRUE}, defaults to
 #'   \code{max(1, parallel::detectCores() - 1)}.
 #' @param verbose Logical; if \code{TRUE}, emits progress logs via \code{.log()}.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #'
 #' @return A list with:
 #' \describe{

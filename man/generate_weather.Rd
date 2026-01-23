@@ -108,6 +108,8 @@ realizations in parallel using a PSOCK cluster.}
 \code{max(1, parallel::detectCores() - 1)}.}
 
 \item{verbose}{Logical; if \code{TRUE}, emits progress logs via \code{.log()}.}
+
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{output_dir}.}
 }
 \value{
 A list with:

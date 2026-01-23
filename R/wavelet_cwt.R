@@ -5,8 +5,8 @@
 # Morlet wavelet-based spectral analysis with COI-aware significance testing.
 # Provides visualization and diagnostic capabilities for time-frequency analysis.
 #
-# For orthogonal component extraction suitable for ARIMA modeling, see
-# wavelet_modwt.R which provides the analyze_wavelet_orthogonal() function.
+# For MODWT-based additive component extraction suitable for ARIMA modeling, see
+# wavelet_modwt.R which provides the analyze_wavelet_additive() function.
 #
 # Contents:
 # - Morlet wavelet functions (morlet_wavelet, morlet_parameters)
@@ -229,7 +229,7 @@ gws_regrid <- function(wavelet, target_period, use_unmasked = FALSE) {
 #' component representing non-selected scales to ensure additive closure.
 #'
 #' Note: CWT-reconstructed components are additive but NOT orthogonal due to scale
-#' overlap. For orthogonal decomposition, use \code{\link{extract_modwt_components}}.
+#' overlap. For MODWT additive decomposition, use \code{\link{analyze_wavelet_additive}}.
 #'
 #' @param wave Complex matrix (scales x time). Wavelet coefficients.
 #' @param signif_periods Integer vector. Scale indices to reconstruct.
@@ -249,7 +249,7 @@ gws_regrid <- function(wavelet, target_period, use_unmasked = FALSE) {
 #' Torrence, C., & Compo, G. P. (1998). A practical guide to wavelet analysis.
 #' \emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
 #'
-#' @seealso \code{\link{analyze_wavelet_spectrum}}, \code{\link{extract_modwt_components}}
+#' @seealso \code{\link{analyze_wavelet_spectrum}}, \code{\link{analyze_wavelet_additive}}
 #'
 #' @keywords internal
 #' @export
@@ -347,9 +347,9 @@ extract_wavelet_components <- function(
 #'
 #' This function is intended for detection and diagnostic analysis of dominant
 #' time scales. Reconstructed scale components are additive but not orthogonal.
-#' For truly orthogonal decomposition suitable for ARIMA modeling, see
-#' \code{\link{analyze_wavelet_orthogonal}} which combines CWT diagnostics with
-#' MODWT-based orthogonal component extraction.
+#' For MODWT additive decomposition suitable for ARIMA modeling, see
+#' \code{\link{analyze_wavelet_additive}} which combines CWT diagnostics with
+#' MODWT-based component extraction.
 #'
 #' @param series Numeric vector. Input time series (regularly spaced, no missing values).
 #'   Minimum length is 16 observations.
@@ -410,7 +410,7 @@ extract_wavelet_components <- function(
 #' \emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
 #'
 #' @seealso \code{\link{morlet_wavelet}}, \code{\link{extract_wavelet_components}},
-#'   \code{\link{analyze_wavelet_orthogonal}},
+#'   \code{\link{analyze_wavelet_additive}},
 #'   \code{\link{plot_wavelet_power}}, \code{\link{plot_wavelet_global_spectrum}}
 #'
 #' @export

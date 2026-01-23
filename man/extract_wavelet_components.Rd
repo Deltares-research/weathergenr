@@ -48,13 +48,13 @@ Torrence & Compo (1998) inverse transform approximation. Optionally adds a resid
 component representing non-selected scales to ensure additive closure.
 
 Note: CWT-reconstructed components are additive but NOT orthogonal due to scale
-overlap. For orthogonal decomposition, use \code{\link{extract_modwt_components}}.
+overlap. For MODWT additive decomposition, use \code{\link{analyze_wavelet_additive}}.
 }
 \references{
 Torrence, C., & Compo, G. P. (1998). A practical guide to wavelet analysis.
 \emph{Bulletin of the American Meteorological Society}, 79(1), 61-78.
 }
 \seealso{
-\code{\link{analyze_wavelet_spectrum}}, \code{\link{extract_modwt_components}}
+\code{\link{analyze_wavelet_spectrum}}, \code{\link{analyze_wavelet_additive}}
 }
 \keyword{internal}
