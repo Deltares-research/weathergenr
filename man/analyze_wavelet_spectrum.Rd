@@ -103,9 +103,9 @@ global wavelet spectrum (GWS), and significance thresholds. The implementation i
 
 This function is intended for detection and diagnostic analysis of dominant
 time scales. Reconstructed scale components are additive but not orthogonal.
-For truly orthogonal decomposition suitable for ARIMA modeling, see
-\code{\link{analyze_wavelet_orthogonal}} which combines CWT diagnostics with
-MODWT-based orthogonal component extraction.
+For MODWT additive decomposition suitable for ARIMA modeling, see
+\code{\link{analyze_wavelet_additive}} which combines CWT diagnostics with
+MODWT-based component extraction.
 }
 \references{
 Torrence, C., & Compo, G. P. (1998). A practical guide to wavelet analysis.
@@ -113,6 +113,6 @@ Torrence, C., & Compo, G. P. (1998). A practical guide to wavelet analysis.
 }
 \seealso{
 \code{\link{morlet_wavelet}}, \code{\link{extract_wavelet_components}},
-  \code{\link{analyze_wavelet_orthogonal}},
+  \code{\link{analyze_wavelet_additive}},
   \code{\link{plot_wavelet_power}}, \code{\link{plot_wavelet_global_spectrum}}
 }
