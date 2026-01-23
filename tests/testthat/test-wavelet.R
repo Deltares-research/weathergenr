@@ -1,21 +1,32 @@
 # Functions tested (relative paths):
-# - R/wavelet.R: analyze_wavelet_spectrum(), fill_nearest(), extract_signif_curve(),
-#   gws_regrid(), morlet_wavelet(), morlet_parameters(), extract_wavelet_components(),
-#   simulate_warm()
+# - R/wavelet_cwt.R: analyze_wavelet_spectrum(), fill_nearest(), extract_signif_curve(),
+#   gws_regrid(), morlet_wavelet(), morlet_parameters(), extract_wavelet_components()
+# - R/wavelet_warm.R: simulate_warm()
 # - R/wavelet_plots.R: plot_wavelet_power(), plot_wavelet_global_spectrum()
 
 testthat::test_that("analyze_wavelet_spectrum returns expected structure", {
   series <- sin(seq(0, 4 * pi, length.out = 64))
 
   out_fast <- analyze_wavelet_spectrum(series, noise = "white", mode = "fast")
-  testthat::expect_true(all(c("gws", "period", "power", "coi") %in% names(out_fast)))
+  testthat::expect_true(all(c("gws", "gws_unmasked", "gws_signif", "gws_signif_unmasked",
+                              "period", "power", "coi", "has_significance",
+                              "signif_periods") %in% names(out_fast)))
+  testthat::expect_equal(length(out_fast$gws), length(out_fast$period))
+  testthat::expect_equal(length(out_fast$gws_unmasked), length(out_fast$period))
+  testthat::expect_equal(length(out_fast$gws_signif), length(out_fast$period))
+  testthat::expect_equal(length(out_fast$gws_signif_unmasked), length(out_fast$period))
   testthat::expect_equal(nrow(out_fast$power), length(out_fast$period))
   testthat::expect_equal(ncol(out_fast$power), length(series))
   testthat::expect_equal(length(out_fast$coi), length(series))
 
   out_complete <- analyze_wavelet_spectrum(series, noise = "white", mode = "complete", diagnostics = TRUE)
-  testthat::expect_true(all(c("power_signif_coi", "wave", "comps", "neff") %in% names(out_complete)))
+  testthat::expect_true(all(c("power_signif_coi", "wave", "comps", "comps_names",
+                              "gws_n_coi", "neff", "neff_unmasked") %in% names(out_complete)))
+  testthat::expect_equal(length(out_complete$gws_n_coi), length(out_complete$period))
+  testthat::expect_equal(length(out_complete$neff), length(out_complete$period))
+  testthat::expect_equal(length(out_complete$neff_unmasked), length(out_complete$period))
   testthat::expect_true(is.matrix(out_complete$comps))
+  testthat::expect_equal(length(out_complete$comps_names), ncol(out_complete$comps))
   testthat::expect_true(is.list(out_complete$diagnostics))
 })
 

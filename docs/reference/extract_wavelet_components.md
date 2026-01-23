@@ -1,9 +1,13 @@
-# Reconstruct Wavelet Components from Selected Scales
+# Reconstruct Wavelet Components from Selected Scales (CWT)
 
 Reconstructs time-domain components from selected wavelet scales using
 the Torrence & Compo (1998) inverse transform approximation. Optionally
 adds a residual component representing non-selected scales to ensure
 additive closure.
+
+Note: CWT-reconstructed components are additive but NOT orthogonal due
+to scale overlap. For orthogonal decomposition, use
+`extract_modwt_components`.
 
 ## Usage
 
@@ -59,7 +63,7 @@ extract_wavelet_components(
 
 - w0_0:
 
-  Numeric scalar. \\\psi_0(0)\\ constant (default: \\\pi^{-1/4}\\).
+  Numeric scalar. psi_0(0) constant (default: pi^(-1/4)).
 
 - include_residual:
 
@@ -69,3 +73,14 @@ extract_wavelet_components(
 
 Numeric matrix with one column per selected component and, if requested,
 a final `"Noise"` residual column.
+
+## References
+
+Torrence, C., & Compo, G. P. (1998). A practical guide to wavelet
+analysis. *Bulletin of the American Meteorological Society*, 79(1),
+61-78.
+
+## See also
+
+[`analyze_wavelet_spectrum`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.md),
+`extract_modwt_components`

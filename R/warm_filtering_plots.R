@@ -17,9 +17,9 @@
 #' @param power_period Wavelet periods
 #' @param power_obs Observed GWS
 #' @param power_signif Significance curve
-#' @param gws_cache Cached GWS matrix (n_periods x n_realizations)
+#' @param wavelet_pars Named list. Wavelet settings passed to analyze_wavelet_spectrum() (signif_level,
+#' noise_type, period_lower_limit, detrend).
 #' @param wavelet_q Two quantiles for ribbon (e.g., c(0.50, 0.95))
-#'
 #' @return List of ggplot objects (timeseries, stats, wavelet_gws)
 #'
 #' @keywords internal
@@ -29,7 +29,9 @@
 plot_filter_diagnostics <- function(obs_series, sim_series, pool,
                                     rel_diff_mean, rel_diff_sd, tail_metrics,
                                     power_period, power_obs, power_signif,
-                                    gws_cache, wavelet_q = c(0.05, 0.95)) {
+                                    wavelet_pars,
+                                    wavelet_q = c(0.05, 0.95))
+  {
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' required for plotting.", call. = FALSE)
@@ -72,16 +74,44 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
                          sd   = rel_diff_sd[pool]   * 100, tail_low  = (exp(lr_low)  - 1) * 100,
                          tail_high = (exp(lr_high) - 1) * 100)
 
-  stats_pool_long <- stats_df |>
-    tidyr::pivot_longer(cols = -idx, names_to = "par", values_to = "value")
+  # Compute pool GWS on demand (selected/pool indices only)
+  if (is.null(wavelet_pars) || !is.list(wavelet_pars)) {
+    stop("wavelet_pars must be a named list (signif_level, noise_type, period_lower_limit, detrend).",
+         call. = FALSE)
+  }
 
-  # Extract pool GWS from cache
-  gws_pool_mat <- gws_cache[, pool, drop = FALSE]
+  target_period <- as.numeric(power_period)
+  n_pool <- length(pool)
+
+  gws_pool_mat <- matrix(NA_real_, nrow = length(target_period), ncol = n_pool)
+  colnames(gws_pool_mat) <- paste0("rlz_", pool)
+
+  for (k in seq_len(n_pool)) {
+    j <- pool[k]
+
+    wv_sim <- analyze_wavelet_spectrum(
+      sim_series[, j],
+      signif = wavelet_pars$signif_level,
+      noise  = wavelet_pars$noise_type,
+      min_period = wavelet_pars$period_lower_limit,
+      detrend = isTRUE(wavelet_pars$detrend),
+      mode = "fast"
+    )
+
+    gws_sim <- gws_regrid(wv_sim, target_period = target_period, use_unmasked = TRUE)
+    gws_pool_mat[, k] <- fill_nearest(as.numeric(gws_sim))
+  }
+
   gws_pool_mean <- fill_nearest(rowMeans(gws_pool_mat, na.rm = TRUE))
-  gws_pool_q_lo <- fill_nearest(apply(gws_pool_mat, 1, stats::quantile,
-                                      probs = wavelet_q[1], na.rm = TRUE, names = FALSE, type = 4))
-  gws_pool_q_hi <- fill_nearest(apply(gws_pool_mat, 1, stats::quantile,
-                                      probs = wavelet_q[2], na.rm = TRUE, names = FALSE, type = 4))
+  gws_pool_q_lo <- fill_nearest(apply(
+    gws_pool_mat, 1, stats::quantile,
+    probs = wavelet_q[1], na.rm = TRUE, names = FALSE, type = 7
+  ))
+  gws_pool_q_hi <- fill_nearest(apply(
+    gws_pool_mat, 1, stats::quantile,
+    probs = wavelet_q[2], na.rm = TRUE, names = FALSE, type = 7
+  ))
+
 
   # ===========================================================================
   # Time series plot
@@ -129,18 +159,46 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
   # Wavelet GWS plot
   # ===========================================================================
 
-  df_gws_sum <- data.frame(period = power_period, mean = gws_pool_mean, lo = gws_pool_q_lo,
-                           hi = gws_pool_q_hi)
+  df_gws_sum <- data.frame(
+    period = target_period,
+    mean = gws_pool_mean,
+    lo = gws_pool_q_lo,
+    hi = gws_pool_q_hi
+  )
 
-  df_gws_lines <- data.frame(period = power_period, obs = as.numeric(power_obs),
-                             signif = as.numeric(power_signif), curve = "Significance")
+  df_gws_lines <- data.frame(
+    period = target_period,
+    obs = as.numeric(power_obs),
+    signif = as.numeric(power_signif)
+  )
 
-  p_gws <- ggplot() + theme_light() +
-    geom_ribbon(aes(x = period, ymin = lo, ymax = hi), df_gws_sum, alpha = 0.20) +
-    geom_line(aes(x = period, y = mean), df_gws_sum, linewidth = 0.8) +
-    geom_line(aes(x = period, y = obs), df_gws_lines, color = "blue", linewidth = 0.8) +
-    geom_line(aes(x = period, y = signif), df_gws_lines, color = "red", linewidth = 0.8, linetype = "dashed") +
-    labs(x = "Period", y = "Power")
+  p_gws <- ggplot2::ggplot() +
+    ggplot2::theme_light() +
+    ggplot2::geom_ribbon(
+      data = df_gws_sum,
+      ggplot2::aes(x = .data$period, ymin = .data$lo, ymax = .data$hi),
+      alpha = 0.20
+    ) +
+    ggplot2::geom_line(
+      data = df_gws_sum,
+      ggplot2::aes(x = .data$period, y = .data$mean),
+      linewidth = 0.8
+    ) +
+    ggplot2::geom_line(
+      data = df_gws_lines,
+      ggplot2::aes(x = .data$period, y = .data$obs),
+      color = "blue",
+      linewidth = 0.8
+    ) +
+    ggplot2::geom_line(
+      data = df_gws_lines,
+      ggplot2::aes(x = .data$period, y = .data$signif),
+      color = "red",
+      linewidth = 0.8,
+      linetype = "dashed"
+    ) +
+    ggplot2::labs(x = "Period", y = "Power")
+
 
   list(timeseries = p_timeseries, stats = p_stats, wavelet_gws = p_gws)
 }

@@ -4,7 +4,15 @@
 \alias{.summarize_simulated_data}
 \title{Summarize simulated weather data}
 \usage{
-.summarize_simulated_data(daily_sim, n_realizations, variables, mc_thresholds)
+.summarize_simulated_data(
+  daily_sim,
+  n_realizations,
+  variables,
+  mc_thresholds,
+  parallel = FALSE,
+  n_cores = NULL,
+  seed = NULL
+)
 }
 \description{
 Summarize simulated weather data

@@ -16,7 +16,7 @@ plot_filter_diagnostics(
   power_period,
   power_obs,
   power_signif,
-  gws_cache,
+  wavelet_pars,
   wavelet_q = c(0.05, 0.95)
 )
 ```
@@ -59,9 +59,10 @@ plot_filter_diagnostics(
 
   Significance curve
 
-- gws_cache:
+- wavelet_pars:
 
-  Cached GWS matrix (n_periods x n_realizations)
+  Named list. Wavelet settings passed to analyze_wavelet_spectrum()
+  (signif_level, noise_type, period_lower_limit, detrend).
 
 - wavelet_q:
 

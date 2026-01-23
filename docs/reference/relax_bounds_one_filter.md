@@ -1,6 +1,34 @@
-# Relax bounds for one filter
+# Relax bounds for one filter family
 
-Applies one relaxation step to a single filter. Updates bounds in place.
+Applies one relaxation step for a single filter family and updates the
+bounds environment in place. This function is called by
+[`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md).
+
+Relaxation behavior by filter family:
+
+- mean:
+
+  Increases the mean tolerance up to `relax_mean_max`.
+
+- sd:
+
+  Increases the sd tolerance up to `relax_sd_max`.
+
+- tail_low:
+
+  First increases tail tolerance, then increases `tail_low_p` in steps,
+  recomputing tail metrics after changes.
+
+- tail_high:
+
+  First increases tail tolerance, then decreases `tail_high_p` in steps,
+  recomputing tail metrics after changes.
+
+- wavelet:
+
+  Relaxes spectral correlation threshold, then relaxes peak match
+  fraction, then disables peak matching, then disables wavelet
+  filtering.
 
 ## Usage
 
@@ -17,20 +45,25 @@ relax_bounds_one_filter(
 
 - filter_name:
 
-  Character. Name of filter to relax.
+  Character scalar. Filter family to relax. Must be one of `"mean"`,
+  `"sd"`, `"tail_low"`, `"tail_high"`, `"wavelet"`.
 
 - bounds_env:
 
-  Environment containing bounds (snake_case keys).
+  Environment. Environment containing the current bounds using snake
+  case keys. Updated in place.
 
 - wavelet_active_env:
 
-  Environment containing wavelet_active flag.
+  Environment. Environment containing a logical `wavelet_active` flag.
+  May be updated in place.
 
 - recompute_tailmass_fn:
 
-  Function to recompute tail mass when thresholds change.
+  Function. Callback used to recompute tail mass metrics when tail
+  quantile thresholds change.
 
 ## Value
 
-List with changed (logical) and msg (character).
+Named list with: `changed` logical scalar indicating whether a bound was
+changed, `msg` character message describing the applied change.

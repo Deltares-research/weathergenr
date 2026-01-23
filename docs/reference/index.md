@@ -5,6 +5,8 @@
 - [`adjust_precipitation_qm()`](https://deltares-research.github.io/weathergenr/reference/adjust_precipitation_qm.md)
   : Adjust Daily Precipitation with Gamma Quantile Mapping Under Monthly
   Scenario Factors
+- [`analyze_wavelet_additive()`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_additive.md)
+  : Additive wavelet analysis with CWT diagnostics
 - [`analyze_wavelet_spectrum()`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.md)
   : Continuous Wavelet Spectral Analysis with COI-Aware Significance
 - [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
@@ -27,7 +29,7 @@
   : Evaluate Stochastic Weather Generator Performance
 - [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
   : Filter and sample WARM realizations using distributional, tail, and
-  wavelet criteria
+  spectral criteria
 - [`find_leap_day_indices()`](https://deltares-research.github.io/weathergenr/reference/find_leap_day_indices.md)
   : Find leap-day (Feb 29) indices in a date vector
 - [`generate_noleap_dates()`](https://deltares-research.github.io/weathergenr/reference/generate_noleap_dates.md)
@@ -45,6 +47,8 @@
 - [`match_transition_positions()`](https://deltares-research.github.io/weathergenr/reference/match_transition_positions.md)
   : Get Positions of a Specific Occurrence State Transition Within
   Candidate Indices
+- [`modwt_mra()`](https://deltares-research.github.io/weathergenr/reference/modwt_mra.md)
+  : MODWT multiresolution analysis (MRA)
 - [`normalize_calendar()`](https://deltares-research.github.io/weathergenr/reference/normalize_calendar.md)
   : Normalize Calendar to 365 Days
 - [`plot_wavelet_global_spectrum()`](https://deltares-research.github.io/weathergenr/reference/plot_wavelet_global_spectrum.md)
@@ -55,12 +59,17 @@
   : Prepare Generator Output for Evaluation
 - [`print(`*`<precip_qm_diagnostics>`*`)`](https://deltares-research.github.io/weathergenr/reference/print.precip_qm_diagnostics.md)
   : Print method for precipitation QM diagnostics
+- [`print(`*`<wavelet_additive>`*`)`](https://deltares-research.github.io/weathergenr/reference/print.wavelet_additive.md)
+  : Print method for additive wavelet analysis
 - [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
   : Read NetCDF variables into tidy data frames
 - [`resample_weather_dates()`](https://deltares-research.github.io/weathergenr/reference/resample_weather_dates.md)
   : Resample Daily Weather Dates Using Annual KNN and Markov Chain Logic
+- [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)
+  : Run weathergenr end-to-end (generate and evaluate)
 - [`simulate_warm()`](https://deltares-research.github.io/weathergenr/reference/simulate_warm.md)
-  : Wavelet Autoregressive Modeling (WARM)
+  : Simulate synthetic series with Wavelet Autoregressive Modeling
+  (WARM)
 - [`summary(`*`<precip_qm_diagnostics>`*`)`](https://deltares-research.github.io/weathergenr/reference/summary.precip_qm_diagnostics.md)
   : Summarize precipitation QM diagnostics
 - [`validate_quantile_mapping()`](https://deltares-research.github.io/weathergenr/reference/validate_quantile_mapping.md)
