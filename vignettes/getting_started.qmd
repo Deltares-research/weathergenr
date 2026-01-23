@@ -360,11 +360,11 @@ obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) {
 evaluation_plots <- evaluate_weather_generator(
   daily_sim = rlz_sample,
   daily_obs = obs_sample,
-  variables = variables,
+  vars = variables,
   variable_labels = variable_labels,
   n_realizations = realization_num,
-  wet_quantile = 0.3,
-  extreme_quantile = 0.8,
+  wet_q = 0.3,
+  extreme_q = 0.8,
   output_dir = NULL,
   save_plots = FALSE
 )

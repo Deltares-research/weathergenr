@@ -10,7 +10,8 @@ compute_peak_match_metrics(
   obs_peaks,
   period_tol = 0.5,
   mag_tol_log = log(1.5),
-  eps = 1e-10
+  eps = 1e-10,
+  log2_period = NULL
 )
 }
 \arguments{
@@ -29,6 +30,9 @@ log2 period between an observed peak period and a simulated candidate period.}
 simulated and observed peak power.}
 
 \item{eps}{Numeric scalar. Positive constant used for numerical stability.}
+
+\item{log2_period}{Numeric vector or NULL. Pre-computed log2(period) for
+efficiency. If NULL, computed internally.}
 }
 \value{
 Named list with:

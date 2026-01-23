@@ -154,13 +154,13 @@ filter_warm_pool <- function(
   RELAX_ORDER <- relax_order
 
   # ---------------------------------------------------------------------------
-  # Bounds defaults (snake_case keys)
+  # Bounds defaults
   # ---------------------------------------------------------------------------
   b_list <- modifyList(filter_warm_bounds_defaults(), filter_bounds)
   b <- list2env(b_list, parent = environment())
   b$relax_max_iter <- as.integer(b$relax_max_iter)
 
-  # Validate tail parameters (snake_case)
+  # Validate tail parameters
   b$tail_low_p   <- as.numeric(b$tail_low_p)
   b$tail_high_p  <- as.numeric(b$tail_high_p)
   b$tail_tol_log <- as.numeric(b$tail_tol_log)
@@ -258,7 +258,7 @@ filter_warm_pool <- function(
   sd_rel_diff   <- rel_diff_vec(sim_sds,   obs_sd)
 
   # ---------------------------------------------------------------------------
-  # Tail metrics (snake_case args)
+  # Tail metrics
   # ---------------------------------------------------------------------------
   tail_stats <- compute_tailmass_metrics(
     obs_use = obs_use,
@@ -713,6 +713,8 @@ filter_warm_bounds_defaults <- function() {
 #' Scans a numeric vector and returns indices of local maxima. A local maximum is
 #' defined by comparing each element to its immediate neighbors.
 #'
+#' Uses vectorized operations for O(n) complexity instead of loop-based O(n^2).
+#'
 #' @param x Numeric vector. Values to scan for local maxima.
 #' @param strict Logical scalar. If TRUE, requires strict inequality on both
 #'   sides. If FALSE, allows ties but still requires at least one strict
@@ -725,19 +727,18 @@ find_local_maxima <- function(x, strict = TRUE) {
   n <- length(x)
   if (n < 3L) return(integer(0))
 
-  peaks <- integer(0)
-  for (i in 2:(n - 1)) {
-    if (strict) {
-      if (x[i] > x[i - 1] && x[i] > x[i + 1]) {
-        peaks <- c(peaks, i)
-      }
-    } else {
-      if (x[i] >= x[i - 1] && x[i] >= x[i + 1] && (x[i] > x[i - 1] || x[i] > x[i + 1])) {
-        peaks <- c(peaks, i)
-      }
-    }
+  # Vectorized comparison: compare middle elements to neighbors
+  left  <- x[seq_len(n - 2L)]       # x[1:(n-2)]
+  mid   <- x[seq.int(2L, n - 1L)]   # x[2:(n-1)]
+  right <- x[seq.int(3L, n)]        # x[3:n]
+
+  if (strict) {
+    is_peak <- (mid > left) & (mid > right)
+  } else {
+    is_peak <- (mid >= left) & (mid >= right) & ((mid > left) | (mid > right))
   }
-  peaks
+
+  which(is_peak) + 1L
 }
 
 
@@ -844,6 +845,8 @@ identify_significant_peaks <- function(gws, gws_signif, period, n_max = 3L) {
 #' @param mag_tol_log Numeric scalar. Maximum allowed absolute log ratio between
 #'   simulated and observed peak power.
 #' @param eps Numeric scalar. Positive constant used for numerical stability.
+#' @param log2_period Numeric vector or NULL. Pre-computed log2(period) for
+#'   efficiency. If NULL, computed internally.
 #'
 #' @return Named list with:
 #'   \code{peak_match_frac} fraction of observed peaks that were matched,
@@ -853,23 +856,31 @@ identify_significant_peaks <- function(gws, gws_signif, period, n_max = 3L) {
 compute_peak_match_metrics <- function(gws_sim, period, obs_peaks,
                                        period_tol = 0.5,
                                        mag_tol_log = log(1.5),
-                                       eps = 1e-10) {
+                                       eps = 1e-10,
+                                       log2_period = NULL) {
 
   if (is.null(obs_peaks) || nrow(obs_peaks) == 0L) {
     return(list(peak_match_frac = 1.0, peak_mag_mean_abs_log_ratio = NA_real_))
   }
 
+  n_peaks <- nrow(obs_peaks)
   gws_sim_clean <- fill_nearest(as.numeric(gws_sim))
 
-  n_matched <- 0L
-  abs_log_ratios <- numeric(0)
+  # Pre-compute log2(period) if not provided (for efficiency when called in loop)
+  if (is.null(log2_period)) {
+    log2_period <- log2(period)
+  }
 
-  for (i in seq_len(nrow(obs_peaks))) {
+  # Pre-allocate for maximum possible matches (avoids O(n^2) vector growth)
+  abs_log_ratios <- numeric(n_peaks)
+  n_matched <- 0L
+
+  for (i in seq_len(n_peaks)) {
     obs_period <- obs_peaks$period[i]
     obs_power  <- obs_peaks$power[i]
 
-    # candidate indices within period tolerance (log2 space)
-    log2_diff <- abs(log2(period) - log2(obs_period))
+    # Use pre-computed log2_period
+    log2_diff <- abs(log2_period - log2(obs_period))
     within_tol <- which(is.finite(log2_diff) & (log2_diff <= period_tol))
 
     if (length(within_tol) == 0L) next
@@ -882,12 +893,12 @@ compute_peak_match_metrics <- function(gws_sim, period, obs_peaks,
     # Match requires magnitude agreement within tolerance
     if (abs_log_ratio <= mag_tol_log) {
       n_matched <- n_matched + 1L
-      abs_log_ratios <- c(abs_log_ratios, abs_log_ratio)
+      abs_log_ratios[n_matched] <- abs_log_ratio
     }
   }
 
-  frac <- n_matched / nrow(obs_peaks)
-  mean_abs <- if (length(abs_log_ratios) > 0L) mean(abs_log_ratios) else NA_real_
+  frac <- n_matched / n_peaks
+  mean_abs <- if (n_matched > 0L) mean(abs_log_ratios[seq_len(n_matched)]) else NA_real_
 
   list(
     peak_match_frac = frac,
@@ -917,6 +928,8 @@ compute_peak_match_metrics <- function(gws_sim, period, obs_peaks,
 #' @param peak_mag_tol_log Numeric scalar. Magnitude matching tolerance as an
 #'   absolute log ratio.
 #' @param eps Numeric scalar. Positive constant used to avoid log of zero.
+#' @param log2_period Numeric vector or NULL. Pre-computed log2(period) for
+#'   efficiency. If NULL, computed internally.
 #'
 #' @return Named list with:
 #'   \code{spectral_cor} correlation between log transformed spectra,
@@ -927,7 +940,8 @@ compute_spectral_match_single <- function(gws_obs, gws_sim, period,
                                           obs_peaks,
                                           peak_period_tol = 0.5,
                                           peak_mag_tol_log = log(1.5),
-                                          eps = 1e-10) {
+                                          eps = 1e-10,
+                                          log2_period = NULL) {
 
   gws_obs <- pmax(as.numeric(gws_obs), eps)
   gws_sim <- pmax(as.numeric(gws_sim), eps)
@@ -946,7 +960,8 @@ compute_spectral_match_single <- function(gws_obs, gws_sim, period,
     obs_peaks = obs_peaks,
     period_tol = peak_period_tol,
     mag_tol_log = peak_mag_tol_log,
-    eps = eps
+    eps = eps,
+    log2_period = log2_period
   )
 
   list(
@@ -1093,11 +1108,14 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
     n_max = n_sig_peaks_max
   )
 
+  # Pre-compute log2(period) once for all realizations (avoids redundant computation)
+  log2_period <- log2(period)
+
   # -------------------------------------------------------------------------
   # Worker function: analyze one simulation column
   # -------------------------------------------------------------------------
   one_sim <- function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
-                      peak_period_tol, peak_mag_tol_log, eps, cache_gws) {
+                      peak_period_tol, peak_mag_tol_log, eps, cache_gws, log2_period) {
 
     wv_sim <- analyze_wavelet_spectrum(
       sim_series_stats[, j],
@@ -1118,7 +1136,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
       obs_peaks = obs_peaks_sig,
       peak_period_tol = peak_period_tol,
       peak_mag_tol_log = peak_mag_tol_log,
-      eps = eps
+      eps = eps,
+      log2_period = log2_period
     )
 
     out <- list(
@@ -1133,6 +1152,9 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
   # -------------------------------------------------------------------------
   # Run loop: sequential or parallel
   # -------------------------------------------------------------------------
+  # Minimum realizations to justify parallel overhead (cluster setup is expensive)
+  MIN_PARALLEL_REALIZATIONS <- 50L
+
   gws_cache <- NULL
   if (cache_gws) {
     gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
@@ -1141,21 +1163,23 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
   peak_match_frac <- rep(NA_real_, n_realizations)
   peak_mag_mean_abs_log_ratio <- rep(NA_real_, n_realizations)
 
-  if (!parallel || n_realizations < 2L) {
+  # Use sequential for small ensembles (parallel overhead outweighs benefit)
+  if (!parallel || n_realizations < MIN_PARALLEL_REALIZATIONS) {
 
     for (j in seq_len(n_realizations)) {
-        res <- one_sim(
-          j = j,
-          sim_series_stats = sim_series_stats,
-          wavelet_pars = wavelet_pars,
-          period = period,
-          gws_obs = gws_obs,
-          obs_peaks_sig = obs_peaks_sig,
-          peak_period_tol = peak_period_tol,
-          peak_mag_tol_log = peak_mag_tol_log,
-          eps = eps,
-          cache_gws = cache_gws
-        )
+      res <- one_sim(
+        j = j,
+        sim_series_stats = sim_series_stats,
+        wavelet_pars = wavelet_pars,
+        period = period,
+        gws_obs = gws_obs,
+        obs_peaks_sig = obs_peaks_sig,
+        peak_period_tol = peak_period_tol,
+        peak_mag_tol_log = peak_mag_tol_log,
+        eps = eps,
+        cache_gws = cache_gws,
+        log2_period = log2_period
+      )
 
       if (cache_gws) gws_cache[, j] <- res$gws_sim
       spectral_cor[j] <- res$spectral_cor
@@ -1184,7 +1208,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
           peak_period_tol = peak_period_tol,
           peak_mag_tol_log = peak_mag_tol_log,
           eps = eps,
-          cache_gws = cache_gws
+          cache_gws = cache_gws,
+          log2_period = log2_period
         )
 
         if (cache_gws) gws_cache[, j] <- res$gws_sim
@@ -1226,7 +1251,7 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
         cl,
         X = idx,
         fun = function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
-                       peak_period_tol, peak_mag_tol_log, eps, cache_gws) {
+                       peak_period_tol, peak_mag_tol_log, eps, cache_gws, log2_period) {
           one_sim(
             j = j,
             sim_series_stats = sim_series_stats,
@@ -1237,7 +1262,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
             peak_period_tol = peak_period_tol,
             peak_mag_tol_log = peak_mag_tol_log,
             eps = eps,
-            cache_gws = cache_gws
+            cache_gws = cache_gws,
+            log2_period = log2_period
           )
         },
         sim_series_stats = sim_series_stats,
@@ -1248,7 +1274,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
         peak_period_tol = peak_period_tol,
         peak_mag_tol_log = peak_mag_tol_log,
         eps = eps,
-        cache_gws = cache_gws
+        cache_gws = cache_gws,
+        log2_period = log2_period
       )
 
       for (j in seq_len(n_realizations)) {
@@ -1582,19 +1609,7 @@ criteria_string_compact <- function(filter_name, bounds, tail_metrics,
       ""
     }
 
-    if (filter_name == "wavelet") {
-      if (!isTRUE(wavelet_active)) return("inactive")
-
-      peak_str <- if (isTRUE(bounds$peak_match_enabled)) {
-        sprintf(", pk>=%.0f%%", bounds$peak_match_frac_min * 100)
-      } else {
-        ""
-      }
-
-      return(sprintf("cor>=%.2f%s", bounds$spectral_cor_min, peak_str))
-    }
-
-
+    return(sprintf("cor>=%.2f%s", bounds$spectral_cor_min, peak_str))
   }
 
   "NA"

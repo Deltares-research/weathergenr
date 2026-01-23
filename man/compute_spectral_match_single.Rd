@@ -11,7 +11,8 @@ compute_spectral_match_single(
   obs_peaks,
   peak_period_tol = 0.5,
   peak_mag_tol_log = log(1.5),
-  eps = 1e-10
+  eps = 1e-10,
+  log2_period = NULL
 )
 }
 \arguments{
@@ -33,6 +34,9 @@ period space.}
 absolute log ratio.}
 
 \item{eps}{Numeric scalar. Positive constant used to avoid log of zero.}
+
+\item{log2_period}{Numeric vector or NULL. Pre-computed log2(period) for
+efficiency. If NULL, computed internally.}
 }
 \value{
 Named list with:

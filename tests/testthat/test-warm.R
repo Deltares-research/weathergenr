@@ -100,14 +100,198 @@ testthat::test_that("extract_wavelet_components reconstructs components and attr
   )
 })
 
+################################################################################
+
+
 testthat::test_that("simulate_warm returns deterministic simulations", {
-  components <- cbind(sin(1:20), cos(1:20))
+  components <- cbind(
+    rep(c(0, 1), length.out = 20),
+    rep(c(1, 0), length.out = 20)
+  )
   out1 <- simulate_warm(components = components, n = 20, n_sim = 3, seed = 10, verbose = FALSE)
   out2 <- simulate_warm(components = components, n = 20, n_sim = 3, seed = 10, verbose = FALSE)
 
   testthat::expect_equal(dim(out1), c(20, 3))
   testthat::expect_identical(out1, out2)
 })
+
+test_that("simulate_warm bypass mode uses block bootstrap when ARIMA not viable", {
+  series_obs <- rnorm(20)
+  n <- length(series_obs)
+
+  calls_viable <- 0L
+  calls_boot <- 0L
+
+  testthat::local_mocked_bindings(
+    .fit_warm_arima_forecast = function(x, max_p, max_q) {
+      calls_viable <<- calls_viable + 1L
+      NULL
+    },
+    .block_bootstrap = function(x, n, block_len) {
+      calls_boot <<- calls_boot + 1L
+      rep(mean(x), n)
+    },
+    .default_block_len = function(n) 5L,
+    .env = asNamespace("weathergenr")
+  )
+
+  out <- weathergenr::simulate_warm(
+    components = NULL,
+    n = n,
+    n_sim = 5,
+    seed = 1,
+    series_obs = series_obs,
+    bypass_n = 25L,          # force bypass
+    verbose = FALSE
+  )
+
+  expect_equal(calls_viable, 1L)
+  expect_equal(calls_boot, 5L)
+  expect_true(is.matrix(out))
+  expect_equal(dim(out), c(n, 5L))
+})
+
+
+testthat::test_that("simulate_warm component mode uses block bootstrap when ARIMA not viable, without warnings", {
+
+  skip_if_not_installed("forecast")
+
+  n <- 60L
+  # low uniqueness -> not viable in our gating logic
+  d1 <- rep(c(0, 1), length.out = n)
+  comps <- cbind(D1 = d1)
+
+  calls_viable <- 0L
+  calls_fit <- 0L
+  calls_boot <- 0L
+
+  testthat::local_mocked_bindings(
+    .warm_arima_viable = function(x, min_n, sd_eps, min_unique) {
+      calls_viable <<- calls_viable + 1L
+      FALSE
+    },
+    .warm_fit_arima_safe = function(...) {
+      calls_fit <<- calls_fit + 1L
+      stop("should not be called")
+    },
+    .warm_block_bootstrap = function(x, n) {
+      calls_boot <<- calls_boot + 1L
+      # deterministic: return centered pattern (preserves dependence in real impl)
+      x[seq_len(n)]
+    },
+    .env = asNamespace("weathergenr")
+  )
+
+  out <- testthat::expect_silent(
+    simulate_warm(
+      components = comps,
+      n = n,
+      n_sim = 4L,
+      seed = 1L,
+      bypass_n = 25L,
+      verbose = FALSE
+    )
+  )
+
+  testthat::expect_equal(dim(out), c(n, 4L))
+  testthat::expect_equal(calls_viable, 1L) # one component
+  testthat::expect_equal(calls_fit, 0L)
+  testthat::expect_equal(calls_boot, 4L)   # one bootstrap per realization
+})
+
+
+testthat::test_that("simulate_warm component mode calls ARIMA fit helper when viable and uses returned model", {
+
+  skip_if_not_installed("forecast")
+
+  n <- 80L
+  x <- as.numeric(stats::arima.sim(model = list(ar = 0.5), n = n))
+  comps <- cbind(D1 = x)
+
+  calls_viable <- 0L
+  calls_fit <- 0L
+
+  # Use forecast::Arima so stats::simulate dispatch works with forecast:::simulate.Arima
+  fit_model <- forecast::Arima(stats::ts(x - mean(x), frequency = 1),
+                               order = c(1, 0, 0),
+                               include.mean = FALSE)
+
+  testthat::local_mocked_bindings(
+    .warm_arima_viable = function(x, min_n, sd_eps, min_unique) {
+      calls_viable <<- calls_viable + 1L
+      TRUE
+    },
+    .warm_fit_arima_safe = function(x, max_p, max_q, stationary, include_mean, allow_drift) {
+      calls_fit <<- calls_fit + 1L
+      list(model = fit_model)
+    },
+    .env = asNamespace("weathergenr")
+  )
+
+  out <- testthat::expect_silent(
+    simulate_warm(
+      components = comps,
+      n = n,
+      n_sim = 3L,
+      seed = 42L,
+      bypass_n = 25L,
+      verbose = FALSE
+    )
+  )
+
+  testthat::expect_equal(dim(out), c(n, 3L))
+  testthat::expect_equal(calls_viable, 1L)
+  testthat::expect_equal(calls_fit, 1L)
+  testthat::expect_true(all(is.finite(out)))
+})
+
+
+testthat::test_that("simulate_warm constant component is carried through correctly", {
+
+  skip_if_not_installed("forecast")
+
+  n <- 50L
+  const <- rep(10, n)
+  noise <- rnorm(n)
+
+  comps <- cbind(D1 = const, D2 = noise)
+
+  calls_fit <- 0L
+
+  # Again: forecast::Arima object, not stats::arima
+  fit_model <- forecast::Arima(stats::ts(noise - mean(noise), frequency = 1),
+                               order = c(1, 0, 0),
+                               include.mean = FALSE)
+
+  testthat::local_mocked_bindings(
+    .warm_arima_viable = function(x, min_n, sd_eps, min_unique) {
+      TRUE
+    },
+    .warm_fit_arima_safe = function(x, max_p, max_q, stationary, include_mean, allow_drift) {
+      calls_fit <<- calls_fit + 1L
+      list(model = fit_model)
+    },
+    .env = asNamespace("weathergenr")
+  )
+
+  out <- suppressWarnings(
+    simulate_warm(
+      components = comps,
+      n = n,
+      n_sim = 2L,
+      seed = 7L,
+      bypass_n = 25L,
+      verbose = FALSE
+    )
+  )
+
+  testthat::expect_equal(dim(out), c(n, 2L))
+  # constant contribution should shift the mean upward
+  testthat::expect_true(all(colMeans(out) > 8))
+  testthat::expect_equal(calls_fit, 1L) # only D2
+})
+
+################################################################################
 
 testthat::test_that("plot_wavelet_power and plot_wavelet_global_spectrum return plots", {
   series <- sin(seq(0, 4 * pi, length.out = 64))
@@ -135,3 +319,5 @@ testthat::test_that("plot_wavelet_power and plot_wavelet_global_spectrum return 
   )
   testthat::expect_true(inherits(p2, "ggplot"))
 })
+
+
