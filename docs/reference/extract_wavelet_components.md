@@ -6,8 +6,8 @@ adds a residual component representing non-selected scales to ensure
 additive closure.
 
 Note: CWT-reconstructed components are additive but NOT orthogonal due
-to scale overlap. For orthogonal decomposition, use
-`extract_modwt_components`.
+to scale overlap. For MODWT additive decomposition, use
+[`analyze_wavelet_additive`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_additive.md).
 
 ## Usage
 
@@ -83,4 +83,4 @@ analysis. *Bulletin of the American Meteorological Society*, 79(1),
 ## See also
 
 [`analyze_wavelet_spectrum`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.md),
-`extract_modwt_components`
+[`analyze_wavelet_additive`](https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_additive.md)

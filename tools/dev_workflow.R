@@ -18,91 +18,12 @@
 # ==============================================================================
 
 
-# ==============================================================================
-# SETUP: Load Workflow Tools (Run Once Per Session)
-# ==============================================================================
-
-# Set working directory to package root (if not already there)
-# setwd("path/to/weathergenr")
-
-# Verify you're in the package root
-stopifnot(
-  "Not in package root - DESCRIPTION not found" = file.exists("DESCRIPTION")
-)
-
 # Load the build workflow tools
 source("tools/build_site_tools.R")
 
-
-# ==============================================================================
-# STEP 1: ACTIVE DEVELOPMENT (Iterating on Code)
-# ==============================================================================
-#
-# Run these commands after making changes to R scripts in R/
-# Frequency: Every time you modify functions
-#
 # ------------------------------------------------------------------------------
 
-
-# 1b. Reload the package into your R session (without reinstalling
-devtools::load_all()
-message("Package reloaded")
-
-# 1c. Run unit tests to verify changes work
-devtools::test()
-
-# ==============================================================================
-# STEP 2: LOCAL VALIDATION (Before Committing)
-# ==============================================================================
-#
-# Run before each commit or set of related commits
-# Catches most issues before they enter version control
-#
-# ------------------------------------------------------------------------------
-
-# 1a. Regenerate Rd documentation from roxygen2 comments
-devtools::document()
-message("Documentation regenerated")
-
-
-# 2a. Quick R CMD check (skips vignettes to avoid Windows/Quarto bug)
-check_only()
-
-# 2b. (Optional) Run spell check on documentation
-# Requires: install.packages("spelling")
-if (requireNamespace("spelling", quietly = TRUE)) {
-  spelling::spell_check_package()
-}
-
-
-# ==============================================================================
-# STEP 3: UPDATE VIGNETTES (After Vignette Changes)
-# ==============================================================================
-#
-# Run after modifying .qmd files in vignettes/
-# Faster than full build when only vignette content changed
-#
-# ------------------------------------------------------------------------------
-
-# 3a. Rebuild vignettes only
-build_vignettes_only(clean = TRUE)
-
-# 3b. (Optional) Preview a specific vignette locally
-# quarto::quarto_preview("vignettes/getting_started.qmd")
-
-
-# ==============================================================================
-# STEP 4: FULL VALIDATION (Before Pushing to GitHub)
-# ==============================================================================
-#
-# Complete workflow: clean, test, check, build vignettes, build site
-# Run when ready to push and update the documentation website
-#
-# This is the main command for preparing a release:
-#
-# ------------------------------------------------------------------------------
-
-# 4a. Full publish workflow (RECOMMENDED)
+# 1. Full publish workflow (RECOMMENDED)
 publish_docs()
 
 # The publish_docs() function executes these steps in order:
@@ -127,29 +48,21 @@ publish_docs()
 
 
 # ==============================================================================
-# STEP 5: PUSH TO GITHUB
+# STEP 2: PUSH TO GITHUB
 # ==============================================================================
 #
 # After publish_docs() completes successfully, commit and push
 #
 # ------------------------------------------------------------------------------
 
-# 5a. Stage all changes (run in terminal or use RStudio Git pane)
+# 2a. Stage all changes (run in terminal or use RStudio Git pane)
 # system("git add -A")
 
-# 5b. Commit with descriptive message
+# 2b. Commit with descriptive message
 # system('git commit -m "Your descriptive commit message"')
 
-# 5c. Push to remote
+# 2c. Push to remote
 # system("git push origin main")
-
-# Or use RStudio's Git integration:
-#   1. Go to Git pane (Ctrl+Alt+M)
-#   2. Stage changed files (check boxes)
-#   3. Click "Commit"
-#   4. Write commit message
-#   5. Click "Commit" then "Push"
-
 
 # ==============================================================================
 # MAINTENANCE COMMANDS
