@@ -41,6 +41,10 @@
 #'     historical observation dates (\code{dateo}) and return simulated dates.
 #' }
 #'
+#' Daily disaggregation currently requires \code{vars} to include
+#' \code{"precip"} and \code{"temp"}, which are used as precipitation and
+#' temperature drivers in KNN + Markov resampling.
+#'
 #' @param obs_data Named list of data.frames (one per grid cell) with observed
 #'   daily weather. Each data.frame must have one row per day corresponding to
 #'   \code{obs_dates}, and columns for all \code{vars}.
@@ -191,6 +195,7 @@ generate_weather <- function(
     "year_start_month must be 1-12" = year_start_month %in% 1:12,
     "vars must be non-empty" = length(vars) > 0,
     "vars must exist in obs_data" = all(vars %in% names(obs_data[[1]])),
+    "vars must include 'precip' and 'temp' for daily disaggregation" = all(c("precip", "temp") %in% vars),
     "dry_spell_factor must have length 12" = length(dry_spell_factor) == 12,
     "wet_spell_factor must have length 12" = length(wet_spell_factor) == 12,
     "wet_q must be in (0,1)" = is.numeric(wet_q) && wet_q > 0 && wet_q < 1,
@@ -701,6 +706,13 @@ run_weather_generator <- function(
     # -------------------------------------------------------------------------
     # Step 1: Generate synthetic weather
     # -------------------------------------------------------------------------
+    if (identical(generate_weather, run_weather_generator)) {
+      stop(
+        "Internal error: 'generate_weather' resolves to run_weather_generator(), causing recursion.",
+        call. = FALSE
+      )
+    }
+
     gen_output <- generate_weather(
       obs_data           = obs_data,
       obs_grid           = obs_grid,

@@ -13,11 +13,13 @@ compute_kurtosis(x)
 Numeric scalar. Excess kurtosis estimate, or \code{NA}.
 }
 \description{
-Computes the (non-bias-corrected) fourth standardized central moment minus 3 (excess kurtosis)
-for a numeric vector, excluding \code{NA} values.
+Computes sample excess kurtosis as
+\eqn{\sum (x-\bar{x})^4 / (n s^4) - 3} for a numeric vector, excluding
+\code{NA} values.
 }
 \details{
 Returns \code{NA} if fewer than 4 non-missing values are available or if the standard
-deviation is zero.
+deviation is zero. As in \code{compute_skewness()}, the standardization uses
+\code{stats::sd()} (denominator \eqn{n-1}).
 }
 \keyword{internal}

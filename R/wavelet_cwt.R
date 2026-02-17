@@ -47,14 +47,14 @@
 #' @export
 morlet_wavelet <- function(k, scale, k0 = 6) {
 
- if (!is.numeric(k) || !is.numeric(scale) || !is.numeric(k0)) stop("All inputs must be numeric")
- if (length(scale) != 1 || scale <= 0) stop("'scale' must be a positive scalar")
- if (length(k0) != 1 || k0 <= 0) stop("'k0' must be a positive scalar")
- if (length(k) < 2) stop("'k' must have length >= 2")
+ if (!is.numeric(k) || !is.numeric(scale) || !is.numeric(k0)) stop("All inputs must be numeric", call. = FALSE)
+ if (length(scale) != 1 || scale <= 0) stop("'scale' must be a positive scalar", call. = FALSE)
+ if (length(k0) != 1 || k0 <= 0) stop("'k0' must be a positive scalar", call. = FALSE)
+ if (length(k) < 2) stop("'k' must have length >= 2", call. = FALSE)
 
- if (abs(k[1]) > 1e-10) stop("'k' must start at zero frequency (standard FFT ordering)")
- if (k[2] <= 0) stop("'k[2]' must be positive (frequency spacing)")
- if (any(!is.finite(k))) stop("'k' contains non-finite values (NA, NaN, or Inf)")
+ if (abs(k[1]) > 1e-10) stop("'k' must start at zero frequency (standard FFT ordering)", call. = FALSE)
+ if (k[2] <= 0) stop("'k[2]' must be positive (frequency spacing)", call. = FALSE)
+ if (any(!is.finite(k))) stop("'k' contains non-finite values (NA, NaN, or Inf)", call. = FALSE)
 
  nn <- length(k)
  z <- as.numeric(k > 0)
@@ -86,7 +86,7 @@ morlet_wavelet <- function(k, scale, k0 = 6) {
 morlet_parameters <- function(k0 = 6) {
 
  if (!is.numeric(k0) || length(k0) != 1 || k0 <= 0) {
-   stop("'k0' must be a positive numeric scalar")
+   stop("'k0' must be a positive numeric scalar", call. = FALSE)
  }
 
  fourier_factor <- (4 * pi) / (k0 + sqrt(2 + k0^2))

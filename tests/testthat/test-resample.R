@@ -200,6 +200,43 @@ testthat::test_that("resample_weather_dates is reproducible with same seed", {
   testthat::expect_identical(out1, out2)
 })
 
+testthat::test_that("resample_weather_dates handles length-1 index candidates deterministically", {
+  obs_dates <- seq.Date(as.Date("2001-01-01"), as.Date("2001-12-31"), by = "day")
+  obs_dates_df <- data.frame(
+    date = obs_dates,
+    month = as.integer(format(obs_dates, "%m")),
+    day = as.integer(format(obs_dates, "%d")),
+    wyear = 2001L
+  )
+
+  obs_daily_precip <- seq_along(obs_dates)
+  obs_daily_temp <- seq_along(obs_dates)
+  obs_annual_precip <- tapply(obs_daily_precip, obs_dates_df$wyear, sum)
+
+  sim_dates <- seq.Date(as.Date("2020-07-15"), by = "day", length.out = 365)
+  sim_dates_df <- data.frame(
+    month = as.integer(format(sim_dates, "%m")),
+    day = as.integer(format(sim_dates, "%d")),
+    wyear = 2021L
+  )
+
+  out <- resample_weather_dates(
+    sim_annual_precip = mean(obs_annual_precip),
+    obs_annual_precip = obs_annual_precip,
+    obs_daily_precip = obs_daily_precip,
+    obs_daily_temp = obs_daily_temp,
+    year_start = 2020,
+    n_years = 1,
+    obs_dates_df = obs_dates_df,
+    sim_dates_df = sim_dates_df,
+    year_start_month = 7,
+    annual_knn_n = 1,
+    seed = 101
+  )
+
+  testthat::expect_identical(out[1], as.Date("2001-07-15"))
+})
+
 testthat::test_that("resample_weather_dates rejects invalid year_start_month", {
   testthat::expect_error(
     resample_weather_dates(

@@ -13,11 +13,13 @@ compute_skewness(x)
 Numeric scalar. Skewness estimate, or \code{NA}.
 }
 \description{
-Computes the (non-bias-corrected) third standardized central moment (skewness) for a numeric
+Computes sample skewness as \eqn{\sum (x-\bar{x})^3 / (n s^3)} for a numeric
 vector, excluding \code{NA} values.
 }
 \details{
 Returns \code{NA} if fewer than 3 non-missing values are available or if the standard
-deviation is zero (which yields undefined standardization).
+deviation is zero (which yields undefined standardization). This estimator
+uses \code{stats::sd()} (denominator \eqn{n-1}) in the standardization term
+and follows the same convention used by \code{e1071::skewness(type = 2)}.
 }
 \keyword{internal}

@@ -395,15 +395,6 @@ simulate_warm <- function(
 # Internal helpers
 # ------------------------------------------------------------------------------
 
-#' Check integer scalar
-#'
-#' @param x Object.
-#' @return Logical scalar.
-#' @keywords internal
-.is_int_scalar <- function(x) {
-  is.numeric(x) && length(x) == 1L && is.finite(x) && x == as.integer(x)
-}
-
 #' Reconstruct original series from wavelet components
 #'
 #' @param components Matrix, data.frame, or list of numeric vectors.
