@@ -1110,19 +1110,29 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
 
   # Pre-compute log2(period) once for all realizations (avoids redundant computation)
   log2_period <- log2(period)
+  sim_detrend <- isTRUE(wavelet_pars$detrend)
+  sim_keys <- vapply(
+    seq_len(n_realizations),
+    FUN = function(j) paste(sprintf("%.17g", sim_series_stats[, j]), collapse = ","),
+    FUN.VALUE = character(1)
+  )
+  unique_realization_idx <- which(!duplicated(sim_keys))
+  source_unique_pos <- match(sim_keys, sim_keys[unique_realization_idx])
+  n_unique_realizations <- length(unique_realization_idx)
 
   # -------------------------------------------------------------------------
   # Worker function: analyze one simulation column
   # -------------------------------------------------------------------------
   one_sim <- function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
-                      peak_period_tol, peak_mag_tol_log, eps, cache_gws, log2_period) {
+                      peak_period_tol, peak_mag_tol_log, eps, cache_gws, log2_period,
+                      sim_detrend) {
 
     wv_sim <- analyze_wavelet_spectrum(
       sim_series_stats[, j],
       signif = wavelet_pars$signif_level,
       noise  = wavelet_pars$noise_type,
       min_period = wavelet_pars$period_lower_limit,
-      detrend = isTRUE(wavelet_pars$detrend),
+      detrend = sim_detrend,
       mode = "fast"
     )
 
@@ -1164,9 +1174,9 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
   peak_mag_mean_abs_log_ratio <- rep(NA_real_, n_realizations)
 
   # Use sequential for small ensembles (parallel overhead outweighs benefit)
-  if (!parallel || n_realizations < MIN_PARALLEL_REALIZATIONS) {
+  if (!parallel || n_unique_realizations < MIN_PARALLEL_REALIZATIONS) {
 
-    for (j in seq_len(n_realizations)) {
+    for (j in unique_realization_idx) {
       res <- one_sim(
         j = j,
         sim_series_stats = sim_series_stats,
@@ -1178,7 +1188,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
         peak_mag_tol_log = peak_mag_tol_log,
         eps = eps,
         cache_gws = cache_gws,
-        log2_period = log2_period
+        log2_period = log2_period,
+        sim_detrend = sim_detrend
       )
 
       if (cache_gws) gws_cache[, j] <- res$gws_sim
@@ -1197,7 +1208,7 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
     use_cores <- max(1L, as.integer(use_cores))
 
     if (use_cores == 1L) {
-      for (j in seq_len(n_realizations)) {
+      for (j in unique_realization_idx) {
         res <- one_sim(
           j = j,
           sim_series_stats = sim_series_stats,
@@ -1209,7 +1220,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
           peak_mag_tol_log = peak_mag_tol_log,
           eps = eps,
           cache_gws = cache_gws,
-          log2_period = log2_period
+          log2_period = log2_period,
+          sim_detrend = sim_detrend
         )
 
         if (cache_gws) gws_cache[, j] <- res$gws_sim
@@ -1245,13 +1257,14 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
         NULL
       })
 
-      idx <- as.integer(seq_len(n_realizations))
+      idx <- as.integer(unique_realization_idx)
 
       res_list <- parallel::parLapply(
         cl,
         X = idx,
         fun = function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
-                       peak_period_tol, peak_mag_tol_log, eps, cache_gws, log2_period) {
+                       peak_period_tol, peak_mag_tol_log, eps, cache_gws, log2_period,
+                       sim_detrend) {
           one_sim(
             j = j,
             sim_series_stats = sim_series_stats,
@@ -1263,7 +1276,8 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
             peak_mag_tol_log = peak_mag_tol_log,
             eps = eps,
             cache_gws = cache_gws,
-            log2_period = log2_period
+            log2_period = log2_period,
+            sim_detrend = sim_detrend
           )
         },
         sim_series_stats = sim_series_stats,
@@ -1275,16 +1289,29 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
         peak_mag_tol_log = peak_mag_tol_log,
         eps = eps,
         cache_gws = cache_gws,
-        log2_period = log2_period
+        log2_period = log2_period,
+        sim_detrend = sim_detrend
       )
 
-      for (j in seq_len(n_realizations)) {
+      for (j in seq_along(unique_realization_idx)) {
         res <- res_list[[j]]
-        if (cache_gws) gws_cache[, j] <- res$gws_sim
-        spectral_cor[j] <- res$spectral_cor
-        peak_match_frac[j] <- res$peak_match_frac
-        peak_mag_mean_abs_log_ratio[j] <- res$peak_mag_mean_abs_log_ratio
+        idx_j <- unique_realization_idx[j]
+        if (cache_gws) gws_cache[, idx_j] <- res$gws_sim
+        spectral_cor[idx_j] <- res$spectral_cor
+        peak_match_frac[idx_j] <- res$peak_match_frac
+        peak_mag_mean_abs_log_ratio[idx_j] <- res$peak_mag_mean_abs_log_ratio
       }
+    }
+  }
+
+  if (n_unique_realizations < n_realizations) {
+    dup_idx <- which(duplicated(sim_keys))
+    for (j in dup_idx) {
+      src_j <- unique_realization_idx[source_unique_pos[j]]
+      spectral_cor[j] <- spectral_cor[src_j]
+      peak_match_frac[j] <- peak_match_frac[src_j]
+      peak_mag_mean_abs_log_ratio[j] <- peak_mag_mean_abs_log_ratio[src_j]
+      if (cache_gws) gws_cache[, j] <- gws_cache[, src_j]
     }
   }
 

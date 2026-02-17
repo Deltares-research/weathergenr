@@ -764,9 +764,10 @@ simulate_warm <- function(
   scale[do_fix] <- target_sd / sim_sd[do_fix]
 
   sim2 <- sim
-  sim2[, do_fix] <- sweep(sim2[, do_fix, drop = FALSE], 2, sim_mean[do_fix], "-")
-  sim2[, do_fix] <- sweep(sim2[, do_fix, drop = FALSE], 2, scale[do_fix], "*")
-  sim2[, do_fix] <- sweep(sim2[, do_fix, drop = FALSE], 2, target_mean, "+")
+  sim_fix <- sim2[, do_fix, drop = FALSE]
+  sim_fix <- (sim_fix - rep(sim_mean[do_fix], each = nrow(sim_fix))) *
+    rep(scale[do_fix], each = nrow(sim_fix)) + target_mean
+  sim2[, do_fix] <- sim_fix
 
   sim2
 }
