@@ -81,3 +81,31 @@ testthat::test_that("generate_weather validates wet/extreme thresholds", {
     "extreme_q must be greater than wet_q"
   )
 })
+
+testthat::test_that("generate_weather validates required daily variables", {
+  inputs <- make_generator_inputs()
+
+  testthat::expect_error(
+    generate_weather(
+      obs_data = inputs$obs_data,
+      obs_grid = inputs$obs_grid,
+      obs_dates = inputs$obs_dates,
+      vars = "precip",
+      n_years = 2,
+      start_year = 2020,
+      year_start_month = 1,
+      n_realizations = 1,
+      warm_var = "precip",
+      warm_signif = 0.8,
+      warm_pool_size = 3,
+      annual_knn_n = 3,
+      wet_q = 0.3,
+      extreme_q = 0.8,
+      out_dir = tempdir(),
+      seed = 42,
+      parallel = FALSE,
+      verbose = FALSE
+    ),
+    "vars must include 'precip' and 'temp' for daily disaggregation"
+  )
+})

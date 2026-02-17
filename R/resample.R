@@ -100,14 +100,14 @@ knn_sample <- function(
   nc <- nrow(candidates)
   p <- ncol(candidates)
   if (nc == 0) {
-    stop("No candidates provided to knn_sample")
+    stop("No candidates provided to knn_sample", call. = FALSE)
   }
 
   if (is.null(weights)) {
     weights <- rep(1, p)
   } else {
     if (length(weights) != p) {
-      stop("Length of weights must equal number of columns in candidates.")
+      stop("Length of weights must equal number of columns in candidates.", call. = FALSE)
     }
   }
 
@@ -277,6 +277,10 @@ resample_weather_dates <- function(
   # SET RNG
   base_seed <- if (is.null(seed)) NULL else seed
 
+  .draw_one <- function(x) {
+    if (length(x) == 1L) x else sample(x, 1L)
+  }
+
   if (!is.null(base_seed)) {
     if (exists(".Random.seed", envir = .GlobalEnv)) {
       old_seed <- .Random.seed
@@ -441,7 +445,7 @@ resample_weather_dates <- function(
       }
     }
 
-    obs_i0 <- sample(day0_candidates, 1L)
+    obs_i0 <- .draw_one(day0_candidates)
     sim_daily_precip[year_day0_idx] <- obs_precip_sub[obs_i0]
     sim_daily_temp[year_day0_idx] <- obs_temp_sub[obs_i0]
     sim_obs_date[year_day0_idx] <- obs_date_sub[obs_i0]
@@ -497,7 +501,7 @@ resample_weather_dates <- function(
       obs_window_idx <- expand_indices(obs_day_candidates, offsets7, length(obs_precip_sub))
 
       if (!length(obs_window_idx)) {
-        i <- sample(obs_day_candidates, 1L)
+        i <- .draw_one(obs_day_candidates)
         sim_daily_precip[t_sim] <- obs_precip_sub[i]
         sim_daily_temp[t_sim] <- obs_temp_sub[i]
         sim_obs_date[t_sim] <- obs_date_sub[i]
@@ -534,7 +538,7 @@ resample_weather_dates <- function(
           if (!use_water_year) fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
         }
 
-        i <- sample(fb, 1L)
+        i <- .draw_one(fb)
         sim_daily_precip[t_sim] <- obs_precip_sub[i]
         sim_daily_temp[t_sim] <- obs_temp_sub[i]
         sim_obs_date[t_sim] <- obs_date_sub[i]
@@ -556,7 +560,7 @@ resample_weather_dates <- function(
           if (!use_water_year) fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
         }
 
-        i <- sample(fb, 1L)
+        i <- .draw_one(fb)
         sim_daily_precip[t_sim] <- obs_precip_sub[i]
         sim_daily_temp[t_sim] <- obs_temp_sub[i]
         sim_obs_date[t_sim] <- obs_date_sub[i]
@@ -569,11 +573,11 @@ resample_weather_dates <- function(
       obs_temp_day1 <- obs_temp_sub[obs_day1_idx]
       date_day1 <- obs_date_sub[obs_day1_idx]
 
-      cur_sim_daily_precip_anom <- sim_daily_precip[t_prev] - obs_month_mean_precip[cur_month]
-      cur_sim_daily_temp_anom <- sim_daily_temp[t_prev] - obs_month_mean_temp[cur_month]
+      cur_sim_daily_precip_anom <- sim_daily_precip[t_prev] - obs_month_mean_precip[as.character(cur_month)]
+      cur_sim_daily_temp_anom <- sim_daily_temp[t_prev] - obs_month_mean_temp[as.character(cur_month)]
 
-      precip_day0_anom <- obs_precip_sub[obs_day0_idx] - obs_month_mean_precip[cur_month]
-      temp_day0_anom <- obs_temp_sub[obs_day0_idx] - obs_month_mean_temp[cur_month]
+      precip_day0_anom <- obs_precip_sub[obs_day0_idx] - obs_month_mean_precip[as.character(cur_month)]
+      temp_day0_anom <- obs_temp_sub[obs_day0_idx] - obs_month_mean_temp[as.character(cur_month)]
 
       knn_daily_k <- max(1L, round(sqrt(length(obs_day0_idx))))
       knn_daily_k <- min(knn_daily_k, length(obs_day0_idx))
@@ -595,7 +599,7 @@ resample_weather_dates <- function(
         prev_obs_year <- obs_wyear_sub[sim_obs_idx[t_prev]]
         valid <- which(obs_wyear_sub[obs_day1_idx] == prev_obs_year)
         if (length(valid)) draw_idx <- draw_idx[draw_idx %in% valid]
-        if (!length(draw_idx)) draw_idx <- sample(valid, 1L)
+        if (!length(draw_idx)) draw_idx <- .draw_one(valid)
       }
 
       if (is.na(draw_idx) || draw_idx < 1L || draw_idx > length(obs_precip_day1)) {
@@ -764,7 +768,7 @@ estimate_monthly_markov_probs <- function(
 ) {
 
   if (!is.finite(dirichlet_alpha) || dirichlet_alpha < 0) {
-    stop("dirichlet_alpha must be a non-negative finite number")
+    stop("dirichlet_alpha must be a non-negative finite number", call. = FALSE)
   }
 
   use_water_year <- (month_order[1] != 1)

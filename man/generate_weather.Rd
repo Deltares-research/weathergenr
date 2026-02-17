@@ -161,6 +161,10 @@ All downstream processing and outputs therefore use a 365-day calendar.
   \item \strong{Output construction:} Map resampled internal dates back to
     historical observation dates (\code{dateo}) and return simulated dates.
 }
+
+Daily disaggregation currently requires \code{vars} to include
+\code{"precip"} and \code{"temp"}, which are used as precipitation and
+temperature drivers in KNN + Markov resampling.
 }
 \examples{
 \dontrun{

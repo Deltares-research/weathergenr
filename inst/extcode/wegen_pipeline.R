@@ -26,7 +26,7 @@ year_start_month <- 1
 #ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir))
 
 ### ---> FOR VECHTE DATA
-ncfile_dir   <- "C:/Users/taner/WS/Spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
+ncfile_dir   <- "C:/Users/taner/WS/spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
 out_dir <- file.path("C:/TEMP/vechte", year_start_month)
 ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir),
     var = c("precip", "temp", "tn", "tx"),
