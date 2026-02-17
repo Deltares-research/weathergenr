@@ -401,6 +401,7 @@ modwt_mra <- function(
   sum_comp_var <- sum(comp_var)
 
   cov_mat <- stats::cov(components)
+  attr(components, "cov_matrix") <- cov_mat
   cross_cov <- cov_mat
   diag(cross_cov) <- 0
   cross_cov_sum <- sum(cross_cov) / 2
@@ -603,11 +604,13 @@ analyze_wavelet_additive <- function(
   )
 
   if (isTRUE(diagnostics)) {
+    cov_mat <- attr(mra_result$components, "cov_matrix", exact = TRUE)
+    if (is.null(cov_mat)) cov_mat <- stats::cov(mra_result$components)
     out$diagnostics <- list(
       n_original = n,
       max_levels_final = max_levels,
       component_sd = sqrt(mra_result$variance),
-      cov_matrix = stats::cov(mra_result$components)
+      cov_matrix = cov_mat
     )
   }
 

@@ -56,6 +56,31 @@ testthat::test_that("compute_spectral_metrics returns cached spectra", {
   testthat::expect_true(is.matrix(out$gws_cache))
 })
 
+testthat::test_that("compute_spectral_metrics keeps duplicate realizations identical", {
+  series <- sin(seq(0, 6 * pi, length.out = 48))
+  sim_series_stats <- cbind(series * 0.95, series * 0.95, series * 1.05)
+
+  out <- compute_spectral_metrics(
+    obs_use = series,
+    sim_series_stats = sim_series_stats,
+    wavelet_pars = list(
+      signif_level = 0.8,
+      noise_type = "white",
+      period_lower_limit = 2,
+      detrend = FALSE
+    ),
+    cache_gws = TRUE
+  )
+
+  testthat::expect_equal(out$metrics$spectral_cor[1], out$metrics$spectral_cor[2])
+  testthat::expect_equal(out$metrics$peak_match_frac[1], out$metrics$peak_match_frac[2])
+  testthat::expect_equal(
+    out$metrics$peak_mag_mean_abs_log_ratio[1],
+    out$metrics$peak_mag_mean_abs_log_ratio[2]
+  )
+  testthat::expect_equal(out$gws_cache[, 1], out$gws_cache[, 2])
+})
+
 testthat::test_that("relax_bounds_one_filter updates bounds as expected", {
   b_list <- filter_warm_bounds_defaults()
   b <- list2env(b_list, parent = environment())
