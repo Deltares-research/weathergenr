@@ -220,7 +220,10 @@ knn_sample <- function(
 #' @param extreme_q Numeric between 0 and 1. Quantile used to define the very
 #'   wet (extreme) precipitation threshold.
 #' @param dry_spell_factor Numeric vector of length 12. Monthly adjustment
-#'   factors controlling dry spell persistence in the Markov chain.
+#'   factors controlling dry spell persistence in the Markov chain. Values
+#'   greater than 1 increase dry-state persistence by reducing dry-to-wet and
+#'   dry-to-very-wet transition probabilities before renormalization (for
+#'   example, with factor 2 these off-diagonal transitions are halved).
 #' @param wet_spell_factor Numeric vector of length 12. Monthly adjustment
 #'   factors controlling wet spell persistence in the Markov chain.
 #' @param seed Optional integer. Base random seed for reproducibility.
@@ -325,11 +328,58 @@ resample_weather_dates <- function(
   offsets61 <- -30:30
 
   rn_all <- runif(n_sim_day)
+  daily_knn_u <- runif(n_sim_day)
   k_annual <- ceiling(sqrt(length(obs_annual_precip)))
   obs_idx_by_year <- split(seq_along(obs_wyear), obs_wyear)
   annual_seed_by_year <- if (is.null(base_seed)) NULL else base_seed + seq_len(n_years)
-  daily_knn_seed <- if (is.null(base_seed)) NULL else base_seed + seq_len(n_sim_day)
   year_subset_cache <- new.env(parent = emptyenv())
+
+  .knn_draw_one_rank <- function(candidates, target, k, weights, u) {
+    candidates <- as.matrix(candidates)
+    nc <- nrow(candidates)
+    p <- ncol(candidates)
+    if (nc < 1L) stop("No candidates provided to knn draw.", call. = FALSE)
+
+    if (is.null(weights)) {
+      weights <- rep(1, p)
+    } else if (length(weights) != p) {
+      stop("Length of weights must equal number of columns in candidates.", call. = FALSE)
+    }
+
+    if (p == 2L) {
+      d1 <- candidates[, 1L] - target[1L]
+      d2 <- candidates[, 2L] - target[2L]
+      d2_sq <- weights[1L] * d1 * d1 + weights[2L] * d2 * d2
+    } else if (p <= 5L) {
+      diffs <- sweep(candidates, 2, target, "-")
+      weighted_sq <- sweep(diffs^2, 2, weights, "*")
+      d2_sq <- rowSums(weighted_sq)
+    } else {
+      d2_sq <- numeric(nc)
+      for (j in seq_len(p)) {
+        dj <- candidates[, j] - target[j]
+        d2_sq <- d2_sq + weights[j] * dj * dj
+      }
+    }
+
+    k_eff <- min(as.integer(k), nc)
+    if (k_eff < nc * 0.2) {
+      threshold <- sort(d2_sq, partial = k_eff)[k_eff]
+      candidates_idx <- which(d2_sq <= threshold)
+      sorted_subset_order <- order(d2_sq[candidates_idx])
+      nn_indices <- candidates_idx[sorted_subset_order[seq_len(k_eff)]]
+    } else {
+      nn_indices <- order(d2_sq)[seq_len(k_eff)]
+    }
+    if (k_eff == 1L) return(nn_indices[1L])
+
+    probs <- 1 / seq_len(k_eff)
+    probs <- probs / sum(probs)
+    if (!is.finite(u)) u <- 0.5
+    u <- min(max(u, 0), 1 - .Machine$double.eps)
+    draw <- which(u <= cumsum(probs))[1L]
+    nn_indices[draw]
+  }
 
   for (y in seq_len(n_years)) {
 
@@ -363,19 +413,31 @@ resample_weather_dates <- function(
       obs_monthday_key <- paste(obs_month_sub, obs_day_sub, sep = ".")
       obs_day_lookup <- split(seq_along(obs_monthday_key), obs_monthday_key)
 
-      # Monthly means
-      obs_month_mean_precip <- tapply(obs_precip_sub, obs_month_sub, mean)
-      obs_month_mean_temp <- tapply(obs_temp_sub, obs_month_sub, mean)
+      obs_precip_by_month <- split(obs_precip_sub, obs_month_sub)
+      obs_temp_by_month <- split(obs_temp_sub, obs_month_sub)
+
+      month_chr <- as.character(1:12)
+      obs_month_mean_precip <- setNames(rep(NA_real_, 12L), month_chr)
+      obs_month_mean_temp <- setNames(rep(NA_real_, 12L), month_chr)
+      obs_month_sd_precip <- setNames(rep(NA_real_, 12L), month_chr)
+      obs_month_sd_temp <- setNames(rep(NA_real_, 12L), month_chr)
+
+      for (m in month_chr) {
+        vals_p <- obs_precip_by_month[[m]]
+        if (!is.null(vals_p) && length(vals_p)) {
+          obs_month_mean_precip[m] <- mean(vals_p)
+          obs_month_sd_precip[m] <- stats::sd(vals_p)
+        }
+
+        vals_t <- obs_temp_by_month[[m]]
+        if (!is.null(vals_t) && length(vals_t)) {
+          obs_month_mean_temp[m] <- mean(vals_t)
+          obs_month_sd_temp[m] <- stats::sd(vals_t)
+        }
+      }
+
       obs_month_mean_precip[is.na(obs_month_mean_precip)] <- mean(obs_precip_sub)
       obs_month_mean_temp[is.na(obs_month_mean_temp)] <- mean(obs_temp_sub)
-
-      # Monthly standard deviations
-      obs_month_sd_precip <- tapply(obs_precip_sub, obs_month_sub, sd)
-      obs_month_sd_temp <- tapply(obs_temp_sub, obs_month_sub, sd)
-
-      # Force full 12-month coverage
-      obs_month_sd_precip <- obs_month_sd_precip[as.character(1:12)]
-      obs_month_sd_temp <- obs_month_sd_temp[as.character(1:12)]
 
       # Global fallback
       obs_month_sd_precip[is.na(obs_month_sd_precip)] <- sd(obs_precip_sub)
@@ -394,12 +456,14 @@ resample_weather_dates <- function(
 
       # Thresholds aligned to year_month_order
       wet_threshold_by_month_order <- sapply(year_month_order, function(m) {
-        vals <- obs_precip_sub[obs_month_sub == m]
-        if (!length(vals)) NA_real_ else quantile(vals, wet_q, names = FALSE)
+        vals <- obs_precip_by_month[[as.character(m)]]
+        if (is.null(vals) || !length(vals)) NA_real_ else quantile(vals, wet_q, names = FALSE)
       })
 
       extreme_threshold_by_month_order <- sapply(year_month_order, function(m) {
-        vals <- obs_precip_sub[obs_month_sub == m & obs_precip_sub > 0]
+        vals <- obs_precip_by_month[[as.character(m)]]
+        if (is.null(vals) || !length(vals)) return(NA_real_)
+        vals <- vals[vals > 0]
         if (!length(vals)) NA_real_ else quantile(vals, extreme_q, names = FALSE)
       })
 
@@ -572,10 +636,10 @@ resample_weather_dates <- function(
 
       if (!length(transition_match_pos)) {
         fb <- which(obs_month_sub == cur_month & (seq_along(obs_precip_sub) + 1L) <= length(obs_precip_sub))
-        if (!use_water_year) fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
+        fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
         if (!length(fb)) {
           fb <- which((seq_along(obs_precip_sub) + 1L) <= length(obs_precip_sub))
-          if (!use_water_year) fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
+          fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
         }
 
         i <- .draw_one(fb)
@@ -588,16 +652,15 @@ resample_weather_dates <- function(
 
       obs_day0_idx <- obs_window_idx[transition_match_pos]
 
-      if (!use_water_year) {
-        obs_day0_idx <- obs_day0_idx[obs_wyear_sub[obs_day0_idx] == obs_wyear_sub[obs_day0_idx + 1L]]
-      }
+      # Exclude artificial transitions at year-block boundaries in the KNN subset
+      obs_day0_idx <- obs_day0_idx[obs_wyear_sub[obs_day0_idx] == obs_wyear_sub[obs_day0_idx + 1L]]
 
       if (!length(obs_day0_idx)) {
         fb <- which(obs_month_sub == cur_month & (seq_along(obs_precip_sub) + 1L) <= length(obs_precip_sub))
-        if (!use_water_year) fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
+        fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
         if (!length(fb)) {
           fb <- which((seq_along(obs_precip_sub) + 1L) <= length(obs_precip_sub))
-          if (!use_water_year) fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
+          fb <- fb[obs_wyear_sub[fb] == obs_wyear_sub[fb + 1L]]
         }
 
         i <- .draw_one(fb)
@@ -622,20 +685,18 @@ resample_weather_dates <- function(
       knn_daily_k <- max(1L, round(sqrt(length(obs_day0_idx))))
       knn_daily_k <- min(knn_daily_k, length(obs_day0_idx))
 
-      knn_draw_pos <- knn_sample(
+      knn_draw_pos <- .knn_draw_one_rank(
         candidates = cbind(precip_day0_anom, temp_day0_anom),
         target = c(cur_sim_daily_precip_anom, cur_sim_daily_temp_anom),
         k = knn_daily_k,
-        n = 1,
-        prob = TRUE,
         weights = knn_weights_by_month[[m_idx]],
-        seed = if (is.null(daily_knn_seed)) NULL else daily_knn_seed[t_sim]
+        u = daily_knn_u[t_sim]
       )
 
       draw_idx <- get_result_index(idx = knn_draw_pos, candidate_precip = obs_precip_day1)
 
-      # Enforce calendar-year constraint AFTER KNN
-      if (!use_water_year) {
+      # Enforce same-year constraint AFTER KNN (both calendar- and water-year modes)
+      {
         prev_obs_year <- obs_wyear_sub[sim_obs_idx[t_prev]]
         valid <- which(obs_wyear_sub[obs_day1_idx] == prev_obs_year)
         if (length(valid)) draw_idx <- draw_idx[draw_idx %in% valid]
@@ -749,7 +810,9 @@ expand_indices <- function(base_idx, offset_vec, n_max) {
 #' @param sim_start_year Integer. First year of the simulation, interpreted as a
 #'   calendar year or water year depending on the simulation regime.
 #' @param dry_spell_factor_month Numeric vector of length 12. Monthly multiplicative
-#'   factors controlling dry-state persistence.
+#'   factors controlling dry-state persistence. Values greater than 1 reduce
+#'   dry-state exit probabilities (dry->wet and dry->very wet) before
+#'   renormalization, which lengthens dry spells.
 #' @param wet_spell_factor_month Numeric vector of length 12. Monthly multiplicative
 #'   factors controlling wet-state persistence.
 #' @param n_days_sim Integer. Total number of simulated days. Determines the
@@ -904,8 +967,10 @@ estimate_monthly_markov_probs <- function(
     p_vwt <- p_vwt / sum(p_vwt)
 
     if (use_spell_adjustment) {
-      dry_factor_m <- dry_spell_factor_month[m]
-      wet_factor_m <- wet_spell_factor_month[m]
+      # Index by calendar month (mm), not by position in month_order (m).
+      # dry/wet_spell_factor_month are length-12 vectors indexed 1=Jan..12=Dec.
+      dry_factor_m <- dry_spell_factor_month[mm]
+      wet_factor_m <- wet_spell_factor_month[mm]
 
       if (!is.finite(dry_factor_m) || dry_factor_m <= 0) dry_factor_m <- 1
       if (!is.finite(wet_factor_m) || wet_factor_m <= 0) wet_factor_m <- 1
@@ -1038,6 +1103,13 @@ markov_next_state <- function(state_prev, u_rand, idx, p00, p01, p10, p11, p20, 
   if (u_rand > 1) u_rand <- 1
 
   if (!(state_prev %in% c(0L, 1L, 2L))) {
+    if (!isTRUE(getOption("weathergenr.markov_invalid_state_warned", FALSE))) {
+      warning(
+        "Invalid 'state_prev' encountered; defaulting to dry state (0).",
+        call. = FALSE
+      )
+      options(weathergenr.markov_invalid_state_warned = TRUE)
+    }
     state_prev <- 0L
   }
 

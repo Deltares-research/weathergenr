@@ -10,6 +10,7 @@ prepare_evaluation_data(
   obs_dates,
   grid_ids,
   variables,
+  year_start_month = 1L,
   min_days_per_year = 365L,
   verbose = TRUE
 )
@@ -30,6 +31,11 @@ include in the evaluation. Must match names or indices in \code{obs_data}.}
 
 \item{variables}{Character vector of variable names to extract
 (e.g., \code{c("precip", "temp")}).}
+
+\item{year_start_month}{Integer in 1:12. First month of the simulation year.
+When > 1, complete years are identified using water-year boundaries
+(via \code{compute_water_year()}) instead of calendar-year boundaries.
+Default is 1 (calendar year).}
 
 \item{min_days_per_year}{Integer. Minimum number of days required to consider
 a year complete. Default is 365. Use 360 for 360-day calendars.}
@@ -62,8 +68,8 @@ The function performs the following transformations:
   \item Formats both simulated and observed data as required by the evaluator
 }
 
-Complete years are identified by calendar year boundaries. For water-year
-simulations, users should ensure the simulation spans full water years.
+Complete years are identified by calendar-year or water-year boundaries
+depending on \code{year_start_month}.
 }
 \examples{
 \dontrun{

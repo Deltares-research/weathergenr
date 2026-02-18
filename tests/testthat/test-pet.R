@@ -1,3 +1,6 @@
+## Functions tested (relative paths):
+# - R/pet.R: calculate_monthly_pet(), .pet_monthly_hargreaves()
+
 test_that("calculate_monthly_pet (hargreaves) returns correct length and no NAs for standard input", {
   month <- c(1, 6, 12)
   temp <- c(3, 18, 5)
@@ -108,4 +111,30 @@ test_that("calculate_monthly_pet coerces month to integers", {
   )
 
   expect_equal(out1, out2)
+})
+
+test_that("calculate_monthly_pet (hargreaves) remains finite at extreme latitudes", {
+  month <- c(6, 12)
+  temp <- c(2, -10)
+  temp_range <- c(5, 3)
+
+  pet_north <- calculate_monthly_pet(
+    month = month,
+    temp = temp,
+    temp_range = temp_range,
+    lat_deg = 89.9,
+    method = "hargreaves"
+  )
+  pet_south <- calculate_monthly_pet(
+    month = month,
+    temp = temp,
+    temp_range = temp_range,
+    lat_deg = -89.9,
+    method = "hargreaves"
+  )
+
+  expect_false(anyNA(pet_north))
+  expect_false(anyNA(pet_south))
+  expect_true(all(is.finite(pet_north)))
+  expect_true(all(is.finite(pet_south)))
 })

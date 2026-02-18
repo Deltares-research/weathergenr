@@ -717,6 +717,27 @@ testthat::test_that("markov_next_state returns valid state and respects bounds",
   testthat::expect_true(out_high %in% 0:2)
 })
 
+testthat::test_that("markov_next_state warns once for invalid previous state fallback", {
+  p00 <- rep(0.7, 5)
+  p01 <- rep(0.2, 5)
+  p10 <- rep(0.3, 5)
+  p11 <- rep(0.4, 5)
+  p20 <- rep(0.1, 5)
+  p21 <- rep(0.3, 5)
+
+  old_warn_opt <- getOption("weathergenr.markov_invalid_state_warned", NULL)
+  on.exit(options(weathergenr.markov_invalid_state_warned = old_warn_opt), add = TRUE)
+  options(weathergenr.markov_invalid_state_warned = FALSE)
+
+  testthat::expect_warning(
+    markov_next_state(99L, u_rand = 0.2, idx = 1L, p00, p01, p10, p11, p20, p21),
+    "Invalid 'state_prev' encountered"
+  )
+  testthat::expect_silent(
+    markov_next_state(99L, u_rand = 0.2, idx = 1L, p00, p01, p10, p11, p20, p21)
+  )
+})
+
 # ---- match_transition_positions ---------------------------------------------
 
 testthat::test_that("match_transition_positions identifies expected transitions", {

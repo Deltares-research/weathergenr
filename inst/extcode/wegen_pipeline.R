@@ -18,7 +18,7 @@ library(tidyr)
 # PROJECT SETUP
 # =============================================================================
 
-year_start_month <- 1
+year_start_month <- 10
 
 # --- Path Configuration ---
 #ncfile_dir <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
@@ -118,64 +118,62 @@ config$warm_filter_bounds <- list(
 # =============================================================================
 
 
-stochastic_weather <- generate_weather(
-  obs_data           = ncdata$data,
-  obs_grid           = ncdata$grid,
-  obs_dates          = ncdata$date,
-  vars               = config$vars,
-  n_years            = config$n_years,
-  start_year         = config$start_year,
-  year_start_month   = config$year_start_month,
-  n_realizations     = config$n_realizations,
-  warm_var           = config$warm_var,
-  warm_signif        = config$warm_signif,
-  warm_pool_size     = config$warm_pool_size,
-  warm_filter_bounds = config$warm_filter_bounds,
-  annual_knn_n       = config$annual_knn_n,
-  wet_q              = config$wet_q,
-  extreme_q          = config$extreme_q,
-  dry_spell_factor   = config$dry_spell_factor,
-  wet_spell_factor   = config$wet_spell_factor,
-  out_dir            = out_dir,
-  parallel           = config$parallel,
-  n_cores            = config$n_cores,
-  seed               = config$seed,
-  verbose            = config$verbose,
-  save_plots         = config$save_plots
-)
-
-# =============================================================================
-# Step 3: Prepare Data for Evaluation
-# =============================================================================
-
-eval_data <- prepare_evaluation_data(
-  gen_output = stochastic_weather,
-  obs_data   = ncdata$data,
-  obs_dates  = ncdata$date,
-  grid_ids   = ncdata$grid$id,
-  variables  = config$vars,
-  verbose = TRUE
-)
-
-# =============================================================================
-# Step 4: Evaluate Generator Performance
-# =============================================================================
-
-evaluation <- evaluate_weather_generator(
-  daily_sim       = eval_data$sim_data,
-  daily_obs       = eval_data$obs_data,
-  vars            = config$vars,
-  variable_labels = NULL,
-  n_realizations  = config$n_realizations,
-  eval_max_grids  = 25,
-  wet_q           = config$wet_q,
-  extreme_q       = config$extreme_q,
-  output_dir      = out_dir,
-  save_plots      = TRUE,
-  seed            = NULL
-)
-
-
+# stochastic_weather <- generate_weather(
+#   obs_data           = ncdata$data,
+#   obs_grid           = ncdata$grid,
+#   obs_dates          = ncdata$date,
+#   vars               = config$vars,
+#   n_years            = config$n_years,
+#   start_year         = config$start_year,
+#   year_start_month   = config$year_start_month,
+#   n_realizations     = config$n_realizations,
+#   warm_var           = config$warm_var,
+#   warm_signif        = config$warm_signif,
+#   warm_pool_size     = config$warm_pool_size,
+#   warm_filter_bounds = config$warm_filter_bounds,
+#   annual_knn_n       = config$annual_knn_n,
+#   wet_q              = config$wet_q,
+#   extreme_q          = config$extreme_q,
+#   dry_spell_factor   = config$dry_spell_factor,
+#   wet_spell_factor   = config$wet_spell_factor,
+#   out_dir            = out_dir,
+#   parallel           = config$parallel,
+#   n_cores            = config$n_cores,
+#   seed               = config$seed,
+#   verbose            = config$verbose,
+#   save_plots         = config$save_plots
+# )
+#
+# # =============================================================================
+# # Step 3: Prepare Data for Evaluation
+# # =============================================================================
+#
+# eval_data <- prepare_evaluation_data(
+#   gen_output = stochastic_weather,
+#   obs_data   = ncdata$data,
+#   obs_dates  = ncdata$date,
+#   grid_ids   = ncdata$grid$id,
+#   variables  = config$vars,
+#   verbose = TRUE
+# )
+#
+# # =============================================================================
+# # Step 4: Evaluate Generator Performance
+# # =============================================================================
+#
+# evaluation <- evaluate_weather_generator(
+#   daily_sim       = eval_data$sim_data,
+#   daily_obs       = eval_data$obs_data,
+#   vars            = config$vars,
+#   variable_labels = NULL,
+#   n_realizations  = config$n_realizations,
+#   eval_max_grids  = 25,
+#   wet_q           = config$wet_q,
+#   extreme_q       = config$extreme_q,
+#   output_dir      = out_dir,
+#   save_plots      = TRUE,
+#   seed            = NULL
+# )
 
 # =============================================================================
 # CONVENIENCE WRAPPER

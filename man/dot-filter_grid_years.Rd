@@ -4,12 +4,14 @@
 \alias{.filter_grid_years}
 \title{Filter a single grid data frame to selected years (keeps original columns)}
 \usage{
-.filter_grid_years(df, years_keep)
+.filter_grid_years(df, years_keep, year_start_month = 1L)
 }
 \arguments{
 \item{df}{Data frame with a `date` column.}
 
-\item{years_keep}{Integer vector of years to retain.}
+\item{years_keep}{Integer vector of years (calendar or water years) to retain.}
+
+\item{year_start_month}{Integer 1-12. When > 1, uses water-year grouping.}
 }
 \value{
 Filtered data frame with the same columns as `df`.

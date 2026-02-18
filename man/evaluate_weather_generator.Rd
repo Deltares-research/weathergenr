@@ -10,6 +10,7 @@ evaluate_weather_generator(
   vars = NULL,
   variable_labels = NULL,
   n_realizations = NULL,
+  year_start_month = 1L,
   wet_q = 0.2,
   extreme_q = 0.8,
   output_dir = NULL,
@@ -36,6 +37,11 @@ Must include "precip" for wet/dry spell analysis.}
 Defaults to `vars` if `NULL`.}
 
 \item{n_realizations}{Integer. Number of synthetic realizations in `daily_sim`.}
+
+\item{year_start_month}{Integer in 1:12. First month of the simulation year.
+Use 1 for calendar-year simulations (default), or another month for
+water-year simulations (e.g., 10 for October). Used to correctly identify
+complete years and align observation/simulation periods.}
 
 \item{wet_q}{Numeric between 0 and 1. Quantile threshold for wet days
 (default = 0.2).}

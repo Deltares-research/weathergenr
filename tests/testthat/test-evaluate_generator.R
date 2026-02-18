@@ -24,6 +24,13 @@
 
 library(testthat)
 
+# Ensure package namespace is available when this file is run directly
+# (e.g., testthat::test_file()) without the normal testthat package loader.
+if (!"weathergenr" %in% loadedNamespaces()) {
+  testthat::skip_if_not_installed("pkgload")
+  pkgload::load_all(path = testthat::test_path("../.."), quiet = TRUE, export_all = FALSE)
+}
+
 
 make_test_grid_df <- function(dates, id_shift = 0) {
 
@@ -57,7 +64,8 @@ make_test_grid_df <- function(dates, id_shift = 0) {
 
   # Minimal observed results structure used downstream
   .mock_summarize_observed_data <- function(daily_obs, variables, grid_count,
-                                            wet_quantile, extreme_quantile) {
+                                            wet_quantile, extreme_quantile,
+                                            year_start_month = 1L) {
 
     # thresholds table used by .summarize_simulated_data()
     mc_thresholds <- dplyr::tibble(
@@ -85,6 +93,7 @@ make_test_grid_df <- function(dates, id_shift = 0) {
 
   # Minimal simulated results structure
   .mock_summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds,
+                                             year_start_month = 1L,
                                              parallel = FALSE, n_cores = NULL, seed = NULL) {
 
     empty_tbl <- dplyr::tibble()
@@ -870,7 +879,7 @@ test_that("create_all_diagnostic_plots calls ggsave when save_plots=TRUE (mocked
       calls <<- calls + 1L
       invisible(NULL)
     },
-    .package = "ggplot2"
+    .package = "weathergenr"
   )
 
   plots <- create_all_diagnostic_plots(

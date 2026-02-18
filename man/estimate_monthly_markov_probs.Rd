@@ -65,7 +65,9 @@ depending on regime) for each simulated day.}
 calendar year or water year depending on the simulation regime.}
 
 \item{dry_spell_factor_month}{Numeric vector of length 12. Monthly multiplicative
-factors controlling dry-state persistence.}
+factors controlling dry-state persistence. Values greater than 1 reduce
+dry-state exit probabilities (dry->wet and dry->very wet) before
+renormalization, which lengthens dry spells.}
 
 \item{wet_spell_factor_month}{Numeric vector of length 12. Monthly multiplicative
 factors controlling wet-state persistence.}

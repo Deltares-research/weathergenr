@@ -57,7 +57,8 @@
 #'   observed standard deviation when relative mismatch exceeds var_tol.
 #' @param var_tol Numeric in [0, 1]. Relative standard deviation tolerance.
 #' @param check_diagnostics Logical. If TRUE, runs a Ljung Box test on ARMA
-#'   residuals and warns when residual autocorrelation remains.
+#'   residuals and warns when residual autocorrelation remains. In component
+#'   mode, also warns when pre-correction aggregate variance mismatch is large.
 #' @param verbose Logical. If TRUE, prints informational messages.
 #'
 #' @return Numeric matrix with dimension n by n_sim. Each column is a simulated
@@ -70,10 +71,26 @@
 #' - No drift and no mean: include.mean is FALSE. The code centers series before
 #'   fitting and re adds the observed mean after simulation.
 #'
+#' Cross-component covariance correction (component mode only)
+#' MODWT MRA components are additive but not orthogonal; fitting independent
+#' ARMAs and summing inflates ensemble variance when cross-component covariances
+#' are non-zero. Two tiers of correction are applied.
+#' - Tier 2 (Cholesky): when >= 2 variable components are ARMA-viable and the
+#'   component covariance matrix is well-conditioned (condition number < 1e6),
+#'   components are decorrelated via X %*% L^{-1} (L = chol(cov(X))), ARMA is
+#'   fit to the whitened series, and simulations are re-correlated by
+#'   multiplying back by L before summing.
+#' - Tier 1 (aggregate): after summing, the total simulated series is rescaled
+#'   to match the observed total standard deviation when the relative mismatch
+#'   exceeds var_tol. Applied in both the Tier 2 path (as a safety check) and
+#'   the fallback path (as the primary correction).
+#'
 #' Fallback logic
-#' - Fallback is applied per component in component mode. Components that fit
-#'   successfully use ARMA simulation; failed components use block bootstrap.
-#' - In bypass mode, fallback is applied to the whole series.
+#' - If any variable component fails the ARMA viability pre-scan, Tier 2 is
+#'   skipped and per-component variance matching is applied instead.
+#' - If the covariance matrix is ill-conditioned, Tier 2 is skipped; Tier 1
+#'   remains active.
+#' - In bypass mode, fallback is applied to the whole series (block bootstrap).
 #'
 #' @importFrom stats sd Box.test
 #' @export
@@ -200,10 +217,13 @@ simulate_warm <- function(
     obs_mean <- mean(series_obs)
     x <- series_obs - obs_mean
 
+    bypass_max_p <- if (n_fit < 20L) 1L else 2L
+    bypass_max_q <- if (n_fit < 20L) 1L else 2L
+
     fit <- .fit_warm_arima_forecast(
       x = x,
-      max_p = 2L,
-      max_q = 2L
+      max_p = bypass_max_p,
+      max_q = bypass_max_q
     )
 
     if (is.null(fit)) {
@@ -291,12 +311,79 @@ simulate_warm <- function(
     )
   }
 
-  output <- matrix(0, nrow = n, ncol = n_sim)
+  # Store original component means; used when re-adding means after re-correlation.
+  comp_means_all <- vapply(comp_list, mean, numeric(1))
+
+  # Identify variable components (non-constant).
+  var_idx <- which(vapply(comp_list, function(x) stats::sd(x) >= 1e-10, logical(1)))
+  nvar    <- length(var_idx)
+
+  # --------------------------------------------------------------------------
+  # Tier 2: Cholesky decorrelation setup
+  # --------------------------------------------------------------------------
+  # Attempt decorrelation only when >= 2 variable components exist and all of
+  # them pass the ARMA viability check. The viability pre-scan lets us skip
+  # decorrelation upfront rather than discovering a bootstrap fallback is
+  # needed mid-loop (which would leave comp_sims in a mixed decorr/original
+  # space that cannot be cleanly re-correlated).
+  use_decorrelation <- FALSE
+  L_chol            <- NULL
+
+  if (nvar >= 2L) {
+    # Pre-scan: all variable components must be ARMA-viable.
+    all_viable <- TRUE
+    for (ki in seq_along(var_idx)) {
+      k    <- var_idx[ki]
+      nm_k <- if (!is.null(comp_names) && length(comp_names) >= k && !is.na(comp_names[k])) comp_names[k] else ""
+      is_smooth_k <- nzchar(nm_k) && grepl("^S", nm_k)
+      max_p_k <- if (is_smooth_k) 1L else 2L
+      max_q_k <- if (is_smooth_k) 0L else 2L
+      ctr_k <- comp_list[[k]] - comp_means_all[k]
+      if (!.warm_arima_viable(ctr_k, min_n = max(8L, max_p_k + max_q_k + 2L), sd_eps = 1e-8, min_unique = 3L)) {
+        all_viable <- FALSE
+        break
+      }
+    }
+
+    if (all_viable) {
+      comp_mat_var <- do.call(cbind, lapply(var_idx, function(k) comp_list[[k]] - comp_means_all[k]))
+      comp_cov     <- stats::cov(comp_mat_var)
+      cond_num     <- tryCatch(kappa(comp_cov, exact = FALSE), error = function(e) Inf)
+
+      if (is.finite(cond_num) && cond_num < 1e6) {
+        L_chol <- tryCatch(chol(comp_cov), error = function(e) NULL)  # upper: t(L) %*% L = cov
+        if (!is.null(L_chol)) {
+          # Z = X %*% L^{-1}  =>  cov(Z) ~ I
+          L_inv    <- backsolve(L_chol, diag(nvar))
+          Z_mat    <- comp_mat_var %*% L_inv  # n_fit x nvar, decorrelated, centered
+          for (ki in seq_along(var_idx)) comp_list[[var_idx[ki]]] <- Z_mat[, ki]
+          use_decorrelation <- TRUE
+          if (verbose) .log(paste0(
+            "[WARM] Cholesky decorrelation active (cond=", round(cond_num, 1), ", nvar=", nvar, ")"
+          ))
+        }
+      }
+
+      if (!use_decorrelation && verbose) .log(paste0(
+        "[WARM] Cholesky decorrelation skipped (cond=",
+        if (is.finite(cond_num)) round(cond_num, 1) else "Inf",
+        "); falling back to per-component variance correction"
+      ))
+    } else if (verbose) {
+      .log("[WARM] Cholesky decorrelation skipped: one or more variable components not ARMA-viable")
+    }
+  }
+
+  # comp_sims[[k]] stores the centered simulation for component k (n x n_sim).
+  # Means are accounted for separately and added back after the loop.
+  comp_sims          <- vector("list", length(comp_list))
   variance_corrections <- FALSE
 
   for (k in seq_along(comp_list)) {
 
     component <- as.numeric(comp_list[[k]])
+    # When decorrelation is active, var_idx components hold Z columns (centered).
+    # Constant components and non-variable components are untouched.
     comp_sd <- stats::sd(component)
     if (!is.finite(comp_sd)) stop("Component ", k, " has non-finite standard deviation.", call. = FALSE)
 
@@ -304,40 +391,49 @@ simulate_warm <- function(
     if (!is.null(comp_names) && length(comp_names) >= k && !is.na(comp_names[k])) nm <- comp_names[k]
     is_smooth <- nzchar(nm) && grepl("^S", nm)
 
-    # Constant component: carry through deterministically
+    # Constant component: store a zero matrix; mean is added back post-loop.
     if (comp_sd < 1e-10) {
-      output <- output + mean(component)
+      comp_sims[[k]] <- matrix(0, nrow = n, ncol = n_sim)
       next
     }
 
     if (!is.null(seed)) set.seed(seed + k * 1000L)
 
-    comp_mean <- mean(component)
-    centered <- component - comp_mean
+    # Decorrelated components are already centered (mean ~ 0); others need centering.
+    is_decorr_comp <- use_decorrelation && (k %in% var_idx)
+    comp_mean  <- if (is_decorr_comp) 0 else comp_means_all[k]
+    centered   <- component - comp_mean
 
-    max_p_use <- if (is_smooth) 1L else 2L
-    max_q_use <- if (is_smooth) 0L else 2L
+    # After Cholesky whitening, a decorrelated component is a linear combination
+    # of all original components and is no longer smooth regardless of its name.
+    # Restrict max_p/max_q only for non-decorrelated smooth components.
+    is_smooth_effective <- is_smooth && !is_decorr_comp
+    max_p_use <- if (is_smooth_effective) 1L else 2L
+    max_q_use <- if (is_smooth_effective) 0L else 2L
 
     is_viable <- .warm_arima_viable(
       centered,
-      min_n = max(8L, max_p_use + max_q_use + 2L),
-      sd_eps = 1e-8,
+      min_n      = max(8L, max_p_use + max_q_use + 2L),
+      sd_eps     = 1e-8,
       min_unique = 3L
     )
 
     fit <- NULL
     if (is_viable) {
       fit <- .warm_fit_arima_safe(
-        x = centered,
-        max_p = max_p_use,
-        max_q = max_q_use,
-        stationary = TRUE,
+        x            = centered,
+        max_p        = max_p_use,
+        max_q        = max_q_use,
+        stationary   = TRUE,
         include_mean = FALSE,
-        allow_drift = FALSE
+        allow_drift  = FALSE
       )
     }
 
     if (is.null(fit)) {
+      # Bootstrap fallback. use_decorrelation cannot be TRUE here because the
+      # pre-scan ensures all variable components are ARMA-viable. This branch
+      # is therefore only reached in non-decorrelation mode.
       bl <- .default_block_len(n)
       if (verbose) {
         .log(paste0(
@@ -347,10 +443,10 @@ simulate_warm <- function(
         ))
       }
       sim_comp <- matrix(NA_real_, nrow = n, ncol = n_sim)
-      for (j in seq_len(n_sim)) {
-        sim_comp[, j] <- .warm_block_bootstrap(component, n = n)
-      }
-      output <- output + sim_comp
+      for (j in seq_len(n_sim)) sim_comp[, j] <- .warm_block_bootstrap(component, n = n)
+      # Bootstrap output already includes the component mean; zero out the stored mean.
+      comp_means_all[k] <- 0
+      comp_sims[[k]] <- sim_comp
       next
     }
 
@@ -372,19 +468,84 @@ simulate_warm <- function(
 
     sim_centered <- .warm_simulate_from_fit(fit, n = n, n_sim = n_sim)
 
-    sim_comp <- sim_centered + comp_mean
-
-    if (match_variance) {
-      sim_comp2 <- .variance_match_matrix(sim_comp, target_sd = comp_sd, tol = var_tol, target_mean = comp_mean)
-      variance_corrections <- variance_corrections || !identical(sim_comp2, sim_comp)
-      sim_comp <- sim_comp2
+    # In non-decorrelation mode, apply per-component variance correction now.
+    # In decorrelation mode, variance is corrected after re-correlation (Tier 1).
+    if (!use_decorrelation && match_variance) {
+      sim_comp2 <- .variance_match_matrix(
+        sim_centered + comp_mean,
+        target_sd   = stats::sd(comp_list[[k]]),
+        tol         = var_tol,
+        target_mean = comp_mean
+      )
+      variance_corrections <- variance_corrections || !identical(sim_comp2, sim_centered + comp_mean)
+      # Store mean-subtracted version so post-loop mean addition is consistent.
+      comp_sims[[k]] <- sim_comp2 - comp_mean
+    } else {
+      comp_sims[[k]] <- sim_centered  # centered simulation; mean added post-loop
     }
-
-    output <- output + sim_comp
   }
 
-  if (verbose && match_variance && isTRUE(variance_corrections)) {
-    .log("[WARM] Variance correction applied")
+  # --------------------------------------------------------------------------
+  # Post-loop: aggregate and apply variance correction
+  # --------------------------------------------------------------------------
+
+  if (use_decorrelation) {
+    # Tier 2: re-correlate.
+    # X_sim (sum over components) = sum_k  sum_j Z_sim_j * L_chol[j, k]
+    #                              = sum_j Z_sim_j * rowSums(L_chol)[j]
+    L_row_sums <- rowSums(L_chol)
+    output <- matrix(0, nrow = n, ncol = n_sim)
+    for (ki in seq_along(var_idx)) {
+      output <- output + comp_sims[[var_idx[ki]]] * L_row_sums[ki]
+    }
+    # Add constant-component contributions.
+    const_idx <- setdiff(seq_along(comp_sims), var_idx)
+    for (k in const_idx) output <- output + comp_sims[[k]]
+    # Re-add original means (sum of all components' means = observed total mean).
+    output <- output + sum(comp_means_all)
+    if (verbose) .log("[WARM] Cholesky re-correlation applied")
+
+  } else {
+    # No decorrelation: simple sum; per-component means are stored separately.
+    output <- matrix(0, nrow = n, ncol = n_sim)
+    for (k in seq_along(comp_sims)) output <- output + comp_sims[[k]] + comp_means_all[k]
+    if (verbose && match_variance && isTRUE(variance_corrections)) {
+      .log("[WARM] Per-component variance correction applied")
+    }
+  }
+
+  # Tier 1: aggregate variance correction applied in both paths.
+  # In decorrelation mode this is a safety check; in fallback mode it is the
+  # primary correction for cross-component covariance leakage.
+  if (match_variance) {
+    obs_total      <- .reconstruct_series_from_components(components, n = n_fit)
+    obs_total_sd   <- stats::sd(obs_total)
+    obs_total_mean <- mean(obs_total)
+    sim_total_sd   <- stats::sd(output)
+    variance_identity_error <- NA_real_
+    if (is.finite(obs_total_sd) && obs_total_sd > 0 && is.finite(sim_total_sd)) {
+      variance_identity_error <- abs(sim_total_sd - obs_total_sd) / obs_total_sd
+    }
+    if (check_diagnostics &&
+        is.finite(variance_identity_error) &&
+        variance_identity_error > max(var_tol, 0.1)) {
+      warning(
+        "WARM pre-correction variance mismatch is high (relative error = ",
+        round(variance_identity_error, 4),
+        "). This can indicate non-negligible cross-component covariance.",
+        call. = FALSE
+      )
+    }
+    output2 <- .variance_match_matrix(
+      output,
+      target_sd   = obs_total_sd,
+      tol         = var_tol,
+      target_mean = obs_total_mean
+    )
+    if (!identical(output2, output)) {
+      if (verbose) .log("[WARM] Aggregate variance correction applied")
+    }
+    output <- output2
   }
 
   output
@@ -690,36 +851,48 @@ simulate_warm <- function(
 
   n_tot <- n + burnin
   max_lag <- max(p, q, 1L)
+  n_rows <- n_tot + max_lag
 
-  # Innovations must be (n_tot + max_lag) by n_sim. Using only n_tot + max_lag
-  # values would recycle and can cause subscript out of bounds errors.
-  eps <- matrix(
-    stats::rnorm((n_tot + max_lag) * n_sim, mean = 0, sd = sd),
-    nrow = n_tot + max_lag,
-    ncol = n_sim
-  )
-  x <- matrix(0, nrow = n_tot + max_lag, ncol = n_sim)
+  # Chunk columns to avoid allocating a full innovations matrix for very large n_sim.
+  chunk_size <- min(1000L, n_sim)
+  n_chunks <- as.integer(ceiling(n_sim / chunk_size))
+  x_out <- matrix(0, nrow = n, ncol = n_sim)
 
-  for (t in (max_lag + 1L):(n_tot + max_lag)) {
-    xt <- eps[t, ]
+  for (ch in seq_len(n_chunks)) {
+    j0 <- (ch - 1L) * chunk_size + 1L
+    j1 <- min(ch * chunk_size, n_sim)
+    idx <- seq.int(j0, j1)
+    n_col <- length(idx)
 
-    if (q >= 1L) xt <- xt + ma[1L] * eps[t - 1L, ]
-    if (q >= 2L) xt <- xt + ma[2L] * eps[t - 2L, ]
+    eps <- matrix(
+      stats::rnorm(n_rows * n_col, mean = 0, sd = sd),
+      nrow = n_rows,
+      ncol = n_col
+    )
+    x <- matrix(0, nrow = n_rows, ncol = n_col)
 
-    if (p >= 1L) xt <- xt + ar[1L] * x[t - 1L, ]
-    if (p >= 2L) xt <- xt + ar[2L] * x[t - 2L, ]
+    for (t in (max_lag + 1L):n_rows) {
+      xt <- eps[t, ]
 
-    if (p > 2L) {
-      for (i in 3L:p) xt <- xt + ar[i] * x[t - i, ]
+      if (q >= 1L) xt <- xt + ma[1L] * eps[t - 1L, ]
+      if (q >= 2L) xt <- xt + ma[2L] * eps[t - 2L, ]
+
+      if (p >= 1L) xt <- xt + ar[1L] * x[t - 1L, ]
+      if (p >= 2L) xt <- xt + ar[2L] * x[t - 2L, ]
+
+      if (p > 2L) {
+        for (i in 3L:p) xt <- xt + ar[i] * x[t - i, ]
+      }
+      if (q > 2L) {
+        for (i in 3L:q) xt <- xt + ma[i] * eps[t - i, ]
+      }
+
+      x[t, ] <- xt
     }
-    if (q > 2L) {
-      for (i in 3L:q) xt <- xt + ma[i] * eps[t - i, ]
-    }
 
-    x[t, ] <- xt
+    x_out[, idx] <- x[(max_lag + burnin + 1L):(max_lag + burnin + n), , drop = FALSE]
   }
 
-  x_out <- x[(max_lag + burnin + 1L):(max_lag + burnin + n), , drop = FALSE]
   x_out
 }
 

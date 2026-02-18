@@ -4,7 +4,13 @@
 \alias{.align_obs_sim_periods}
 \title{Standardize obs and sim to the same full-year length via random windowing}
 \usage{
-.align_obs_sim_periods(daily_obs, daily_sim, n_realizations, variables)
+.align_obs_sim_periods(
+  daily_obs,
+  daily_sim,
+  n_realizations,
+  variables,
+  year_start_month = 1L
+)
 }
 \arguments{
 \item{daily_obs}{List of observed data frames (one per grid).}
@@ -14,6 +20,8 @@
 \item{n_realizations}{Integer number of realizations.}
 
 \item{variables}{Character vector of variables used for evaluation.}
+
+\item{year_start_month}{Integer 1-12. First month of the simulation year.}
 }
 \value{
 List with standardized `daily_obs`, `daily_sim`, and window metadata.
@@ -21,6 +29,7 @@ List with standardized `daily_obs`, `daily_sim`, and window metadata.
 \description{
 Applies the chosen window consistently across all grids and all realizations
 after removing leap days. The window is drawn from the longest contiguous
-full-year blocks available in each series.
+full-year blocks available in each series. When `year_start_month > 1`,
+water-year grouping is used to identify complete years.
 }
 \keyword{internal}

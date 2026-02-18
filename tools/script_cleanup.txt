@@ -1,0 +1,13 @@
+SCOPE: 
+"eflow_utils.R"  
+
+TASKS:
+1. Evaluate: 
+- methods, techniques, and coherence. 
+- structure and organization
+- bugs and logical flaws
+
+2. Propose:
+- Improvement plan. 
+- Priotization: critical, high, medium, low
+- General suggestions based on best practices.  
