@@ -105,9 +105,11 @@ read_zarr <- function(
   on.exit(options(pizzarr.slice_mode = old_slice_mode), add = TRUE)
   options(pizzarr.slice_mode = slice_mode)
 
-  if (verbose) {
-    message("Using ", ifelse(slice_mode == 1, "R-style (1-based)", "Python-style (0-based)"), " indexing")
-  }
+  .log(
+    "Using {ifelse(slice_mode == 1, 'R-style (1-based)', 'Python-style (0-based)')} indexing",
+    verbose = verbose,
+    tag = "IO"
+  )
 
   zgroup <- pizzarr::zarr_open(dir)
   child_dirs <- list.dirs(dir, full.names = FALSE, recursive = FALSE)
@@ -127,8 +129,6 @@ read_zarr <- function(
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
-  .msg <- function(...) if (isTRUE(verbose)) message(...)
-
   .get_zarr_attrs <- function(zobj) {
     attrs <- zobj$get_attrs()
     if (inherits(attrs, "Attributes")) {
@@ -377,7 +377,7 @@ read_zarr <- function(
   kept_vars <- character(0)
 
   for (v in var) {
-    .msg("Reading variable: ", v)
+    .log("Reading variable: {v}", verbose = verbose, tag = "IO")
 
     v_array <- zgroup$get_item(v)
     v_dim_info <- v_array$get_shape()
@@ -588,11 +588,11 @@ write_zarr <- function(
   on.exit(options(pizzarr.slice_mode = old_slice_mode), add = TRUE)
   options(pizzarr.slice_mode = slice_mode)
 
-  .msg <- function(...) if (isTRUE(verbose)) message(...)
-
-  if (verbose) {
-    .msg("Using ", ifelse(slice_mode == 1, "R-style (1-based)", "Python-style (0-based)"), " indexing")
-  }
+  .log(
+    "Using {ifelse(slice_mode == 1, 'R-style (1-based)', 'Python-style (0-based)')} indexing",
+    verbose = verbose,
+    tag = "IO"
+  )
 
   # ---------------------------------------------------------------------------
   # Extract dimensions and prepare coordinate arrays
@@ -612,7 +612,11 @@ write_zarr <- function(
   ny <- length(y_vals)
   nt <- length(date)
 
-  .msg("Dimensions: ", x_dim_name, "=", nx, ", ", y_dim_name, "=", ny, ", ", time_dim_name, "=", nt)
+  .log(
+    "Dimensions: {x_dim_name}={nx}, {y_dim_name}={ny}, {time_dim_name}={nt}",
+    verbose = verbose,
+    tag = "IO"
+  )
 
   # ---------------------------------------------------------------------------
   # Encode time to numeric
@@ -631,7 +635,7 @@ write_zarr <- function(
     }
   }
 
-  .msg("Time units: ", time_units)
+  .log("Time units: {time_units}", verbose = verbose, tag = "IO")
 
   # ---------------------------------------------------------------------------
   # Extract variable names from data
@@ -650,7 +654,7 @@ write_zarr <- function(
     stop("data[[1]] must have named columns for variables.", call. = FALSE)
   }
 
-  .msg("Variables to write: ", paste(var_names, collapse = ", "))
+  .log("Variables to write: {paste(var_names, collapse = ', ')}", verbose = verbose, tag = "IO")
 
   # ---------------------------------------------------------------------------
   # Convert list of data frames to variable matrices [time, cell]
@@ -684,7 +688,7 @@ write_zarr <- function(
 
   var_arrays <- list()
   for (vname in var_names) {
-    .msg("Reshaping variable: ", vname)
+    .log("Reshaping variable: {vname}", verbose = verbose, tag = "IO")
     arr <- .mat_to_array(var_mats[[vname]], nx, ny, nt)
 
     # Replace NA with fill_value
@@ -696,7 +700,7 @@ write_zarr <- function(
   # ---------------------------------------------------------------------------
   # Create Zarr group and write arrays
   # ---------------------------------------------------------------------------
-  .msg("Creating Zarr store: ", dir)
+  .log("Creating Zarr store: {dir}", verbose = verbose, tag = "IO")
 
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -731,7 +735,7 @@ write_zarr <- function(
     chunk_size[[time_dim_name]]
   )
 
-  .msg("Chunk size: [", paste(chunks, collapse = ", "), "]")
+  .log("Chunk size: [{paste(chunks, collapse = ', ')}]", verbose = verbose, tag = "IO")
 
   .create_dataset <- function(name, data, shape, dtype, chunks) {
     if (is.null(compressor)) {
@@ -766,7 +770,7 @@ write_zarr <- function(
   # ---------------------------------------------------------------------------
   # Write coordinate variables
   # ---------------------------------------------------------------------------
-  .msg("Writing coordinate: ", x_dim_name)
+  .log("Writing coordinate: {x_dim_name}", verbose = verbose, tag = "IO")
   x_array <- .create_dataset(
     name = x_dim_name,
     data = as.array(as.numeric(x_vals)),
@@ -780,7 +784,7 @@ write_zarr <- function(
     standard_name = "longitude"
   ))
 
-  .msg("Writing coordinate: ", y_dim_name)
+  .log("Writing coordinate: {y_dim_name}", verbose = verbose, tag = "IO")
   y_array <- .create_dataset(
     name = y_dim_name,
     data = as.array(as.numeric(y_vals)),
@@ -794,7 +798,7 @@ write_zarr <- function(
     standard_name = "latitude"
   ))
 
-  .msg("Writing coordinate: ", time_dim_name)
+  .log("Writing coordinate: {time_dim_name}", verbose = verbose, tag = "IO")
   time_array <- .create_dataset(
     name = time_dim_name,
     data = as.array(as.numeric(time_vals_raw)),
@@ -813,7 +817,7 @@ write_zarr <- function(
   # Write data variables
   # ---------------------------------------------------------------------------
   for (vname in var_names) {
-    .msg("Writing variable: ", vname)
+    .log("Writing variable: {vname}", verbose = verbose, tag = "IO")
 
     var_array <- .create_dataset(
       name = vname,
@@ -860,7 +864,7 @@ write_zarr <- function(
 
   .set_zarr_attrs(zgroup, global_attrs)
 
-  .msg("Zarr store written successfully: ", dir)
+  .log("Zarr store written successfully: {dir}", verbose = verbose, tag = "IO")
 
   invisible(dir)
 }
