@@ -81,6 +81,41 @@ testthat::test_that("compute_spectral_metrics keeps duplicate realizations ident
   testthat::expect_equal(out$gws_cache[, 1], out$gws_cache[, 2])
 })
 
+testthat::test_that("compute_spectral_metrics parallel path matches serial results", {
+  set.seed(99)
+  n <- 48L
+  n_rlz <- 220L
+  obs <- sin(seq(0, 6 * pi, length.out = n))
+  sim <- replicate(n_rlz, obs + stats::rnorm(n, sd = 0.05))
+
+  args <- list(
+    obs_use = obs,
+    sim_series_stats = sim,
+    wavelet_pars = list(
+      signif_level = 0.8,
+      noise_type = "white",
+      period_lower_limit = 2,
+      detrend = FALSE
+    ),
+    cache_gws = TRUE
+  )
+
+  serial <- do.call(compute_spectral_metrics, c(args, list(parallel = FALSE)))
+  parallel_out <- do.call(compute_spectral_metrics, c(args, list(parallel = TRUE, n_cores = 2L)))
+
+  testthat::expect_equal(serial$period, parallel_out$period)
+  testthat::expect_equal(serial$gws_obs, parallel_out$gws_obs, tolerance = 1e-12)
+  testthat::expect_equal(serial$gws_signif, parallel_out$gws_signif, tolerance = 1e-12)
+  testthat::expect_equal(serial$gws_cache, parallel_out$gws_cache, tolerance = 1e-12)
+  testthat::expect_equal(serial$metrics$spectral_cor, parallel_out$metrics$spectral_cor, tolerance = 1e-12)
+  testthat::expect_equal(serial$metrics$peak_match_frac, parallel_out$metrics$peak_match_frac, tolerance = 1e-12)
+  testthat::expect_equal(
+    serial$metrics$peak_mag_mean_abs_log_ratio,
+    parallel_out$metrics$peak_mag_mean_abs_log_ratio,
+    tolerance = 1e-12
+  )
+})
+
 testthat::test_that("relax_bounds_one_filter updates bounds as expected", {
   b_list <- filter_warm_bounds_defaults()
   b <- list2env(b_list, parent = environment())

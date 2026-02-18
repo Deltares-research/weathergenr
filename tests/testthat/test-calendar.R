@@ -530,6 +530,25 @@ test_that("build_historical_dates handles June water year start", {
   expect_equal(result$complete_wyears, c(2002L, 2003L))
 })
 
+test_that("build_historical_dates internal date mapping is valid across start months", {
+  for (start_month in 1:12) {
+    start_date <- as.Date(sprintf("2000-%02d-01", start_month))
+    dates <- generate_noleap_dates(start_date, 365 * 2)
+
+    result <- build_historical_dates(dates, year_start_month = start_month, verbose = FALSE)
+
+    expect_false(anyNA(result$dates_df$date))
+    expect_equal(
+      as.integer(format(result$dates_df$date, "%m")),
+      result$dates_df$month
+    )
+    expect_equal(
+      as.integer(format(result$dates_df$date, "%d")),
+      result$dates_df$day
+    )
+  }
+})
+
 test_that("build_historical_dates dateo matches original dates", {
   dates <- generate_noleap_dates("2001-01-01", 365)
 

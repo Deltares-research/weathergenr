@@ -146,30 +146,30 @@
 #' @importFrom dplyr mutate
 #' @importFrom foreach %dopar%
 generate_weather <- function(
-  obs_data = NULL,
-  obs_grid = NULL,
-  obs_dates = NULL,
-  vars = NULL,
-  n_years = NULL,
-  start_year = 2020,
-  year_start_month = 1,
-  n_realizations = 5,
-  warm_var = "precip",
-  warm_signif = 0.90,
-  warm_pool_size = 5000,
-  warm_filter_bounds = list(),
-  relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
-  annual_knn_n = 120,
-  wet_q = 0.3,
-  extreme_q = 0.8,
-  dry_spell_factor = rep(1, 12),
-  wet_spell_factor = rep(1, 12),
-  out_dir = tempdir(),
-  seed = NULL,
-  parallel = FALSE,
-  n_cores = NULL,
-  verbose = FALSE,
-  save_plots = TRUE
+    obs_data = NULL,
+    obs_grid = NULL,
+    obs_dates = NULL,
+    vars = NULL,
+    n_years = NULL,
+    start_year = 2020,
+    year_start_month = 1,
+    n_realizations = 5,
+    warm_var = "precip",
+    warm_signif = 0.90,
+    warm_pool_size = 5000,
+    warm_filter_bounds = list(),
+    relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+    annual_knn_n = 120,
+    wet_q = 0.3,
+    extreme_q = 0.8,
+    dry_spell_factor = rep(1, 12),
+    wet_spell_factor = rep(1, 12),
+    out_dir = tempdir(),
+    seed = NULL,
+    parallel = FALSE,
+    n_cores = NULL,
+    verbose = FALSE,
+    save_plots = TRUE
 ) {
 
 
@@ -394,7 +394,7 @@ generate_weather <- function(
 
   # Log MODWT MRA component information
   .log("Wavelet (MODWT): {ncol(warm_analysis$components)} components ({paste(warm_analysis$component_names, collapse = ', ')})",
-    tag = "WARM", verbose = verbose)
+       tag = "WARM", verbose = verbose)
 
   # Use MODWT MRA additive components for WARM simulation
   sim_annual_anom <- simulate_warm(
@@ -748,6 +748,7 @@ run_weather_generator <- function(
       obs_dates  = obs_dates,
       grid_ids   = grid_ids,
       variables  = config$vars,
+      year_start_month = config$year_start_month,
       verbose    = isTRUE(config$verbose)
     )
 
@@ -760,6 +761,7 @@ run_weather_generator <- function(
       vars            = config$vars,
       variable_labels = NULL,
       n_realizations  = config$n_realizations,
+      year_start_month = config$year_start_month,
       eval_max_grids  = eval_max_grids,
       wet_q           = config$wet_q,
       extreme_q       = config$extreme_q,

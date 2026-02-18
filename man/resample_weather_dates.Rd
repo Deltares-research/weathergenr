@@ -61,7 +61,10 @@ threshold for daily precipitation states.}
 wet (extreme) precipitation threshold.}
 
 \item{dry_spell_factor}{Numeric vector of length 12. Monthly adjustment
-factors controlling dry spell persistence in the Markov chain.}
+factors controlling dry spell persistence in the Markov chain. Values
+greater than 1 increase dry-state persistence by reducing dry-to-wet and
+dry-to-very-wet transition probabilities before renormalization (for
+example, with factor 2 these off-diagonal transitions are halved).}
 
 \item{wet_spell_factor}{Numeric vector of length 12. Monthly adjustment
 factors controlling wet spell persistence in the Markov chain.}

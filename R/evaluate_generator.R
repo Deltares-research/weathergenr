@@ -28,6 +28,10 @@
 #' @param variable_labels Optional character vector of variable labels for plots.
 #'   Defaults to `vars` if `NULL`.
 #' @param n_realizations Integer. Number of synthetic realizations in `daily_sim`.
+#' @param year_start_month Integer in 1:12. First month of the simulation year.
+#'   Use 1 for calendar-year simulations (default), or another month for
+#'   water-year simulations (e.g., 10 for October). Used to correctly identify
+#'   complete years and align observation/simulation periods.
 #' @param wet_q Numeric between 0 and 1. Quantile threshold for wet days
 #'   (default = 0.2).
 #' @param extreme_q Numeric between 0 and 1. Quantile threshold for extremely
@@ -92,6 +96,7 @@ evaluate_weather_generator <- function(
     vars = NULL,
     variable_labels = NULL,
     n_realizations = NULL,
+    year_start_month = 1L,
     wet_q = 0.2,
     extreme_q = 0.8,
     output_dir = NULL,
@@ -123,6 +128,12 @@ evaluate_weather_generator <- function(
   if (!.is_int_scalar(eval_max_grids) || eval_max_grids < 1L) {
     stop("'eval_max_grids' must be a positive integer", call. = FALSE)
   }
+
+  if (!is.numeric(year_start_month) || length(year_start_month) != 1L ||
+      is.na(year_start_month) || !year_start_month %in% 1:12) {
+    stop("'year_start_month' must be an integer between 1 and 12", call. = FALSE)
+  }
+  year_start_month <- as.integer(year_start_month)
 
   # ============================================================================
   # RNG STATE MANAGEMENT
@@ -210,16 +221,17 @@ evaluate_weather_generator <- function(
     daily_obs = daily_obs,
     daily_sim = daily_sim,
     n_realizations = n_realizations,
-    variables = vars
+    variables = vars,
+    year_start_month = year_start_month
   )
 
   daily_obs <- std$daily_obs
   daily_sim <- std$daily_sim
 
   .log(paste0(
-      "[EVAL] Standardized period | ",
-      "Obs = ", std$obs_year_start, "-", std$obs_year_end, " | ",
-      "Sim = ", std$sim_year_start, "-", std$sim_year_end),
+    "[EVAL] Standardized period | ",
+    "Obs = ", std$obs_year_start, "-", std$obs_year_end, " | ",
+    "Sim = ", std$sim_year_start, "-", std$sim_year_end),
     verbose = verbose)
 
   # ============================================================================
@@ -233,7 +245,8 @@ evaluate_weather_generator <- function(
     variables = vars,
     grid_count = grid_count,
     wet_quantile = wet_q,
-    extreme_quantile = extreme_q)
+    extreme_quantile = extreme_q,
+    year_start_month = year_start_month)
 
   # ============================================================================
   # PROCESS SIMULATED DATA
@@ -246,6 +259,7 @@ evaluate_weather_generator <- function(
     n_realizations = n_realizations,
     variables = vars,
     mc_thresholds = obs_results$mc_thresholds,
+    year_start_month = year_start_month,
     parallel = parallel,
     n_cores = n_cores,
     seed = seed)
@@ -507,13 +521,20 @@ evaluate_weather_generator <- function(
 #' Find full (365-day) years after leap-day removal and return longest contiguous block
 #'
 #' @param dates Date vector (leap days should already be removed).
+#' @param year_start_month Integer 1-12. First month of the simulation year.
+#'   When > 1, groups by water year via `compute_water_year()`.
 #' @return List with a `years` integer vector. Empty if no full-year blocks exist.
 #' @keywords internal
-.get_full_year_run <- function(dates) {
+.get_full_year_run <- function(dates, year_start_month = 1L) {
 
   if (!inherits(dates, "Date")) stop("dates must be Date", call. = FALSE)
 
-  yrs <- as.integer(format(dates, "%Y"))
+  if (year_start_month == 1L) {
+    yrs <- as.integer(format(dates, "%Y"))
+  } else {
+    yrs <- compute_water_year(dates, year_start_month)
+  }
+
   tab <- dplyr::tibble(date = dates, year = yrs) %>%
     dplyr::count(.data$year, name = "n_days") %>%
     dplyr::filter(.data$n_days == 365) %>%
@@ -554,14 +575,19 @@ evaluate_weather_generator <- function(
 #' Filter a single grid data frame to selected years (keeps original columns)
 #'
 #' @param df Data frame with a `date` column.
-#' @param years_keep Integer vector of years to retain.
+#' @param years_keep Integer vector of years (calendar or water years) to retain.
+#' @param year_start_month Integer 1-12. When > 1, uses water-year grouping.
 #' @return Filtered data frame with the same columns as `df`.
 #' @keywords internal
-.filter_grid_years <- function(df, years_keep) {
+.filter_grid_years <- function(df, years_keep, year_start_month = 1L) {
 
   if (!("date" %in% names(df))) stop("df must contain 'date'", call. = FALSE)
 
-  yrs <- as.integer(format(df$date, "%Y"))
+  if (year_start_month == 1L) {
+    yrs <- as.integer(format(df$date, "%Y"))
+  } else {
+    yrs <- compute_water_year(df$date, year_start_month)
+  }
   df[yrs %in% years_keep, , drop = FALSE]
 }
 
@@ -569,15 +595,18 @@ evaluate_weather_generator <- function(
 #'
 #' Applies the chosen window consistently across all grids and all realizations
 #' after removing leap days. The window is drawn from the longest contiguous
-#' full-year blocks available in each series.
+#' full-year blocks available in each series. When `year_start_month > 1`,
+#' water-year grouping is used to identify complete years.
 #'
 #' @param daily_obs List of observed data frames (one per grid).
 #' @param daily_sim List of simulated realizations; each realization is a list of grids.
 #' @param n_realizations Integer number of realizations.
 #' @param variables Character vector of variables used for evaluation.
+#' @param year_start_month Integer 1-12. First month of the simulation year.
 #' @return List with standardized `daily_obs`, `daily_sim`, and window metadata.
 #' @keywords internal
-.align_obs_sim_periods <- function(daily_obs, daily_sim, n_realizations, variables) {
+.align_obs_sim_periods <- function(daily_obs, daily_sim, n_realizations, variables,
+                                   year_start_month = 1L) {
 
   # 1) Remove leap days consistently (based on each series' date vector)
   #    Assumption: all grids share the same date vector within obs and within each realization.
@@ -599,9 +628,9 @@ evaluate_weather_generator <- function(
     sim_dates <- daily_sim[[1]][[1]]$date
   }
 
-  # 2) Identify longest contiguous full-year blocks
-  obs_block <- .get_full_year_run(obs_dates)$years
-  sim_block <- .get_full_year_run(sim_dates)$years
+  # 2) Identify longest contiguous full-year blocks (water-year-aware)
+  obs_block <- .get_full_year_run(obs_dates, year_start_month = year_start_month)$years
+  sim_block <- .get_full_year_run(sim_dates, year_start_month = year_start_month)$years
 
   if (length(obs_block) == 0) stop("Observed series has no complete 365-day years after leap-day removal.", call. = FALSE)
   if (length(sim_block) == 0) stop("Simulated series has no complete 365-day years after leap-day removal.", call. = FALSE)
@@ -612,11 +641,15 @@ evaluate_weather_generator <- function(
   obs_years_keep <- .pick_contiguous_year_window(obs_block, window_years = n_years)
   sim_years_keep <- .pick_contiguous_year_window(sim_block, window_years = n_years)
 
-  # 4) Apply year filtering
-  daily_obs2 <- lapply(daily_obs, .filter_grid_years, years_keep = obs_years_keep)
+  # 4) Apply year filtering (water-year-aware)
+  daily_obs2 <- lapply(daily_obs, .filter_grid_years,
+                       years_keep = obs_years_keep,
+                       year_start_month = year_start_month)
 
   daily_sim2 <- lapply(seq_len(n_realizations), function(i) {
-    lapply(daily_sim[[i]], .filter_grid_years, years_keep = sim_years_keep)
+    lapply(daily_sim[[i]], .filter_grid_years,
+           years_keep = sim_years_keep,
+           year_start_month = year_start_month)
   })
 
   # Basic integrity check: after filtering, all grids should have same nrow within obs and sim
@@ -726,15 +759,24 @@ evaluate_weather_generator <- function(
 #' Summarize observed weather data
 #' @keywords internal
 .summarize_observed_data <- function(daily_obs, variables, grid_count,
-                                    wet_quantile, extreme_quantile) {
+                                     wet_quantile, extreme_quantile,
+                                     year_start_month = 1L) {
 
   his.date <- daily_obs[[1]]$date
 
+  # Use water year for the 'year' column when year_start_month > 1;
+  # 'mon' stays as calendar month (correct for monthly statistics).
+  if (year_start_month == 1L) {
+    yr_vec <- as.integer(format(his.date, "%Y"))
+  } else {
+    yr_vec <- compute_water_year(his.date, year_start_month)
+  }
+
   his.datemat <- dplyr::tibble(
     date = his.date,
-    year = as.integer(format(date, "%Y")),
-    mon = as.integer(format(date, "%m")),
-    day = as.integer(format(date, "%d")))
+    year = yr_vec,
+    mon = as.integer(format(his.date, "%m")),
+    day = as.integer(format(his.date, "%d")))
 
   his <- lapply(seq_len(grid_count), function(i) {
     df <- daily_obs[[i]][, variables, drop = FALSE]
@@ -779,13 +821,22 @@ evaluate_weather_generator <- function(
 #' Summarize simulated weather data
 #' @keywords internal
 .summarize_simulated_data <- function(daily_sim, n_realizations, variables, mc_thresholds,
+                                      year_start_month = 1L,
                                       parallel = FALSE, n_cores = NULL, seed = NULL) {
 
+  sim.date <- daily_sim[[1]][[1]]$date
+
+  if (year_start_month == 1L) {
+    yr_vec <- as.integer(format(sim.date, "%Y"))
+  } else {
+    yr_vec <- compute_water_year(sim.date, year_start_month)
+  }
+
   sim.datemat <- dplyr::tibble(
-    date = daily_sim[[1]][[1]]$date,
-    year = as.integer(format(date, "%Y")),
-    mon = as.integer(format(date, "%m")),
-    day = as.integer(format(date, "%d"))
+    date = sim.date,
+    year = yr_vec,
+    mon = as.integer(format(sim.date, "%m")),
+    day = as.integer(format(sim.date, "%d"))
   )
 
   .summarize_one_realization <- function(i, daily_sim, variables, mc_thresholds, sim.datemat) {
@@ -1018,7 +1069,7 @@ evaluate_weather_generator <- function(
 .compute_timeseries_stats <- function(data, variables, mc_thresholds) {
 
   stat_fns <- list(mean = mean, sd = stats::sd, skewness = e1071::skewness)
-  year.num <- length(unique(format(data$date, "%Y")))
+  year.num <- length(unique(data$year))
 
   stats.season <- .summarize_grouped_stats(
     df = data,
@@ -1180,13 +1231,13 @@ evaluate_weather_generator <- function(
 #' @return Data frame of conditional correlations by grid, regime, and variable.
 #' @keywords internal
 .compute_conditional_precip_correlations <- function(data,
-                                           variables,
-                                           mc_thresholds = NULL,
-                                           wet_def = c("gt0", "monthly_quantile"),
-                                           use_anom = TRUE,
-                                           use_log_precip_on_wet = TRUE,
-                                           method = "pearson",
-                                           min_pairs = 50) {
+                                                     variables,
+                                                     mc_thresholds = NULL,
+                                                     wet_def = c("gt0", "monthly_quantile"),
+                                                     use_anom = TRUE,
+                                                     use_log_precip_on_wet = TRUE,
+                                                     method = "pearson",
+                                                     min_pairs = 50) {
 
   wet_def <- match.arg(wet_def)
 
@@ -1502,8 +1553,8 @@ evaluate_weather_generator <- function(
 #'   \item Formats both simulated and observed data as required by the evaluator
 #' }
 #'
-#' Complete years are identified by calendar year boundaries. For water-year
-#' simulations, users should ensure the simulation spans full water years.
+#' Complete years are identified by calendar-year or water-year boundaries
+#' depending on \code{year_start_month}.
 #'
 #' @param gen_output List returned by \code{\link{generate_weather}}, containing
 #'   \code{resampled} (tibble of resampled observation dates per realization)
@@ -1516,6 +1567,10 @@ evaluate_weather_generator <- function(
 #'   include in the evaluation. Must match names or indices in \code{obs_data}.
 #' @param variables Character vector of variable names to extract
 #'   (e.g., \code{c("precip", "temp")}).
+#' @param year_start_month Integer in 1:12. First month of the simulation year.
+#'   When > 1, complete years are identified using water-year boundaries
+#'   (via \code{compute_water_year()}) instead of calendar-year boundaries.
+#'   Default is 1 (calendar year).
 #' @param min_days_per_year Integer. Minimum number of days required to consider
 #'   a year complete. Default is 365. Use 360 for 360-day calendars.
 #' @param verbose Logical. If \code{TRUE}, prints progress messages to console
@@ -1565,6 +1620,7 @@ prepare_evaluation_data <- function(gen_output,
                                     obs_dates,
                                     grid_ids,
                                     variables,
+                                    year_start_month = 1L,
                                     min_days_per_year = 365L,
                                     verbose = TRUE) {
 
@@ -1609,6 +1665,12 @@ prepare_evaluation_data <- function(gen_output,
   if (is.na(min_days_per_year) || min_days_per_year < 1L) {
     stop("'min_days_per_year' must be a positive integer.", call. = FALSE)
   }
+
+  if (!is.numeric(year_start_month) || length(year_start_month) != 1L ||
+      is.na(year_start_month) || !year_start_month %in% 1:12) {
+    stop("'year_start_month' must be an integer between 1 and 12.", call. = FALSE)
+  }
+  year_start_month <- as.integer(year_start_month)
 
   if (!is.logical(verbose) || length(verbose) != 1L) {
     stop("'verbose' must be TRUE or FALSE.", call. = FALSE)
@@ -1655,11 +1717,15 @@ prepare_evaluation_data <- function(gen_output,
   }
 
   # ---------------------------------------------------------------------------
-  # Identify complete years
+  # Identify complete years (water-year-aware when year_start_month > 1)
   # ---------------------------------------------------------------------------
   .log("Identifying complete years (min {min_days_per_year} days)", tag = "EVAL", verbose = verbose)
 
-  sim_years <- as.integer(format(sim_dates, "%Y"))
+  if (year_start_month == 1L) {
+    sim_years <- as.integer(format(sim_dates, "%Y"))
+  } else {
+    sim_years <- compute_water_year(sim_dates, year_start_month)
+  }
   year_counts <- table(sim_years)
   complete_years <- as.integer(names(year_counts)[year_counts >= min_days_per_year])
 
@@ -1721,6 +1787,3 @@ prepare_evaluation_data <- function(gen_output,
     obs_data = obs_data_eval
   )
 }
-
-
-

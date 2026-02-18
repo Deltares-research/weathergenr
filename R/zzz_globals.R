@@ -1,8 +1,12 @@
 
 utils::globalVariables(c(
-  "scenario", "precip", "tavg", "statistic",
+  "scenario",
+  "precip",
+  "tavg",
+  "statistic",
   "z", "y", "clevel",
-  "Location", "Metric", "Baseline", "colorRampPalette", ".",
+  "Location", "Metric",
+  "Baseline", "colorRampPalette", ".",
   "level_mid", "horizon",
   "value", "minval", "maxval",
   "min_val", "max_val", "lim", "minlim", "maxlim",

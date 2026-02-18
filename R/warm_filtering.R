@@ -973,6 +973,199 @@ compute_spectral_match_single <- function(gws_obs, gws_sim, period,
 
 
 
+#' Batch global wavelet spectrum for a simulated ensemble
+#'
+#' @description
+#' Computes the unmasked global wavelet spectrum (GWS) for every column of
+#' \code{sim_matrix} without allocating a three-dimensional wave array.
+#' Morlet daughters are pre-computed once and reused across all series.
+#' Processing is chunked to bound peak memory use.
+#'
+#' The GWS formula matches \code{analyze_wavelet_spectrum(mode = "fast")}
+#' exactly: each series is detrended (optional), standardized, zero-padded
+#' to the next power of two, transformed via FFT, convolved with each Morlet
+#' daughter via inverse FFT, and the unmasked GWS is
+#' \code{variance_j * rowMeans(|wave_j|^2)}.
+#'
+#' @param sim_matrix Numeric matrix. Rows are time steps, columns are
+#'   realizations. Must not contain NA.
+#' @param wavelet_pars Named list. Only \code{detrend} (logical) is used; the
+#'   remaining entries (\code{signif_level}, \code{noise_type},
+#'   \code{period_lower_limit}) affect the observed series only and are ignored
+#'   here.
+#' @param period Numeric vector or NULL. Target period grid onto which each GWS
+#'   is interpolated via \code{stats::approx()}. When NULL, or when the native
+#'   grid already matches, no interpolation is performed. Provide the observed
+#'   \code{period} vector from \code{analyze_wavelet_spectrum(obs_use)} here.
+#' @param chunk_size Integer scalar. Columns per processing chunk. Smaller
+#'   values reduce peak memory; larger values reduce loop overhead.
+#'   Default 5000.
+#' @param parallel Logical scalar. If TRUE, chunk-level GWS computation may run
+#'   in parallel using a PSOCK cluster.
+#' @param n_cores Integer scalar or NULL. Number of worker processes to use
+#'   when \code{parallel = TRUE}. If NULL, all available logical cores may be used.
+#'
+#' @return Numeric matrix of dimension \code{length(period) x ncol(sim_matrix)}
+#'   containing the unmasked GWS for each realization on \code{period}.
+#'
+#' @keywords internal
+.compute_gws_batch <- function(sim_matrix, wavelet_pars, period = NULL,
+                               chunk_size = 5000L,
+                               parallel = FALSE,
+                               n_cores = NULL) {
+
+  n1    <- nrow(sim_matrix)
+  n_rlz <- ncol(sim_matrix)
+  chunk_size <- max(1L, as.integer(chunk_size))
+  parallel <- isTRUE(parallel)
+
+  # CWT grid (identical to analyze_wavelet_spectrum internals) ----------------
+  dt <- 1; dj <- 0.25; s0 <- 2 * dt
+  J  <- floor((1 / dj) * log2(n1 * dt / s0))
+  scale    <- s0 * 2^((0:J) * dj)
+  n_scales <- J + 1L
+
+  base2 <- floor(log2(n1) + 0.4999)
+  n_pad <- 2^(base2 + 1L)
+
+  params         <- morlet_parameters(k0 = 6)
+  fourier_factor <- params["fourier_factor"]
+  period_native  <- fourier_factor * scale
+
+  k <- c(0:floor(n_pad / 2), -rev(seq_len(floor((n_pad - 1L) / 2)))) *
+    ((2 * pi) / (n_pad * dt))
+
+  # Pre-compute all Morlet daughters once (data-independent) -----------------
+  daughters <- vector("list", n_scales)
+  for (a1 in seq_len(n_scales)) {
+    daughters[[a1]] <- morlet_wavelet(k, scale[a1], k0 = 6)
+  }
+
+  # Optional detrend (mirrors analyze_wavelet_spectrum exactly) ---------------
+  # Removes slope * (tt - mean(tt)); preserves the series mean.
+  if (isTRUE(wavelet_pars$detrend)) {
+    tt_c  <- seq_len(n1) - (n1 + 1L) / 2  # centred time index
+    tt_ss <- sum(tt_c^2)
+    slopes <- as.vector(crossprod(tt_c, sim_matrix) / tt_ss)  # length n_rlz
+    sim_matrix <- sim_matrix - tcrossprod(tt_c, slopes)
+  }
+
+  # Standardise --------------------------------------------------------------
+  col_means <- colMeans(sim_matrix)
+  sim_matrix <- sweep(sim_matrix, 2, col_means, "-")
+
+  # variance1 per column: used to rescale GWS back to original units
+  variances <- colMeans(sim_matrix^2) * (n1 / (n1 - 1L))  # sample variance
+  col_sds   <- sqrt(variances)
+  col_sds[!is.finite(col_sds) | col_sds <= 0] <- 1         # guard: flat series
+
+  sim_std <- sweep(sim_matrix, 2, col_sds, "/")
+
+  # Zero-pad all series to n_pad rows ----------------------------------------
+  sim_padded <- rbind(sim_std, matrix(0, nrow = n_pad - n1, ncol = n_rlz))
+
+  # Accumulate GWS on native period grid -------------------------------------
+  gws_native <- matrix(NA_real_, nrow = n_scales, ncol = n_rlz)
+
+  n_chunks <- as.integer(ceiling(n_rlz / chunk_size))
+  chunk_meta <- vector("list", n_chunks)
+  for (ch in seq_len(n_chunks)) {
+    i0 <- (ch - 1L) * chunk_size + 1L
+    i1 <- min(ch * chunk_size, n_rlz)
+    chunk_meta[[ch]] <- list(i0 = i0, i1 = i1)
+  }
+
+  .compute_chunk <- function(x_chunk) {
+    F_chunk <- stats::mvfft(x_chunk)
+    out <- matrix(NA_real_, nrow = n_scales, ncol = ncol(x_chunk))
+    for (a1 in seq_len(n_scales)) {
+      W_a1 <- stats::mvfft(F_chunk * daughters[[a1]], inverse = TRUE) / n_pad
+      out[a1, ] <- colMeans(Mod(W_a1[seq_len(n1), , drop = FALSE])^2)
+    }
+    out
+  }
+
+  do_parallel <- parallel && n_chunks > 1L
+  if (do_parallel) {
+    max_cores <- parallel::detectCores(logical = TRUE)
+    if (!is.finite(max_cores) || max_cores < 1L) max_cores <- 1L
+    use_cores <- if (is.null(n_cores)) max_cores else min(as.integer(n_cores), max_cores)
+    use_cores <- max(1L, use_cores)
+    do_parallel <- use_cores > 1L
+  }
+
+  if (do_parallel) {
+    cl <- parallel::makeCluster(use_cores)
+    on.exit(try(parallel::stopCluster(cl), silent = TRUE), add = TRUE)
+
+    parallel::clusterExport(
+      cl,
+      varlist = c("sim_padded", "chunk_meta", "n_scales", "n1", "n_pad", "daughters"),
+      envir = environment()
+    )
+
+    chunk_res <- parallel::parLapplyLB(
+      cl,
+      X = as.integer(seq_len(n_chunks)),
+      fun = function(ch) {
+        meta <- chunk_meta[[ch]]
+        x_chunk <- sim_padded[, meta$i0:meta$i1, drop = FALSE]
+        F_chunk <- stats::mvfft(x_chunk)
+        out <- matrix(NA_real_, nrow = n_scales, ncol = ncol(x_chunk))
+        for (a1 in seq_len(n_scales)) {
+          W_a1 <- stats::mvfft(F_chunk * daughters[[a1]], inverse = TRUE) / n_pad
+          out[a1, ] <- colMeans(Mod(W_a1[seq_len(n1), , drop = FALSE])^2)
+        }
+        out
+      }
+    )
+
+    for (ch in seq_len(n_chunks)) {
+      meta <- chunk_meta[[ch]]
+      gws_native[, meta$i0:meta$i1] <- chunk_res[[ch]]
+    }
+  } else {
+    for (ch in seq_len(n_chunks)) {
+      meta <- chunk_meta[[ch]]
+      idx <- seq.int(meta$i0, meta$i1)
+      gws_native[, idx] <- .compute_chunk(sim_padded[, idx, drop = FALSE])
+    }
+  }
+
+  # Rescale: gws_unmasked = variance * rowMeans(|wave_std|^2) ----------------
+  gws_native <- sweep(gws_native, 2, variances, "*")
+
+  # Replace non-finite entries with column mean of finite values
+  # (mirrors analyze_wavelet_spectrum's gws_unmasked cleanup)
+  for (j in seq_len(n_rlz)) {
+    col <- gws_native[, j]
+    bad <- !is.finite(col)
+    if (any(bad) && any(!bad)) {
+      gws_native[bad, j] <- mean(col[!bad])
+    }
+  }
+
+  # Regrid onto target period if needed (obs and sim grids differ when
+  # n_obs != n_sim, but are identical after length harmonisation in the caller)
+  if (!is.null(period) &&
+      (length(period) != length(period_native) ||
+       !isTRUE(all.equal(as.numeric(period_native), as.numeric(period))))) {
+
+    gws_out <- matrix(NA_real_, nrow = length(period), ncol = n_rlz)
+    for (j in seq_len(n_rlz)) {
+      gws_out[, j] <- stats::approx(
+        x = period_native, y = gws_native[, j],
+        xout = period, rule = 2
+      )$y
+    }
+  } else {
+    gws_out <- gws_native
+  }
+
+  gws_out
+}
+
+
 #' Compute spectral metrics for an ensemble of realizations
 #'
 #' @description
@@ -1110,124 +1303,86 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
 
   # Pre-compute log2(period) once for all realizations (avoids redundant computation)
   log2_period <- log2(period)
-  sim_detrend <- isTRUE(wavelet_pars$detrend)
-  sim_keys <- vapply(
-    seq_len(n_realizations),
-    FUN = function(j) paste(sprintf("%.17g", sim_series_stats[, j]), collapse = ","),
-    FUN.VALUE = character(1)
+
+  # -------------------------------------------------------------------------
+  # Batch GWS computation (replaces per-realization analyze_wavelet_spectrum)
+  # -------------------------------------------------------------------------
+  # .compute_gws_batch() pre-computes Morlet daughters once, then for each
+  # scale streams over chunks of columns using mvfft(), accumulating the
+  # unmasked GWS without ever allocating a 3-D wave array.
+  # The subsequent per-column metrics loop (correlation + peak search) is
+  # cheap and takes negligible time regardless of n_realizations.
+  gws_batch <- .compute_gws_batch(
+    sim_matrix   = sim_series_stats,
+    wavelet_pars = wavelet_pars,
+    period       = period,
+    chunk_size   = 5000L,
+    parallel     = parallel,
+    n_cores      = n_cores
   )
-  unique_realization_idx <- which(!duplicated(sim_keys))
-  source_unique_pos <- match(sim_keys, sim_keys[unique_realization_idx])
-  n_unique_realizations <- length(unique_realization_idx)
-
-  # -------------------------------------------------------------------------
-  # Worker function: analyze one simulation column
-  # -------------------------------------------------------------------------
-  one_sim <- function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
-                      peak_period_tol, peak_mag_tol_log, eps, cache_gws, log2_period,
-                      sim_detrend) {
-
-    wv_sim <- analyze_wavelet_spectrum(
-      sim_series_stats[, j],
-      signif = wavelet_pars$signif_level,
-      noise  = wavelet_pars$noise_type,
-      min_period = wavelet_pars$period_lower_limit,
-      detrend = sim_detrend,
-      mode = "fast"
-    )
-
-    gws_sim <- gws_regrid(wv_sim, period, use_unmasked = TRUE)
-    gws_sim <- fill_nearest(gws_sim)
-
-    m <- compute_spectral_match_single(
-      gws_obs = gws_obs,
-      gws_sim = gws_sim,
-      period = period,
-      obs_peaks = obs_peaks_sig,
-      peak_period_tol = peak_period_tol,
-      peak_mag_tol_log = peak_mag_tol_log,
-      eps = eps,
-      log2_period = log2_period
-    )
-
-    out <- list(
-      spectral_cor = m$spectral_cor,
-      peak_match_frac = m$peak_match_frac,
-      peak_mag_mean_abs_log_ratio = m$peak_mag_mean_abs_log_ratio
-    )
-    if (isTRUE(cache_gws)) out$gws_sim <- gws_sim
-    out
-  }
-
-  # -------------------------------------------------------------------------
-  # Run loop: sequential or parallel
-  # -------------------------------------------------------------------------
-  # Minimum realizations to justify parallel overhead (cluster setup is expensive)
-  MIN_PARALLEL_REALIZATIONS <- 50L
 
   gws_cache <- NULL
   if (cache_gws) {
     gws_cache <- matrix(NA_real_, nrow = length(period), ncol = n_realizations)
   }
-  spectral_cor <- rep(NA_real_, n_realizations)
-  peak_match_frac <- rep(NA_real_, n_realizations)
+  spectral_cor                <- rep(NA_real_, n_realizations)
+  peak_match_frac             <- rep(NA_real_, n_realizations)
   peak_mag_mean_abs_log_ratio <- rep(NA_real_, n_realizations)
 
-  # Use sequential for small ensembles (parallel overhead outweighs benefit)
-  if (!parallel || n_unique_realizations < MIN_PARALLEL_REALIZATIONS) {
+  # -------------------------------------------------------------------------
+  # Per-realization spectral metrics (cheap: log-space correlation + peak
+  # search only; the expensive CWT is already done in .compute_gws_batch)
+  # -------------------------------------------------------------------------
+  # Minimum realizations to justify parallel cluster overhead
+  MIN_PARALLEL_REALIZATIONS <- 200L
 
-    for (j in unique_realization_idx) {
-      res <- one_sim(
-        j = j,
-        sim_series_stats = sim_series_stats,
-        wavelet_pars = wavelet_pars,
-        period = period,
-        gws_obs = gws_obs,
-        obs_peaks_sig = obs_peaks_sig,
-        peak_period_tol = peak_period_tol,
+  if (!parallel || n_realizations < MIN_PARALLEL_REALIZATIONS) {
+
+    for (j in seq_len(n_realizations)) {
+      gws_sim_j <- fill_nearest(gws_batch[, j])
+      m <- compute_spectral_match_single(
+        gws_obs          = gws_obs,
+        gws_sim          = gws_sim_j,
+        period           = period,
+        obs_peaks        = obs_peaks_sig,
+        peak_period_tol  = peak_period_tol,
         peak_mag_tol_log = peak_mag_tol_log,
-        eps = eps,
-        cache_gws = cache_gws,
-        log2_period = log2_period,
-        sim_detrend = sim_detrend
+        eps              = eps,
+        log2_period      = log2_period
       )
-
-      if (cache_gws) gws_cache[, j] <- res$gws_sim
-      spectral_cor[j] <- res$spectral_cor
-      peak_match_frac[j] <- res$peak_match_frac
-      peak_mag_mean_abs_log_ratio[j] <- res$peak_mag_mean_abs_log_ratio
+      if (cache_gws) gws_cache[, j] <- gws_sim_j
+      spectral_cor[j]                <- m$spectral_cor
+      peak_match_frac[j]             <- m$peak_match_frac
+      peak_mag_mean_abs_log_ratio[j] <- m$peak_mag_mean_abs_log_ratio
     }
 
   } else {
 
-    # robust core selection
+    # Parallel branch: only the cheap per-column metrics loop runs on workers.
+    # gws_batch is small (n_periods * n_rlz * 8 bytes) and serialises quickly.
     max_cores <- parallel::detectCores(logical = TRUE)
     if (!is.finite(max_cores) || max_cores < 1L) max_cores <- 1L
-
     use_cores <- if (is.null(n_cores)) max_cores else min(n_cores, max_cores)
     use_cores <- max(1L, as.integer(use_cores))
 
     if (use_cores == 1L) {
-      for (j in unique_realization_idx) {
-        res <- one_sim(
-          j = j,
-          sim_series_stats = sim_series_stats,
-          wavelet_pars = wavelet_pars,
-          period = period,
-          gws_obs = gws_obs,
-          obs_peaks_sig = obs_peaks_sig,
-          peak_period_tol = peak_period_tol,
-          peak_mag_tol_log = peak_mag_tol_log,
-          eps = eps,
-          cache_gws = cache_gws,
-          log2_period = log2_period,
-          sim_detrend = sim_detrend
-        )
 
-        if (cache_gws) gws_cache[, j] <- res$gws_sim
-        spectral_cor[j] <- res$spectral_cor
-        peak_match_frac[j] <- res$peak_match_frac
-        peak_mag_mean_abs_log_ratio[j] <- res$peak_mag_mean_abs_log_ratio
+      for (j in seq_len(n_realizations)) {
+        gws_sim_j <- fill_nearest(gws_batch[, j])
+        m <- compute_spectral_match_single(
+          gws_obs          = gws_obs,
+          gws_sim          = gws_sim_j,
+          period           = period,
+          obs_peaks        = obs_peaks_sig,
+          peak_period_tol  = peak_period_tol,
+          peak_mag_tol_log = peak_mag_tol_log,
+          eps              = eps,
+          log2_period      = log2_period
+        )
+        if (cache_gws) gws_cache[, j] <- gws_sim_j
+        spectral_cor[j]                <- m$spectral_cor
+        peak_match_frac[j]             <- m$peak_match_frac
+        peak_mag_mean_abs_log_ratio[j] <- m$peak_mag_mean_abs_log_ratio
       }
 
     } else {
@@ -1235,83 +1390,59 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
       cl <- parallel::makeCluster(use_cores)
       on.exit(try(parallel::stopCluster(cl), silent = TRUE), add = TRUE)
 
-      # Ensure worker sessions can see required functions/objects.
-      # Use explicit var list; this avoids "object not found" on Windows PSOCK.
       parallel::clusterExport(
         cl,
         varlist = c(
-          "analyze_wavelet_spectrum",
-          "gws_regrid",
           "fill_nearest",
           "compute_spectral_match_single",
           "compute_peak_match_metrics",
-          "identify_significant_peaks",
-          "find_local_maxima",
-          "one_sim"
+          "find_local_maxima"
         ),
         envir = environment()
       )
 
-      # Load required namespaces on workers (safe even if already loaded)
-      parallel::clusterEvalQ(cl, {
-        NULL
-      })
-
-      idx <- as.integer(unique_realization_idx)
-
-      res_list <- parallel::parLapply(
+      res_list <- parallel::parLapplyLB(
         cl,
-        X = idx,
-        fun = function(j, sim_series_stats, wavelet_pars, period, gws_obs, obs_peaks_sig,
-                       peak_period_tol, peak_mag_tol_log, eps, cache_gws, log2_period,
-                       sim_detrend) {
-          one_sim(
-            j = j,
-            sim_series_stats = sim_series_stats,
-            wavelet_pars = wavelet_pars,
-            period = period,
-            gws_obs = gws_obs,
-            obs_peaks_sig = obs_peaks_sig,
-            peak_period_tol = peak_period_tol,
+        X   = as.integer(seq_len(n_realizations)),
+        fun = function(j, gws_batch, gws_obs, period, obs_peaks_sig,
+                       peak_period_tol, peak_mag_tol_log, eps, log2_period,
+                       cache_gws) {
+          gws_sim_j <- fill_nearest(gws_batch[, j])
+          m <- compute_spectral_match_single(
+            gws_obs          = gws_obs,
+            gws_sim          = gws_sim_j,
+            period           = period,
+            obs_peaks        = obs_peaks_sig,
+            peak_period_tol  = peak_period_tol,
             peak_mag_tol_log = peak_mag_tol_log,
-            eps = eps,
-            cache_gws = cache_gws,
-            log2_period = log2_period,
-            sim_detrend = sim_detrend
+            eps              = eps,
+            log2_period      = log2_period
+          )
+          list(
+            spectral_cor                = m$spectral_cor,
+            peak_match_frac             = m$peak_match_frac,
+            peak_mag_mean_abs_log_ratio = m$peak_mag_mean_abs_log_ratio,
+            gws_sim                     = if (cache_gws) gws_sim_j else NULL
           )
         },
-        sim_series_stats = sim_series_stats,
-        wavelet_pars = wavelet_pars,
-        period = period,
-        gws_obs = gws_obs,
-        obs_peaks_sig = obs_peaks_sig,
-        peak_period_tol = peak_period_tol,
+        gws_batch        = gws_batch,
+        gws_obs          = gws_obs,
+        period           = period,
+        obs_peaks_sig    = obs_peaks_sig,
+        peak_period_tol  = peak_period_tol,
         peak_mag_tol_log = peak_mag_tol_log,
-        eps = eps,
-        cache_gws = cache_gws,
-        log2_period = log2_period,
-        sim_detrend = sim_detrend
+        eps              = eps,
+        log2_period      = log2_period,
+        cache_gws        = cache_gws
       )
 
-      for (j in seq_along(unique_realization_idx)) {
+      for (j in seq_len(n_realizations)) {
         res <- res_list[[j]]
-        idx_j <- unique_realization_idx[j]
-        if (cache_gws) gws_cache[, idx_j] <- res$gws_sim
-        spectral_cor[idx_j] <- res$spectral_cor
-        peak_match_frac[idx_j] <- res$peak_match_frac
-        peak_mag_mean_abs_log_ratio[idx_j] <- res$peak_mag_mean_abs_log_ratio
+        if (cache_gws) gws_cache[, j] <- res$gws_sim
+        spectral_cor[j]                <- res$spectral_cor
+        peak_match_frac[j]             <- res$peak_match_frac
+        peak_mag_mean_abs_log_ratio[j] <- res$peak_mag_mean_abs_log_ratio
       }
-    }
-  }
-
-  if (n_unique_realizations < n_realizations) {
-    dup_idx <- which(duplicated(sim_keys))
-    for (j in dup_idx) {
-      src_j <- unique_realization_idx[source_unique_pos[j]]
-      spectral_cor[j] <- spectral_cor[src_j]
-      peak_match_frac[j] <- peak_match_frac[src_j]
-      peak_mag_mean_abs_log_ratio[j] <- peak_mag_mean_abs_log_ratio[src_j]
-      if (cache_gws) gws_cache[, j] <- gws_cache[, src_j]
     }
   }
 

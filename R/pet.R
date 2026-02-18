@@ -92,7 +92,9 @@ calculate_monthly_pet <- function(
 
   dr <- 1 + 0.033 * cos(2 * pi * doy / 365)
   delta <- 0.409 * sin(2 * pi * doy / 365 - 1.39)
-  omega_s <- acos(-tan(lat_rad) * tan(delta))
+  omega_arg <- -tan(lat_rad) * tan(delta)
+  omega_arg <- pmax(-1, pmin(1, omega_arg))
+  omega_s <- acos(omega_arg)
 
   ra_mj_m2_day <- (24 * 60 / pi) * 0.082 * dr *
     (omega_s * sin(lat_rad) * sin(delta) +

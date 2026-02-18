@@ -115,6 +115,55 @@ testthat::test_that("simulate_warm returns deterministic simulations", {
   testthat::expect_identical(out1, out2)
 })
 
+testthat::test_that("internal ARMA matrix simulation matches full-matrix reference", {
+  ref_simulate_arma_matrix <- function(ar, ma, sd, n, n_sim, burnin = 100L) {
+    ar <- as.numeric(ar)
+    ma <- as.numeric(ma)
+    sd <- as.numeric(sd)
+    n <- as.integer(n)
+    n_sim <- as.integer(n_sim)
+    burnin <- as.integer(burnin)
+
+    p <- length(ar)
+    q <- length(ma)
+    n_tot <- n + burnin
+    max_lag <- max(p, q, 1L)
+
+    eps <- matrix(
+      stats::rnorm((n_tot + max_lag) * n_sim, mean = 0, sd = sd),
+      nrow = n_tot + max_lag,
+      ncol = n_sim
+    )
+    x <- matrix(0, nrow = n_tot + max_lag, ncol = n_sim)
+
+    for (t in (max_lag + 1L):(n_tot + max_lag)) {
+      xt <- eps[t, ]
+      if (q >= 1L) xt <- xt + ma[1L] * eps[t - 1L, ]
+      if (q >= 2L) xt <- xt + ma[2L] * eps[t - 2L, ]
+      if (p >= 1L) xt <- xt + ar[1L] * x[t - 1L, ]
+      if (p >= 2L) xt <- xt + ar[2L] * x[t - 2L, ]
+      if (p > 2L) {
+        for (i in 3L:p) xt <- xt + ar[i] * x[t - i, ]
+      }
+      if (q > 2L) {
+        for (i in 3L:q) xt <- xt + ma[i] * eps[t - i, ]
+      }
+      x[t, ] <- xt
+    }
+
+    x[(max_lag + burnin + 1L):(max_lag + burnin + n), , drop = FALSE]
+  }
+
+  pars <- list(ar = c(0.6, -0.2), ma = c(0.3), sd = 1.1, n = 24L, n_sim = 1005L, burnin = 20L)
+
+  set.seed(123)
+  out_new <- do.call(weathergenr:::.simulate_arma_matrix, pars)
+  set.seed(123)
+  out_ref <- do.call(ref_simulate_arma_matrix, pars)
+
+  testthat::expect_equal(out_new, out_ref, tolerance = 0)
+})
+
 test_that("simulate_warm bypass mode uses block bootstrap when ARIMA not viable", {
   series_obs <- rnorm(20)
   n <- length(series_obs)
@@ -149,6 +198,40 @@ test_that("simulate_warm bypass mode uses block bootstrap when ARIMA not viable"
   expect_equal(calls_boot, 5L)
   expect_true(is.matrix(out))
   expect_equal(dim(out), c(n, 5L))
+})
+
+test_that("simulate_warm bypass mode caps ARMA order for very short fits", {
+  recorded_max_p <- integer(0)
+  recorded_max_q <- integer(0)
+
+  testthat::local_mocked_bindings(
+    .fit_warm_arima_forecast = function(x, max_p, max_q) {
+      recorded_max_p <<- c(recorded_max_p, as.integer(max_p))
+      recorded_max_q <<- c(recorded_max_q, as.integer(max_q))
+      NULL
+    },
+    .block_bootstrap = function(x, n, block_len) rep(mean(x), n),
+    .default_block_len = function(n) 5L,
+    .env = asNamespace("weathergenr")
+  )
+
+  simulate_warm(
+    n = 14L,
+    n_sim = 2L,
+    series_obs = rnorm(14),
+    bypass_n = 15L,
+    verbose = FALSE
+  )
+  simulate_warm(
+    n = 20L,
+    n_sim = 2L,
+    series_obs = rnorm(20),
+    bypass_n = 25L,
+    verbose = FALSE
+  )
+
+  expect_equal(recorded_max_p, c(1L, 2L))
+  expect_equal(recorded_max_q, c(1L, 2L))
 })
 
 
@@ -289,6 +372,34 @@ testthat::test_that("simulate_warm constant component is carried through correct
   # constant contribution should shift the mean upward
   testthat::expect_true(all(colMeans(out) > 8))
   testthat::expect_equal(calls_fit, 1L) # only D2
+})
+
+test_that("simulate_warm warns on large pre-correction variance mismatch with diagnostics", {
+  n <- 30L
+  comp1 <- seq_len(n)
+  comp2 <- 0.5 * seq_len(n)
+  components <- cbind(D1 = comp1, D2 = comp2)
+
+  testthat::local_mocked_bindings(
+    .warm_arima_viable = function(x, min_n, sd_eps, min_unique) TRUE,
+    .warm_fit_arima_safe = function(x, max_p, max_q, stationary, include_mean, allow_drift) {
+      list(model = "mock_fit", residuals = NULL)
+    },
+    .warm_simulate_from_fit = function(fit, n, n_sim) matrix(0, nrow = n, ncol = n_sim),
+    .env = asNamespace("weathergenr")
+  )
+
+  expect_warning(
+    simulate_warm(
+      components = components,
+      n = n,
+      n_sim = 2L,
+      seed = 1L,
+      check_diagnostics = TRUE,
+      verbose = FALSE
+    ),
+    "pre-correction variance mismatch is high"
+  )
 })
 
 ################################################################################
