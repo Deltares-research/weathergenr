@@ -33,6 +33,7 @@
 ^vignettes/\.quarto$
 
 
+
 # Optional repo-only tools folder
 ^tools$
 
@@ -47,3 +48,5 @@
 # Codex rules (dev-only)
 ^codex_rules\.txt$
 ^codex_safe\.sh$
+
+^output$
