@@ -33,6 +33,7 @@
 ^vignettes/\.quarto$
 
 
+
 # Optional repo-only tools folder
 ^tools$
 
@@ -44,3 +45,5 @@
 # OAuth token cache (should also be in .gitignore)
 ^\.httr-oauth$
 
+
+^output$
