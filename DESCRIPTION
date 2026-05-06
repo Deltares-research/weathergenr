@@ -35,8 +35,7 @@ Suggests:
     magrittr,
     stringr,
     testthat (>= 3.0.0),
-    usethis,
-    pizzarr
+    usethis 
 Encoding: UTF-8
 Language: en-US
 LazyData: true
