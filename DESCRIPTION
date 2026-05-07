@@ -1,7 +1,7 @@
 Package: weathergenr
 Type: Package
 Title: Gridded semi-parametric weather generator
-Version: 1.1.0
+Version: 1.2.0
 Author: Mehmet Umit Taner
 Maintainer: M.Umit Taner <tanerumit@deltares.nl>
 Description: This is the gridded, recoded version of the stochastic weather generator 
@@ -33,9 +33,10 @@ Suggests:
     rmarkdown,
     knitr,
     magrittr,
+    pkgload,
     stringr,
     testthat (>= 3.0.0),
-    usethis 
+    usethis
 Encoding: UTF-8
 Language: en-US
 LazyData: true

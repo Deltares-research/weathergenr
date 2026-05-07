@@ -698,16 +698,40 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     dplyr::summarize(value = mean(Observed, na.rm = TRUE), .groups = "drop") %>%
     dplyr::mutate(type = "Observed")
 
+  # Drop (rlz, variable) and (variable) groups with <2 points; geom_line warns
+  # otherwise ("Each group consists of only one observation").
+  sim_line <- sim_avg %>%
+    dplyr::group_by(rlz, variable) %>%
+    dplyr::filter(dplyr::n() >= 2) %>%
+    dplyr::ungroup()
+
+  obs_line <- obs_avg %>%
+    dplyr::group_by(variable) %>%
+    dplyr::filter(dplyr::n() >= 2) %>%
+    dplyr::ungroup()
+
   p <- ggplot(sim_avg, aes(x = as.factor(mon), y = value)) +
     plot_config$theme +
-    facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2) +
-    geom_line(aes(group = rlz, color = rlz), alpha = 0.8) +
-    geom_line(
-      data = obs_avg,
+    facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
+
+  if (nrow(sim_line) > 0) {
+    p <- p + geom_line(
+      data = sim_line,
+      aes(group = rlz, color = rlz),
+      alpha = 0.8
+    )
+  }
+
+  if (nrow(obs_line) > 0) {
+    p <- p + geom_line(
+      data = obs_line,
       color = "black",
       group = 1,
       linewidth = 1.25
-    ) +
+    )
+  }
+
+  p <- p +
     scale_x_discrete(labels = substr(month.name, 1, 1)) +
     labs(x = "", y = "") +
     guides(color = "none")
