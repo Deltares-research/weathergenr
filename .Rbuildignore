@@ -41,6 +41,8 @@
 ^inst/docs$
 ^inst/examples$
 ^inst/misc$
+^inst/experiments$
+^inst/extcode$
 
 # OAuth token cache (should also be in .gitignore)
 ^\.httr-oauth$
@@ -48,3 +50,6 @@
 
 ^output$
 
+# Agent instructions / vendored agent system (dev-only)
+^\.agents$
+^AGENTS\.md$

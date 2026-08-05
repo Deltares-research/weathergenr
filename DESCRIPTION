@@ -4,8 +4,10 @@ Title: Gridded semi-parametric weather generator
 Version: 1.2.0
 Author: Mehmet Umit Taner
 Maintainer: M.Umit Taner <tanerumit@deltares.nl>
-Description: This is the gridded, recoded version of the stochastic weather generator 
-  first published by Steinscheineider et al. (2013).
+Description: A gridded, semiparametric, multivariate, multisite stochastic weather
+  generator for climate risk and stress-testing applications, based on the framework
+  of Steinschneider and Brown (2013) <doi:10.1002/wrcr.20528> and adapted here for
+  gridded datasets and netCDF-based workflows.
 License: MIT + file LICENSE
 Depends:
   R (>= 4.1)
@@ -39,9 +41,8 @@ Suggests:
     usethis
 Encoding: UTF-8
 Language: en-US
-LazyData: true
-RoxygenNote: 7.3.3
 URL: https://deltares-research.github.io/weathergenr, https://github.com/Deltares-research/weathergenr
 BugReports: https://github.com/Deltares-research/weathergenr/issues
 Config/testthat/edition: 3
 VignetteBuilder: quarto
+Config/roxygen2/version: 8.0.0
