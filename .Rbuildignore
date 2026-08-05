@@ -7,6 +7,9 @@
 # Licenses / repo-only docs
 ^LICENSE\.md$
 
+# Repo-only release policy (git-workflow ceremony + versioning adapter)
+^\.git-workflow\.yml$
+
 # devtools build artifacts
 ^doc$
 ^Meta$
