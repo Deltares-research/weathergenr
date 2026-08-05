@@ -1,0 +1,31 @@
+# git-workflow ceremony + opt-in versioning.
+#
+# `mode: full` is stated explicitly to preserve the behavior that applied
+# before this file existed (an absent file already resolves to `full`), so
+# adding versioning changes no Git behavior on its own.
+mode: full
+
+# This repository's remote is public/shared, so a push is a publishing act, not
+# a backup. git-workflow's auto-push checkpoint does not apply here.
+auto_push: false
+
+# Opt-in release policy per brain ADR 0020. The policy helper is read-only:
+# it validates this configuration and plans releases. It never edits the
+# carrier, tags, publishes, commits, or pushes.
+versioning:
+  cadence: manual
+  adapters:
+    - id: weathergenr
+      type: command
+      scheme: r-package
+      root: .
+      # DESCRIPTION#Version is authoritative; NEWS.md is kept in sync.
+      carrier: DESCRIPTION#Version
+      history: NEWS.md
+      # Reference behavior, not an automated executor — an agent or the owner
+      # runs these deliberately at a release gate.
+      apply: ["Rscript", "-e", "usethis::use_version()"]
+      validate: ["Rscript", "tools/lint.R", "--changed"]
+      # Existing R CMD check and pkgdown workflows are retained unchanged and
+      # are not wired as a release command.
+      release:
