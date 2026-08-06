@@ -4,3 +4,5 @@
 
 | ID | Item | Area | # | State |
 | --- | --- | --- | --- | --- |
+| t2608061641 | Clear lintr findings and make the lint job blocking | ci |  | backlog |
+| t2608061641a | Cover create_all_diagnostic_plots and plot_filter_diagnostics with tests | tests |  | backlog |
