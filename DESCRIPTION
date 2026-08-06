@@ -2,8 +2,12 @@ Package: weathergenr
 Type: Package
 Title: Gridded semi-parametric weather generator
 Version: 1.2.0
-Author: Mehmet Umit Taner
-Maintainer: M.Umit Taner <tanerumit@deltares.nl>
+Authors@R: person(
+    given = "Mehmet Umit",
+    family = "Taner",
+    email = "tanerumit@deltares.nl",
+    role = c("aut", "cre")
+  )
 Description: A gridded, semiparametric, multivariate, multisite stochastic weather
   generator for climate risk and stress-testing applications, based on the framework
   of Steinschneider and Brown (2013) <doi:10.1002/wrcr.20528> and adapted here for
@@ -44,5 +48,7 @@ Language: en-US
 URL: https://deltares-research.github.io/weathergenr, https://github.com/Deltares-research/weathergenr
 BugReports: https://github.com/Deltares-research/weathergenr/issues
 Config/testthat/edition: 3
+Config/Needs/website: pkgdown
+Config/Needs/lint: lintr
 VignetteBuilder: quarto
 Config/roxygen2/version: 8.0.0
