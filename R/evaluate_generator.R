@@ -809,12 +809,12 @@ evaluate_weather_generator <- function(
     data = his,
     datemat = his.datemat,
     mc_thresholds = mc_thresholds,
-    stats.season = his.stats$stats.season %>% dplyr::rename(Observed = .data$value),
-    stats.mon.aavg = his.stats$stats.mon.aavg %>% dplyr::rename(Observed = .data$value),
-    stats.annual.aavg = his.stats$stats.annual.aavg %>% dplyr::rename(Observed = .data$value),
-    wetdry = his.stats$wetdry %>% dplyr::rename(Observed = .data$value),
-    cor = his.stats$cor %>% dplyr::rename(Observed = .data$value),
-    cor.cond = his.stats$cor.cond %>% dplyr::rename(Observed = .data$value)
+    stats.season = his.stats$stats.season %>% dplyr::rename(Observed = "value"),
+    stats.mon.aavg = his.stats$stats.mon.aavg %>% dplyr::rename(Observed = "value"),
+    stats.annual.aavg = his.stats$stats.annual.aavg %>% dplyr::rename(Observed = "value"),
+    wetdry = his.stats$wetdry %>% dplyr::rename(Observed = "value"),
+    cor = his.stats$cor %>% dplyr::rename(Observed = "value"),
+    cor.cond = his.stats$cor.cond %>% dplyr::rename(Observed = "value")
   )
 }
 
@@ -893,24 +893,24 @@ evaluate_weather_generator <- function(
   list(
     stats.season = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.season"), .id = "rlz") %>%
       dplyr::mutate(id = as.numeric(.data$id)) %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     stats.mon.aavg = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.mon.aavg"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     stats.annual.aavg = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.annual.aavg"), .id = "rlz") %>%
       dplyr::mutate(year = .data$year - min(.data$year) + 1) %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     cor = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "cor"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     wetdry = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "wetdry"), .id = "rlz") %>%
       dplyr::mutate(id = as.numeric(.data$id)) %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     cor.cond = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "cor.cond"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value)
+      dplyr::rename(Simulated = "value")
   )
 }
 
@@ -933,7 +933,7 @@ evaluate_weather_generator <- function(
   mae_mean <- sim_results$stats.season %>%
     dplyr::filter(.data$stat == "mean") %>%
     dplyr::left_join(
-      obs_results$stats.season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
+      obs_results$stats.season %>% dplyr::select("id", "mon", "variable", Observed),
       by = c("id", "mon", "variable")
     ) %>%
     dplyr::group_by(.data$rlz, .data$variable) %>%
@@ -941,13 +941,13 @@ evaluate_weather_generator <- function(
       mae_mean = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_mean, names_prefix = "mae_mean_")
+    tidyr::pivot_wider(names_from = "variable", values_from = "mae_mean", names_prefix = "mae_mean_")
 
   # --- 2. MAE for SDs ---
   mae_sd <- sim_results$stats.season %>%
     dplyr::filter(.data$stat == "sd") %>%
     dplyr::left_join(
-      obs_results$stats.season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
+      obs_results$stats.season %>% dplyr::select("id", "mon", "variable", Observed),
       by = c("id", "mon", "variable")
     ) %>%
     dplyr::group_by(.data$rlz, .data$variable) %>%
@@ -955,13 +955,13 @@ evaluate_weather_generator <- function(
       mae_sd = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_sd, names_prefix = "mae_sd_")
+    tidyr::pivot_wider(names_from = "variable", values_from = "mae_sd", names_prefix = "mae_sd_")
 
   # --- 3. MAE for wet/dry day counts ---
   mae_wetdry_days <- sim_results$wetdry %>%
     dplyr::filter(.data$type == "days") %>%
     dplyr::left_join(
-      obs_results$wetdry %>% dplyr::select(.data$id, .data$mon, .data$stat, Observed),
+      obs_results$wetdry %>% dplyr::select("id", "mon", "stat", Observed),
       by = c("id", "mon", "stat")
     ) %>%
     dplyr::group_by(.data$rlz, .data$stat) %>%
@@ -969,13 +969,13 @@ evaluate_weather_generator <- function(
       mae = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_days_")
+    tidyr::pivot_wider(names_from = "stat", values_from = "mae", names_prefix = "mae_days_")
 
   # --- 4. MAE for spell lengths ---
   mae_spells <- sim_results$wetdry %>%
     dplyr::filter(.data$type == "spells") %>%
     dplyr::left_join(
-      obs_results$wetdry %>% dplyr::select(.data$id, .data$mon, .data$stat, Observed),
+      obs_results$wetdry %>% dplyr::select("id", "mon", "stat", Observed),
       by = c("id", "mon", "stat")
     ) %>%
     dplyr::group_by(.data$rlz, .data$stat) %>%
@@ -983,7 +983,7 @@ evaluate_weather_generator <- function(
       mae = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_spell_")
+    tidyr::pivot_wider(names_from = "stat", values_from = "mae", names_prefix = "mae_spell_")
 
   # --- 5. MAE for cross-grid correlations ---
   mae_cor_crossgrid <- sim_results$cor %>%
@@ -991,7 +991,7 @@ evaluate_weather_generator <- function(
     dplyr::left_join(
       obs_results$cor %>%
         dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
-        dplyr::select(.data$id1, .data$variable1, .data$id2, .data$variable2, Observed),
+        dplyr::select("id1", "variable1", "id2", "variable2", Observed),
       by = c("id1", "variable1", "id2", "variable2")
     ) %>%
     dplyr::group_by(.data$rlz) %>%
@@ -1006,7 +1006,7 @@ evaluate_weather_generator <- function(
     dplyr::left_join(
       obs_results$cor %>%
         dplyr::filter(.data$id1 == .data$id2, .data$variable1 != .data$variable2) %>%
-        dplyr::select(.data$id1, .data$variable1, .data$id2, .data$variable2, Observed),
+        dplyr::select("id1", "variable1", "id2", "variable2", Observed),
       by = c("id1", "variable1", "id2", "variable2")
     ) %>%
     dplyr::group_by(.data$rlz) %>%
@@ -1053,7 +1053,7 @@ evaluate_weather_generator <- function(
     dplyr::select(-dplyr::all_of(norm_cols)) %>%
     dplyr::arrange(.data$overall_score) %>%
     dplyr::mutate(rank = dplyr::row_number()) %>%
-    dplyr::select(.data$rlz, .data$rank, .data$overall_score, dplyr::everything())
+    dplyr::select("rlz", "rank", "overall_score", dplyr::everything())
 
   summary_df
 }
@@ -1123,7 +1123,7 @@ evaluate_weather_generator <- function(
       .groups = "drop"
     ) %>%
     tidyr::pivot_longer(
-      cols = c(.data$Wet_days, .data$Dry_days, .data$Dry_spells, .data$Wet_spells),
+      cols = c("Wet_days", "Dry_days", "Dry_spells", "Wet_spells"),
       names_to = "stat.full",
       values_to = "value"
     ) %>%
@@ -1200,11 +1200,11 @@ evaluate_weather_generator <- function(
     dplyr::mutate(value = value - mean(value, na.rm = TRUE)) %>%
     dplyr::ungroup() %>%
     tidyr::unite("id.variable", .data$id, .data$variable, sep = ":") %>%
-    dplyr::select(.data$date, .data$id.variable, .data$value) %>%
-    tidyr::pivot_wider(names_from = .data$id.variable, values_from = .data$value) %>%
+    dplyr::select("date", "id.variable", "value") %>%
+    tidyr::pivot_wider(names_from = "id.variable", values_from = "value") %>%
     dplyr::arrange(.data$date)
 
-  mat <- as.matrix(dat2 %>% dplyr::select(-.data$date))
+  mat <- as.matrix(dat2 %>% dplyr::select(-"date"))
   cmat <- stats::cor(mat, use = "pairwise.complete.obs", method = "pearson")
 
   tri <- upper.tri(cmat, diag = FALSE)
@@ -1270,7 +1270,7 @@ evaluate_weather_generator <- function(
 
   # Wide format back (per grid) to compute pairwise cor easily with filtering
   dat_wide <- dat %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$value)
+    tidyr::pivot_wider(names_from = "variable", values_from = "value")
 
   # Join wet thresholds if needed
   if (wet_def == "monthly_quantile") {
@@ -1399,7 +1399,7 @@ evaluate_weather_generator <- function(
         pair = paste(pmin(.data$id1, .data$id2), pmax(.data$id1, .data$id2), sep = ":")
       ) %>%
       dplyr::filter(.data$pair %in% allowed_pairs) %>%
-      dplyr::select(-.data$pair)
+      dplyr::select(-"pair")
 
   } else if (pair_type == "variable") {
     result <- result %>%
@@ -1409,7 +1409,7 @@ evaluate_weather_generator <- function(
         variable = .data$pair
       ) %>%
       dplyr::filter(.data$pair %in% allowed_pairs) %>%
-      dplyr::select(-.data$pair)
+      dplyr::select(-"pair")
   }
 
   result
