@@ -1,3 +1,18 @@
+# weathergenr (development version)
+
+## Internal
+
+* `DESCRIPTION` declares authorship with `Authors@R` instead of the deprecated
+  `Author`/`Maintainer` pair.
+* The abandoned Zarr I/O prototypes moved from `inst/experiments/` to
+  `dev/scripts/zarr-prototype/`, so no part of the development tree sits under
+  `inst/` any more.
+* Added `testthat` coverage for `R/qm_diagnostics.R` and the wavelet plotting
+  functions, including regression tests for the spell-length and dry-day
+  diagnostics' `NA` handling.
+* Added pkgdown and lint GitHub Actions workflows, plus a `.lintr` baseline
+  that scopes linting to semantic findings.
+
 # weathergenr 1.2.0
 
 ## Bug fixes
