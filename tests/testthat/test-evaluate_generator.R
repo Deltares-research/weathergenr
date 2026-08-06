@@ -1122,3 +1122,172 @@ testthat::test_that("prepare_evaluation_data applies water years when year_start
   # the observed side is not year-filtered
   testthat::expect_equal(nrow(out$obs_data[["cell_a"]]), length(inputs$obs_dates))
 })
+
+# ==============================================================================
+# .print_fit_summary_table(): the verbose-only fit summary
+#
+# This is the largest single uncovered block in the package. It is not mocked
+# by .with_fast_eval_mocks() -- it was dark only because every existing call to
+# evaluate_weather_generator() passes verbose = FALSE, and line
+# `if (isTRUE(verbose)) .print_fit_summary_table(fit_summary)` never fired.
+#
+# It is a pure printer, so it is driven directly here with synthetic summaries
+# that select each metric branch, plus one integration test that exercises the
+# verbose gate itself.
+# ==============================================================================
+
+# A fit_summary carrying every metric the printer knows how to label.
+.make_fit_summary_full <- function(n = 3L) {
+  data.frame(
+    rlz                   = seq_len(n),
+    rank                  = seq_len(n),
+    mae_mean_precip       = seq(0.10, by = 0.01, length.out = n),
+    mae_mean_temp         = seq(0.20, by = 0.01, length.out = n),
+    mae_sd_precip         = seq(0.30, by = 0.01, length.out = n),
+    mae_days_Wet          = seq(0.40, by = 0.01, length.out = n),
+    mae_spell_Wet         = seq(0.50, by = 0.01, length.out = n),
+    mae_cor_crossgrid     = seq(0.60, by = 0.01, length.out = n),
+    mae_cor_intervariable = seq(0.70, by = 0.01, length.out = n),
+    overall_score         = seq(0.80, by = 0.01, length.out = n)
+  )
+}
+
+testthat::test_that(".print_fit_summary_table reports when there is nothing to summarize", {
+  testthat::expect_output(
+    testthat::expect_null(weathergenr:::.print_fit_summary_table(NULL)),
+    "no fit metrics computed"
+  )
+
+  empty <- .make_fit_summary_full()[0, ]
+  testthat::expect_output(
+    testthat::expect_null(weathergenr:::.print_fit_summary_table(empty)),
+    "no fit metrics computed"
+  )
+})
+
+testthat::test_that(".print_fit_summary_table renders every metric it recognises", {
+  fs <- .make_fit_summary_full()
+
+  out <- capture.output(res <- weathergenr:::.print_fit_summary_table(fs))
+  txt <- paste(out, collapse = "\n")
+
+  # banner and column headers
+  testthat::expect_match(txt, "FIT ASSESSMENT SUMMARY - ALL REALIZATIONS", fixed = TRUE)
+  testthat::expect_match(txt, "Rlz")
+  testthat::expect_match(txt, "Rank")
+  testthat::expect_match(txt, "Score")
+
+  # the abbreviated display names for each metric family
+  testthat::expect_match(txt, "Mean.precip", fixed = TRUE)
+  testthat::expect_match(txt, "SD.precip", fixed = TRUE)
+  testthat::expect_match(txt, "Days.Wet", fixed = TRUE)
+  testthat::expect_match(txt, "Spell.Wet", fixed = TRUE)
+  testthat::expect_match(txt, "Cor.Cross", fixed = TRUE)
+  testthat::expect_match(txt, "Cor.Inter", fixed = TRUE)
+
+  # every legend branch in the description loop
+  testthat::expect_match(txt, "MAE of monthly means", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of monthly standard deviations", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of wet/dry day counts", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of wet/dry spell lengths", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of cross-grid correlations", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of inter-variable correlations", fixed = TRUE)
+  testthat::expect_match(txt, "Normalized overall score", fixed = TRUE)
+
+  # closing block: best is the first row, worst the last, plus a median
+  testthat::expect_match(txt, "Best realization", fixed = TRUE)
+  testthat::expect_match(txt, "Worst realization", fixed = TRUE)
+  testthat::expect_match(txt, "Median score", fixed = TRUE)
+  testthat::expect_match(txt, "0.8000")   # first row's overall_score
+  testthat::expect_match(txt, "0.8200")   # last row's overall_score
+
+  # one row printed per realization, and the input returned invisibly
+  testthat::expect_identical(res, fs)
+  testthat::expect_true(sum(grepl("^\\s*[0-9]", out)) >= nrow(fs))
+})
+
+testthat::test_that(".print_fit_summary_table falls back to the first mean metric when precip is absent", {
+  fs <- .make_fit_summary_full()
+  fs$mae_mean_precip <- NULL
+
+  txt <- paste(capture.output(weathergenr:::.print_fit_summary_table(fs)), collapse = "\n")
+
+  # with no precip column it takes the first remaining mae_mean_* instead
+  testthat::expect_match(txt, "Mean.temp", fixed = TRUE)
+  testthat::expect_false(grepl("Mean.precip", txt, fixed = TRUE))
+})
+
+testthat::test_that(".print_fit_summary_table prints a score-only table when no MAE metrics exist", {
+  minimal <- data.frame(rlz = 1:2, rank = 1:2, overall_score = c(0.25, 0.75))
+
+  txt <- paste(capture.output(weathergenr:::.print_fit_summary_table(minimal)), collapse = "\n")
+
+  testthat::expect_match(txt, "Score")
+  testthat::expect_match(txt, "Normalized overall score", fixed = TRUE)
+
+  # none of the MAE families should be advertised
+  testthat::expect_false(grepl("Mean\\.|SD\\.|Days\\.|Spell\\.|Cor\\.", txt))
+
+  # the summary block still resolves best/worst from the row order
+  testthat::expect_match(txt, "0.2500")
+  testthat::expect_match(txt, "0.7500")
+})
+
+testthat::test_that("evaluate_weather_generator prints the fit summary when verbose = TRUE", {
+
+  # The verbose path draws to the active graphics device. With none open, base
+  # R opens one itself and leaves an Rplots.pdf behind in tests/testthat/, so
+  # send it to a null device and close that when the test exits.
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  .with_fast_eval_mocks({
+
+    set.seed(321)
+
+    obs_dates <- seq.Date(as.Date("2001-01-01"), as.Date("2003-12-31"), by = "day")
+    obs_dates <- obs_dates[format(obs_dates, "%m-%d") != "02-29"]
+
+    sim_dates <- seq.Date(as.Date("2011-01-01"), as.Date("2013-12-31"), by = "day")
+    sim_dates <- sim_dates[format(sim_dates, "%m-%d") != "02-29"]
+
+    n_grid <- 2
+    n_realizations <- 2
+
+    daily_obs <- lapply(seq_len(n_grid), function(i) {
+      make_test_grid_df(obs_dates, id_shift = i)
+    })
+    daily_sim <- lapply(seq_len(n_realizations), function(r) {
+      lapply(seq_len(n_grid), function(i) {
+        make_test_grid_df(sim_dates, id_shift = i + r)
+      })
+    })
+
+    run <- function(verbose) {
+      capture.output(
+        suppressMessages(
+          evaluate_weather_generator(
+            daily_sim = daily_sim,
+            daily_obs = daily_obs,
+            vars = c("precip", "temp"),
+            n_realizations = n_realizations,
+            wet_q = 0.2,
+            extreme_q = 0.8,
+            output_dir = NULL,
+            save_plots = FALSE,
+            show_title = FALSE,
+            eval_max_grids = 25,
+            verbose = verbose
+          )
+        )
+      )
+    }
+
+    loud <- paste(run(TRUE), collapse = "\n")
+    quiet <- paste(run(FALSE), collapse = "\n")
+
+    # the table is emitted only on the verbose path
+    testthat::expect_match(loud, "FIT ASSESSMENT SUMMARY", fixed = TRUE)
+    testthat::expect_false(grepl("FIT ASSESSMENT SUMMARY", quiet, fixed = TRUE))
+  })
+})
