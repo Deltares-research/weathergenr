@@ -1291,3 +1291,132 @@ testthat::test_that("evaluate_weather_generator prints the fit summary when verb
     testthat::expect_false(grepl("FIT ASSESSMENT SUMMARY", quiet, fixed = TRUE))
   })
 })
+
+# ==============================================================================
+# evaluate_weather_generator(): the real, unmocked path
+#
+# The mocked tests above stay as they are -- they cover validation, grid
+# subsampling, leap-day handling and seed determinism cheaply, and running each
+# of them unmocked would add cost without adding coverage beyond what a single
+# real run already gives.
+#
+# This test supplies that single real run. It is what exercises the summarizing
+# and correlation internals that .with_fast_eval_mocks() stands in for:
+# .summarize_observed_data(), .summarize_simulated_data(),
+# .summarize_realization_fit(), .compute_timeseries_stats(),
+# .summarize_grouped_stats(), .compute_anomaly_correlations(),
+# .compute_conditional_precip_correlations(), .filter_correlation_pairs() and
+# .build_plot_data() -- roughly 500 lines that no other test reaches.
+#
+# The fixture is deliberately small (3 grids, 2 realizations, 2 years). Measured
+# cost at that size is ~1.3s with no warnings, which is why this runs
+# unconditionally rather than behind a skip.
+# ==============================================================================
+
+testthat::test_that("evaluate_weather_generator produces a full assessment without mocks", {
+
+  # Plot construction draws to the active device; keep it off the filesystem.
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  set.seed(99)
+
+  n_grid <- 3L
+  n_realizations <- 2L
+  n_years <- 2L
+
+  obs_dates <- seq.Date(as.Date("2001-01-01"), by = "day", length.out = 365L * n_years)
+  sim_dates <- seq.Date(as.Date("2011-01-01"), by = "day", length.out = 365L * n_years)
+
+  daily_obs <- lapply(seq_len(n_grid), function(i) {
+    make_test_grid_df(obs_dates, id_shift = i)
+  })
+  daily_sim <- lapply(seq_len(n_realizations), function(r) {
+    lapply(seq_len(n_grid), function(i) {
+      make_test_grid_df(sim_dates, id_shift = i + r)
+    })
+  })
+
+  run_real <- function() {
+    suppressMessages(
+      evaluate_weather_generator(
+        daily_sim = daily_sim,
+        daily_obs = daily_obs,
+        vars = c("precip", "temp"),
+        n_realizations = n_realizations,
+        wet_q = 0.2,
+        extreme_q = 0.8,
+        output_dir = NULL,
+        save_plots = FALSE,
+        show_title = FALSE,
+        eval_max_grids = 25,
+        verbose = FALSE,
+        seed = 7
+      )
+    )
+  }
+
+  out <- run_real()
+
+  testthat::expect_s3_class(out, "weather_assessment")
+
+  # The real create_all_diagnostic_plots() returns the full diagnostic set,
+  # not the three-plot stub the fast mocks substitute.
+  expected_plots <- c(
+    "daily_mean", "daily_sd", "spell_length", "wetdry_days_count",
+    "crossgrid", "intergrid", "precip_cond_cor",
+    "annual_pattern_precip", "annual_pattern_temp",
+    "monthly_cycle", "annual_precip"
+  )
+  testthat::expect_true(all(expected_plots %in% names(out)))
+  for (nm in expected_plots) {
+    testthat::expect_s3_class(out[[nm]], "ggplot")
+  }
+
+  # ---------------------------------------------------------------------------
+  # fit_summary: computed by the real .summarize_realization_fit()
+  # ---------------------------------------------------------------------------
+  fs <- attr(out, "fit_summary")
+  testthat::expect_true(is.data.frame(fs))
+  testthat::expect_equal(nrow(fs), n_realizations)
+
+  # Metric columns the mocked summary never produces. Their presence is what
+  # distinguishes a real run from the stub.
+  real_metrics <- c(
+    "mae_mean_precip", "mae_mean_temp",
+    "mae_sd_precip", "mae_sd_temp",
+    "mae_days_Dry", "mae_days_Wet",
+    "mae_spell_Dry", "mae_spell_Wet",
+    "mae_cor_crossgrid", "mae_cor_intervariable"
+  )
+  testthat::expect_true(all(real_metrics %in% names(fs)))
+  for (m in real_metrics) {
+    testthat::expect_true(all(is.finite(fs[[m]])), info = m)
+    testthat::expect_true(all(fs[[m]] >= 0), info = m)   # MAEs are non-negative
+  }
+
+  # ranks are a permutation of 1..n, ordered best-first alongside the score
+  testthat::expect_setequal(fs$rank, seq_len(n_realizations))
+  testthat::expect_setequal(fs$rlz, seq_len(n_realizations))
+  testthat::expect_identical(fs$rank, sort(fs$rank))
+  testthat::expect_true(all(is.finite(fs$overall_score)))
+  testthat::expect_false(is.unsorted(fs$overall_score))
+
+  # ---------------------------------------------------------------------------
+  # metadata
+  # ---------------------------------------------------------------------------
+  md <- attr(out, "metadata")
+  testthat::expect_equal(md$n_grids, n_grid)
+  testthat::expect_equal(md$n_realizations, n_realizations)
+  testthat::expect_equal(md$variables, c("precip", "temp"))
+  testthat::expect_s3_class(md$assessment_date, "Date")
+
+  # ---------------------------------------------------------------------------
+  # the same inputs and seed reproduce the same metrics
+  # ---------------------------------------------------------------------------
+  again <- run_real()
+  testthat::expect_equal(
+    as.data.frame(attr(again, "fit_summary")),
+    as.data.frame(fs)
+  )
+})
