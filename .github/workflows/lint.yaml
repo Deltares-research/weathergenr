@@ -1,0 +1,42 @@
+# Runs the repo's own lint helper (tools/lint.R) in CI.
+#
+# NOTE: the full-package mode is deliberate. `tools/lint.R --changed` diffs the
+# working tree against HEAD, which is always clean after checkout — in CI it
+# would report "no changed R files" and pass without linting anything. Keep
+# `--changed` for local pre-commit use only.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+name: lint
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::lintr, local::.
+          needs: lint
+
+      # Advisory for now: with the .lintr baseline in place the package still
+      # reports 28 semantic findings (unused locals, `seq_len(length(x))`, and
+      # the repeated `.Random.seed` save/restore idiom). Fixing them is tracked
+      # work, not a side effect of adding this job — so findings are reported
+      # without gating the branch. Drop `continue-on-error` once the count is 0.
+      - name: Lint
+        run: Rscript tools/lint.R
+        continue-on-error: true
