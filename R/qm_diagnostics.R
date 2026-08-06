@@ -482,8 +482,6 @@ compute_monthly_diagnostics <- function(precip_ref, precip_adj, month,
 
 #' Compute wet and dry spell-length diagnostics (intended preserved)
 #' @keywords internal
-#' Compute wet and dry spell-length diagnostics (intended preserved)
-#' @keywords internal
 compute_spell_diagnostics <- function(precip_ref, precip_adj, wet_thresh,
                                       tol_mean_ratio = 0.20) {
 
