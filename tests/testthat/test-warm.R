@@ -180,8 +180,7 @@ test_that("simulate_warm bypass mode uses block bootstrap when ARIMA not viable"
       calls_boot <<- calls_boot + 1L
       rep(mean(x), n)
     },
-    .default_block_len = function(n) 5L,
-    .env = asNamespace("weathergenr")
+    .default_block_len = function(n) 5L
   )
 
   out <- weathergenr::simulate_warm(
@@ -211,8 +210,7 @@ test_that("simulate_warm bypass mode caps ARMA order for very short fits", {
       NULL
     },
     .block_bootstrap = function(x, n, block_len) rep(mean(x), n),
-    .default_block_len = function(n) 5L,
-    .env = asNamespace("weathergenr")
+    .default_block_len = function(n) 5L
   )
 
   simulate_warm(
@@ -261,8 +259,7 @@ testthat::test_that("simulate_warm component mode uses block bootstrap when ARIM
       calls_boot <<- calls_boot + 1L
       # deterministic: return centered pattern (preserves dependence in real impl)
       x[seq_len(n)]
-    },
-    .env = asNamespace("weathergenr")
+    }
   )
 
   out <- testthat::expect_silent(
@@ -307,8 +304,7 @@ testthat::test_that("simulate_warm component mode calls ARIMA fit helper when vi
     .warm_fit_arima_safe = function(x, max_p, max_q, stationary, include_mean, allow_drift) {
       calls_fit <<- calls_fit + 1L
       list(model = fit_model)
-    },
-    .env = asNamespace("weathergenr")
+    }
   )
 
   out <- testthat::expect_silent(
@@ -353,8 +349,7 @@ testthat::test_that("simulate_warm constant component is carried through correct
     .warm_fit_arima_safe = function(x, max_p, max_q, stationary, include_mean, allow_drift) {
       calls_fit <<- calls_fit + 1L
       list(model = fit_model)
-    },
-    .env = asNamespace("weathergenr")
+    }
   )
 
   out <- suppressWarnings(
@@ -385,8 +380,7 @@ test_that("simulate_warm warns on large pre-correction variance mismatch with di
     .warm_fit_arima_safe = function(x, max_p, max_q, stationary, include_mean, allow_drift) {
       list(model = "mock_fit", residuals = NULL)
     },
-    .warm_simulate_from_fit = function(fit, n, n_sim) matrix(0, nrow = n, ncol = n_sim),
-    .env = asNamespace("weathergenr")
+    .warm_simulate_from_fit = function(fit, n, n_sim) matrix(0, nrow = n, ncol = n_sim)
   )
 
   expect_warning(
@@ -432,3 +426,274 @@ testthat::test_that("plot_wavelet_power and plot_wavelet_global_spectrum return 
 })
 
 
+
+# ==============================================================================
+# simulate_warm(): argument validation
+#
+# Every check is an early exit, so these are effectively free. They run in
+# declaration order, which is why each case below supplies valid values for the
+# arguments validated ahead of the one under test.
+# ==============================================================================
+
+testthat::test_that("simulate_warm validates its arguments", {
+  ok <- as.numeric(1:40)
+
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = NULL, series_obs = ok),
+    "Input 'n' must be specified"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 0L, series_obs = ok),
+    "'n' must be a positive integer"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 0L, series_obs = ok),
+    "'n_sim' must be a positive integer"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L, bypass_n = 4L, series_obs = ok),
+    "'bypass_n' must be an integer >= 5"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L, verbose = c(TRUE, FALSE), series_obs = ok),
+    "'verbose' must be TRUE or FALSE"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L, match_variance = "yes", series_obs = ok),
+    "'match_variance' must be TRUE or FALSE"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L, var_tol = 1.5, series_obs = ok),
+    "'var_tol' must be between 0 and 1"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L, check_diagnostics = 1, series_obs = ok),
+    "'check_diagnostics' must be TRUE or FALSE"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L, seed = "abc", series_obs = ok),
+    "'seed' must be NULL or a single finite number"
+  )
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L, series_obs = c(1, NA, 3)),
+    "'series_obs' must be numeric with no missing values"
+  )
+
+  # neither series_obs nor components: the fit length cannot be established
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L),
+    "Cannot determine observed series length"
+  )
+
+  # component mode reached with NULL components is rejected separately
+  testthat::expect_error(
+    simulate_warm(components = NULL, n = 40L, n_sim = 2L, series_obs = ok, bypass_n = 5L),
+    "Input 'components' must not be NULL for component mode"
+  )
+})
+
+testthat::test_that("simulate_warm rejects malformed components in component mode", {
+  n <- 40L
+  good <- as.numeric(1:n)
+
+  testthat::expect_error(
+    simulate_warm(components = matrix("a", nrow = n, ncol = 2), n = n, n_sim = 2L,
+                  series_obs = good, verbose = FALSE),
+    "Matrix 'components' must be numeric"
+  )
+  testthat::expect_error(
+    simulate_warm(components = matrix(1, nrow = n - 1L, ncol = 2), n = n, n_sim = 2L,
+                  series_obs = good, verbose = FALSE),
+    "Matrix 'components' must have n rows"
+  )
+  testthat::expect_error(
+    simulate_warm(components = data.frame(a = as.character(seq_len(n)), b = 1),
+                  n = n, n_sim = 2L, series_obs = good, verbose = FALSE),
+    "All columns of 'components' must be numeric"
+  )
+  testthat::expect_error(
+    simulate_warm(components = list(a = as.character(seq_len(n))),
+                  n = n, n_sim = 2L, series_obs = good, verbose = FALSE),
+    "All elements of 'components' must be numeric vectors"
+  )
+  testthat::expect_error(
+    simulate_warm(components = list(a = good, b = good[-1]),
+                  n = n, n_sim = 2L, series_obs = good, verbose = FALSE),
+    "All component vectors must have length 'n'"
+  )
+  testthat::expect_error(
+    simulate_warm(components = "not-components", n = n, n_sim = 2L,
+                  series_obs = good, verbose = FALSE),
+    "'components' must be a matrix, data.frame, or list"
+  )
+
+  na_comp <- cbind(good, c(NA_real_, good[-1]))
+  testthat::expect_error(
+    simulate_warm(components = na_comp, n = n, n_sim = 2L, series_obs = good, verbose = FALSE),
+    "Missing values detected in component"
+  )
+})
+
+# ==============================================================================
+# simulate_warm(): bypass mode, ARMA-success path
+#
+# The existing bypass tests above drive the block-bootstrap fallback (fit
+# fails). These cover the other branch: a short series with enough structure
+# for .fit_warm_arima_forecast() to return a model, which is the only route
+# through .warm_simulate_from_fit() and the variance-matching step.
+# ==============================================================================
+
+testthat::test_that("simulate_warm bypass mode simulates from a successful ARMA fit", {
+  set.seed(11)
+  # 12 points (< default bypass_n = 15) with clear AR(1) structure
+  series <- as.numeric(stats::filter(rnorm(12, sd = 1), 0.6, method = "recursive")) + 20
+
+  sim <- simulate_warm(
+    components = NULL,
+    n = 12L,
+    n_sim = 25L,
+    series_obs = series,
+    seed = 42,
+    verbose = FALSE
+  )
+
+  testthat::expect_true(is.matrix(sim))
+  testthat::expect_equal(dim(sim), c(12L, 25L))
+  testthat::expect_true(all(is.finite(sim)))
+
+  # the simulation is centred on the observed mean, not on zero
+  testthat::expect_lt(abs(mean(sim) - mean(series)), 3 * stats::sd(series))
+
+  # and it is reproducible for a fixed seed
+  sim2 <- simulate_warm(
+    components = NULL, n = 12L, n_sim = 25L,
+    series_obs = series, seed = 42, verbose = FALSE
+  )
+  testthat::expect_identical(sim, sim2)
+})
+
+testthat::test_that("simulate_warm bypass mode reconstructs the series from components", {
+  set.seed(12)
+  n <- 12L
+  comp1 <- as.numeric(stats::filter(rnorm(n, sd = 1), 0.5, method = "recursive"))
+  comp2 <- seq(0, 2, length.out = n)
+  comps <- cbind(comp1, comp2)
+
+  # With no series_obs, bypass mode must rebuild it as the component rowSums.
+  from_comps <- simulate_warm(
+    components = comps, n = n, n_sim = 10L, seed = 5, verbose = FALSE
+  )
+  from_series <- simulate_warm(
+    components = NULL, n = n, n_sim = 10L,
+    series_obs = rowSums(comps), seed = 5, verbose = FALSE
+  )
+
+  testthat::expect_equal(dim(from_comps), c(n, 10L))
+  testthat::expect_identical(from_comps, from_series)
+})
+
+testthat::test_that("simulate_warm bypass mode reports itself when verbose", {
+  set.seed(13)
+  series <- as.numeric(stats::filter(rnorm(12, sd = 1), 0.6, method = "recursive"))
+
+  testthat::expect_message(
+    simulate_warm(components = NULL, n = 12L, n_sim = 5L,
+                  series_obs = series, seed = 1, verbose = TRUE),
+    "Bypass mode"
+  )
+})
+
+# ==============================================================================
+# Internal helpers reached only from simulate_warm()
+# ==============================================================================
+
+testthat::test_that(".reconstruct_series_from_components sums across every supported shape", {
+  n <- 6L
+  a <- as.numeric(1:n)
+  b <- as.numeric((1:n) * 10)
+  expected <- a + b
+
+  testthat::expect_identical(
+    weathergenr:::.reconstruct_series_from_components(cbind(a, b), n = n),
+    expected
+  )
+  testthat::expect_identical(
+    weathergenr:::.reconstruct_series_from_components(data.frame(a = a, b = b), n = n),
+    expected
+  )
+  testthat::expect_identical(
+    weathergenr:::.reconstruct_series_from_components(list(a = a, b = b), n = n),
+    expected
+  )
+
+  testthat::expect_error(
+    weathergenr:::.reconstruct_series_from_components(cbind(a, b), n = n + 1L),
+    "'components' must have n rows"
+  )
+  testthat::expect_error(
+    weathergenr:::.reconstruct_series_from_components(list(a = a, b = b[-1]), n = n),
+    "all component vectors must have length n"
+  )
+  testthat::expect_error(
+    weathergenr:::.reconstruct_series_from_components("nope", n = n),
+    "unsupported 'components' type"
+  )
+})
+
+testthat::test_that(".warm_arima_viable screens series that cannot support an ARMA fit", {
+  viable <- as.numeric(stats::filter(rnorm(40), 0.5, method = "recursive"))
+
+  testthat::expect_true(weathergenr:::.warm_arima_viable(viable))
+
+  testthat::expect_false(weathergenr:::.warm_arima_viable("a"))
+  testthat::expect_false(weathergenr:::.warm_arima_viable(c(1, NA, 3, 4, 5, 6, 7, 8, 9)))
+  testthat::expect_false(weathergenr:::.warm_arima_viable(as.numeric(1:5)))   # shorter than min_n
+  testthat::expect_false(weathergenr:::.warm_arima_viable(rep(1, 20)))        # zero variance
+  testthat::expect_false(
+    weathergenr:::.warm_arima_viable(rep(c(1, 2), each = 10))                 # too few unique
+  )
+})
+
+testthat::test_that(".fit_warm_arima_forecast delegates to the safe ARMA fitter", {
+  set.seed(14)
+  x <- as.numeric(stats::filter(rnorm(60), 0.6, method = "recursive"))
+  x <- x - mean(x)
+
+  fit <- weathergenr:::.fit_warm_arima_forecast(x, max_p = 2L, max_q = 2L)
+
+  testthat::expect_type(fit, "list")
+  testthat::expect_true(all(c("ar", "ma", "sigma2", "residuals", "order") %in% names(fit)))
+  testthat::expect_true(is.finite(fit$sigma2))
+
+  # the wrapper adds nothing of its own beyond forwarding its arguments
+  testthat::expect_identical(
+    fit,
+    weathergenr:::.warm_fit_arima_safe(x, max_p = 2L, max_q = 2L)
+  )
+
+  # an unfittable series propagates the NULL rather than erroring
+  testthat::expect_null(weathergenr:::.fit_warm_arima_forecast(c(1, 2), max_p = 1L, max_q = 1L))
+})
+
+testthat::test_that("simulate_warm accepts data.frame and list components in component mode", {
+  set.seed(15)
+  n <- 40L
+  comp1 <- as.numeric(stats::filter(rnorm(n), 0.5, method = "recursive"))
+  comp2 <- as.numeric(stats::filter(rnorm(n), 0.2, method = "recursive"))
+
+  as_matrix <- simulate_warm(
+    components = cbind(comp1, comp2), n = n, n_sim = 5L, seed = 3, verbose = FALSE
+  )
+  as_df <- simulate_warm(
+    components = data.frame(comp1 = comp1, comp2 = comp2),
+    n = n, n_sim = 5L, seed = 3, verbose = FALSE
+  )
+  as_list <- simulate_warm(
+    components = list(comp1 = comp1, comp2 = comp2),
+    n = n, n_sim = 5L, seed = 3, verbose = FALSE
+  )
+
+  testthat::expect_equal(dim(as_matrix), c(n, 5L))
+  testthat::expect_equal(as_df, as_matrix)
+  testthat::expect_equal(as_list, as_matrix)
+})
