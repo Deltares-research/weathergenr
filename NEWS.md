@@ -1,5 +1,14 @@
 # weathergenr (development version)
 
+## Bug fixes
+
+* `evaluate_weather_generator()` no longer emits tidyselect deprecation warnings
+  ("Use of `.data` in tidyselect expressions was deprecated in tidyselect
+  1.2.0"). Thirty `.data$` references inside `dplyr::select()`,
+  `dplyr::rename()`, `tidyr::pivot_longer()` and `tidyr::pivot_wider()` now pass
+  column names as strings. Results are unchanged; the `.data` pronoun is still
+  used in data-masking verbs, where it remains correct.
+
 ## Internal
 
 * `DESCRIPTION` declares authorship with `Authors@R` instead of the deprecated
