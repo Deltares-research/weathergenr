@@ -81,6 +81,15 @@ source that file instead.
 - The `DESCRIPTION` version is **not** bumped per commit. `.git-workflow.yml` sets
   `cadence: manual`, and `1.2.0.9000`-style development versions hold steady until an
   explicitly requested release. See that file for the release gate and apply command.
+- IMPORTANT: a downstream consumer pins this package by **Git tag**. The `blueearth_cst`
+  toolkit installs `tanerumit/weathergenr@v1.2.0` via `remotes::install_github()` from
+  `dev/scripts/install_weathergenr.R`, driven by `pixi run install-rdeps`. Consequences:
+  a release is not delivered until its tag is **pushed to `origin`** — with
+  `auto_push: false` that is a deliberate, owner-run final step, so never report a
+  release as complete at the commit. Tags are consumed artifacts: never move, delete, or
+  re-point a published one. And user-visible change stranded on an unreleased `.9000`
+  is invisible downstream, which is the reason to cut releases promptly rather than let
+  development versions drift.
 
 ### Work board
 
