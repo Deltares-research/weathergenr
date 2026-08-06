@@ -15,6 +15,8 @@ climate vulnerability assessment. See `README.md` for the method framing.
 - `man/`, `NAMESPACE` — roxygen2 output. Regenerate with `devtools::document()`.
 - `docs/` — generated pkgdown site.
 - `tools/` — repo-only dev scripts, `.Rbuildignore`d and not shipped.
+- `dev/` — development process: the work board (`tasks/`, `TODO.md`), the closed-work
+  ledger (`LOG.md`), and task-backing drafts. Never shipped; see `dev/README.md`.
 - `inst/experiments/` — abandoned prototypes (Zarr I/O). Not package code, not tested,
   not on the maintenance path; do not extend unless the task says so.
 - `vignettes/` — Quarto `.qmd` only, built by `quarto`, not `knitr`.
@@ -66,6 +68,19 @@ source that file instead.
   `check_only()` when the change touches exports, documentation, or dependencies.
 - Report which commands were run and what they returned; never describe a check that
   did not run.
+
+### Work board
+
+- Admit before you track: open a `dev/` board item only when work spans sessions or
+  needs visibility beyond the current one. Work that its diff and commit message fully
+  explain gets no board item, no task ID, and no draft note.
+- `dev/tasks/` is the live board — one note per open item. `dev/TODO.md` is generated
+  by `brain todo render`; never hand-edit it. Close with `brain todo done <id>`, which
+  appends the `dev/LOG.md` row and removes the note.
+- A `dev/drafts/` note that anything durable cites — a test, a module, a tracked
+  document — is promoted at closure with its citations updated, never deleted.
+- The `todo-board` skill owns the board mechanic; `project-system` owns the
+  surrounding lifecycle. Neither is restated here.
 
 ## Hard Constraints
 

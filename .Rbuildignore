@@ -40,6 +40,10 @@
 # Optional repo-only tools folder
 ^tools$
 
+# Development process tree and scratch (repo-only, never shipped)
+^dev$
+^\.tmp$
+
 # Optional: exclude large internal material inside inst/
 ^inst/docs$
 ^inst/examples$
