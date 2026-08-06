@@ -14,12 +14,4 @@ compute_spell_diagnostics(
 \description{
 Compute wet and dry spell-length diagnostics (intended preserved)
 }
-\keyword{(intended}
-\keyword{Compute}
-\keyword{and}
-\keyword{diagnostics}
-\keyword{dry}
 \keyword{internal}
-\keyword{preserved)}
-\keyword{spell-length}
-\keyword{wet}
