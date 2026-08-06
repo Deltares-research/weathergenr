@@ -43,12 +43,12 @@
 # Development process tree and scratch (repo-only, never shipped)
 ^dev$
 ^\.tmp$
+^\.lintr$
 
 # Optional: exclude large internal material inside inst/
 ^inst/docs$
 ^inst/examples$
 ^inst/misc$
-^inst/experiments$
 ^inst/extcode$
 
 # OAuth token cache (should also be in .gitignore)

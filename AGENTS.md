@@ -16,9 +16,10 @@ climate vulnerability assessment. See `README.md` for the method framing.
 - `docs/` — generated pkgdown site.
 - `tools/` — repo-only dev scripts, `.Rbuildignore`d and not shipped.
 - `dev/` — development process: the work board (`tasks/`, `TODO.md`), the closed-work
-  ledger (`LOG.md`), and task-backing drafts. Never shipped; see `dev/README.md`.
-- `inst/experiments/` — abandoned prototypes (Zarr I/O). Not package code, not tested,
-  not on the maintenance path; do not extend unless the task says so.
+  ledger (`LOG.md`), task-backing drafts, and `scripts/` for exploratory code that must
+  not ship. Never shipped; see `dev/README.md`.
+- `dev/scripts/zarr-prototype/` — abandoned Zarr I/O prototypes. Not package code, not
+  tested, not on the maintenance path; do not extend unless the task says so.
 - `vignettes/` — Quarto `.qmd` only, built by `quarto`, not `knitr`.
 
 ## Key Commands
@@ -29,10 +30,13 @@ testthat::test_file("tests/testthat/test-calendar.R")  # single file
 devtools::test()                                       # full suite
 devtools::document()                                   # after any roxygen change
 source("tools/build_site_tools.R"); check_only()       # R CMD check
+check_only(build_vignettes = TRUE)                     # release gate — matches CI
 ```
 
 ```bash
 Rscript tools/lint.R --changed   # lint changed R files; exit 1 = lints found
+Rscript tools/lint.R             # lint whole package — what CI runs
+
 ```
 
 IMPORTANT: never `source("tools/dev_workflow.R")`. It is a runnable notes file whose top
