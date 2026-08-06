@@ -25,7 +25,16 @@ versioning:
       # Reference behavior, not an automated executor — an agent or the owner
       # runs these deliberately at a release gate.
       apply: ["Rscript", "-e", "usethis::use_version()"]
-      validate: ["Rscript", "tools/lint.R", "--changed"]
+      # Release gate. `document = FALSE` keeps this a no-write validation path:
+      # check_only() otherwise regenerates man/ and NAMESPACE, and a validator
+      # must not mutate the tree it is validating.
+      #
+      # Not `tools/lint.R --changed`: that diffs the working tree against HEAD,
+      # which is clean at a release gate by definition, so it passed having
+      # linted nothing. Nor plain `tools/lint.R` — full-package mode currently
+      # exits 1 on the .lintr baseline's 28 findings and would block every
+      # release (tracked as t2608061641).
+      validate: ["Rscript", "-e", "source('tools/build_site_tools.R'); check_only(build_vignettes = TRUE, document = FALSE)"]
       # Existing R CMD check and pkgdown workflows are retained unchanged and
       # are not wired as a release command.
       release:
