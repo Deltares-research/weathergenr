@@ -68,10 +68,19 @@ source that file instead.
 ## Workflow
 
 - Change behavior → update or add the matching `tests/testthat/test-<module>.R`.
+- Change *user-visible* behavior → add a `NEWS.md` entry under the
+  `# weathergenr (development version)` heading, in the same commit. User-visible means
+  a user of the package could notice: exported functions, arguments, defaults, outputs,
+  errors, or documented workflows. Internal-only work — refactors, tests, CI, tooling,
+  roxygen fixes — gets no entry. Writing entries as the work lands is what keeps a
+  release cheap; do not reconstruct them from `git log` at release time.
 - Before finishing: run the affected test file, then `devtools::test()`. Run
   `check_only()` when the change touches exports, documentation, or dependencies.
 - Report which commands were run and what they returned; never describe a check that
   did not run.
+- The `DESCRIPTION` version is **not** bumped per commit. `.git-workflow.yml` sets
+  `cadence: manual`, and `1.2.0.9000`-style development versions hold steady until an
+  explicitly requested release. See that file for the release gate and apply command.
 
 ### Work board
 
