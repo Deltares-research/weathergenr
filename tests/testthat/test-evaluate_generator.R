@@ -895,3 +895,230 @@ test_that("create_all_diagnostic_plots calls ggsave when save_plots=TRUE (mocked
   expect_true(calls >= 1L)
 })
 
+
+# ==============================================================================
+# prepare_evaluation_data(): reshaping generator output for evaluation
+#
+# Exported, and reached in production only from run_weather_generator(), which
+# mocks it in test-generator.R -- so it needs direct coverage here. No mocking
+# is required: the function is pure reshaping over small inputs and runs in
+# milliseconds.
+# ==============================================================================
+
+# Two grid cells over two whole non-leap years, plus a one-realization
+# resampling of those same dates. Deliberately small and deterministic.
+.make_prep_inputs <- function(n_realizations = 1L, seed = 99) {
+  set.seed(seed)
+
+  obs_dates <- seq.Date(as.Date("2021-01-01"), as.Date("2022-12-31"), by = "day")
+  n <- length(obs_dates)
+
+  mk_cell <- function(offset) {
+    data.frame(
+      precip = seq_len(n) + offset,
+      temp   = -seq_len(n) - offset
+    )
+  }
+  obs_data <- list(cell_a = mk_cell(0), cell_b = mk_cell(1000))
+
+  resampled <- as.data.frame(
+    vapply(
+      seq_len(n_realizations),
+      function(i) sample(obs_dates, n, replace = TRUE),
+      numeric(n)
+    )
+  )
+  names(resampled) <- paste0("rlz_", seq_len(n_realizations))
+  resampled[] <- lapply(resampled, function(x) as.Date(x, origin = "1970-01-01"))
+
+  list(
+    gen_output = list(resampled = resampled, dates = obs_dates),
+    obs_data   = obs_data,
+    obs_dates  = obs_dates,
+    grid_ids   = names(obs_data),
+    variables  = c("precip", "temp")
+  )
+}
+
+.call_prep <- function(inputs, ...) {
+  args <- list(
+    gen_output = inputs$gen_output,
+    obs_data   = inputs$obs_data,
+    obs_dates  = inputs$obs_dates,
+    grid_ids   = inputs$grid_ids,
+    variables  = inputs$variables,
+    verbose    = FALSE
+  )
+
+  # Replace wholesale rather than via modifyList(): the list-valued arguments
+  # would otherwise be merged recursively, so an override meant to remove a
+  # component (or empty a list) would silently keep the default.
+  overrides <- list(...)
+  args[names(overrides)] <- overrides
+
+  do.call(prepare_evaluation_data, args)
+}
+
+testthat::test_that("prepare_evaluation_data validates its inputs", {
+  inputs <- .make_prep_inputs()
+
+  testthat::expect_error(
+    .call_prep(inputs, gen_output = list(resampled = inputs$gen_output$resampled)),
+    "'gen_output' must be output from generate_weather"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, obs_data = list()),
+    "'obs_data' must be a non-empty list"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, obs_dates = as.character(inputs$obs_dates)),
+    "'obs_dates' must be a Date vector"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, obs_dates = inputs$obs_dates[-1]),
+    "'obs_dates' length must match"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, variables = character(0)),
+    "'variables' must be a non-empty character vector"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, variables = c("precip", "sunshine")),
+    "Variables not found in obs_data: sunshine"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, grid_ids = c("cell_a", "cell_z")),
+    "'grid_ids' must match names or indices of obs_data"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, min_days_per_year = 0L),
+    "'min_days_per_year' must be a positive integer"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, year_start_month = 13),
+    "'year_start_month' must be an integer between 1 and 12"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, verbose = c(TRUE, FALSE)),
+    "'verbose' must be TRUE or FALSE"
+  )
+})
+
+testthat::test_that("prepare_evaluation_data returns per-realization, per-grid frames", {
+  inputs <- .make_prep_inputs(n_realizations = 3L)
+  out <- .call_prep(inputs)
+
+  testthat::expect_named(out, c("sim_data", "obs_data"))
+
+  # one entry per realization, each holding one frame per requested grid
+  testthat::expect_length(out$sim_data, 3L)
+  testthat::expect_true(all(vapply(out$sim_data, length, integer(1)) == 2L))
+  testthat::expect_length(out$obs_data, 2L)
+  testthat::expect_named(out$obs_data, c("cell_a", "cell_b"))
+
+  # date column leads, then the requested variables in order
+  expected_cols <- c("date", "precip", "temp")
+  testthat::expect_named(out$sim_data[[1]][["cell_a"]], expected_cols)
+  testthat::expect_named(out$obs_data[["cell_a"]], expected_cols)
+
+  # both years are complete, so every simulated day survives the filter
+  testthat::expect_equal(nrow(out$sim_data[[1]][["cell_a"]]), length(inputs$obs_dates))
+  testthat::expect_equal(nrow(out$obs_data[["cell_a"]]), length(inputs$obs_dates))
+  testthat::expect_s3_class(out$sim_data[[1]][["cell_a"]]$date, "Date")
+})
+
+testthat::test_that("prepare_evaluation_data maps each simulated day to its resampled observation", {
+  inputs <- .make_prep_inputs(n_realizations = 2L)
+  out <- .call_prep(inputs)
+
+  # With every year complete, row k of the simulated frame must carry the
+  # observation taken on the date resampled for day k. This is the mapping the
+  # whole function exists to build, so assert it directly rather than by shape.
+  for (rlz in 1:2) {
+    idx <- match(inputs$gen_output$resampled[[rlz]], inputs$obs_dates)
+
+    for (cell in c("cell_a", "cell_b")) {
+      testthat::expect_identical(
+        out$sim_data[[rlz]][[cell]]$precip,
+        inputs$obs_data[[cell]]$precip[idx]
+      )
+      testthat::expect_identical(
+        out$sim_data[[rlz]][[cell]]$temp,
+        inputs$obs_data[[cell]]$temp[idx]
+      )
+    }
+  }
+
+  # the observed frames are passed through unresampled, in original date order
+  testthat::expect_identical(out$obs_data[["cell_b"]]$precip, inputs$obs_data$cell_b$precip)
+  testthat::expect_identical(out$obs_data[["cell_b"]]$date, inputs$obs_dates)
+})
+
+testthat::test_that("prepare_evaluation_data accepts integer grid_ids as well as names", {
+  inputs <- .make_prep_inputs()
+
+  by_name <- .call_prep(inputs, grid_ids = c("cell_a", "cell_b"))
+  by_index <- .call_prep(inputs, grid_ids = 1:2)
+
+  testthat::expect_identical(
+    by_index$sim_data[[1]][[1]]$precip,
+    by_name$sim_data[[1]][["cell_a"]]$precip
+  )
+
+  # a subset selects only the requested cells
+  one <- .call_prep(inputs, grid_ids = "cell_b")
+  testthat::expect_length(one$obs_data, 1L)
+  testthat::expect_named(one$obs_data, "cell_b")
+})
+
+testthat::test_that("prepare_evaluation_data warns when resampled dates fall outside obs_dates", {
+  inputs <- .make_prep_inputs()
+
+  # push two resampled days outside the observed record
+  inputs$gen_output$resampled$rlz_1[c(5L, 6L)] <- as.Date(c("1900-01-01", "1900-01-02"))
+
+  testthat::expect_warning(
+    out <- .call_prep(inputs),
+    "Could not match 2 resampled dates to obs_dates"
+  )
+
+  # the unmatched rows surface as NA rather than being silently dropped
+  testthat::expect_true(is.na(out$sim_data[[1]][["cell_a"]]$precip[5L]))
+  testthat::expect_true(is.na(out$sim_data[[1]][["cell_a"]]$precip[6L]))
+})
+
+testthat::test_that("prepare_evaluation_data rejects a simulation with no complete years", {
+  inputs <- .make_prep_inputs()
+
+  testthat::expect_error(
+    .call_prep(inputs, min_days_per_year = 400L),
+    "No complete years found in simulation period"
+  )
+})
+
+testthat::test_that("prepare_evaluation_data rejects gen_output with no realizations", {
+  inputs <- .make_prep_inputs()
+  inputs$gen_output$resampled <- inputs$gen_output$resampled[, 0L, drop = FALSE]
+
+  testthat::expect_error(
+    .call_prep(inputs),
+    "no columns \\(realizations\\)"
+  )
+})
+
+testthat::test_that("prepare_evaluation_data applies water years when year_start_month > 1", {
+  inputs <- .make_prep_inputs()
+
+  # An October water year splits the two calendar years into three partial
+  # water years, only one of which (Oct 2021 - Sep 2022) has a full 365 days.
+  out <- .call_prep(inputs, year_start_month = 10)
+
+  testthat::expect_equal(nrow(out$sim_data[[1]][["cell_a"]]), 365L)
+  testthat::expect_lt(
+    nrow(out$sim_data[[1]][["cell_a"]]),
+    length(inputs$obs_dates)
+  )
+
+  # the observed side is not year-filtered
+  testthat::expect_equal(nrow(out$obs_data[["cell_a"]]), length(inputs$obs_dates))
+})
