@@ -2,14 +2,42 @@
 title: Performance audit — profile of the generate/evaluate pipeline
 type: draft
 area: performance
+status: closed
 created: 2026-08-12
 updated: 2026-08-12
 ---
 
 # weathergenr — performance audit
 
-Analysis only; no files in `R/` were changed. Ten ranked findings from a
-profiled end-to-end run, each labelled with its evidence basis and whether it
+> [!note] Outcome — all ten findings closed, 2026-08-12
+> Implemented in `63e7adc`, `d868dc4`, `d99e2f7`, `205d0f5`, `7ac48cb`,
+> `5205d9e`, `400c9ca`, `d2ade8a`, guarded by the baseline gate added in
+> `694ddb7`. Every change verified bit-identical for a fixed seed except where a
+> deliberate behaviour change is recorded in `NEWS.md`.
+>
+> **Cumulative, bundled fixture, 30 years, 3 realizations, `save_plots = FALSE`,
+> minimum of four runs in one session:** generation 8.67 → 4.92 s (−43%),
+> evaluation 3.73 → 1.19 s (−68%), together 12.40 → 6.11 s (**−51%**).
+>
+> Where the audit was wrong, and worth remembering:
+> - **#3 was a near-null result.** Ranked third on projected runtime; delivered
+>   ~0.02 s, because #1 had already made `compute_water_year()` ~70× faster.
+>   Fixing the hottest thing first re-orders everything under it.
+> - **#8 was underrated.** Filed as minor polish; delivered −20% on generation.
+> - **#10's premise was wrong.** The finding assumed idle cores needed a second
+>   axis of parallelism. There isn't one — the daily loop carries state across
+>   days and years. The real defect was the converse: more workers were started
+>   than could ever receive work.
+> - **#5 mattered less for speed than for what it uncovered** — investigating it
+>   surfaced that `parallel = TRUE` never reproduced `parallel = FALSE`
+>   (`clusterSetRNGStream` switches the generator; `set.seed()` does not pin it).
+> - **The gate found a correctness bug the audit never looked for**: fit metrics
+>   were joined without `stat`/`type`, so every simulated mean was compared
+>   against observed mean, sd *and* skewness. `mae_mean_temp` was overstated 430×.
+>   Fixed in `34e252f`.
+
+Ten ranked findings from a profiled end-to-end run, each labelled with its
+evidence basis and whether it
 changes RNG behaviour.
 
 ## How this was measured
