@@ -80,7 +80,8 @@ baseline_path <- function() {
 #' `save_plots = FALSE` throughout: plot rendering is roughly a quarter of the
 #' pipeline's runtime and contributes nothing to the numeric fingerprint.
 #' @noRd
-baseline_run_scenario <- function(cfg, ncdata, out_dir = tempfile("wgr-baseline-")) {
+baseline_run_scenario <- function(cfg, ncdata, out_dir = tempfile("wgr-baseline-"),
+                                  parallel = FALSE, n_cores = NULL) {
 
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -106,7 +107,8 @@ baseline_run_scenario <- function(cfg, ncdata, out_dir = tempfile("wgr-baseline-
     extreme_q        = cfg$extreme_q,
     out_dir          = out_dir,
     seed             = cfg$seed,
-    parallel         = FALSE,
+    parallel         = parallel,
+    n_cores          = n_cores,
     verbose          = FALSE,
     save_plots       = FALSE
   )
@@ -244,6 +246,39 @@ baseline_fingerprint <- function(scenario, res, cfg = NULL) {
 # ------------------------------------------------------------------------------
 # Artifact I/O
 # ------------------------------------------------------------------------------
+
+#' Do PSOCK workers run the same build as the master?
+#'
+#' `devtools::load_all()` does not propagate to PSOCK workers: they resolve the
+#' package from the installed library instead. A parallel test run under
+#' `devtools::test()` therefore exercises whatever is installed, not the working
+#' tree, and would report a pass or a failure that says nothing about the code
+#' being edited. `R CMD check` installs first, so there the two agree.
+#'
+#' Compares the deparsed body of `resample_weather_dates()` on a worker against
+#' the master's. Returns TRUE only when they match.
+#' @noRd
+baseline_workers_match_master <- function(n_cores = 2L) {
+
+  master_body <- paste(deparse(body(resample_weather_dates)), collapse = "\n")
+
+  cl <- parallel::makeCluster(n_cores)
+  on.exit(try(parallel::stopCluster(cl), silent = TRUE), add = TRUE)
+
+  worker_body <- try(
+    parallel::clusterEvalQ(cl, {
+      fn <- try(get("resample_weather_dates",
+                    envir = asNamespace("weathergenr")), silent = TRUE)
+      if (inherits(fn, "try-error")) NA_character_
+      else paste(deparse(body(fn)), collapse = "\n")
+    })[[1]],
+    silent = TRUE
+  )
+
+  !inherits(worker_body, "try-error") &&
+    !is.na(worker_body) &&
+    identical(worker_body, master_body)
+}
 
 #' Read the stored baseline, or NULL when it does not exist
 #' @noRd

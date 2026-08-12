@@ -55,6 +55,20 @@
 
 ## Breaking changes
 
+* `generate_weather(parallel = TRUE)` now reproduces `parallel = FALSE` for the
+  same `seed`. It previously did not. `parallel::clusterSetRNGStream()` switches
+  workers to the L'Ecuyer-CMRG generator, and `resample_weather_dates()` called
+  `set.seed()` without naming a generator, so the seed was applied to whichever
+  one happened to be active: the same integer produced one stream in the master
+  and a different one on a worker. Seeding now pins Mersenne-Twister, so a seed
+  denotes one stream everywhere.
+
+  **Sequential output is unchanged** -- the master already used
+  Mersenne-Twister, so the pin is a no-op there, as the end-to-end baseline
+  confirms. **Output from previous parallel runs is not reproducible under this
+  version**; re-run rather than mixing old and new parallel ensembles. Parallel
+  results were already stable across worker counts and remain so.
+
 * `estimate_monthly_markov_probs()` and `match_transition_positions()` now error
   when `wet_threshold` exceeds `extreme_threshold`. The three-state encoding has
   always assumed the thresholds are ordered; an inverted pair previously passed
