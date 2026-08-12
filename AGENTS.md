@@ -36,7 +36,24 @@ check_only(build_vignettes = TRUE)                     # release gate — matche
 ```bash
 Rscript tools/lint.R --changed   # lint changed R files; exit 1 = lints found
 Rscript tools/lint.R             # lint whole package — what CI runs
+```
 
+End-to-end numeric baseline — opt-in local gate, ~40 s (see *Workflow* below).
+The gate reads the `WEATHERGENR_BASELINE` environment variable, so the run command
+is shell-specific; the repo's default shell is PowerShell 7:
+
+```powershell
+$env:WEATHERGENR_BASELINE = "1"                       # PowerShell — NOT VAR=1 cmd
+Rscript -e 'devtools::test(filter = "baseline-e2e")'
+Rscript tools/record_baseline.R --dry-run             # inspect the delta
+Rscript tools/record_baseline.R --force               # re-record, once accepted
+```
+
+From an R console (RStudio), no shell variable needed:
+
+```r
+Sys.setenv(WEATHERGENR_BASELINE = "1")
+devtools::test(filter = "baseline-e2e")
 ```
 
 IMPORTANT: never `source("tools/dev_workflow.R")`. It is a runnable notes file whose top
@@ -76,6 +93,15 @@ source that file instead.
   release cheap; do not reconstruct them from `git log` at release time.
 - Before finishing: run the affected test file, then `devtools::test()`. Run
   `check_only()` when the change touches exports, documentation, or dependencies.
+- Change anything that could move **numeric output** — resampling, WARM, wavelets,
+  calendar logic, evaluation statistics, or a "behavior-preserving" refactor of any of
+  them — run the end-to-end baseline gate **before and after** the change. It is opt-in
+  and local: `devtools::test()`, `R CMD check`, and CI all skip it, so **a green CI does
+  not mean the baseline was checked**. Definitions live in
+  `tests/testthat/helper-baseline.R`, which `tools/record_baseline.R` sources — there is
+  one definition of the scenarios and the fingerprint, never two. A failure names which
+  keys moved; treat it as a question, not a chore, and re-record only once the delta is
+  reviewed and intended. Recording blesses whatever the package currently produces.
 - Report which commands were run and what they returned; never describe a check that
   did not run.
 - The `DESCRIPTION` version is **not** bumped per commit. `.git-workflow.yml` sets
