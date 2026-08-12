@@ -319,6 +319,11 @@ resample_weather_dates <- function(
   sim_day   <- sim_dates_df$day
   sim_wyear <- sim_dates_df$wyear
 
+  # Integer month-day key for every simulated day, built once. The simulated
+  # calendar is fixed, so rebuilding this inside the daily loop was pure
+  # repetition; see the matching key on the observed subset below.
+  sim_monthday_key <- sim_month * 100L + sim_day
+
   sim_daily_precip <- numeric(n_sim_day)
   sim_daily_temp <- numeric(n_sim_day)
   sim_precip_state <- integer(n_sim_day)
@@ -346,7 +351,9 @@ resample_weather_dates <- function(
   annual_seed_by_year <- if (is.null(base_seed)) NULL else base_seed + seq_len(n_years)
 
   .knn_draw_one_rank <- function(candidates, target, k, weights, u) {
-    candidates <- as.matrix(candidates)
+    # The sole caller passes cbind(), which is already a matrix; as.matrix()
+    # would dispatch once per simulated day for nothing.
+    if (!is.matrix(candidates)) candidates <- as.matrix(candidates)
     nc <- nrow(candidates)
     p <- ncol(candidates)
     if (nc < 1L) stop("No candidates provided to knn draw.", call. = FALSE)
@@ -426,9 +433,14 @@ resample_weather_dates <- function(
     obs_day_sub   <- obs_day[obs_subset_idx]
     obs_wyear_sub <- obs_wyear[obs_subset_idx]
 
-    # Month-day lookup (subset-specific)
-    obs_monthday_key <- paste(obs_month_sub, obs_day_sub, sep = ".")
-    obs_day_lookup <- split(seq_along(obs_monthday_key), obs_monthday_key)
+    # Month-day lookup (subset-specific), indexed by the integer key
+    # month * 100 + day rather than a "month.day" string. The daily loop hits
+    # this 365 * n_years times per realization, so it is built once here as a
+    # list addressable by integer and read with no string work at all.
+    obs_monthday_key <- obs_month_sub * 100L + obs_day_sub
+    obs_day_lookup <- vector("list", 1231L)  # 12 * 100 + 31
+    obs_day_split <- split(seq_along(obs_monthday_key), obs_monthday_key)
+    obs_day_lookup[as.integer(names(obs_day_split))] <- obs_day_split
 
     obs_precip_by_month <- split(obs_precip_sub, obs_month_sub)
     obs_temp_by_month <- split(obs_temp_sub, obs_month_sub)
@@ -516,10 +528,8 @@ resample_weather_dates <- function(
     # FIRST DAY OF THIS SIM YEAR
     first_month <- sim_month[year_day0_idx]
     first_month_order_idx <- match(first_month, year_month_order)
-    first_day <- sim_day[year_day0_idx]
 
-    key0 <- paste(first_month, first_day, sep = ".")
-    day0_candidates <- obs_day_lookup[[key0]]
+    day0_candidates <- obs_day_lookup[[sim_monthday_key[year_day0_idx]]]
 
     # Fallback options
     if (!length(day0_candidates)) day0_candidates <- which(obs_month_sub == first_month)
@@ -579,12 +589,10 @@ resample_weather_dates <- function(
       )
 
       cur_month <- sim_month[t_sim]
-      cur_day   <- sim_day[t_sim]
       m_idx <- month_to_year_index[cur_month]
       if (is.na(m_idx)) m_idx <- 1L
 
-      key <- paste(cur_month, cur_day, sep = ".")
-      obs_day_candidates <- obs_day_lookup[[key]]
+      obs_day_candidates <- obs_day_lookup[[sim_monthday_key[t_sim]]]
       if (!length(obs_day_candidates)) obs_day_candidates <- which(obs_month_sub == cur_month)
 
       if (!length(obs_day_candidates)) {
@@ -668,11 +676,17 @@ resample_weather_dates <- function(
       obs_temp_day1 <- obs_temp_sub[obs_day1_idx]
       date_day1 <- obs_date_sub[obs_day1_idx]
 
-      cur_sim_daily_precip_anom <- sim_daily_precip[t_prev] - obs_month_mean_precip[as.character(cur_month)]
-      cur_sim_daily_temp_anom <- sim_daily_temp[t_prev] - obs_month_mean_temp[as.character(cur_month)]
+      # Integer position, not as.character(cur_month): these vectors are built
+      # with names "1".."12" in order, so element cur_month is the same one the
+      # name lookup returned -- four fewer string coercions per simulated day.
+      mean_precip_m <- obs_month_mean_precip[[cur_month]]
+      mean_temp_m <- obs_month_mean_temp[[cur_month]]
 
-      precip_day0_anom <- obs_precip_sub[obs_day0_idx] - obs_month_mean_precip[as.character(cur_month)]
-      temp_day0_anom <- obs_temp_sub[obs_day0_idx] - obs_month_mean_temp[as.character(cur_month)]
+      cur_sim_daily_precip_anom <- sim_daily_precip[t_prev] - mean_precip_m
+      cur_sim_daily_temp_anom <- sim_daily_temp[t_prev] - mean_temp_m
+
+      precip_day0_anom <- obs_precip_sub[obs_day0_idx] - mean_precip_m
+      temp_day0_anom <- obs_temp_sub[obs_day0_idx] - mean_temp_m
 
       knn_daily_k <- max(1L, round(sqrt(length(obs_day0_idx))))
       knn_daily_k <- min(knn_daily_k, length(obs_day0_idx))
