@@ -183,6 +183,16 @@ generate_weather <- function(
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
   # ---------------------------------------------------------------------------
+  # Config-driven defaults
+  # ---------------------------------------------------------------------------
+  # run_weather_generator() supplies these from a config list, where an absent
+  # entry arrives as NULL rather than as a missing argument -- so the formal
+  # defaults never fire. Treat NULL as "use the default".
+  RELAX_FILTERS <- c("wavelet", "sd", "tail_low", "tail_high", "mean")
+  if (is.null(relax_priority)) relax_priority <- RELAX_FILTERS
+  if (is.null(warm_filter_bounds)) warm_filter_bounds <- list()
+
+  # ---------------------------------------------------------------------------
   # Input validation
   # ---------------------------------------------------------------------------
   stopifnot(
@@ -205,7 +215,12 @@ generate_weather <- function(
     "obs_grid must have required columns" = all(c("xind", "yind", "x", "y") %in% names(obs_grid)),
     "verbose must be TRUE or FALSE" = is.logical(verbose) && length(verbose) == 1L,
     "warm_filter_bounds must be a list" = is.list(warm_filter_bounds),
-    "relax_priority must be a character vector" = is.character(relax_priority)
+    "relax_priority must be a character vector" = is.character(relax_priority),
+    # Checked here rather than left to filter_warm_pool, which validates the
+    # same contract but only after the wavelet analysis and the WARM pool
+    # simulation have already run. A typo should not cost that wait.
+    "relax_priority must contain each of 'mean', 'sd', 'tail_low', 'tail_high', 'wavelet' exactly once" =
+      setequal(relax_priority, RELAX_FILTERS) && !anyDuplicated(relax_priority)
   )
 
 
@@ -418,7 +433,7 @@ generate_weather <- function(
     n_select = n_realizations,
     seed = warm_seed + 1L,
     filter_bounds = warm_filter_bounds,
-    relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+    relax_order = relax_priority,
     make_plots = TRUE,
     wavelet_args = list(
       signif_level = warm_signif,
@@ -579,7 +594,11 @@ generate_weather <- function(
 #' @param obs_grid Observed grid metadata (e.g. \code{ncdata$grid}).
 #' @param obs_dates Observed dates (e.g. \code{ncdata$date}).
 #' @param out_dir Character. Output directory.
-#' @param config List. Full simulation/evaluation configuration.
+#' @param config List. Full simulation/evaluation configuration. Entries are
+#'   forwarded to [generate_weather()] and [evaluate_weather_generator()] under
+#'   the same names, including `warm_filter_bounds`, `relax_priority`,
+#'   `plot_dpi` and `plot_device`. An entry that is absent (`NULL`) falls back to
+#'   the receiving function's default.
 #' @param eval_max_grids Integer. Maximum number of grids to evaluate.
 #' @param log_messages Logical. If TRUE, save console output to
 #'   \code{log_YYYYMMDD_HHMMSS.txt} in \code{out_dir}.
@@ -751,6 +770,7 @@ run_weather_generator <- function(
       warm_signif        = config$warm_signif,
       warm_pool_size     = config$warm_pool_size,
       warm_filter_bounds = config$warm_filter_bounds,
+      relax_priority     = config$relax_priority,
       annual_knn_n       = config$annual_knn_n,
       wet_q              = config$wet_q,
       extreme_q          = config$extreme_q,

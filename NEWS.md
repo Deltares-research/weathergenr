@@ -2,6 +2,24 @@
 
 ## Bug fixes
 
+* `generate_weather()`'s `relax_priority` argument had no effect. It was
+  accepted, validated and documented as being forwarded to
+  [filter_warm_pool()] as `relax_order`, but the call passed a hard-coded
+  ordering and discarded the argument. It is now forwarded as documented.
+  `relax_priority` breaks ties between WARM filters that share the lowest pass
+  rate, so a run where one filter is strictly most restrictive is unaffected.
+* `run_weather_generator()` now forwards `config$relax_priority`, which was
+  missing from the arguments it passes on to `generate_weather()`.
+* `run_weather_generator()` no longer fails when `config` omits
+  `warm_filter_bounds` or `relax_priority`. An absent entry arrives as `NULL`
+  rather than as a missing argument, so the formal defaults never applied and
+  validation rejected the `NULL`; both now fall back to their documented
+  defaults.
+* `generate_weather()` validates `relax_priority` against its documented
+  contract (each of `mean`, `sd`, `tail_low`, `tail_high`, `wavelet` exactly
+  once) on entry. `filter_warm_pool()` already enforced this, but only after the
+  wavelet analysis and pool simulation had run.
+
 * `evaluate_weather_generator()`'s fit metrics were computed against the wrong
   observed statistics. `.summarize_realization_fit()` filtered the *simulated*
   side to one statistic but joined the *observed* side unfiltered, so `stat` and
