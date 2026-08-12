@@ -23,7 +23,8 @@ match_transition_positions(
 \item{day0_idx}{Integer vector of indices representing candidate "day 0" positions
 in the time series.}
 
-\item{wet_threshold}{Numeric. Threshold separating dry and wet days.}
+\item{wet_threshold}{Numeric. Threshold separating dry and wet days. Must not
+exceed \code{extreme_threshold}; an inverted pair is an error.}
 
 \item{extreme_threshold}{Numeric. Threshold above which days are considered extreme.}
 }
