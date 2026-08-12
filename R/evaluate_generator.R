@@ -954,11 +954,16 @@ evaluate_weather_generator <- function(
   metrics_list <- list()
 
   # --- 1. MAE for means (by variable, across all grid-months) ---
+  # `stat` belongs in the join key: obs stats.season holds mean, sd AND skewness
+  # rows per (id, mon, variable), so joining without it matched every simulated
+  # mean against all three observed statistics and averaged the differences
+  # together.
   mae_mean <- sim_results$stats.season %>%
     dplyr::filter(.data$stat == "mean") %>%
     dplyr::left_join(
-      obs_results$stats.season %>% dplyr::select("id", "mon", "variable", Observed),
-      by = c("id", "mon", "variable")
+      obs_results$stats.season %>%
+        dplyr::select("id", "mon", "variable", "stat", Observed),
+      by = c("id", "mon", "variable", "stat")
     ) %>%
     dplyr::group_by(.data$rlz, .data$variable) %>%
     dplyr::summarize(
@@ -971,8 +976,9 @@ evaluate_weather_generator <- function(
   mae_sd <- sim_results$stats.season %>%
     dplyr::filter(.data$stat == "sd") %>%
     dplyr::left_join(
-      obs_results$stats.season %>% dplyr::select("id", "mon", "variable", Observed),
-      by = c("id", "mon", "variable")
+      obs_results$stats.season %>%
+        dplyr::select("id", "mon", "variable", "stat", Observed),
+      by = c("id", "mon", "variable", "stat")
     ) %>%
     dplyr::group_by(.data$rlz, .data$variable) %>%
     dplyr::summarize(
@@ -982,11 +988,13 @@ evaluate_weather_generator <- function(
     tidyr::pivot_wider(names_from = "variable", values_from = "mae_sd", names_prefix = "mae_sd_")
 
   # --- 3. MAE for wet/dry day counts ---
+  # `type` belongs in the join key for the same reason: obs wetdry holds a
+  # "days" and a "spells" row per (id, mon, stat).
   mae_wetdry_days <- sim_results$wetdry %>%
     dplyr::filter(.data$type == "days") %>%
     dplyr::left_join(
-      obs_results$wetdry %>% dplyr::select("id", "mon", "stat", Observed),
-      by = c("id", "mon", "stat")
+      obs_results$wetdry %>% dplyr::select("id", "mon", "stat", "type", Observed),
+      by = c("id", "mon", "stat", "type")
     ) %>%
     dplyr::group_by(.data$rlz, .data$stat) %>%
     dplyr::summarize(
@@ -999,8 +1007,8 @@ evaluate_weather_generator <- function(
   mae_spells <- sim_results$wetdry %>%
     dplyr::filter(.data$type == "spells") %>%
     dplyr::left_join(
-      obs_results$wetdry %>% dplyr::select("id", "mon", "stat", Observed),
-      by = c("id", "mon", "stat")
+      obs_results$wetdry %>% dplyr::select("id", "mon", "stat", "type", Observed),
+      by = c("id", "mon", "stat", "type")
     ) %>%
     dplyr::group_by(.data$rlz, .data$stat) %>%
     dplyr::summarize(
@@ -1151,8 +1159,8 @@ evaluate_weather_generator <- function(
       names_to = "stat.full",
       values_to = "value"
     ) %>%
-    tidyr::separate(.data$stat.full, into = c("stat", "type"), sep = "_") %>%
-    dplyr::mutate(variable = "precip", .after = .data$mon)
+    tidyr::separate("stat.full", into = c("stat", "type"), sep = "_") %>%
+    dplyr::mutate(variable = "precip", .after = "mon")
 
 
   cor.data <- .compute_anomaly_correlations(data, variables)
@@ -1199,7 +1207,7 @@ evaluate_weather_generator <- function(
       names_to = "variable",
       values_to = "value"
     ) %>%
-    tidyr::separate(.data$variable, into = c("variable", "stat"), sep = ":") %>%
+    tidyr::separate("variable", into = c("variable", "stat"), sep = ":") %>%
     dplyr::mutate(
       stat = factor(.data$stat, levels = names(stat_fns)),
       variable = as.character(.data$variable)
@@ -1223,7 +1231,7 @@ evaluate_weather_generator <- function(
     dplyr::group_by(.data$id, .data$mon, .data$variable) %>%
     dplyr::mutate(value = value - mean(value, na.rm = TRUE)) %>%
     dplyr::ungroup() %>%
-    tidyr::unite("id.variable", .data$id, .data$variable, sep = ":") %>%
+    tidyr::unite("id.variable", "id", "variable", sep = ":") %>%
     dplyr::select("date", "id.variable", "value") %>%
     tidyr::pivot_wider(names_from = "id.variable", values_from = "value") %>%
     dplyr::arrange(.data$date)
@@ -1238,8 +1246,8 @@ evaluate_weather_generator <- function(
     id.variable2 = colnames(cmat)[col(cmat)[tri]],
     value = cmat[tri]
   ) %>%
-    tidyr::separate(.data$id.variable1, c("id1", "variable1"), sep = ":") %>%
-    tidyr::separate(.data$id.variable2, c("id2", "variable2"), sep = ":")
+    tidyr::separate("id.variable1", c("id1", "variable1"), sep = ":") %>%
+    tidyr::separate("id.variable2", c("id2", "variable2"), sep = ":")
 }
 
 #' Conditional precip-X correlations within each grid
