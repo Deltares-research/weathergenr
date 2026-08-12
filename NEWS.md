@@ -41,6 +41,18 @@
   verified by the end-to-end baseline gate over both water-year and
   calendar-year scenarios.
 
+## Bug fixes (parallel execution)
+
+* `generate_weather(parallel = TRUE)` no longer holds an idle PSOCK cluster
+  while `filter_warm_pool()` runs. `filter_warm_pool()` spawns its own cluster,
+  once per relaxation iteration, so the two overlapped: a run with
+  `n_cores = 3` peaked at 8 R processes where 4 were expected. The cluster is
+  now created immediately before the daily disaggregation that uses it. Output
+  is unchanged, bit for bit. On a machine with cores to spare this does not
+  change runtime; it matters at the default
+  `n_cores = parallel::detectCores() - 1`, where the overlap oversubscribed
+  every core.
+
 ## Breaking changes
 
 * `estimate_monthly_markov_probs()` and `match_transition_positions()` now error

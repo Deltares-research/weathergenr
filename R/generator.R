@@ -252,12 +252,12 @@ generate_weather <- function(
   if (isTRUE(parallel)) {
     if (is.null(n_cores)) n_cores <- max(1L, parallel::detectCores() - 1L)
 
-    cl <- parallel::makeCluster(n_cores)
-    doParallel::registerDoParallel(cl)
-
-    if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
-    on.exit(parallel::stopCluster(cl), add = TRUE)
-
+    # The cluster is created later, immediately before the daily disaggregation
+    # that uses it -- not here. filter_warm_pool() runs before that point and
+    # spawns its own PSOCK cluster (once per relaxation iteration, of which
+    # there are typically several). Holding a registered cluster across that
+    # call put 2 * n_cores worker processes on the machine, half of them idle,
+    # each paying Windows PSOCK startup for nothing.
     .log("Starting in parallel mode", tag = "INIT", verbose = verbose)
     .log("Number of cores: {n_cores}", tag = "INIT", verbose = verbose)
   } else {
@@ -449,6 +449,13 @@ generate_weather <- function(
   .log("Running daily KNN + Markov Chain resampling", tag = "RESAMPLE", verbose = verbose)
 
   if (isTRUE(parallel)) {
+
+    # Create the cluster here, not at setup: filter_warm_pool() above spawns its
+    # own, and holding this one across that call doubled the worker count.
+    cl <- parallel::makeCluster(n_cores)
+    doParallel::registerDoParallel(cl)
+    if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
+    on.exit(parallel::stopCluster(cl), add = TRUE)
 
     # Parallel: foreach %dopar%
     .log("Processing {n_realizations} realizations...", tag = "RESAMPLE", verbose = verbose)
