@@ -22,13 +22,33 @@
   lifetime of the call in each parallel worker.
 * `.align_obs_sim_periods()` derives the year-filter row index once per side
   rather than once per grid per realization.
+* The three-state precipitation classification uses a sum of two comparisons
+  instead of nested `ifelse()`, which allocated a logical mask and both branch
+  vectors on every call. The encoding is monotone in precipitation, so the
+  result is identical; the operation itself is about 4.5x faster.
+* `estimate_monthly_markov_probs()` no longer allocates nine vectors of length
+  `365 * n_years` per simulated year to fill 365 rows of each -- quadratic in
+  `n_years` in aggregate. The computation now returns one row per month
+  internally, and the daily resampling loop indexes it by month. The exported
+  function's return value is unchanged: it still broadcasts those rows across
+  the simulated time axis, now with one vectorised assignment instead of twelve
+  full-length `which()` scans.
 * End to end on the bundled ntoum fixture (30 years, 3 realizations,
-  `save_plots = FALSE`), generation plus evaluation drops from 17.9 s to 11.7 s
-  (-35%); the evaluation stage alone drops from 4.6 s to 1.5 s. Timings are the
-  minimum of three runs.
+  `save_plots = FALSE`): generation 9.3 s to 5.7 s, evaluation 3.6 s to 1.1 s,
+  together 12.9 s to 6.8 s (-47%). Timings are the minimum of four runs in one
+  session, since machine load shifts absolute figures between sessions.
   **Outputs are unchanged**: for a fixed `seed` these changes are bit-identical,
   verified by the end-to-end baseline gate over both water-year and
   calendar-year scenarios.
+
+## Breaking changes
+
+* `estimate_monthly_markov_probs()` and `match_transition_positions()` now error
+  when `wet_threshold` exceeds `extreme_threshold`. The three-state encoding has
+  always assumed the thresholds are ordered; an inverted pair previously passed
+  silently and produced a "wet" state no observation could occupy.
+  `generate_weather()` already validated `extreme_q > wet_q`, so this only
+  affects direct calls to the two exported functions.
 
 ## Bug fixes
 

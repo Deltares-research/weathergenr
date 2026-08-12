@@ -482,22 +482,26 @@ resample_weather_dates <- function(
     extreme_threshold_by_month_order[is.na(extreme_threshold_by_month_order)] <-
       quantile(obs_precip_sub[obs_precip_sub > 0], extreme_q)
 
-    # Markov probabilities
-    markov_probs <- estimate_monthly_markov_probs(
+    # Markov probabilities, one row per month of the simulation year.
+    # .markov_month_probs() rather than the exported
+    # estimate_monthly_markov_probs(): the latter broadcasts these rows across
+    # all 365 * n_years simulated days, which this loop does not need -- it
+    # looks up one month at a time. Avoiding the broadcast removes nine
+    # length-n_sim_day allocations per simulated year.
+    sim_target_year <- if (use_water_year) (year_start + y) else (year_start + y - 1L)
+    in_year <- sim_wyear == sim_target_year
+    markov_probs <- .markov_month_probs(
       precip_lag0 = obs_precip_sub[-1],
       precip_lag1 = obs_precip_sub[-length(obs_precip_sub)],
       month_lag0  = obs_month_sub[-1],
       month_lag1  = obs_month_sub[-length(obs_precip_sub)],
       year_lag0   = obs_wyear_sub[-1],
       year_lag1   = obs_wyear_sub[-length(obs_wyear_sub)],
-      year_idx = y,
       wet_threshold = wet_threshold_by_month_order,
       extreme_threshold = extreme_threshold_by_month_order,
       month_order = year_month_order,
-      sim_month = sim_month,
-      sim_wyear = sim_wyear,
-      sim_start_year = year_start,
-      n_days_sim = n_sim_day,
+      months_present = year_month_order %in% unique(sim_month[in_year]),
+      use_water_year = use_water_year,
       dry_spell_factor_month = dry_spell_factor,
       wet_spell_factor_month = wet_spell_factor,
       dirichlet_alpha = 1.0
@@ -549,16 +553,23 @@ resample_weather_dates <- function(
 
       t_prev <- t_sim - 1L
 
+      # Index by the PREVIOUS day's month. The broadcast form indexed the
+      # full-length vectors at t_prev, and those vectors carried the
+      # probabilities of the month that day falls in -- so the month-order
+      # position of sim_month[t_prev] selects exactly the same row.
+      m_idx_prev <- month_to_year_index[sim_month[t_prev]]
+      if (is.na(m_idx_prev)) m_idx_prev <- 1L
+
       sim_precip_state[t_sim] <- markov_next_state(
         state_prev = sim_precip_state[t_prev],
         u_rand = rn_all[t_prev],
-        idx = t_prev,
-        p00 = markov_probs$p00_final,
-        p01 = markov_probs$p01_final,
-        p10 = markov_probs$p10_final,
-        p11 = markov_probs$p11_final,
-        p20 = markov_probs$p20_final,
-        p21 = markov_probs$p21_final
+        idx = m_idx_prev,
+        p00 = markov_probs[, 1L],
+        p01 = markov_probs[, 2L],
+        p10 = markov_probs[, 4L],
+        p11 = markov_probs[, 5L],
+        p20 = markov_probs[, 7L],
+        p21 = markov_probs[, 8L]
       )
 
       cur_month <- sim_month[t_sim]
@@ -772,7 +783,8 @@ expand_indices <- function(base_idx, offset_vec, n_max) {
 #' @param year_lag1 Optional integer vector. Calendar year or water year
 #'   corresponding to precip_lag1.
 #' @param wet_threshold Numeric vector of length 12. Monthly precipitation
-#'   thresholds separating dry and wet states, aligned to month_order.
+#'   thresholds separating dry and wet states, aligned to month_order. Must not
+#'   exceed \code{extreme_threshold} elementwise; an inverted pair is an error.
 #' @param extreme_threshold Numeric vector of length 12. Monthly precipitation
 #'   thresholds separating wet and very wet states, aligned to month_order.
 #' @param month_order Integer vector of length 12 defining the simulated ordering
@@ -849,8 +861,98 @@ estimate_monthly_markov_probs <- function(
     stop("dirichlet_alpha must be a non-negative finite number", call. = FALSE)
   }
 
+  # The three-state encoding below assumes the thresholds are ordered. This was
+  # previously implicit: an inverted pair silently produced a "wet" state that
+  # no observation could occupy.
+  if (any(wet_threshold > extreme_threshold, na.rm = TRUE)) {
+    stop("wet_threshold must not exceed extreme_threshold.", call. = FALSE)
+  }
+
   use_water_year <- (month_order[1] != 1)
   sim_target_year <- if (use_water_year) (sim_start_year + year_idx) else (sim_start_year + year_idx - 1)
+
+  # Which months actually occur in the target simulation year. One pass over
+  # sim_wyear/sim_month replaces the twelve full-length which() scans the
+  # month loop used to run.
+  in_year <- sim_wyear == sim_target_year
+  months_present <- month_order %in% unique(sim_month[in_year])
+
+  probs_m <- .markov_month_probs(
+    precip_lag0            = precip_lag0,
+    precip_lag1            = precip_lag1,
+    month_lag0             = month_lag0,
+    month_lag1             = month_lag1,
+    year_lag0              = year_lag0,
+    year_lag1              = year_lag1,
+    wet_threshold          = wet_threshold,
+    extreme_threshold      = extreme_threshold,
+    month_order            = month_order,
+    months_present         = months_present,
+    use_water_year         = use_water_year,
+    dry_spell_factor_month = dry_spell_factor_month,
+    wet_spell_factor_month = wet_spell_factor_month,
+    dirichlet_alpha        = dirichlet_alpha
+  )
+
+  # Broadcast the per-month rows onto the simulated time axis. This is what the
+  # public contract promises; callers inside the package use
+  # .markov_month_probs() directly and index by month instead, avoiding nine
+  # length-n_days_sim allocations per simulated year.
+  idx_year <- which(in_year)
+  month_pos <- match(sim_month[idx_year], month_order)
+
+  expand <- function(k) {
+    v <- rep(NA_real_, n_days_sim)
+    v[idx_year] <- probs_m[month_pos, k]
+    v
+  }
+
+  list(
+    p00_final = expand(1L), p01_final = expand(2L), p02_final = expand(3L),
+    p10_final = expand(4L), p11_final = expand(5L), p12_final = expand(6L),
+    p20_final = expand(7L), p21_final = expand(8L), p22_final = expand(9L)
+  )
+}
+
+
+#' Month-resolved Markov transition probabilities
+#'
+#' The computational core of [estimate_monthly_markov_probs()], returning one
+#' row per entry of `month_order` instead of one value per simulated day.
+#'
+#' `estimate_monthly_markov_probs()` broadcasts these rows across the simulated
+#' time axis, which its documented return value requires. Callers inside the
+#' package do not need that: the daily loop looks up a single month at a time,
+#' so it uses this matrix directly and avoids allocating nine vectors of length
+#' `365 * n_years` for every simulated year -- quadratic in `n_years` in
+#' aggregate.
+#'
+#' @inheritParams estimate_monthly_markov_probs
+#' @param months_present Logical vector, one entry per `month_order` element.
+#'   `FALSE` leaves that month's row `NA`, matching the old behaviour for a
+#'   month with no simulated day in the target year.
+#' @param use_water_year Logical. Selects the lag guard when `year_lag0` and
+#'   `year_lag1` are absent.
+#' @return Numeric matrix, `length(month_order)` rows by 9 columns ordered
+#'   `00, 01, 02, 10, 11, 12, 20, 21, 22`.
+#' @keywords internal
+#' @noRd
+.markov_month_probs <- function(
+    precip_lag0,
+    precip_lag1,
+    month_lag0,
+    month_lag1,
+    year_lag0,
+    year_lag1,
+    wet_threshold,
+    extreme_threshold,
+    month_order,
+    months_present,
+    use_water_year,
+    dry_spell_factor_month,
+    wet_spell_factor_month,
+    dirichlet_alpha = 1.0
+) {
 
   use_spell_adjustment <- any(abs(dry_spell_factor_month - 1) > 1e-10) ||
     any(abs(wet_spell_factor_month - 1) > 1e-10)
@@ -891,30 +993,29 @@ estimate_monthly_markov_probs <- function(
     extreme_threshold_lag0[!is.finite(extreme_threshold_lag0)] <- extreme_threshold_global
   }
 
-  state_lag1 <- ifelse(precip_lag1 <= wet_threshold_lag1, 0L,
-                       ifelse(precip_lag1 <= extreme_threshold_lag1, 1L, 2L))
+  # Sum of two comparisons rather than nested ifelse(); see
+  # match_transition_positions() for the reasoning. NA propagates identically
+  # under both forms. Valid because wet_threshold <= extreme_threshold, checked
+  # on entry.
+  state_lag1 <- (precip_lag1 > wet_threshold_lag1) +
+    (precip_lag1 > extreme_threshold_lag1)
 
-  state_lag0 <- ifelse(precip_lag0 <= wet_threshold_lag0, 0L,
-                       ifelse(precip_lag0 <= extreme_threshold_lag0, 1L, 2L))
+  state_lag0 <- (precip_lag0 > wet_threshold_lag0) +
+    (precip_lag0 > extreme_threshold_lag0)
 
-  p00_final <- p01_final <- p02_final <- rep(NA_real_, n_days_sim)
-  p10_final <- p11_final <- p12_final <- rep(NA_real_, n_days_sim)
-  p20_final <- p21_final <- p22_final <- rep(NA_real_, n_days_sim)
+  probs_m <- matrix(NA_real_, nrow = length(month_order), ncol = 9L)
 
   for (m in seq_along(month_order)) {
 
     mm <- month_order[m]
-    r <- which(sim_month == mm & sim_wyear == sim_target_year)
-    if (!length(r)) next
+    if (!months_present[m]) next
 
     x <- which(month_lag1 == mm)
     n_transitions_m <- length(x)
     dirichlet_alpha_m_eff <- if (n_transitions_m > 0L) dirichlet_alpha / sqrt(n_transitions_m) else dirichlet_alpha
 
     if (!length(x)) {
-      p00_final[r] <- 1; p01_final[r] <- 0; p02_final[r] <- 0
-      p10_final[r] <- 1; p11_final[r] <- 0; p12_final[r] <- 0
-      p20_final[r] <- 1; p21_final[r] <- 0; p22_final[r] <- 0
+      probs_m[m, ] <- c(1, 0, 0, 1, 0, 0, 1, 0, 0)
       next
     }
 
@@ -965,16 +1066,10 @@ estimate_monthly_markov_probs <- function(
       }
     }
 
-    p00_final[r] <- p_dry[1]; p01_final[r] <- p_dry[2]; p02_final[r] <- p_dry[3]
-    p10_final[r] <- p_wet[1]; p11_final[r] <- p_wet[2]; p12_final[r] <- p_wet[3]
-    p20_final[r] <- p_vwt[1]; p21_final[r] <- p_vwt[2]; p22_final[r] <- p_vwt[3]
+    probs_m[m, ] <- c(p_dry, p_wet, p_vwt)
   }
 
-  list(
-    p00_final = p00_final, p01_final = p01_final, p02_final = p02_final,
-    p10_final = p10_final, p11_final = p11_final, p12_final = p12_final,
-    p20_final = p20_final, p21_final = p21_final, p22_final = p22_final
-  )
+  probs_m
 }
 
 
@@ -1147,7 +1242,8 @@ markov_next_state <- function(state_prev, u_rand, idx, p00, p01, p10, p11, p20, 
 #' @param precip_vec Numeric vector of precipitation values.
 #' @param day0_idx Integer vector of indices representing candidate "day 0" positions
 #'   in the time series.
-#' @param wet_threshold Numeric. Threshold separating dry and wet days.
+#' @param wet_threshold Numeric. Threshold separating dry and wet days. Must not
+#'   exceed \code{extreme_threshold}; an inverted pair is an error.
 #' @param extreme_threshold Numeric. Threshold above which days are considered extreme.
 #'
 #' @return
@@ -1173,14 +1269,20 @@ match_transition_positions <- function(
     wet_threshold,
     extreme_threshold) {
 
+  if (isTRUE(wet_threshold > extreme_threshold)) {
+    stop("wet_threshold must not exceed extreme_threshold.", call. = FALSE)
+  }
+
   precip_day0 <- precip_vec[day0_idx]
   precip_day1 <- precip_vec[day0_idx + 1L]
 
-  state_day0 <- ifelse(precip_day0 <= wet_threshold, 0L,
-                       ifelse(precip_day0 <= extreme_threshold, 1L, 2L))
-
-  state_day1 <- ifelse(precip_day1 <= wet_threshold, 0L,
-                       ifelse(precip_day1 <= extreme_threshold, 1L, 2L))
+  # Sum of two comparisons rather than nested ifelse(): the state encoding is
+  # monotone in precipitation, so `(p > wet) + (p > extreme)` yields the same
+  # 0/1/2 integers about 4.5x faster -- ifelse() allocates a logical mask plus
+  # both branch vectors on every call, and this runs 365 * n_years times per
+  # realization. Requires wet_threshold <= extreme_threshold, checked above.
+  state_day0 <- (precip_day0 > wet_threshold) + (precip_day0 > extreme_threshold)
+  state_day1 <- (precip_day1 > wet_threshold) + (precip_day1 > extreme_threshold)
 
   which(state_day0 == state_from & state_day1 == state_to)
 }
