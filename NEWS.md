@@ -64,6 +64,18 @@
   lifetime of the call in each parallel worker.
 * `.align_obs_sim_periods()` derives the year-filter row index once per side
   rather than once per grid per realization.
+* `generate_weather(parallel = TRUE)` no longer starts more workers than there
+  are realizations. Realizations are the only unit of parallelism in the daily
+  resampling — it carries state across days and years, so it cannot be split
+  within a realization — and every extra worker idled while still paying PSOCK
+  startup and memory. With `n_cores = 10` and `n_realizations = 2` a run drops
+  from 21.9 s to 12.0 s, output unchanged. `filter_warm_pool()` still uses the
+  full `n_cores`, since its work does divide further. When the cap leaves a
+  single worker the daily loop runs sequentially, which produces the same
+  output and skips cluster setup entirely.
+* The daily resampling loop no longer rebuilds a `"month.day"` string key per
+  simulated day, nor coerces the month to character to read monthly means. Both
+  are now integer lookups.
 * The three-state precipitation classification uses a sum of two comparisons
   instead of nested `ifelse()`, which allocated a logical mask and both branch
   vectors on every call. The encoding is monotone in precipitation, so the
