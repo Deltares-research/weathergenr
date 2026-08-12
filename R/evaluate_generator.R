@@ -49,6 +49,15 @@
 #'   If more grids are provided, a random subsample is used to control memory.
 #' @param seed Optional integer. Random seed for reproducible grid subsampling and
 #'   year window selection. If NULL, results will vary between runs.
+#' @param plot_dpi Numeric. Raster resolution for saved diagnostic plots
+#'   (default = 300). Rendering and writing the PNGs is roughly a quarter of an
+#'   evaluation run, and that cost scales with `dpi`, so lowering this is the
+#'   simplest way to speed up iterative work. Ignored when `save_plots = FALSE`.
+#' @param plot_device Optional graphics device passed to [ggplot2::ggsave()]
+#'   (default `NULL`, letting `ggsave()` infer it from the file extension).
+#'   Supplying a faster device, for example `ragg::agg_png`, typically halves
+#'   the remaining render cost. `ragg` is not a dependency of this package; pass
+#'   the function only if you have it installed.
 #'
 #' @return A named list of `ggplot2` plot objects with class "weather_assessment".
 #'   The returned object also contains attributes:
@@ -106,7 +115,9 @@ evaluate_weather_generator <- function(
     parallel = FALSE,
     n_cores = NULL,
     eval_max_grids = 25,
-    seed = NULL
+    seed = NULL,
+    plot_dpi = 300,
+    plot_device = NULL
 ) {
 
   # ============================================================================
@@ -183,6 +194,8 @@ evaluate_weather_generator <- function(
 
   plot_config <- list(
     subtitle = "Value range and median from all simulations shown against observed",
+    dpi = plot_dpi,
+    device = plot_device,
     alpha = 0.4,
     colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated")),
     theme = ggplot2::theme_bw(base_size = 12) +

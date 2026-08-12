@@ -778,7 +778,9 @@ run_weather_generator <- function(
       extreme_q       = config$extreme_q,
       output_dir      = out_dir,
       save_plots      = isTRUE(config$save_plots),
-      seed            = config$seed
+      seed            = config$seed,
+      plot_dpi        = if (is.null(config$plot_dpi)) 300 else config$plot_dpi,
+      plot_device     = config$plot_device
     )
 
     list(
