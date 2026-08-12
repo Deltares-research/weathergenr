@@ -1,5 +1,26 @@
 # weathergenr (development version)
 
+## Performance
+
+* Calendar fields are extracted with a single `as.POSIXlt()` conversion instead
+  of `as.integer(format(date, "%Y"))`, which routed every value through string
+  formatting and an integer re-parse. On a 27,375-day series
+  `compute_water_year()` drops from 536 ms to 7.5 ms. Applied across
+  `compute_water_year()`, `find_leap_day_indices()`, `build_historical_dates()`,
+  `read_netcdf()`, the evaluation summaries, and the perturbation time indices.
+* `resample_weather_dates()` accumulates resampled dates in a plain double
+  vector rather than a `Date`-classed one. Assigning into a classed vector
+  dispatches `[<-.Date` and copies the whole vector on every assignment, making
+  the daily loop quadratic in `n_years`; the class is restored once on exit.
+  Resampling a 80-year simulation drops from 14.7 s to 9.6 s.
+* `read_netcdf()` parses the NetCDF time axis once instead of once per variable
+  when dropping Feb 29.
+* End to end on the bundled ntoum fixture (30 years, 3 realizations,
+  `save_plots = FALSE`), generation plus evaluation drops from 25.8 s to 18.9 s.
+  **Outputs are unchanged**: for a fixed `seed` these changes are bit-identical,
+  verified by the end-to-end baseline gate over both water-year and
+  calendar-year scenarios.
+
 ## Bug fixes
 
 * `evaluate_weather_generator()` no longer emits tidyselect deprecation warnings

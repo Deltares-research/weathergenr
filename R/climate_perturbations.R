@@ -197,9 +197,11 @@ apply_climate_perturbations <- function(
   # TIME INDICES (simulation-year index 1..n_years)
   # --------------------------------------------------------------------------
 
-  cal_year <- as.integer(format(date, "%Y"))
+  # One POSIXlt conversion feeds both fields; see .date_parts().
+  parts <- .date_parts(date)
+  cal_year <- parts$year
   year_idx <- cal_year - min(cal_year) + 1L
-  month <- as.integer(format(date, "%m"))
+  month <- parts$month
   n_year <- max(year_idx)
 
   # --------------------------------------------------------------------------

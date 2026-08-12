@@ -234,7 +234,8 @@ read_netcdf <- function(
   }
 
   if (isFALSE(keep_leap_day)) {
-    date <- date[format(date, "%m-%d") != "02-29"]
+    date_lt <- as.POSIXlt(date)
+    date <- date[!(date_lt$mon == 1L & date_lt$mday == 29L)]
   }
 
   # ---------------------------------------------------------------------------
@@ -294,6 +295,16 @@ read_netcdf <- function(
   var_mats <- list()
   kept_vars <- character(0)
 
+  # Loop-invariant: the time axis is the same for every variable, so parse it
+  # once here rather than re-parsing the whole NetCDF time vector per variable.
+  leap_keep_idx <- NULL
+  if (isFALSE(keep_leap_day)) {
+    raw_lt <- as.POSIXlt(
+      .parse_time_to_date(nc, time_dim_name, as.vector(time_vals_raw))
+    )
+    leap_keep_idx <- !(raw_lt$mon == 1L & raw_lt$mday == 29L)
+  }
+
   for (v in var) {
     .msg("Reading variable: ", v)
 
@@ -310,8 +321,7 @@ read_netcdf <- function(
 
     # Drop Feb 29 in matrix if we dropped it in date
     if (isFALSE(keep_leap_day)) {
-      keep_idx <- format(.parse_time_to_date(nc, time_dim_name, as.vector(time_vals_raw)), "%m-%d") != "02-29"
-      mat <- mat[keep_idx, , drop = FALSE]
+      mat <- mat[leap_keep_idx, , drop = FALSE]
     }
 
     if (!is.null(signif_digits)) mat <- signif(mat, signif_digits)
