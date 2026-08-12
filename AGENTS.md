@@ -69,10 +69,22 @@ source that file instead.
 - Dates run on a 365-day no-leap calendar (`calendar.R`). Assume Feb 29 is absent from
   any date vector reaching the generator; keep new date logic leap-free rather than
   special-casing leap days downstream.
-- Grid-cell iteration runs in a PSOCK cluster (`parallel::makeCluster` +
-  `doParallel::registerDoParallel`, `R/generator.R`). Workers inherit no globals:
+- Realization iteration runs in a PSOCK cluster (`parallel::makeCluster` +
+  `doParallel::registerDoParallel`, `R/generator.R`) — realizations, not grid
+  cells; grid cells are iterated sequentially. Workers inherit no globals:
   reference package functions or pass objects explicitly, and thread the `seed`
   argument through so runs stay reproducible.
+- IMPORTANT: seed with `.set_seed_fixed_kind()`, never a bare `set.seed()`, in
+  any code that can run on a worker. `clusterSetRNGStream()` switches workers to
+  L'Ecuyer-CMRG, and `set.seed()` applies the seed to whatever generator is
+  active — so a bare call makes one seed mean two different streams, which is
+  exactly how `parallel = TRUE` came to disagree with `parallel = FALSE`.
+- IMPORTANT: `devtools::load_all()` does **not** reach PSOCK workers; they load
+  the *installed* package. Anything verified through a worker under
+  `devtools::test()` is testing the installed build, not the working tree. Run
+  `devtools::install()` first, or use `R CMD check`, which installs before
+  testing. The baseline gate's parallel scenario detects this and skips rather
+  than reporting a meaningless pass.
 - Plotting lives in the `*_plots.R` sibling of its module
   (`warm_filtering_plots.R`, `wavelet_plots.R`, `evaluate_generator_plots.R`); keep
   ggplot2 code out of the computational files.

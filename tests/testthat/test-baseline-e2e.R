@@ -137,6 +137,39 @@ for (scenario_name in names(baseline_scenarios())) {
 }
 
 
+test_that("parallel execution reproduces the recorded sequential baseline", {
+
+  skip_baseline_unless_requested()
+
+  # Asserted against the SEQUENTIAL water_year rows on purpose. That pins two
+  # properties with one comparison: parallel agrees with sequential, and both
+  # still agree with the recorded numbers. A separately recorded parallel
+  # fingerprint would only ever restate the sequential one.
+  nm <- "water_year"
+  stored <- baseline_split(baseline_read())$fingerprint
+  skip_if(!any(stored$scenario == nm),
+          paste0("Baseline has no rows for '", nm, "'."))
+
+  skip_if_not(
+    baseline_workers_match_master(2L),
+    paste(
+      "PSOCK workers are running a different build from the master.",
+      "devtools::load_all() does not reach workers -- they load the INSTALLED",
+      "package. Run devtools::install() first, or rely on R CMD check, which",
+      "installs before testing."
+    )
+  )
+
+  cfg <- baseline_scenarios()[[nm]]
+  ncdata <- read_netcdf(nc_path = baseline_fixture_path())
+  res <- baseline_run_scenario(cfg, ncdata, parallel = TRUE, n_cores = 2L)
+  current <- baseline_fingerprint(nm, res, cfg = cfg)
+
+  failure <- compare_fingerprint(current, stored, nm)
+  expect_null(failure, info = failure)
+})
+
+
 test_that("baseline fingerprinting is itself deterministic", {
 
   # Cheap guard on the harness rather than the package: if the fingerprint

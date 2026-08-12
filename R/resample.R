@@ -93,7 +93,10 @@ knn_sample <- function(
       has_seed <- FALSE
     }
     on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
-    set.seed(seed)
+    # Pins the generator as well as the seed; see .set_seed_fixed_kind(). This
+    # function runs inside PSOCK workers, where the active generator is not the
+    # master's.
+    .set_seed_fixed_kind(seed)
   }
 
   candidates <- as.matrix(candidates)
@@ -292,7 +295,10 @@ resample_weather_dates <- function(
       has_seed <- FALSE
     }
     on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
-    set.seed(base_seed)
+    # Pins the generator as well as the seed; see .set_seed_fixed_kind(). This
+    # is the function generate_weather() runs on PSOCK workers, so without the
+    # pin one seed produced different output under parallel = TRUE.
+    .set_seed_fixed_kind(base_seed)
   }
 
   # Date logic and parameters
