@@ -29,6 +29,19 @@
   remaining `.data$` references in tidyselect arguments now pass column names as
   strings, completing the change begun for `select()`/`rename()`/`pivot_*()`.
 
+## New features
+
+* `evaluate_weather_generator()` gains `plot_dpi` (default `300`) and
+  `plot_device` (default `NULL`), forwarded to [ggplot2::ggsave()]. Writing the
+  diagnostic PNGs dominates an evaluation run that saves plots — 4.7 s of 5.7 s
+  on the bundled fixture — and that cost scales with resolution: `plot_dpi = 150`
+  takes 5.0 s, `plot_dpi = 96` takes 4.3 s, against 1.1 s for
+  `save_plots = FALSE`. `plot_device` accepts a faster device such as
+  `ragg::agg_png`; `ragg` is not a dependency, so pass the function only if it is
+  installed. Both are reachable through `run_weather_generator()` as
+  `config$plot_dpi` and `config$plot_device`. Defaults reproduce the previous
+  output exactly.
+
 ## Performance
 
 * Calendar fields are extracted with a single `as.POSIXlt()` conversion instead
