@@ -23,7 +23,11 @@ run_weather_generator(
 
 \item{out_dir}{Character. Output directory.}
 
-\item{config}{List. Full simulation/evaluation configuration.}
+\item{config}{List. Full simulation/evaluation configuration. Entries are
+forwarded to [generate_weather()] and [evaluate_weather_generator()] under
+the same names, including `warm_filter_bounds`, `relax_priority`,
+`plot_dpi` and `plot_device`. An entry that is absent (`NULL`) falls back to
+the receiving function's default.}
 
 \item{eval_max_grids}{Integer. Maximum number of grids to evaluate.}
 
