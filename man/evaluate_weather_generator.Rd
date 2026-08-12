@@ -20,7 +20,9 @@ evaluate_weather_generator(
   parallel = FALSE,
   n_cores = NULL,
   eval_max_grids = 25,
-  seed = NULL
+  seed = NULL,
+  plot_dpi = 300,
+  plot_device = NULL
 )
 }
 \arguments{
@@ -69,6 +71,17 @@ If more grids are provided, a random subsample is used to control memory.}
 
 \item{seed}{Optional integer. Random seed for reproducible grid subsampling and
 year window selection. If NULL, results will vary between runs.}
+
+\item{plot_dpi}{Numeric. Raster resolution for saved diagnostic plots
+(default = 300). Rendering and writing the PNGs is roughly a quarter of an
+evaluation run, and that cost scales with `dpi`, so lowering this is the
+simplest way to speed up iterative work. Ignored when `save_plots = FALSE`.}
+
+\item{plot_device}{Optional graphics device passed to [ggplot2::ggsave()]
+(default `NULL`, letting `ggsave()` infer it from the file extension).
+Supplying a faster device, for example `ragg::agg_png`, typically halves
+the remaining render cost. `ragg` is not a dependency of this package; pass
+the function only if you have it installed.}
 }
 \value{
 A named list of `ggplot2` plot objects with class "weather_assessment".

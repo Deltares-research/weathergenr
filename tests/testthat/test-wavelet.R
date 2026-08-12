@@ -113,8 +113,18 @@ testthat::test_that("extract_wavelet_components reconstructs components and attr
 
 testthat::test_that("simulate_warm returns deterministic simulations", {
   components <- cbind(sin(1:20), cos(1:20))
-  out1 <- simulate_warm(components = components, n = 20, n_sim = 3, seed = 10, verbose = FALSE)
-  out2 <- simulate_warm(components = components, n = 20, n_sim = 3, seed = 10, verbose = FALSE)
+
+  # These components are noiseless sinusoids, so stats::arima()'s optimiser
+  # emits "NaNs produced" while searching orders. That is a property of the
+  # degenerate input, not a defect: the assertion here is determinism under a
+  # fixed seed, not fit quality. The warnings only became visible once
+  # test-warm.R stopped leaking its mocked ARMA fitter into the namespace.
+  out1 <- suppressWarnings(
+    simulate_warm(components = components, n = 20, n_sim = 3, seed = 10, verbose = FALSE)
+  )
+  out2 <- suppressWarnings(
+    simulate_warm(components = components, n = 20, n_sim = 3, seed = 10, verbose = FALSE)
+  )
 
   testthat::expect_equal(dim(out1), c(20, 3))
   testthat::expect_identical(out1, out2)

@@ -49,6 +49,15 @@
 #'   If more grids are provided, a random subsample is used to control memory.
 #' @param seed Optional integer. Random seed for reproducible grid subsampling and
 #'   year window selection. If NULL, results will vary between runs.
+#' @param plot_dpi Numeric. Raster resolution for saved diagnostic plots
+#'   (default = 300). Rendering and writing the PNGs is roughly a quarter of an
+#'   evaluation run, and that cost scales with `dpi`, so lowering this is the
+#'   simplest way to speed up iterative work. Ignored when `save_plots = FALSE`.
+#' @param plot_device Optional graphics device passed to [ggplot2::ggsave()]
+#'   (default `NULL`, letting `ggsave()` infer it from the file extension).
+#'   Supplying a faster device, for example `ragg::agg_png`, typically halves
+#'   the remaining render cost. `ragg` is not a dependency of this package; pass
+#'   the function only if you have it installed.
 #'
 #' @return A named list of `ggplot2` plot objects with class "weather_assessment".
 #'   The returned object also contains attributes:
@@ -106,7 +115,9 @@ evaluate_weather_generator <- function(
     parallel = FALSE,
     n_cores = NULL,
     eval_max_grids = 25,
-    seed = NULL
+    seed = NULL,
+    plot_dpi = 300,
+    plot_device = NULL
 ) {
 
   # ============================================================================
@@ -183,6 +194,8 @@ evaluate_weather_generator <- function(
 
   plot_config <- list(
     subtitle = "Value range and median from all simulations shown against observed",
+    dpi = plot_dpi,
+    device = plot_device,
     alpha = 0.4,
     colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated")),
     theme = ggplot2::theme_bw(base_size = 12) +
@@ -530,7 +543,7 @@ evaluate_weather_generator <- function(
   if (!inherits(dates, "Date")) stop("dates must be Date", call. = FALSE)
 
   if (year_start_month == 1L) {
-    yrs <- as.integer(format(dates, "%Y"))
+    yrs <- .date_parts(dates)$year
   } else {
     yrs <- compute_water_year(dates, year_start_month)
   }
@@ -572,23 +585,26 @@ evaluate_weather_generator <- function(
   years[start_idx:(start_idx + window_years - 1L)]
 }
 
-#' Filter a single grid data frame to selected years (keeps original columns)
+#' Row index selecting the rows of a shared date vector falling in given years
 #'
-#' @param df Data frame with a `date` column.
+#' Every grid within `daily_obs` (and within one realization of `daily_sim`)
+#' shares a single date vector, so the row index is computed once here and
+#' reused across grids rather than recomputing the year vector per grid. With
+#' 25 grids and 3 realizations that is one call instead of 100.
+#'
+#' @param dates Date vector shared by every grid on this side.
 #' @param years_keep Integer vector of years (calendar or water years) to retain.
 #' @param year_start_month Integer 1-12. When > 1, uses water-year grouping.
-#' @return Filtered data frame with the same columns as `df`.
+#' @return Logical vector, length `length(dates)`.
 #' @keywords internal
-.filter_grid_years <- function(df, years_keep, year_start_month = 1L) {
+.year_keep_index <- function(dates, years_keep, year_start_month = 1L) {
 
-  if (!("date" %in% names(df))) stop("df must contain 'date'", call. = FALSE)
-
-  if (year_start_month == 1L) {
-    yrs <- as.integer(format(df$date, "%Y"))
+  yrs <- if (year_start_month == 1L) {
+    .date_parts(dates)$year
   } else {
-    yrs <- compute_water_year(df$date, year_start_month)
+    compute_water_year(dates, year_start_month)
   }
-  df[yrs %in% years_keep, , drop = FALSE]
+  yrs %in% years_keep
 }
 
 #' Standardize obs and sim to the same full-year length via random windowing
@@ -641,15 +657,32 @@ evaluate_weather_generator <- function(
   obs_years_keep <- .pick_contiguous_year_window(obs_block, window_years = n_years)
   sim_years_keep <- .pick_contiguous_year_window(sim_block, window_years = n_years)
 
-  # 4) Apply year filtering (water-year-aware)
-  daily_obs2 <- lapply(daily_obs, .filter_grid_years,
-                       years_keep = obs_years_keep,
-                       year_start_month = year_start_month)
+  # 4) Apply year filtering (water-year-aware).
+  #    The row index is identical for every grid on a side -- they share one
+  #    date vector, which the leap-day removal in step 1 already relies on -- so
+  #    derive it once per side instead of once per grid per realization.
+  obs_keep <- .year_keep_index(obs_dates, obs_years_keep, year_start_month)
+  sim_keep <- .year_keep_index(sim_dates, sim_years_keep, year_start_month)
+
+  # Make the shared-date-vector assumption explicit: a grid of a different
+  # length would be silently mis-subset by a shared index.
+  .check_shared_length <- function(grids, n, what) {
+    lens <- vapply(grids, nrow, integer(1))
+    if (any(lens != n)) {
+      stop("All ", what, " grids must share one date vector; found row counts ",
+           paste(unique(lens), collapse = ", "), " against ", n, " dates.",
+           call. = FALSE)
+    }
+  }
+  .check_shared_length(daily_obs, length(obs_keep), "observed")
+  for (i in seq_len(n_realizations)) {
+    .check_shared_length(daily_sim[[i]], length(sim_keep), "simulated")
+  }
+
+  daily_obs2 <- lapply(daily_obs, function(df) df[obs_keep, , drop = FALSE])
 
   daily_sim2 <- lapply(seq_len(n_realizations), function(i) {
-    lapply(daily_sim[[i]], .filter_grid_years,
-           years_keep = sim_years_keep,
-           year_start_month = year_start_month)
+    lapply(daily_sim[[i]], function(df) df[sim_keep, , drop = FALSE])
   })
 
   # Basic integrity check: after filtering, all grids should have same nrow within obs and sim
@@ -766,8 +799,10 @@ evaluate_weather_generator <- function(
 
   # Use water year for the 'year' column when year_start_month > 1;
   # 'mon' stays as calendar month (correct for monthly statistics).
+  his.parts <- .date_parts(his.date)
+
   if (year_start_month == 1L) {
-    yr_vec <- as.integer(format(his.date, "%Y"))
+    yr_vec <- his.parts$year
   } else {
     yr_vec <- compute_water_year(his.date, year_start_month)
   }
@@ -775,8 +810,8 @@ evaluate_weather_generator <- function(
   his.datemat <- dplyr::tibble(
     date = his.date,
     year = yr_vec,
-    mon = as.integer(format(his.date, "%m")),
-    day = as.integer(format(his.date, "%d")))
+    mon = his.parts$month,
+    day = his.parts$day)
 
   his <- lapply(seq_len(grid_count), function(i) {
     df <- daily_obs[[i]][, variables, drop = FALSE]
@@ -809,12 +844,12 @@ evaluate_weather_generator <- function(
     data = his,
     datemat = his.datemat,
     mc_thresholds = mc_thresholds,
-    stats.season = his.stats$stats.season %>% dplyr::rename(Observed = .data$value),
-    stats.mon.aavg = his.stats$stats.mon.aavg %>% dplyr::rename(Observed = .data$value),
-    stats.annual.aavg = his.stats$stats.annual.aavg %>% dplyr::rename(Observed = .data$value),
-    wetdry = his.stats$wetdry %>% dplyr::rename(Observed = .data$value),
-    cor = his.stats$cor %>% dplyr::rename(Observed = .data$value),
-    cor.cond = his.stats$cor.cond %>% dplyr::rename(Observed = .data$value)
+    stats.season = his.stats$stats.season %>% dplyr::rename(Observed = "value"),
+    stats.mon.aavg = his.stats$stats.mon.aavg %>% dplyr::rename(Observed = "value"),
+    stats.annual.aavg = his.stats$stats.annual.aavg %>% dplyr::rename(Observed = "value"),
+    wetdry = his.stats$wetdry %>% dplyr::rename(Observed = "value"),
+    cor = his.stats$cor %>% dplyr::rename(Observed = "value"),
+    cor.cond = his.stats$cor.cond %>% dplyr::rename(Observed = "value")
   )
 }
 
@@ -826,8 +861,10 @@ evaluate_weather_generator <- function(
 
   sim.date <- daily_sim[[1]][[1]]$date
 
+  sim.parts <- .date_parts(sim.date)
+
   if (year_start_month == 1L) {
-    yr_vec <- as.integer(format(sim.date, "%Y"))
+    yr_vec <- sim.parts$year
   } else {
     yr_vec <- compute_water_year(sim.date, year_start_month)
   }
@@ -835,8 +872,8 @@ evaluate_weather_generator <- function(
   sim.datemat <- dplyr::tibble(
     date = sim.date,
     year = yr_vec,
-    mon = as.integer(format(sim.date, "%m")),
-    day = as.integer(format(sim.date, "%d"))
+    mon = sim.parts$month,
+    day = sim.parts$day
   )
 
   .summarize_one_realization <- function(i, daily_sim, variables, mc_thresholds, sim.datemat) {
@@ -893,24 +930,24 @@ evaluate_weather_generator <- function(
   list(
     stats.season = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.season"), .id = "rlz") %>%
       dplyr::mutate(id = as.numeric(.data$id)) %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     stats.mon.aavg = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.mon.aavg"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     stats.annual.aavg = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "stats.annual.aavg"), .id = "rlz") %>%
       dplyr::mutate(year = .data$year - min(.data$year) + 1) %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     cor = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "cor"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     wetdry = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "wetdry"), .id = "rlz") %>%
       dplyr::mutate(id = as.numeric(.data$id)) %>%
-      dplyr::rename(Simulated = .data$value),
+      dplyr::rename(Simulated = "value"),
 
     cor.cond = dplyr::bind_rows(lapply(sim.stats.list, `[[`, "cor.cond"), .id = "rlz") %>%
-      dplyr::rename(Simulated = .data$value)
+      dplyr::rename(Simulated = "value")
   )
 }
 
@@ -930,60 +967,68 @@ evaluate_weather_generator <- function(
   metrics_list <- list()
 
   # --- 1. MAE for means (by variable, across all grid-months) ---
+  # `stat` belongs in the join key: obs stats.season holds mean, sd AND skewness
+  # rows per (id, mon, variable), so joining without it matched every simulated
+  # mean against all three observed statistics and averaged the differences
+  # together.
   mae_mean <- sim_results$stats.season %>%
     dplyr::filter(.data$stat == "mean") %>%
     dplyr::left_join(
-      obs_results$stats.season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
-      by = c("id", "mon", "variable")
+      obs_results$stats.season %>%
+        dplyr::select("id", "mon", "variable", "stat", Observed),
+      by = c("id", "mon", "variable", "stat")
     ) %>%
     dplyr::group_by(.data$rlz, .data$variable) %>%
     dplyr::summarize(
       mae_mean = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_mean, names_prefix = "mae_mean_")
+    tidyr::pivot_wider(names_from = "variable", values_from = "mae_mean", names_prefix = "mae_mean_")
 
   # --- 2. MAE for SDs ---
   mae_sd <- sim_results$stats.season %>%
     dplyr::filter(.data$stat == "sd") %>%
     dplyr::left_join(
-      obs_results$stats.season %>% dplyr::select(.data$id, .data$mon, .data$variable, Observed),
-      by = c("id", "mon", "variable")
+      obs_results$stats.season %>%
+        dplyr::select("id", "mon", "variable", "stat", Observed),
+      by = c("id", "mon", "variable", "stat")
     ) %>%
     dplyr::group_by(.data$rlz, .data$variable) %>%
     dplyr::summarize(
       mae_sd = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$mae_sd, names_prefix = "mae_sd_")
+    tidyr::pivot_wider(names_from = "variable", values_from = "mae_sd", names_prefix = "mae_sd_")
 
   # --- 3. MAE for wet/dry day counts ---
+  # `type` belongs in the join key for the same reason: obs wetdry holds a
+  # "days" and a "spells" row per (id, mon, stat).
   mae_wetdry_days <- sim_results$wetdry %>%
     dplyr::filter(.data$type == "days") %>%
     dplyr::left_join(
-      obs_results$wetdry %>% dplyr::select(.data$id, .data$mon, .data$stat, Observed),
-      by = c("id", "mon", "stat")
+      obs_results$wetdry %>% dplyr::select("id", "mon", "stat", "type", Observed),
+      by = c("id", "mon", "stat", "type")
     ) %>%
     dplyr::group_by(.data$rlz, .data$stat) %>%
     dplyr::summarize(
       mae = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_days_")
+    tidyr::pivot_wider(names_from = "stat", values_from = "mae", names_prefix = "mae_days_")
 
   # --- 4. MAE for spell lengths ---
   mae_spells <- sim_results$wetdry %>%
     dplyr::filter(.data$type == "spells") %>%
     dplyr::left_join(
-      obs_results$wetdry %>% dplyr::select(.data$id, .data$mon, .data$stat, Observed),
-      by = c("id", "mon", "stat")
+      obs_results$wetdry %>% dplyr::select("id", "mon", "stat", "type", Observed),
+      by = c("id", "mon", "stat", "type")
     ) %>%
     dplyr::group_by(.data$rlz, .data$stat) %>%
     dplyr::summarize(
       mae = mean(abs(.data$Simulated - .data$Observed), na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    tidyr::pivot_wider(names_from = .data$stat, values_from = .data$mae, names_prefix = "mae_spell_")
+    tidyr::pivot_wider(names_from = "stat", values_from = "mae", names_prefix = "mae_spell_")
 
   # --- 5. MAE for cross-grid correlations ---
   mae_cor_crossgrid <- sim_results$cor %>%
@@ -991,7 +1036,7 @@ evaluate_weather_generator <- function(
     dplyr::left_join(
       obs_results$cor %>%
         dplyr::filter(.data$variable1 == .data$variable2, .data$id1 != .data$id2) %>%
-        dplyr::select(.data$id1, .data$variable1, .data$id2, .data$variable2, Observed),
+        dplyr::select("id1", "variable1", "id2", "variable2", Observed),
       by = c("id1", "variable1", "id2", "variable2")
     ) %>%
     dplyr::group_by(.data$rlz) %>%
@@ -1006,7 +1051,7 @@ evaluate_weather_generator <- function(
     dplyr::left_join(
       obs_results$cor %>%
         dplyr::filter(.data$id1 == .data$id2, .data$variable1 != .data$variable2) %>%
-        dplyr::select(.data$id1, .data$variable1, .data$id2, .data$variable2, Observed),
+        dplyr::select("id1", "variable1", "id2", "variable2", Observed),
       by = c("id1", "variable1", "id2", "variable2")
     ) %>%
     dplyr::group_by(.data$rlz) %>%
@@ -1053,7 +1098,7 @@ evaluate_weather_generator <- function(
     dplyr::select(-dplyr::all_of(norm_cols)) %>%
     dplyr::arrange(.data$overall_score) %>%
     dplyr::mutate(rank = dplyr::row_number()) %>%
-    dplyr::select(.data$rlz, .data$rank, .data$overall_score, dplyr::everything())
+    dplyr::select("rlz", "rank", "overall_score", dplyr::everything())
 
   summary_df
 }
@@ -1123,12 +1168,12 @@ evaluate_weather_generator <- function(
       .groups = "drop"
     ) %>%
     tidyr::pivot_longer(
-      cols = c(.data$Wet_days, .data$Dry_days, .data$Dry_spells, .data$Wet_spells),
+      cols = c("Wet_days", "Dry_days", "Dry_spells", "Wet_spells"),
       names_to = "stat.full",
       values_to = "value"
     ) %>%
-    tidyr::separate(.data$stat.full, into = c("stat", "type"), sep = "_") %>%
-    dplyr::mutate(variable = "precip", .after = .data$mon)
+    tidyr::separate("stat.full", into = c("stat", "type"), sep = "_") %>%
+    dplyr::mutate(variable = "precip", .after = "mon")
 
 
   cor.data <- .compute_anomaly_correlations(data, variables)
@@ -1175,7 +1220,7 @@ evaluate_weather_generator <- function(
       names_to = "variable",
       values_to = "value"
     ) %>%
-    tidyr::separate(.data$variable, into = c("variable", "stat"), sep = ":") %>%
+    tidyr::separate("variable", into = c("variable", "stat"), sep = ":") %>%
     dplyr::mutate(
       stat = factor(.data$stat, levels = names(stat_fns)),
       variable = as.character(.data$variable)
@@ -1199,12 +1244,12 @@ evaluate_weather_generator <- function(
     dplyr::group_by(.data$id, .data$mon, .data$variable) %>%
     dplyr::mutate(value = value - mean(value, na.rm = TRUE)) %>%
     dplyr::ungroup() %>%
-    tidyr::unite("id.variable", .data$id, .data$variable, sep = ":") %>%
-    dplyr::select(.data$date, .data$id.variable, .data$value) %>%
-    tidyr::pivot_wider(names_from = .data$id.variable, values_from = .data$value) %>%
+    tidyr::unite("id.variable", "id", "variable", sep = ":") %>%
+    dplyr::select("date", "id.variable", "value") %>%
+    tidyr::pivot_wider(names_from = "id.variable", values_from = "value") %>%
     dplyr::arrange(.data$date)
 
-  mat <- as.matrix(dat2 %>% dplyr::select(-.data$date))
+  mat <- as.matrix(dat2 %>% dplyr::select(-"date"))
   cmat <- stats::cor(mat, use = "pairwise.complete.obs", method = "pearson")
 
   tri <- upper.tri(cmat, diag = FALSE)
@@ -1214,8 +1259,8 @@ evaluate_weather_generator <- function(
     id.variable2 = colnames(cmat)[col(cmat)[tri]],
     value = cmat[tri]
   ) %>%
-    tidyr::separate(.data$id.variable1, c("id1", "variable1"), sep = ":") %>%
-    tidyr::separate(.data$id.variable2, c("id2", "variable2"), sep = ":")
+    tidyr::separate("id.variable1", c("id1", "variable1"), sep = ":") %>%
+    tidyr::separate("id.variable2", c("id2", "variable2"), sep = ":")
 }
 
 #' Conditional precip-X correlations within each grid
@@ -1270,7 +1315,7 @@ evaluate_weather_generator <- function(
 
   # Wide format back (per grid) to compute pairwise cor easily with filtering
   dat_wide <- dat %>%
-    tidyr::pivot_wider(names_from = .data$variable, values_from = .data$value)
+    tidyr::pivot_wider(names_from = "variable", values_from = "value")
 
   # Join wet thresholds if needed
   if (wet_def == "monthly_quantile") {
@@ -1399,7 +1444,7 @@ evaluate_weather_generator <- function(
         pair = paste(pmin(.data$id1, .data$id2), pmax(.data$id1, .data$id2), sep = ":")
       ) %>%
       dplyr::filter(.data$pair %in% allowed_pairs) %>%
-      dplyr::select(-.data$pair)
+      dplyr::select(-"pair")
 
   } else if (pair_type == "variable") {
     result <- result %>%
@@ -1409,7 +1454,7 @@ evaluate_weather_generator <- function(
         variable = .data$pair
       ) %>%
       dplyr::filter(.data$pair %in% allowed_pairs) %>%
-      dplyr::select(-.data$pair)
+      dplyr::select(-"pair")
   }
 
   result
@@ -1722,7 +1767,7 @@ prepare_evaluation_data <- function(gen_output,
   .log("Identifying complete years (min {min_days_per_year} days)", tag = "EVAL", verbose = verbose)
 
   if (year_start_month == 1L) {
-    sim_years <- as.integer(format(sim_dates, "%Y"))
+    sim_years <- .date_parts(sim_dates)$year
   } else {
     sim_years <- compute_water_year(sim_dates, year_start_month)
   }

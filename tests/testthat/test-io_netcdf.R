@@ -12,7 +12,7 @@ nc_test_path <- function() {
 }
 
 skip_if_no_netcdf <- function(path) {
-  if (!file.exists(path)) skip("No NetCDF file available for testing.")
+  if (!file.exists(path)) testthat::skip("No NetCDF file available for testing.")
 }
 
 # -----------------------------------------------------------------------------
@@ -272,7 +272,7 @@ test_that("read_netcdf grid coordinates match dimensions", {
       expect_equal(result$grid$y[i], y_vals[result$grid$yind[i]], tolerance = 1e-6)
     }
   } else {
-    skip("NetCDF does not expose at least two non-time dimensions; grid coordinate test skipped.")
+    testthat::skip("NetCDF does not expose at least two non-time dimensions; grid coordinate test skipped.")
   }
 })
 

@@ -1,0 +1,34 @@
+# lintr configuration for `Rscript tools/lint.R` (run in CI by .github/workflows/lint.yaml).
+#
+# Baseline policy: the style linters disabled below are switched off because the
+# existing codebase predates them — enabling them reports ~1,800 findings whose
+# only fix is a package-wide reformat that would rewrite `git blame` for every
+# file. Freezing them keeps CI green and meaningful rather than red and ignored.
+#
+# Everything NOT listed here stays at lintr's defaults, so the semantic checks
+# that catch real defects remain active — notably object_usage_linter (undefined
+# or unused variables), seq_linter, and T_and_F_symbol_linter.
+#
+# To tighten later: re-enable one linter, fix its findings in a dedicated
+# style-only commit, then delete its line from this file.
+linters: linters_with_defaults(
+    # Formatting the codebase does not follow
+    line_length_linter = NULL,
+    indentation_linter = NULL,
+    infix_spaces_linter = NULL,
+    spaces_left_parentheses_linter = NULL,
+    commas_linter = NULL,
+    brace_linter = NULL,
+    semicolon_linter = NULL,
+    trailing_whitespace_linter = NULL,
+    trailing_blank_lines_linter = NULL,
+    # Naming: the package mixes dot-prefixed internals with snake_case exports
+    object_name_linter = NULL,
+    object_length_linter = NULL,
+    # Style preferences, not defects
+    assignment_linter = NULL,
+    pipe_consistency_linter = NULL,
+    pipe_continuation_linter = NULL,
+    commented_code_linter = NULL
+  )
+encoding: "UTF-8"

@@ -148,13 +148,19 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param title Character; plot title (only used when \code{show_title = TRUE}).
 #' @param subtitle Character; plot subtitle (only used when \code{show_title = TRUE}).
 #' @param output_dir Character; output directory for saved plots.
+#' @param plot_config List; optional plotting configuration. \code{dpi} and
+#'   \code{device} are read from it when present, so callers can trade raster
+#'   resolution for speed or swap in a faster device. Rendering and writing the
+#'   diagnostic PNGs is roughly a quarter of an evaluation run at the default
+#'   300 dpi.
 #'
 #' @return The ggplot object \code{p}, returned invisibly.
 #'
 #' @keywords internal
 #' @import ggplot2
 .export_multipanel_plot <- function(p, filename, show_title, save_plots,
-                                   title = NULL, subtitle = NULL, output_dir) {
+                                   title = NULL, subtitle = NULL, output_dir,
+                                   plot_config = NULL) {
 
   if (show_title && !is.null(title)) {
     p <- p + labs(title = title, subtitle = subtitle)
@@ -169,13 +175,21 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     width <- ncol * 4
     height <- nrow * 4 + 0.5
 
-    ggplot2::ggsave(
+    dpi <- if (!is.null(plot_config$dpi)) plot_config$dpi else 300
+    device <- plot_config$device
+
+    args <- list(
       filename = file.path(output_dir, filename),
       plot = p,
       width = width,
       height = height,
-      dpi = 300
+      dpi = dpi
     )
+    # Only pass `device` when set: ggsave() infers it from the extension
+    # otherwise, and an explicit NULL is not the same as omitting it.
+    if (!is.null(device)) args$device <- device
+
+    do.call(ggplot2::ggsave, args)
   }
 
   invisible(p)
@@ -228,6 +242,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = "daily_mean.png",
     show_title = show_title,
@@ -285,6 +300,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = "daily_sd.png",
     show_title = show_title,
@@ -349,6 +365,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     labs(x = "Observed", y = "Simulated")
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = "spell_length.png",
     show_title = show_title,
@@ -413,6 +430,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     labs(x = "Observed", y = "Simulated")
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = "wetdry_days_count.png",
     show_title = show_title,
@@ -466,6 +484,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     labs(x = "Observed", y = "Simulated")
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = "crossgrid_correlations.png",
     show_title = show_title,
@@ -519,6 +538,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     labs(x = "Observed", y = "Simulated")
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = "intergrid_correlations.png",
     show_title = show_title,
@@ -579,6 +599,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     labs(x = "Observed", y = "Simulated")
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = "precip_conditional_correlations.png",
     show_title = show_title,
@@ -656,6 +677,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     scale_x_discrete(labels = substr(month.name, 1, 1))
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = paste0("annual_pattern_", variable, ".png"),
     show_title = show_title,
@@ -698,21 +720,46 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     dplyr::summarize(value = mean(Observed, na.rm = TRUE), .groups = "drop") %>%
     dplyr::mutate(type = "Observed")
 
+  # Drop (rlz, variable) and (variable) groups with <2 points; geom_line warns
+  # otherwise ("Each group consists of only one observation").
+  sim_line <- sim_avg %>%
+    dplyr::group_by(rlz, variable) %>%
+    dplyr::filter(dplyr::n() >= 2) %>%
+    dplyr::ungroup()
+
+  obs_line <- obs_avg %>%
+    dplyr::group_by(variable) %>%
+    dplyr::filter(dplyr::n() >= 2) %>%
+    dplyr::ungroup()
+
   p <- ggplot(sim_avg, aes(x = as.factor(mon), y = value)) +
     plot_config$theme +
-    facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2) +
-    geom_line(aes(group = rlz, color = rlz), alpha = 0.8) +
-    geom_line(
-      data = obs_avg,
+    facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
+
+  if (nrow(sim_line) > 0) {
+    p <- p + geom_line(
+      data = sim_line,
+      aes(group = rlz, color = rlz),
+      alpha = 0.8
+    )
+  }
+
+  if (nrow(obs_line) > 0) {
+    p <- p + geom_line(
+      data = obs_line,
       color = "black",
       group = 1,
       linewidth = 1.25
-    ) +
+    )
+  }
+
+  p <- p +
     scale_x_discrete(labels = substr(month.name, 1, 1)) +
     labs(x = "", y = "") +
     guides(color = "none")
 
   .export_multipanel_plot(
+    plot_config = plot_config,
     p = p,
     filename = "monthly_cycle.png",
     show_title = show_title,

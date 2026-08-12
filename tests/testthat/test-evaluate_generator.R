@@ -895,3 +895,528 @@ test_that("create_all_diagnostic_plots calls ggsave when save_plots=TRUE (mocked
   expect_true(calls >= 1L)
 })
 
+
+# ==============================================================================
+# prepare_evaluation_data(): reshaping generator output for evaluation
+#
+# Exported, and reached in production only from run_weather_generator(), which
+# mocks it in test-generator.R -- so it needs direct coverage here. No mocking
+# is required: the function is pure reshaping over small inputs and runs in
+# milliseconds.
+# ==============================================================================
+
+# Two grid cells over two whole non-leap years, plus a one-realization
+# resampling of those same dates. Deliberately small and deterministic.
+.make_prep_inputs <- function(n_realizations = 1L, seed = 99) {
+  set.seed(seed)
+
+  obs_dates <- seq.Date(as.Date("2021-01-01"), as.Date("2022-12-31"), by = "day")
+  n <- length(obs_dates)
+
+  mk_cell <- function(offset) {
+    data.frame(
+      precip = seq_len(n) + offset,
+      temp   = -seq_len(n) - offset
+    )
+  }
+  obs_data <- list(cell_a = mk_cell(0), cell_b = mk_cell(1000))
+
+  resampled <- as.data.frame(
+    vapply(
+      seq_len(n_realizations),
+      function(i) sample(obs_dates, n, replace = TRUE),
+      numeric(n)
+    )
+  )
+  names(resampled) <- paste0("rlz_", seq_len(n_realizations))
+  resampled[] <- lapply(resampled, function(x) as.Date(x, origin = "1970-01-01"))
+
+  list(
+    gen_output = list(resampled = resampled, dates = obs_dates),
+    obs_data   = obs_data,
+    obs_dates  = obs_dates,
+    grid_ids   = names(obs_data),
+    variables  = c("precip", "temp")
+  )
+}
+
+.call_prep <- function(inputs, ...) {
+  args <- list(
+    gen_output = inputs$gen_output,
+    obs_data   = inputs$obs_data,
+    obs_dates  = inputs$obs_dates,
+    grid_ids   = inputs$grid_ids,
+    variables  = inputs$variables,
+    verbose    = FALSE
+  )
+
+  # Replace wholesale rather than via modifyList(): the list-valued arguments
+  # would otherwise be merged recursively, so an override meant to remove a
+  # component (or empty a list) would silently keep the default.
+  overrides <- list(...)
+  args[names(overrides)] <- overrides
+
+  do.call(prepare_evaluation_data, args)
+}
+
+testthat::test_that("prepare_evaluation_data validates its inputs", {
+  inputs <- .make_prep_inputs()
+
+  testthat::expect_error(
+    .call_prep(inputs, gen_output = list(resampled = inputs$gen_output$resampled)),
+    "'gen_output' must be output from generate_weather"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, obs_data = list()),
+    "'obs_data' must be a non-empty list"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, obs_dates = as.character(inputs$obs_dates)),
+    "'obs_dates' must be a Date vector"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, obs_dates = inputs$obs_dates[-1]),
+    "'obs_dates' length must match"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, variables = character(0)),
+    "'variables' must be a non-empty character vector"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, variables = c("precip", "sunshine")),
+    "Variables not found in obs_data: sunshine"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, grid_ids = c("cell_a", "cell_z")),
+    "'grid_ids' must match names or indices of obs_data"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, min_days_per_year = 0L),
+    "'min_days_per_year' must be a positive integer"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, year_start_month = 13),
+    "'year_start_month' must be an integer between 1 and 12"
+  )
+  testthat::expect_error(
+    .call_prep(inputs, verbose = c(TRUE, FALSE)),
+    "'verbose' must be TRUE or FALSE"
+  )
+})
+
+testthat::test_that("prepare_evaluation_data returns per-realization, per-grid frames", {
+  inputs <- .make_prep_inputs(n_realizations = 3L)
+  out <- .call_prep(inputs)
+
+  testthat::expect_named(out, c("sim_data", "obs_data"))
+
+  # one entry per realization, each holding one frame per requested grid
+  testthat::expect_length(out$sim_data, 3L)
+  testthat::expect_true(all(vapply(out$sim_data, length, integer(1)) == 2L))
+  testthat::expect_length(out$obs_data, 2L)
+  testthat::expect_named(out$obs_data, c("cell_a", "cell_b"))
+
+  # date column leads, then the requested variables in order
+  expected_cols <- c("date", "precip", "temp")
+  testthat::expect_named(out$sim_data[[1]][["cell_a"]], expected_cols)
+  testthat::expect_named(out$obs_data[["cell_a"]], expected_cols)
+
+  # both years are complete, so every simulated day survives the filter
+  testthat::expect_equal(nrow(out$sim_data[[1]][["cell_a"]]), length(inputs$obs_dates))
+  testthat::expect_equal(nrow(out$obs_data[["cell_a"]]), length(inputs$obs_dates))
+  testthat::expect_s3_class(out$sim_data[[1]][["cell_a"]]$date, "Date")
+})
+
+testthat::test_that("prepare_evaluation_data maps each simulated day to its resampled observation", {
+  inputs <- .make_prep_inputs(n_realizations = 2L)
+  out <- .call_prep(inputs)
+
+  # With every year complete, row k of the simulated frame must carry the
+  # observation taken on the date resampled for day k. This is the mapping the
+  # whole function exists to build, so assert it directly rather than by shape.
+  for (rlz in 1:2) {
+    idx <- match(inputs$gen_output$resampled[[rlz]], inputs$obs_dates)
+
+    for (cell in c("cell_a", "cell_b")) {
+      testthat::expect_identical(
+        out$sim_data[[rlz]][[cell]]$precip,
+        inputs$obs_data[[cell]]$precip[idx]
+      )
+      testthat::expect_identical(
+        out$sim_data[[rlz]][[cell]]$temp,
+        inputs$obs_data[[cell]]$temp[idx]
+      )
+    }
+  }
+
+  # the observed frames are passed through unresampled, in original date order
+  testthat::expect_identical(out$obs_data[["cell_b"]]$precip, inputs$obs_data$cell_b$precip)
+  testthat::expect_identical(out$obs_data[["cell_b"]]$date, inputs$obs_dates)
+})
+
+testthat::test_that("prepare_evaluation_data accepts integer grid_ids as well as names", {
+  inputs <- .make_prep_inputs()
+
+  by_name <- .call_prep(inputs, grid_ids = c("cell_a", "cell_b"))
+  by_index <- .call_prep(inputs, grid_ids = 1:2)
+
+  testthat::expect_identical(
+    by_index$sim_data[[1]][[1]]$precip,
+    by_name$sim_data[[1]][["cell_a"]]$precip
+  )
+
+  # a subset selects only the requested cells
+  one <- .call_prep(inputs, grid_ids = "cell_b")
+  testthat::expect_length(one$obs_data, 1L)
+  testthat::expect_named(one$obs_data, "cell_b")
+})
+
+testthat::test_that("prepare_evaluation_data warns when resampled dates fall outside obs_dates", {
+  inputs <- .make_prep_inputs()
+
+  # push two resampled days outside the observed record
+  inputs$gen_output$resampled$rlz_1[c(5L, 6L)] <- as.Date(c("1900-01-01", "1900-01-02"))
+
+  testthat::expect_warning(
+    out <- .call_prep(inputs),
+    "Could not match 2 resampled dates to obs_dates"
+  )
+
+  # the unmatched rows surface as NA rather than being silently dropped
+  testthat::expect_true(is.na(out$sim_data[[1]][["cell_a"]]$precip[5L]))
+  testthat::expect_true(is.na(out$sim_data[[1]][["cell_a"]]$precip[6L]))
+})
+
+testthat::test_that("prepare_evaluation_data rejects a simulation with no complete years", {
+  inputs <- .make_prep_inputs()
+
+  testthat::expect_error(
+    .call_prep(inputs, min_days_per_year = 400L),
+    "No complete years found in simulation period"
+  )
+})
+
+testthat::test_that("prepare_evaluation_data rejects gen_output with no realizations", {
+  inputs <- .make_prep_inputs()
+  inputs$gen_output$resampled <- inputs$gen_output$resampled[, 0L, drop = FALSE]
+
+  testthat::expect_error(
+    .call_prep(inputs),
+    "no columns \\(realizations\\)"
+  )
+})
+
+testthat::test_that("prepare_evaluation_data applies water years when year_start_month > 1", {
+  inputs <- .make_prep_inputs()
+
+  # An October water year splits the two calendar years into three partial
+  # water years, only one of which (Oct 2021 - Sep 2022) has a full 365 days.
+  out <- .call_prep(inputs, year_start_month = 10)
+
+  testthat::expect_equal(nrow(out$sim_data[[1]][["cell_a"]]), 365L)
+  testthat::expect_lt(
+    nrow(out$sim_data[[1]][["cell_a"]]),
+    length(inputs$obs_dates)
+  )
+
+  # the observed side is not year-filtered
+  testthat::expect_equal(nrow(out$obs_data[["cell_a"]]), length(inputs$obs_dates))
+})
+
+# ==============================================================================
+# .print_fit_summary_table(): the verbose-only fit summary
+#
+# This is the largest single uncovered block in the package. It is not mocked
+# by .with_fast_eval_mocks() -- it was dark only because every existing call to
+# evaluate_weather_generator() passes verbose = FALSE, and line
+# `if (isTRUE(verbose)) .print_fit_summary_table(fit_summary)` never fired.
+#
+# It is a pure printer, so it is driven directly here with synthetic summaries
+# that select each metric branch, plus one integration test that exercises the
+# verbose gate itself.
+# ==============================================================================
+
+# A fit_summary carrying every metric the printer knows how to label.
+.make_fit_summary_full <- function(n = 3L) {
+  data.frame(
+    rlz                   = seq_len(n),
+    rank                  = seq_len(n),
+    mae_mean_precip       = seq(0.10, by = 0.01, length.out = n),
+    mae_mean_temp         = seq(0.20, by = 0.01, length.out = n),
+    mae_sd_precip         = seq(0.30, by = 0.01, length.out = n),
+    mae_days_Wet          = seq(0.40, by = 0.01, length.out = n),
+    mae_spell_Wet         = seq(0.50, by = 0.01, length.out = n),
+    mae_cor_crossgrid     = seq(0.60, by = 0.01, length.out = n),
+    mae_cor_intervariable = seq(0.70, by = 0.01, length.out = n),
+    overall_score         = seq(0.80, by = 0.01, length.out = n)
+  )
+}
+
+testthat::test_that(".print_fit_summary_table reports when there is nothing to summarize", {
+  testthat::expect_output(
+    testthat::expect_null(weathergenr:::.print_fit_summary_table(NULL)),
+    "no fit metrics computed"
+  )
+
+  empty <- .make_fit_summary_full()[0, ]
+  testthat::expect_output(
+    testthat::expect_null(weathergenr:::.print_fit_summary_table(empty)),
+    "no fit metrics computed"
+  )
+})
+
+testthat::test_that(".print_fit_summary_table renders every metric it recognises", {
+  fs <- .make_fit_summary_full()
+
+  out <- capture.output(res <- weathergenr:::.print_fit_summary_table(fs))
+  txt <- paste(out, collapse = "\n")
+
+  # banner and column headers
+  testthat::expect_match(txt, "FIT ASSESSMENT SUMMARY - ALL REALIZATIONS", fixed = TRUE)
+  testthat::expect_match(txt, "Rlz")
+  testthat::expect_match(txt, "Rank")
+  testthat::expect_match(txt, "Score")
+
+  # the abbreviated display names for each metric family
+  testthat::expect_match(txt, "Mean.precip", fixed = TRUE)
+  testthat::expect_match(txt, "SD.precip", fixed = TRUE)
+  testthat::expect_match(txt, "Days.Wet", fixed = TRUE)
+  testthat::expect_match(txt, "Spell.Wet", fixed = TRUE)
+  testthat::expect_match(txt, "Cor.Cross", fixed = TRUE)
+  testthat::expect_match(txt, "Cor.Inter", fixed = TRUE)
+
+  # every legend branch in the description loop
+  testthat::expect_match(txt, "MAE of monthly means", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of monthly standard deviations", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of wet/dry day counts", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of wet/dry spell lengths", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of cross-grid correlations", fixed = TRUE)
+  testthat::expect_match(txt, "MAE of inter-variable correlations", fixed = TRUE)
+  testthat::expect_match(txt, "Normalized overall score", fixed = TRUE)
+
+  # closing block: best is the first row, worst the last, plus a median
+  testthat::expect_match(txt, "Best realization", fixed = TRUE)
+  testthat::expect_match(txt, "Worst realization", fixed = TRUE)
+  testthat::expect_match(txt, "Median score", fixed = TRUE)
+  testthat::expect_match(txt, "0.8000")   # first row's overall_score
+  testthat::expect_match(txt, "0.8200")   # last row's overall_score
+
+  # one row printed per realization, and the input returned invisibly
+  testthat::expect_identical(res, fs)
+  testthat::expect_true(sum(grepl("^\\s*[0-9]", out)) >= nrow(fs))
+})
+
+testthat::test_that(".print_fit_summary_table falls back to the first mean metric when precip is absent", {
+  fs <- .make_fit_summary_full()
+  fs$mae_mean_precip <- NULL
+
+  txt <- paste(capture.output(weathergenr:::.print_fit_summary_table(fs)), collapse = "\n")
+
+  # with no precip column it takes the first remaining mae_mean_* instead
+  testthat::expect_match(txt, "Mean.temp", fixed = TRUE)
+  testthat::expect_false(grepl("Mean.precip", txt, fixed = TRUE))
+})
+
+testthat::test_that(".print_fit_summary_table prints a score-only table when no MAE metrics exist", {
+  minimal <- data.frame(rlz = 1:2, rank = 1:2, overall_score = c(0.25, 0.75))
+
+  txt <- paste(capture.output(weathergenr:::.print_fit_summary_table(minimal)), collapse = "\n")
+
+  testthat::expect_match(txt, "Score")
+  testthat::expect_match(txt, "Normalized overall score", fixed = TRUE)
+
+  # none of the MAE families should be advertised
+  testthat::expect_false(grepl("Mean\\.|SD\\.|Days\\.|Spell\\.|Cor\\.", txt))
+
+  # the summary block still resolves best/worst from the row order
+  testthat::expect_match(txt, "0.2500")
+  testthat::expect_match(txt, "0.7500")
+})
+
+testthat::test_that("evaluate_weather_generator prints the fit summary when verbose = TRUE", {
+
+  # The verbose path draws to the active graphics device. With none open, base
+  # R opens one itself and leaves an Rplots.pdf behind in tests/testthat/, so
+  # send it to a null device and close that when the test exits.
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  .with_fast_eval_mocks({
+
+    set.seed(321)
+
+    obs_dates <- seq.Date(as.Date("2001-01-01"), as.Date("2003-12-31"), by = "day")
+    obs_dates <- obs_dates[format(obs_dates, "%m-%d") != "02-29"]
+
+    sim_dates <- seq.Date(as.Date("2011-01-01"), as.Date("2013-12-31"), by = "day")
+    sim_dates <- sim_dates[format(sim_dates, "%m-%d") != "02-29"]
+
+    n_grid <- 2
+    n_realizations <- 2
+
+    daily_obs <- lapply(seq_len(n_grid), function(i) {
+      make_test_grid_df(obs_dates, id_shift = i)
+    })
+    daily_sim <- lapply(seq_len(n_realizations), function(r) {
+      lapply(seq_len(n_grid), function(i) {
+        make_test_grid_df(sim_dates, id_shift = i + r)
+      })
+    })
+
+    run <- function(verbose) {
+      capture.output(
+        suppressMessages(
+          evaluate_weather_generator(
+            daily_sim = daily_sim,
+            daily_obs = daily_obs,
+            vars = c("precip", "temp"),
+            n_realizations = n_realizations,
+            wet_q = 0.2,
+            extreme_q = 0.8,
+            output_dir = NULL,
+            save_plots = FALSE,
+            show_title = FALSE,
+            eval_max_grids = 25,
+            verbose = verbose
+          )
+        )
+      )
+    }
+
+    loud <- paste(run(TRUE), collapse = "\n")
+    quiet <- paste(run(FALSE), collapse = "\n")
+
+    # the table is emitted only on the verbose path
+    testthat::expect_match(loud, "FIT ASSESSMENT SUMMARY", fixed = TRUE)
+    testthat::expect_false(grepl("FIT ASSESSMENT SUMMARY", quiet, fixed = TRUE))
+  })
+})
+
+# ==============================================================================
+# evaluate_weather_generator(): the real, unmocked path
+#
+# The mocked tests above stay as they are -- they cover validation, grid
+# subsampling, leap-day handling and seed determinism cheaply, and running each
+# of them unmocked would add cost without adding coverage beyond what a single
+# real run already gives.
+#
+# This test supplies that single real run. It is what exercises the summarizing
+# and correlation internals that .with_fast_eval_mocks() stands in for:
+# .summarize_observed_data(), .summarize_simulated_data(),
+# .summarize_realization_fit(), .compute_timeseries_stats(),
+# .summarize_grouped_stats(), .compute_anomaly_correlations(),
+# .compute_conditional_precip_correlations(), .filter_correlation_pairs() and
+# .build_plot_data() -- roughly 500 lines that no other test reaches.
+#
+# The fixture is deliberately small (3 grids, 2 realizations, 2 years). Measured
+# cost at that size is ~1.3s with no warnings, which is why this runs
+# unconditionally rather than behind a skip.
+# ==============================================================================
+
+testthat::test_that("evaluate_weather_generator produces a full assessment without mocks", {
+
+  # Plot construction draws to the active device; keep it off the filesystem.
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  set.seed(99)
+
+  n_grid <- 3L
+  n_realizations <- 2L
+  n_years <- 2L
+
+  obs_dates <- seq.Date(as.Date("2001-01-01"), by = "day", length.out = 365L * n_years)
+  sim_dates <- seq.Date(as.Date("2011-01-01"), by = "day", length.out = 365L * n_years)
+
+  daily_obs <- lapply(seq_len(n_grid), function(i) {
+    make_test_grid_df(obs_dates, id_shift = i)
+  })
+  daily_sim <- lapply(seq_len(n_realizations), function(r) {
+    lapply(seq_len(n_grid), function(i) {
+      make_test_grid_df(sim_dates, id_shift = i + r)
+    })
+  })
+
+  run_real <- function() {
+    suppressMessages(
+      evaluate_weather_generator(
+        daily_sim = daily_sim,
+        daily_obs = daily_obs,
+        vars = c("precip", "temp"),
+        n_realizations = n_realizations,
+        wet_q = 0.2,
+        extreme_q = 0.8,
+        output_dir = NULL,
+        save_plots = FALSE,
+        show_title = FALSE,
+        eval_max_grids = 25,
+        verbose = FALSE,
+        seed = 7
+      )
+    )
+  }
+
+  out <- run_real()
+
+  testthat::expect_s3_class(out, "weather_assessment")
+
+  # The real create_all_diagnostic_plots() returns the full diagnostic set,
+  # not the three-plot stub the fast mocks substitute.
+  expected_plots <- c(
+    "daily_mean", "daily_sd", "spell_length", "wetdry_days_count",
+    "crossgrid", "intergrid", "precip_cond_cor",
+    "annual_pattern_precip", "annual_pattern_temp",
+    "monthly_cycle", "annual_precip"
+  )
+  testthat::expect_true(all(expected_plots %in% names(out)))
+  for (nm in expected_plots) {
+    testthat::expect_s3_class(out[[nm]], "ggplot")
+  }
+
+  # ---------------------------------------------------------------------------
+  # fit_summary: computed by the real .summarize_realization_fit()
+  # ---------------------------------------------------------------------------
+  fs <- attr(out, "fit_summary")
+  testthat::expect_true(is.data.frame(fs))
+  testthat::expect_equal(nrow(fs), n_realizations)
+
+  # Metric columns the mocked summary never produces. Their presence is what
+  # distinguishes a real run from the stub.
+  real_metrics <- c(
+    "mae_mean_precip", "mae_mean_temp",
+    "mae_sd_precip", "mae_sd_temp",
+    "mae_days_Dry", "mae_days_Wet",
+    "mae_spell_Dry", "mae_spell_Wet",
+    "mae_cor_crossgrid", "mae_cor_intervariable"
+  )
+  testthat::expect_true(all(real_metrics %in% names(fs)))
+  for (m in real_metrics) {
+    testthat::expect_true(all(is.finite(fs[[m]])), info = m)
+    testthat::expect_true(all(fs[[m]] >= 0), info = m)   # MAEs are non-negative
+  }
+
+  # ranks are a permutation of 1..n, ordered best-first alongside the score
+  testthat::expect_setequal(fs$rank, seq_len(n_realizations))
+  testthat::expect_setequal(fs$rlz, seq_len(n_realizations))
+  testthat::expect_identical(fs$rank, sort(fs$rank))
+  testthat::expect_true(all(is.finite(fs$overall_score)))
+  testthat::expect_false(is.unsorted(fs$overall_score))
+
+  # ---------------------------------------------------------------------------
+  # metadata
+  # ---------------------------------------------------------------------------
+  md <- attr(out, "metadata")
+  testthat::expect_equal(md$n_grids, n_grid)
+  testthat::expect_equal(md$n_realizations, n_realizations)
+  testthat::expect_equal(md$variables, c("precip", "temp"))
+  testthat::expect_s3_class(md$assessment_date, "Date")
+
+  # ---------------------------------------------------------------------------
+  # the same inputs and seed reproduce the same metrics
+  # ---------------------------------------------------------------------------
+  again <- run_real()
+  testthat::expect_equal(
+    as.data.frame(attr(again, "fit_summary")),
+    as.data.frame(fs)
+  )
+})
