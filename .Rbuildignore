@@ -7,6 +7,9 @@
 # Licenses / repo-only docs
 ^LICENSE\.md$
 
+# Repo-only release policy (git-workflow ceremony + versioning adapter)
+^\.git-workflow\.yml$
+
 # devtools build artifacts
 ^doc$
 ^Meta$
@@ -37,10 +40,16 @@
 # Optional repo-only tools folder
 ^tools$
 
+# Development process tree and scratch (repo-only, never shipped)
+^dev$
+^\.tmp$
+^\.lintr$
+
 # Optional: exclude large internal material inside inst/
 ^inst/docs$
 ^inst/examples$
 ^inst/misc$
+^inst/extcode$
 
 # OAuth token cache (should also be in .gitignore)
 ^\.httr-oauth$
@@ -50,3 +59,10 @@
 ^codex_safe\.sh$
 
 ^output$
+
+# Agent instructions / vendored agent system (dev-only)
+^\.claude$
+^\.codex$
+^\.agents$
+^CLAUDE\.md$
+^AGENTS\.md$

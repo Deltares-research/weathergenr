@@ -234,7 +234,8 @@ read_netcdf <- function(
   }
 
   if (isFALSE(keep_leap_day)) {
-    date <- date[format(date, "%m-%d") != "02-29"]
+    date_lt <- as.POSIXlt(date)
+    date <- date[!(date_lt$mon == 1L & date_lt$mday == 29L)]
   }
 
   # ---------------------------------------------------------------------------
@@ -294,6 +295,16 @@ read_netcdf <- function(
   var_mats <- list()
   kept_vars <- character(0)
 
+  # Loop-invariant: the time axis is the same for every variable, so parse it
+  # once here rather than re-parsing the whole NetCDF time vector per variable.
+  leap_keep_idx <- NULL
+  if (isFALSE(keep_leap_day)) {
+    raw_lt <- as.POSIXlt(
+      .parse_time_to_date(nc, time_dim_name, as.vector(time_vals_raw))
+    )
+    leap_keep_idx <- !(raw_lt$mon == 1L & raw_lt$mday == 29L)
+  }
+
   for (v in var) {
     .msg("Reading variable: ", v)
 
@@ -310,8 +321,7 @@ read_netcdf <- function(
 
     # Drop Feb 29 in matrix if we dropped it in date
     if (isFALSE(keep_leap_day)) {
-      keep_idx <- format(.parse_time_to_date(nc, time_dim_name, as.vector(time_vals_raw)), "%m-%d") != "02-29"
-      mat <- mat[keep_idx, , drop = FALSE]
+      mat <- mat[leap_keep_idx, , drop = FALSE]
     }
 
     if (!is.null(signif_digits)) mat <- signif(mat, signif_digits)
@@ -497,12 +507,13 @@ write_netcdf <- function(
     stop("Spatial reference variable not found in template: ", spatial_ref, call. = FALSE)
   }
 
-  x_dim_name <- ncdf4::ncatt_get(nc_in, spatial_ref, "x_dim")$value
-  y_dim_name <- ncdf4::ncatt_get(nc_in, spatial_ref, "y_dim")$value
-
-  if (is.null(x_dim_name) || is.null(y_dim_name) || anyNA(c(x_dim_name, y_dim_name))) {
+  x_att <- ncdf4::ncatt_get(nc_in, spatial_ref, "x_dim")
+  y_att <- ncdf4::ncatt_get(nc_in, spatial_ref, "y_dim")
+  if (!isTRUE(x_att$hasatt) || !isTRUE(y_att$hasatt)) {
     stop("Template spatial_ref must have attributes 'x_dim' and 'y_dim'.", call. = FALSE)
   }
+  x_dim_name <- x_att$value
+  y_dim_name <- y_att$value
 
   x_vals <- nc_in$dim[[x_dim_name]]$vals
   y_vals <- nc_in$dim[[y_dim_name]]$vals
@@ -617,12 +628,12 @@ write_netcdf <- function(
   sr_val <- ncdf4::ncvar_get(nc_in, spatial_ref)
   try(ncdf4::ncvar_put(nc_out, spatial_ref, sr_val), silent = TRUE)
 
-  sr_atts <- nc_in$var[[spatial_ref]]$att
-  if (!is.null(sr_atts) && length(sr_atts) > 0L) {
+  sr_atts <- ncdf4::ncatt_get(nc_in, spatial_ref)
+  if (length(sr_atts) > 0L) {
     for (an in names(sr_atts)) {
       val <- sr_atts[[an]]
       if (is.atomic(val)) {
-        try(ncdf4::ncatt_put(nc_out, spatial_ref, an, val), silent = TRUE)
+        ncdf4::ncatt_put(nc_out, spatial_ref, an, val)
       }
     }
   }

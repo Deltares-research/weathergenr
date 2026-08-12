@@ -11,7 +11,8 @@
   save_plots,
   title = NULL,
   subtitle = NULL,
-  output_dir
+  output_dir,
+  plot_config = NULL
 )
 }
 \arguments{
@@ -28,6 +29,12 @@
 \item{subtitle}{Character; plot subtitle (only used when \code{show_title = TRUE}).}
 
 \item{output_dir}{Character; output directory for saved plots.}
+
+\item{plot_config}{List; optional plotting configuration. \code{dpi} and
+\code{device} are read from it when present, so callers can trade raster
+resolution for speed or swap in a faster device. Rendering and writing the
+diagnostic PNGs is roughly a quarter of an evaluation run at the default
+300 dpi.}
 }
 \value{
 The ggplot object \code{p}, returned invisibly.

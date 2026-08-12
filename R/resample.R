@@ -93,7 +93,10 @@ knn_sample <- function(
       has_seed <- FALSE
     }
     on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
-    set.seed(seed)
+    # Pins the generator as well as the seed; see .set_seed_fixed_kind(). This
+    # function runs inside PSOCK workers, where the active generator is not the
+    # master's.
+    .set_seed_fixed_kind(seed)
   }
 
   candidates <- as.matrix(candidates)
@@ -292,7 +295,10 @@ resample_weather_dates <- function(
       has_seed <- FALSE
     }
     on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
-    set.seed(base_seed)
+    # Pins the generator as well as the seed; see .set_seed_fixed_kind(). This
+    # is the function generate_weather() runs on PSOCK workers, so without the
+    # pin one seed produced different output under parallel = TRUE.
+    .set_seed_fixed_kind(base_seed)
   }
 
   # Date logic and parameters
@@ -313,10 +319,21 @@ resample_weather_dates <- function(
   sim_day   <- sim_dates_df$day
   sim_wyear <- sim_dates_df$wyear
 
+  # Integer month-day key for every simulated day, built once. The simulated
+  # calendar is fixed, so rebuilding this inside the daily loop was pure
+  # repetition; see the matching key on the observed subset below.
+  sim_monthday_key <- sim_month * 100L + sim_day
+
   sim_daily_precip <- numeric(n_sim_day)
   sim_daily_temp <- numeric(n_sim_day)
   sim_precip_state <- integer(n_sim_day)
-  sim_obs_date <- as.Date(rep(NA, n_sim_day))
+  # Plain double, not a Date: every `x[i] <- v` on a classed vector dispatches
+  # `[<-.Date`, which defeats R's in-place modification and copies the whole
+  # vector on each of the 365 * n_years assignments below -- quadratic in
+  # n_years. The Date class is restored once, at the end of the function.
+  # NA_real_ rather than NA: bare NA would make this logical and coerce on the
+  # first assignment.
+  sim_obs_date <- rep(NA_real_, n_sim_day)
   sim_obs_idx <- integer(n_sim_day)
 
   # Weights used in daily KNN sampling
@@ -332,10 +349,11 @@ resample_weather_dates <- function(
   k_annual <- ceiling(sqrt(length(obs_annual_precip)))
   obs_idx_by_year <- split(seq_along(obs_wyear), obs_wyear)
   annual_seed_by_year <- if (is.null(base_seed)) NULL else base_seed + seq_len(n_years)
-  year_subset_cache <- new.env(parent = emptyenv())
 
   .knn_draw_one_rank <- function(candidates, target, k, weights, u) {
-    candidates <- as.matrix(candidates)
+    # The sole caller passes cbind(), which is already a matrix; as.matrix()
+    # would dispatch once per simulated day for nothing.
+    if (!is.matrix(candidates)) candidates <- as.matrix(candidates)
     nc <- nrow(candidates)
     p <- ncol(candidates)
     if (nc < 1L) stop("No candidates provided to knn draw.", call. = FALSE)
@@ -397,132 +415,111 @@ resample_weather_dates <- function(
     )
 
     obs_year_draw <- obs_wyear_levels[obs_year_draw_idx]
-    subset_key <- paste(obs_year_draw, collapse = ",")
-    if (!exists(subset_key, envir = year_subset_cache, inherits = FALSE)) {
-      obs_subset_idx <- unlist(obs_idx_by_year[as.character(obs_year_draw)], use.names = FALSE)
-      obs_subset_idx <- obs_subset_idx[!is.na(obs_subset_idx)]
 
-      obs_precip_sub  <- obs_daily_precip[obs_subset_idx]
-      obs_temp_sub  <- obs_daily_temp[obs_subset_idx]
-      obs_date_sub  <- obs_date[obs_subset_idx]
-      obs_month_sub <- obs_month[obs_subset_idx]
-      obs_day_sub   <- obs_day[obs_subset_idx]
-      obs_wyear_sub <- obs_wyear[obs_subset_idx]
+    # Built fresh each simulated year. A cache keyed on the drawn year sequence
+    # used to wrap this block, but `obs_year_draw` is `annual_knn_n` (100-120)
+    # order-dependent draws with replacement, so two years never produced the
+    # same key -- measured hit rate was 0 for every (n_years, annual_knn_n)
+    # combination tried. It cost a per-year `paste()` over 120 values and, worse,
+    # retained every subset (7 vectors of ~40,000 elements plus a lookup list)
+    # for the whole call, in every parallel worker.
+    obs_subset_idx <- unlist(obs_idx_by_year[as.character(obs_year_draw)], use.names = FALSE)
+    obs_subset_idx <- obs_subset_idx[!is.na(obs_subset_idx)]
 
-      # Month-day lookup (subset-specific)
-      obs_monthday_key <- paste(obs_month_sub, obs_day_sub, sep = ".")
-      obs_day_lookup <- split(seq_along(obs_monthday_key), obs_monthday_key)
+    obs_precip_sub  <- obs_daily_precip[obs_subset_idx]
+    obs_temp_sub  <- obs_daily_temp[obs_subset_idx]
+    obs_date_sub  <- obs_date[obs_subset_idx]
+    obs_month_sub <- obs_month[obs_subset_idx]
+    obs_day_sub   <- obs_day[obs_subset_idx]
+    obs_wyear_sub <- obs_wyear[obs_subset_idx]
 
-      obs_precip_by_month <- split(obs_precip_sub, obs_month_sub)
-      obs_temp_by_month <- split(obs_temp_sub, obs_month_sub)
+    # Month-day lookup (subset-specific), indexed by the integer key
+    # month * 100 + day rather than a "month.day" string. The daily loop hits
+    # this 365 * n_years times per realization, so it is built once here as a
+    # list addressable by integer and read with no string work at all.
+    obs_monthday_key <- obs_month_sub * 100L + obs_day_sub
+    obs_day_lookup <- vector("list", 1231L)  # 12 * 100 + 31
+    obs_day_split <- split(seq_along(obs_monthday_key), obs_monthday_key)
+    obs_day_lookup[as.integer(names(obs_day_split))] <- obs_day_split
 
-      month_chr <- as.character(1:12)
-      obs_month_mean_precip <- setNames(rep(NA_real_, 12L), month_chr)
-      obs_month_mean_temp <- setNames(rep(NA_real_, 12L), month_chr)
-      obs_month_sd_precip <- setNames(rep(NA_real_, 12L), month_chr)
-      obs_month_sd_temp <- setNames(rep(NA_real_, 12L), month_chr)
+    obs_precip_by_month <- split(obs_precip_sub, obs_month_sub)
+    obs_temp_by_month <- split(obs_temp_sub, obs_month_sub)
 
-      for (m in month_chr) {
-        vals_p <- obs_precip_by_month[[m]]
-        if (!is.null(vals_p) && length(vals_p)) {
-          obs_month_mean_precip[m] <- mean(vals_p)
-          obs_month_sd_precip[m] <- stats::sd(vals_p)
-        }
+    month_chr <- as.character(1:12)
+    obs_month_mean_precip <- setNames(rep(NA_real_, 12L), month_chr)
+    obs_month_mean_temp <- setNames(rep(NA_real_, 12L), month_chr)
+    obs_month_sd_precip <- setNames(rep(NA_real_, 12L), month_chr)
+    obs_month_sd_temp <- setNames(rep(NA_real_, 12L), month_chr)
 
-        vals_t <- obs_temp_by_month[[m]]
-        if (!is.null(vals_t) && length(vals_t)) {
-          obs_month_mean_temp[m] <- mean(vals_t)
-          obs_month_sd_temp[m] <- stats::sd(vals_t)
-        }
+    for (m in month_chr) {
+      vals_p <- obs_precip_by_month[[m]]
+      if (!is.null(vals_p) && length(vals_p)) {
+        obs_month_mean_precip[m] <- mean(vals_p)
+        obs_month_sd_precip[m] <- stats::sd(vals_p)
       }
 
-      obs_month_mean_precip[is.na(obs_month_mean_precip)] <- mean(obs_precip_sub)
-      obs_month_mean_temp[is.na(obs_month_mean_temp)] <- mean(obs_temp_sub)
-
-      # Global fallback
-      obs_month_sd_precip[is.na(obs_month_sd_precip)] <- sd(obs_precip_sub)
-      obs_month_sd_temp[is.na(obs_month_sd_temp)] <- sd(obs_temp_sub)
-
-      # Apply SD floor (numerical consistency)
-      sd_floor_precip <- 0.1
-      sd_floor_temp <- 0.1
-      obs_month_sd_precip <- pmax(obs_month_sd_precip, sd_floor_precip)
-      obs_month_sd_temp <- pmax(obs_month_sd_temp, sd_floor_temp)
-
-      knn_weights_by_month <- lapply(seq_along(year_month_order), function(i) {
-        c(knn_weight_precip / obs_month_sd_precip[year_month_order[i]],
-          knn_weight_temp / obs_month_sd_temp[year_month_order[i]])
-      })
-
-      # Thresholds aligned to year_month_order
-      wet_threshold_by_month_order <- sapply(year_month_order, function(m) {
-        vals <- obs_precip_by_month[[as.character(m)]]
-        if (is.null(vals) || !length(vals)) NA_real_ else quantile(vals, wet_q, names = FALSE)
-      })
-
-      extreme_threshold_by_month_order <- sapply(year_month_order, function(m) {
-        vals <- obs_precip_by_month[[as.character(m)]]
-        if (is.null(vals) || !length(vals)) return(NA_real_)
-        vals <- vals[vals > 0]
-        if (!length(vals)) NA_real_ else quantile(vals, extreme_q, names = FALSE)
-      })
-
-      wet_threshold_by_month_order[is.na(wet_threshold_by_month_order)] <- quantile(obs_precip_sub, wet_q)
-      extreme_threshold_by_month_order[is.na(extreme_threshold_by_month_order)] <-
-        quantile(obs_precip_sub[obs_precip_sub > 0], extreme_q)
-
-      assign(
-        subset_key,
-        list(
-          obs_subset_idx = obs_subset_idx,
-          obs_precip_sub = obs_precip_sub,
-          obs_temp_sub = obs_temp_sub,
-          obs_date_sub = obs_date_sub,
-          obs_month_sub = obs_month_sub,
-          obs_day_sub = obs_day_sub,
-          obs_wyear_sub = obs_wyear_sub,
-          obs_day_lookup = obs_day_lookup,
-          obs_month_mean_precip = obs_month_mean_precip,
-          obs_month_mean_temp = obs_month_mean_temp,
-          knn_weights_by_month = knn_weights_by_month,
-          wet_threshold_by_month_order = wet_threshold_by_month_order,
-          extreme_threshold_by_month_order = extreme_threshold_by_month_order
-        ),
-        envir = year_subset_cache
-      )
+      vals_t <- obs_temp_by_month[[m]]
+      if (!is.null(vals_t) && length(vals_t)) {
+        obs_month_mean_temp[m] <- mean(vals_t)
+        obs_month_sd_temp[m] <- stats::sd(vals_t)
+      }
     }
 
-    subset_data <- get(subset_key, envir = year_subset_cache, inherits = FALSE)
-    obs_subset_idx <- subset_data$obs_subset_idx
-    obs_precip_sub <- subset_data$obs_precip_sub
-    obs_temp_sub <- subset_data$obs_temp_sub
-    obs_date_sub <- subset_data$obs_date_sub
-    obs_month_sub <- subset_data$obs_month_sub
-    obs_day_sub <- subset_data$obs_day_sub
-    obs_wyear_sub <- subset_data$obs_wyear_sub
-    obs_day_lookup <- subset_data$obs_day_lookup
-    obs_month_mean_precip <- subset_data$obs_month_mean_precip
-    obs_month_mean_temp <- subset_data$obs_month_mean_temp
-    knn_weights_by_month <- subset_data$knn_weights_by_month
-    wet_threshold_by_month_order <- subset_data$wet_threshold_by_month_order
-    extreme_threshold_by_month_order <- subset_data$extreme_threshold_by_month_order
+    obs_month_mean_precip[is.na(obs_month_mean_precip)] <- mean(obs_precip_sub)
+    obs_month_mean_temp[is.na(obs_month_mean_temp)] <- mean(obs_temp_sub)
 
-    # Markov probabilities
-    markov_probs <- estimate_monthly_markov_probs(
+    # Global fallback
+    obs_month_sd_precip[is.na(obs_month_sd_precip)] <- sd(obs_precip_sub)
+    obs_month_sd_temp[is.na(obs_month_sd_temp)] <- sd(obs_temp_sub)
+
+    # Apply SD floor (numerical consistency)
+    sd_floor_precip <- 0.1
+    sd_floor_temp <- 0.1
+    obs_month_sd_precip <- pmax(obs_month_sd_precip, sd_floor_precip)
+    obs_month_sd_temp <- pmax(obs_month_sd_temp, sd_floor_temp)
+
+    knn_weights_by_month <- lapply(seq_along(year_month_order), function(i) {
+      c(knn_weight_precip / obs_month_sd_precip[year_month_order[i]],
+        knn_weight_temp / obs_month_sd_temp[year_month_order[i]])
+    })
+
+    # Thresholds aligned to year_month_order
+    wet_threshold_by_month_order <- sapply(year_month_order, function(m) {
+      vals <- obs_precip_by_month[[as.character(m)]]
+      if (is.null(vals) || !length(vals)) NA_real_ else quantile(vals, wet_q, names = FALSE)
+    })
+
+    extreme_threshold_by_month_order <- sapply(year_month_order, function(m) {
+      vals <- obs_precip_by_month[[as.character(m)]]
+      if (is.null(vals) || !length(vals)) return(NA_real_)
+      vals <- vals[vals > 0]
+      if (!length(vals)) NA_real_ else quantile(vals, extreme_q, names = FALSE)
+    })
+
+    wet_threshold_by_month_order[is.na(wet_threshold_by_month_order)] <- quantile(obs_precip_sub, wet_q)
+    extreme_threshold_by_month_order[is.na(extreme_threshold_by_month_order)] <-
+      quantile(obs_precip_sub[obs_precip_sub > 0], extreme_q)
+
+    # Markov probabilities, one row per month of the simulation year.
+    # .markov_month_probs() rather than the exported
+    # estimate_monthly_markov_probs(): the latter broadcasts these rows across
+    # all 365 * n_years simulated days, which this loop does not need -- it
+    # looks up one month at a time. Avoiding the broadcast removes nine
+    # length-n_sim_day allocations per simulated year.
+    sim_target_year <- if (use_water_year) (year_start + y) else (year_start + y - 1L)
+    in_year <- sim_wyear == sim_target_year
+    markov_probs <- .markov_month_probs(
       precip_lag0 = obs_precip_sub[-1],
       precip_lag1 = obs_precip_sub[-length(obs_precip_sub)],
       month_lag0  = obs_month_sub[-1],
       month_lag1  = obs_month_sub[-length(obs_precip_sub)],
       year_lag0   = obs_wyear_sub[-1],
       year_lag1   = obs_wyear_sub[-length(obs_wyear_sub)],
-      year_idx = y,
       wet_threshold = wet_threshold_by_month_order,
       extreme_threshold = extreme_threshold_by_month_order,
       month_order = year_month_order,
-      sim_month = sim_month,
-      sim_wyear = sim_wyear,
-      sim_start_year = year_start,
-      n_days_sim = n_sim_day,
+      months_present = year_month_order %in% unique(sim_month[in_year]),
+      use_water_year = use_water_year,
       dry_spell_factor_month = dry_spell_factor,
       wet_spell_factor_month = wet_spell_factor,
       dirichlet_alpha = 1.0
@@ -531,10 +528,8 @@ resample_weather_dates <- function(
     # FIRST DAY OF THIS SIM YEAR
     first_month <- sim_month[year_day0_idx]
     first_month_order_idx <- match(first_month, year_month_order)
-    first_day <- sim_day[year_day0_idx]
 
-    key0 <- paste(first_month, first_day, sep = ".")
-    day0_candidates <- obs_day_lookup[[key0]]
+    day0_candidates <- obs_day_lookup[[sim_monthday_key[year_day0_idx]]]
 
     # Fallback options
     if (!length(day0_candidates)) day0_candidates <- which(obs_month_sub == first_month)
@@ -574,25 +569,30 @@ resample_weather_dates <- function(
 
       t_prev <- t_sim - 1L
 
+      # Index by the PREVIOUS day's month. The broadcast form indexed the
+      # full-length vectors at t_prev, and those vectors carried the
+      # probabilities of the month that day falls in -- so the month-order
+      # position of sim_month[t_prev] selects exactly the same row.
+      m_idx_prev <- month_to_year_index[sim_month[t_prev]]
+      if (is.na(m_idx_prev)) m_idx_prev <- 1L
+
       sim_precip_state[t_sim] <- markov_next_state(
         state_prev = sim_precip_state[t_prev],
         u_rand = rn_all[t_prev],
-        idx = t_prev,
-        p00 = markov_probs$p00_final,
-        p01 = markov_probs$p01_final,
-        p10 = markov_probs$p10_final,
-        p11 = markov_probs$p11_final,
-        p20 = markov_probs$p20_final,
-        p21 = markov_probs$p21_final
+        idx = m_idx_prev,
+        p00 = markov_probs[, 1L],
+        p01 = markov_probs[, 2L],
+        p10 = markov_probs[, 4L],
+        p11 = markov_probs[, 5L],
+        p20 = markov_probs[, 7L],
+        p21 = markov_probs[, 8L]
       )
 
       cur_month <- sim_month[t_sim]
-      cur_day   <- sim_day[t_sim]
       m_idx <- month_to_year_index[cur_month]
       if (is.na(m_idx)) m_idx <- 1L
 
-      key <- paste(cur_month, cur_day, sep = ".")
-      obs_day_candidates <- obs_day_lookup[[key]]
+      obs_day_candidates <- obs_day_lookup[[sim_monthday_key[t_sim]]]
       if (!length(obs_day_candidates)) obs_day_candidates <- which(obs_month_sub == cur_month)
 
       if (!length(obs_day_candidates)) {
@@ -676,11 +676,17 @@ resample_weather_dates <- function(
       obs_temp_day1 <- obs_temp_sub[obs_day1_idx]
       date_day1 <- obs_date_sub[obs_day1_idx]
 
-      cur_sim_daily_precip_anom <- sim_daily_precip[t_prev] - obs_month_mean_precip[as.character(cur_month)]
-      cur_sim_daily_temp_anom <- sim_daily_temp[t_prev] - obs_month_mean_temp[as.character(cur_month)]
+      # Integer position, not as.character(cur_month): these vectors are built
+      # with names "1".."12" in order, so element cur_month is the same one the
+      # name lookup returned -- four fewer string coercions per simulated day.
+      mean_precip_m <- obs_month_mean_precip[[cur_month]]
+      mean_temp_m <- obs_month_mean_temp[[cur_month]]
 
-      precip_day0_anom <- obs_precip_sub[obs_day0_idx] - obs_month_mean_precip[as.character(cur_month)]
-      temp_day0_anom <- obs_temp_sub[obs_day0_idx] - obs_month_mean_temp[as.character(cur_month)]
+      cur_sim_daily_precip_anom <- sim_daily_precip[t_prev] - mean_precip_m
+      cur_sim_daily_temp_anom <- sim_daily_temp[t_prev] - mean_temp_m
+
+      precip_day0_anom <- obs_precip_sub[obs_day0_idx] - mean_precip_m
+      temp_day0_anom <- obs_temp_sub[obs_day0_idx] - mean_temp_m
 
       knn_daily_k <- max(1L, round(sqrt(length(obs_day0_idx))))
       knn_daily_k <- min(knn_daily_k, length(obs_day0_idx))
@@ -797,7 +803,8 @@ expand_indices <- function(base_idx, offset_vec, n_max) {
 #' @param year_lag1 Optional integer vector. Calendar year or water year
 #'   corresponding to precip_lag1.
 #' @param wet_threshold Numeric vector of length 12. Monthly precipitation
-#'   thresholds separating dry and wet states, aligned to month_order.
+#'   thresholds separating dry and wet states, aligned to month_order. Must not
+#'   exceed \code{extreme_threshold} elementwise; an inverted pair is an error.
 #' @param extreme_threshold Numeric vector of length 12. Monthly precipitation
 #'   thresholds separating wet and very wet states, aligned to month_order.
 #' @param month_order Integer vector of length 12 defining the simulated ordering
@@ -874,8 +881,98 @@ estimate_monthly_markov_probs <- function(
     stop("dirichlet_alpha must be a non-negative finite number", call. = FALSE)
   }
 
+  # The three-state encoding below assumes the thresholds are ordered. This was
+  # previously implicit: an inverted pair silently produced a "wet" state that
+  # no observation could occupy.
+  if (any(wet_threshold > extreme_threshold, na.rm = TRUE)) {
+    stop("wet_threshold must not exceed extreme_threshold.", call. = FALSE)
+  }
+
   use_water_year <- (month_order[1] != 1)
   sim_target_year <- if (use_water_year) (sim_start_year + year_idx) else (sim_start_year + year_idx - 1)
+
+  # Which months actually occur in the target simulation year. One pass over
+  # sim_wyear/sim_month replaces the twelve full-length which() scans the
+  # month loop used to run.
+  in_year <- sim_wyear == sim_target_year
+  months_present <- month_order %in% unique(sim_month[in_year])
+
+  probs_m <- .markov_month_probs(
+    precip_lag0            = precip_lag0,
+    precip_lag1            = precip_lag1,
+    month_lag0             = month_lag0,
+    month_lag1             = month_lag1,
+    year_lag0              = year_lag0,
+    year_lag1              = year_lag1,
+    wet_threshold          = wet_threshold,
+    extreme_threshold      = extreme_threshold,
+    month_order            = month_order,
+    months_present         = months_present,
+    use_water_year         = use_water_year,
+    dry_spell_factor_month = dry_spell_factor_month,
+    wet_spell_factor_month = wet_spell_factor_month,
+    dirichlet_alpha        = dirichlet_alpha
+  )
+
+  # Broadcast the per-month rows onto the simulated time axis. This is what the
+  # public contract promises; callers inside the package use
+  # .markov_month_probs() directly and index by month instead, avoiding nine
+  # length-n_days_sim allocations per simulated year.
+  idx_year <- which(in_year)
+  month_pos <- match(sim_month[idx_year], month_order)
+
+  expand <- function(k) {
+    v <- rep(NA_real_, n_days_sim)
+    v[idx_year] <- probs_m[month_pos, k]
+    v
+  }
+
+  list(
+    p00_final = expand(1L), p01_final = expand(2L), p02_final = expand(3L),
+    p10_final = expand(4L), p11_final = expand(5L), p12_final = expand(6L),
+    p20_final = expand(7L), p21_final = expand(8L), p22_final = expand(9L)
+  )
+}
+
+
+#' Month-resolved Markov transition probabilities
+#'
+#' The computational core of [estimate_monthly_markov_probs()], returning one
+#' row per entry of `month_order` instead of one value per simulated day.
+#'
+#' `estimate_monthly_markov_probs()` broadcasts these rows across the simulated
+#' time axis, which its documented return value requires. Callers inside the
+#' package do not need that: the daily loop looks up a single month at a time,
+#' so it uses this matrix directly and avoids allocating nine vectors of length
+#' `365 * n_years` for every simulated year -- quadratic in `n_years` in
+#' aggregate.
+#'
+#' @inheritParams estimate_monthly_markov_probs
+#' @param months_present Logical vector, one entry per `month_order` element.
+#'   `FALSE` leaves that month's row `NA`, matching the old behaviour for a
+#'   month with no simulated day in the target year.
+#' @param use_water_year Logical. Selects the lag guard when `year_lag0` and
+#'   `year_lag1` are absent.
+#' @return Numeric matrix, `length(month_order)` rows by 9 columns ordered
+#'   `00, 01, 02, 10, 11, 12, 20, 21, 22`.
+#' @keywords internal
+#' @noRd
+.markov_month_probs <- function(
+    precip_lag0,
+    precip_lag1,
+    month_lag0,
+    month_lag1,
+    year_lag0,
+    year_lag1,
+    wet_threshold,
+    extreme_threshold,
+    month_order,
+    months_present,
+    use_water_year,
+    dry_spell_factor_month,
+    wet_spell_factor_month,
+    dirichlet_alpha = 1.0
+) {
 
   use_spell_adjustment <- any(abs(dry_spell_factor_month - 1) > 1e-10) ||
     any(abs(wet_spell_factor_month - 1) > 1e-10)
@@ -916,30 +1013,29 @@ estimate_monthly_markov_probs <- function(
     extreme_threshold_lag0[!is.finite(extreme_threshold_lag0)] <- extreme_threshold_global
   }
 
-  state_lag1 <- ifelse(precip_lag1 <= wet_threshold_lag1, 0L,
-                       ifelse(precip_lag1 <= extreme_threshold_lag1, 1L, 2L))
+  # Sum of two comparisons rather than nested ifelse(); see
+  # match_transition_positions() for the reasoning. NA propagates identically
+  # under both forms. Valid because wet_threshold <= extreme_threshold, checked
+  # on entry.
+  state_lag1 <- (precip_lag1 > wet_threshold_lag1) +
+    (precip_lag1 > extreme_threshold_lag1)
 
-  state_lag0 <- ifelse(precip_lag0 <= wet_threshold_lag0, 0L,
-                       ifelse(precip_lag0 <= extreme_threshold_lag0, 1L, 2L))
+  state_lag0 <- (precip_lag0 > wet_threshold_lag0) +
+    (precip_lag0 > extreme_threshold_lag0)
 
-  p00_final <- p01_final <- p02_final <- rep(NA_real_, n_days_sim)
-  p10_final <- p11_final <- p12_final <- rep(NA_real_, n_days_sim)
-  p20_final <- p21_final <- p22_final <- rep(NA_real_, n_days_sim)
+  probs_m <- matrix(NA_real_, nrow = length(month_order), ncol = 9L)
 
   for (m in seq_along(month_order)) {
 
     mm <- month_order[m]
-    r <- which(sim_month == mm & sim_wyear == sim_target_year)
-    if (!length(r)) next
+    if (!months_present[m]) next
 
     x <- which(month_lag1 == mm)
     n_transitions_m <- length(x)
     dirichlet_alpha_m_eff <- if (n_transitions_m > 0L) dirichlet_alpha / sqrt(n_transitions_m) else dirichlet_alpha
 
     if (!length(x)) {
-      p00_final[r] <- 1; p01_final[r] <- 0; p02_final[r] <- 0
-      p10_final[r] <- 1; p11_final[r] <- 0; p12_final[r] <- 0
-      p20_final[r] <- 1; p21_final[r] <- 0; p22_final[r] <- 0
+      probs_m[m, ] <- c(1, 0, 0, 1, 0, 0, 1, 0, 0)
       next
     }
 
@@ -990,16 +1086,10 @@ estimate_monthly_markov_probs <- function(
       }
     }
 
-    p00_final[r] <- p_dry[1]; p01_final[r] <- p_dry[2]; p02_final[r] <- p_dry[3]
-    p10_final[r] <- p_wet[1]; p11_final[r] <- p_wet[2]; p12_final[r] <- p_wet[3]
-    p20_final[r] <- p_vwt[1]; p21_final[r] <- p_vwt[2]; p22_final[r] <- p_vwt[3]
+    probs_m[m, ] <- c(p_dry, p_wet, p_vwt)
   }
 
-  list(
-    p00_final = p00_final, p01_final = p01_final, p02_final = p02_final,
-    p10_final = p10_final, p11_final = p11_final, p12_final = p12_final,
-    p20_final = p20_final, p21_final = p21_final, p22_final = p22_final
-  )
+  probs_m
 }
 
 
@@ -1172,7 +1262,8 @@ markov_next_state <- function(state_prev, u_rand, idx, p00, p01, p10, p11, p20, 
 #' @param precip_vec Numeric vector of precipitation values.
 #' @param day0_idx Integer vector of indices representing candidate "day 0" positions
 #'   in the time series.
-#' @param wet_threshold Numeric. Threshold separating dry and wet days.
+#' @param wet_threshold Numeric. Threshold separating dry and wet days. Must not
+#'   exceed \code{extreme_threshold}; an inverted pair is an error.
 #' @param extreme_threshold Numeric. Threshold above which days are considered extreme.
 #'
 #' @return
@@ -1198,14 +1289,20 @@ match_transition_positions <- function(
     wet_threshold,
     extreme_threshold) {
 
+  if (isTRUE(wet_threshold > extreme_threshold)) {
+    stop("wet_threshold must not exceed extreme_threshold.", call. = FALSE)
+  }
+
   precip_day0 <- precip_vec[day0_idx]
   precip_day1 <- precip_vec[day0_idx + 1L]
 
-  state_day0 <- ifelse(precip_day0 <= wet_threshold, 0L,
-                       ifelse(precip_day0 <= extreme_threshold, 1L, 2L))
-
-  state_day1 <- ifelse(precip_day1 <= wet_threshold, 0L,
-                       ifelse(precip_day1 <= extreme_threshold, 1L, 2L))
+  # Sum of two comparisons rather than nested ifelse(): the state encoding is
+  # monotone in precipitation, so `(p > wet) + (p > extreme)` yields the same
+  # 0/1/2 integers about 4.5x faster -- ifelse() allocates a logical mask plus
+  # both branch vectors on every call, and this runs 365 * n_years times per
+  # realization. Requires wet_threshold <= extreme_threshold, checked above.
+  state_day0 <- (precip_day0 > wet_threshold) + (precip_day0 > extreme_threshold)
+  state_day1 <- (precip_day1 > wet_threshold) + (precip_day1 > extreme_threshold)
 
   which(state_day0 == state_from & state_day1 == state_to)
 }

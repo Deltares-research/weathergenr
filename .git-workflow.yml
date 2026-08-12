@@ -1,0 +1,62 @@
+# git-workflow ceremony + opt-in versioning.
+#
+# `mode: full` is stated explicitly to preserve the behavior that applied
+# before this file existed (an absent file already resolves to `full`), so
+# adding versioning changes no Git behavior on its own.
+mode: full
+
+# This repository's remote is public/shared, so a push is a publishing act, not
+# a backup. git-workflow's auto-push checkpoint does not apply here.
+auto_push: false
+
+# Opt-in release policy per brain ADR 0020. The policy helper is read-only:
+# it validates this configuration and plans releases. It never edits the
+# carrier, tags, publishes, commits, or pushes.
+#
+# Scope: this policy governs 1.2.0 forward. The v0.1.1, v0.2.0, v0.9.0, and
+# v1.0.0 tags predate any deliberate versioning scheme and are historical
+# record only — do not treat the gap where a v1.1.0 would sit as a defect, and
+# do not retrofit or re-tag them. NEWS.md carries the same boundary.
+versioning:
+  cadence: manual
+  adapters:
+    - id: weathergenr
+      type: command
+      scheme: r-package
+      root: .
+      # DESCRIPTION#Version is authoritative; NEWS.md is kept in sync.
+      carrier: DESCRIPTION#Version
+      history: NEWS.md
+      # Both commands below are runnable and have been verified as written. The
+      # helper never invokes them: an agent or the owner runs them deliberately
+      # at a release gate.
+      #
+      # Takes the component as a trailing argument:
+      #   Rscript -e "<expr>" patch     1.2.0.9000 -> 1.2.1
+      #   Rscript -e "<expr>" dev       1.2.1      -> 1.2.1.9000
+      # Also accepts minor and major. usethis rewrites the NEWS.md
+      # "(development version)" heading in the same call, which is why that
+      # heading form is used rather than a literal version number.
+      #
+      # The component is supplied by the operator because the helper never
+      # executes or templates this command — git-workflow classifies the change
+      # and the plan names the target; this is the invocation that applies it.
+      #
+      # Not the bare `usethis::use_version()`: with no component and no
+      # interactive session it exits 0 having changed nothing, so a release
+      # would silently proceed on an unbumped carrier. usethis also aborts here
+      # if the tree is dirty, which is the correct guard at a release gate.
+      apply: ["Rscript", "-e", "usethis::use_version(commandArgs(trailingOnly = TRUE)[1])"]
+      # Release gate. `document = FALSE` keeps this a no-write validation path:
+      # check_only() otherwise regenerates man/ and NAMESPACE, and a validator
+      # must not mutate the tree it is validating.
+      #
+      # Not `tools/lint.R --changed`: that diffs the working tree against HEAD,
+      # which is clean at a release gate by definition, so it passed having
+      # linted nothing. Nor plain `tools/lint.R` — full-package mode currently
+      # exits 1 on the .lintr baseline's 28 findings and would block every
+      # release (tracked as t2608061641).
+      validate: ["Rscript", "-e", "source('tools/build_site_tools.R'); check_only(build_vignettes = TRUE, document = FALSE)"]
+      # Deliberately null. The R-CMD-check, pkgdown, and lint workflows run on
+      # push/PR, not as a release step; publishing stays a separate owner gate.
+      release:

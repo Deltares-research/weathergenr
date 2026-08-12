@@ -473,3 +473,202 @@ test_that("apply_climate_perturbations: scale_var_with_mean ignores precip_var_f
     "Ignoring 'precip_var_factor'"
   )
 })
+
+# ==============================================================================
+# apply_climate_perturbations(): remaining validation branches
+#
+# The existing validation test above covers the three NULL guards and the
+# factor-length check. These cover the rest -- type, conformity, safety-rail
+# and change-matrix checks -- all of which exit before any perturbation work,
+# so the whole block costs milliseconds.
+# ==============================================================================
+
+.cp_valid_inputs <- function(n_years = 1L) {
+  date <- .make_dates_noleap_years("2000-01-01", n_years)
+  n <- length(date)
+
+  list(
+    date = date,
+    grid = data.frame(id = 1, lat = 0),
+    data = list(data.frame(
+      precip   = rep(1, n),
+      temp     = rep(10, n),
+      temp_min = rep(8, n),
+      temp_max = rep(12, n)
+    )),
+    precip_mean_factor = rep(1, 12),
+    precip_var_factor  = rep(1, 12),
+    temp_delta         = rep(0, 12)
+  )
+}
+
+.cp_call <- function(inputs, ...) {
+  args <- list(
+    data               = inputs$data,
+    grid               = inputs$grid,
+    date               = inputs$date,
+    precip_mean_factor = inputs$precip_mean_factor,
+    precip_var_factor  = inputs$precip_var_factor,
+    temp_delta         = inputs$temp_delta
+  )
+
+  # Replace wholesale: modifyList() would merge the list-valued arguments.
+  overrides <- list(...)
+  args[names(overrides)] <- overrides
+
+  do.call(apply_climate_perturbations, args)
+}
+
+test_that("apply_climate_perturbations: required change factors must be supplied", {
+  inputs <- .cp_valid_inputs()
+
+  expect_error(
+    .cp_call(inputs, precip_mean_factor = NULL),
+    "'change.factor.precip.mean' must not be NULL"
+  )
+  expect_error(
+    .cp_call(inputs, temp_delta = NULL),
+    "'change.factor.temp.mean' must not be NULL"
+  )
+
+  # the variance factor is only required when it is not derived from the mean
+  expect_error(
+    .cp_call(inputs, precip_var_factor = NULL, scale_var_with_mean = FALSE),
+    "'change.factor.precip.variance' must not be NULL"
+  )
+})
+
+test_that("apply_climate_perturbations: core argument types are checked", {
+  inputs <- .cp_valid_inputs()
+
+  expect_error(.cp_call(inputs, data = "not-a-list"), "'climate.data' must be a list of data frames")
+  expect_error(.cp_call(inputs, grid = list(lat = 0)), "'grid' must be a data frame")
+  expect_error(
+    .cp_call(inputs, date = as.character(inputs$date)),
+    "'sim.dates' must be a Date vector"
+  )
+})
+
+test_that("apply_climate_perturbations: data, grid and dates must conform", {
+  inputs <- .cp_valid_inputs()
+
+  # two grid rows but only one data cell
+  expect_error(
+    .cp_call(inputs, grid = data.frame(id = 1:2, lat = c(0, 10))),
+    "must match.*number of rows in 'grid'"
+  )
+
+  # neither 'lat' nor 'y' present
+  expect_error(
+    .cp_call(inputs, grid = data.frame(id = 1, elevation = 100)),
+    "'grid' must contain a 'y' column"
+  )
+
+  # a required variable is absent from the cell
+  short_cols <- inputs$data
+  short_cols[[1]]$temp_max <- NULL
+  expect_error(.cp_call(inputs, data = short_cols), "missing columns: temp_max")
+
+  # the cell has the wrong number of rows for the date vector
+  short_rows <- inputs$data
+  short_rows[[1]] <- short_rows[[1]][-1, ]
+  expect_error(.cp_call(inputs, data = short_rows), "row count does not match")
+})
+
+test_that("apply_climate_perturbations: a 'y' column is accepted in place of 'lat'", {
+  inputs <- .cp_valid_inputs()
+
+  # the latitude column may be named either way; this must not error
+  expect_no_error(
+    .cp_call(
+      inputs,
+      grid = data.frame(id = 1, y = 0),
+      temp_transient = FALSE,
+      precip_transient = FALSE,
+      precip_occurrence_transient = FALSE,
+      compute_pet = FALSE,
+      scale_var_with_mean = FALSE,
+      enforce_target_mean = FALSE,
+      diagnostic = FALSE,
+      verbose = FALSE
+    )
+  )
+})
+
+test_that("apply_climate_perturbations: safety-rail arguments are validated", {
+  inputs <- .cp_valid_inputs()
+
+  expect_error(
+    .cp_call(inputs, precip_intensity_threshold = -1),
+    "'precip_intensity_threshold' must be a single finite numeric >= 0"
+  )
+  expect_error(
+    .cp_call(inputs, precip_intensity_threshold = c(0, 1)),
+    "'precip_intensity_threshold' must be a single finite numeric >= 0"
+  )
+  expect_error(
+    .cp_call(inputs, precip_cap_mm_day = 0),
+    "'precip_cap_mm_day' must be a single positive finite numeric"
+  )
+  expect_error(
+    .cp_call(inputs, precip_cap_mm_day = Inf),
+    "'precip_cap_mm_day' must be a single positive finite numeric"
+  )
+  expect_error(
+    .cp_call(inputs, precip_floor_mm_day = -0.5),
+    "'precip_floor_mm_day' must be a single finite numeric >= 0"
+  )
+  expect_error(
+    .cp_call(inputs, precip_cap_quantile = 1),
+    "'precip_cap_quantile' must be a single numeric in \\(0, 1\\)"
+  )
+  expect_error(
+    .cp_call(inputs, precip_cap_quantile = 0),
+    "'precip_cap_quantile' must be a single numeric in \\(0, 1\\)"
+  )
+  expect_error(
+    .cp_call(inputs, seed = "abc"),
+    "'seed' must be a single finite numeric/integer"
+  )
+})
+
+test_that("apply_climate_perturbations: matrix change factors are validated against the date span", {
+  n_years <- 2L
+  inputs <- .cp_valid_inputs(n_years)
+
+  # wrong number of month columns
+  expect_error(
+    .cp_call(inputs, precip_mean_factor = matrix(1, nrow = n_years, ncol = 11L)),
+    "'precip_mean_factor' must have 12 columns \\(months\\)"
+  )
+
+  # right shape, wrong number of years
+  expect_error(
+    .cp_call(inputs, precip_mean_factor = matrix(1, nrow = n_years + 1L, ncol = 12L)),
+    "'precip_mean_factor' must have nrow == number of years in 'date'"
+  )
+
+  # correct shape but containing a non-finite entry
+  bad <- matrix(1, nrow = n_years, ncol = 12L)
+  bad[1, 1] <- NA_real_
+  expect_error(
+    .cp_call(inputs, precip_mean_factor = bad),
+    "'precip_mean_factor' contains non-finite values"
+  )
+
+  # a well-formed matrix is accepted where a length-12 vector would be
+  expect_no_error(
+    .cp_call(
+      inputs,
+      precip_mean_factor = matrix(1, nrow = n_years, ncol = 12L),
+      temp_transient = FALSE,
+      precip_transient = FALSE,
+      precip_occurrence_transient = FALSE,
+      compute_pet = FALSE,
+      scale_var_with_mean = FALSE,
+      enforce_target_mean = FALSE,
+      diagnostic = FALSE,
+      verbose = FALSE
+    )
+  )
+})

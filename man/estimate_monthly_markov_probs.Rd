@@ -45,7 +45,8 @@ transitions are restricted to same-year pairs.}
 corresponding to precip_lag1.}
 
 \item{wet_threshold}{Numeric vector of length 12. Monthly precipitation
-thresholds separating dry and wet states, aligned to month_order.}
+thresholds separating dry and wet states, aligned to month_order. Must not
+exceed \code{extreme_threshold} elementwise; an inverted pair is an error.}
 
 \item{extreme_threshold}{Numeric vector of length 12. Monthly precipitation
 thresholds separating wet and very wet states, aligned to month_order.}

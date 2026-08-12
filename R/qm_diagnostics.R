@@ -482,8 +482,6 @@ compute_monthly_diagnostics <- function(precip_ref, precip_adj, month,
 
 #' Compute wet and dry spell-length diagnostics (intended preserved)
 #' @keywords internal
-#' Compute wet and dry spell-length diagnostics (intended preserved)
-#' @keywords internal
 compute_spell_diagnostics <- function(precip_ref, precip_adj, wet_thresh,
                                       tol_mean_ratio = 0.20) {
 
@@ -846,7 +844,7 @@ summary.precip_qm_diagnostics <- function(object, ...) {
     if (is.finite(s$moments$mean_ratio_intended)) {
       cat(sprintf(" | target %.3f | error %+.3f\n",
                   s$moments$mean_ratio_intended,
-                  s$moments$mean_ratio_error))
+                  .zap_signed_zero(s$moments$mean_ratio_error, 3)))
     } else {
       cat("\n")
     }
@@ -857,7 +855,7 @@ summary.precip_qm_diagnostics <- function(object, ...) {
     if (is.finite(s$moments$var_ratio_intended)) {
       cat(sprintf(" | target %.3f | error %+.3f\n",
                   s$moments$var_ratio_intended,
-                  s$moments$var_ratio_error))
+                  .zap_signed_zero(s$moments$var_ratio_error, 3)))
     } else {
       cat("\n")
     }

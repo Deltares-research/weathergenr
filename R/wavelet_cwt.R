@@ -434,7 +434,16 @@ analyze_wavelet_spectrum <- function(
  # --- Input Validation ---
  if (!is.numeric(series)) stop("series must be numeric")
  if (anyNA(series)) stop("series contains missing values")
- if (length(series) < 16) stop("series must have at least 16 observations")
+ if (length(series) < 16) {
+   stop(
+     sprintf(
+       "Historical period (%d years) is below weathergenr's wavelet minimum of 16 years. ",
+       length(series)
+     ),
+     "Extend the historical range, or reduce the wavelet decomposition depth.",
+     call. = FALSE
+   )
+ }
 
  mode <- match.arg(mode)
 
