@@ -338,7 +338,6 @@ resample_weather_dates <- function(
   k_annual <- ceiling(sqrt(length(obs_annual_precip)))
   obs_idx_by_year <- split(seq_along(obs_wyear), obs_wyear)
   annual_seed_by_year <- if (is.null(base_seed)) NULL else base_seed + seq_len(n_years)
-  year_subset_cache <- new.env(parent = emptyenv())
 
   .knn_draw_one_rank <- function(candidates, target, k, weights, u) {
     candidates <- as.matrix(candidates)
@@ -403,115 +402,85 @@ resample_weather_dates <- function(
     )
 
     obs_year_draw <- obs_wyear_levels[obs_year_draw_idx]
-    subset_key <- paste(obs_year_draw, collapse = ",")
-    if (!exists(subset_key, envir = year_subset_cache, inherits = FALSE)) {
-      obs_subset_idx <- unlist(obs_idx_by_year[as.character(obs_year_draw)], use.names = FALSE)
-      obs_subset_idx <- obs_subset_idx[!is.na(obs_subset_idx)]
 
-      obs_precip_sub  <- obs_daily_precip[obs_subset_idx]
-      obs_temp_sub  <- obs_daily_temp[obs_subset_idx]
-      obs_date_sub  <- obs_date[obs_subset_idx]
-      obs_month_sub <- obs_month[obs_subset_idx]
-      obs_day_sub   <- obs_day[obs_subset_idx]
-      obs_wyear_sub <- obs_wyear[obs_subset_idx]
+    # Built fresh each simulated year. A cache keyed on the drawn year sequence
+    # used to wrap this block, but `obs_year_draw` is `annual_knn_n` (100-120)
+    # order-dependent draws with replacement, so two years never produced the
+    # same key -- measured hit rate was 0 for every (n_years, annual_knn_n)
+    # combination tried. It cost a per-year `paste()` over 120 values and, worse,
+    # retained every subset (7 vectors of ~40,000 elements plus a lookup list)
+    # for the whole call, in every parallel worker.
+    obs_subset_idx <- unlist(obs_idx_by_year[as.character(obs_year_draw)], use.names = FALSE)
+    obs_subset_idx <- obs_subset_idx[!is.na(obs_subset_idx)]
 
-      # Month-day lookup (subset-specific)
-      obs_monthday_key <- paste(obs_month_sub, obs_day_sub, sep = ".")
-      obs_day_lookup <- split(seq_along(obs_monthday_key), obs_monthday_key)
+    obs_precip_sub  <- obs_daily_precip[obs_subset_idx]
+    obs_temp_sub  <- obs_daily_temp[obs_subset_idx]
+    obs_date_sub  <- obs_date[obs_subset_idx]
+    obs_month_sub <- obs_month[obs_subset_idx]
+    obs_day_sub   <- obs_day[obs_subset_idx]
+    obs_wyear_sub <- obs_wyear[obs_subset_idx]
 
-      obs_precip_by_month <- split(obs_precip_sub, obs_month_sub)
-      obs_temp_by_month <- split(obs_temp_sub, obs_month_sub)
+    # Month-day lookup (subset-specific)
+    obs_monthday_key <- paste(obs_month_sub, obs_day_sub, sep = ".")
+    obs_day_lookup <- split(seq_along(obs_monthday_key), obs_monthday_key)
 
-      month_chr <- as.character(1:12)
-      obs_month_mean_precip <- setNames(rep(NA_real_, 12L), month_chr)
-      obs_month_mean_temp <- setNames(rep(NA_real_, 12L), month_chr)
-      obs_month_sd_precip <- setNames(rep(NA_real_, 12L), month_chr)
-      obs_month_sd_temp <- setNames(rep(NA_real_, 12L), month_chr)
+    obs_precip_by_month <- split(obs_precip_sub, obs_month_sub)
+    obs_temp_by_month <- split(obs_temp_sub, obs_month_sub)
 
-      for (m in month_chr) {
-        vals_p <- obs_precip_by_month[[m]]
-        if (!is.null(vals_p) && length(vals_p)) {
-          obs_month_mean_precip[m] <- mean(vals_p)
-          obs_month_sd_precip[m] <- stats::sd(vals_p)
-        }
+    month_chr <- as.character(1:12)
+    obs_month_mean_precip <- setNames(rep(NA_real_, 12L), month_chr)
+    obs_month_mean_temp <- setNames(rep(NA_real_, 12L), month_chr)
+    obs_month_sd_precip <- setNames(rep(NA_real_, 12L), month_chr)
+    obs_month_sd_temp <- setNames(rep(NA_real_, 12L), month_chr)
 
-        vals_t <- obs_temp_by_month[[m]]
-        if (!is.null(vals_t) && length(vals_t)) {
-          obs_month_mean_temp[m] <- mean(vals_t)
-          obs_month_sd_temp[m] <- stats::sd(vals_t)
-        }
+    for (m in month_chr) {
+      vals_p <- obs_precip_by_month[[m]]
+      if (!is.null(vals_p) && length(vals_p)) {
+        obs_month_mean_precip[m] <- mean(vals_p)
+        obs_month_sd_precip[m] <- stats::sd(vals_p)
       }
 
-      obs_month_mean_precip[is.na(obs_month_mean_precip)] <- mean(obs_precip_sub)
-      obs_month_mean_temp[is.na(obs_month_mean_temp)] <- mean(obs_temp_sub)
-
-      # Global fallback
-      obs_month_sd_precip[is.na(obs_month_sd_precip)] <- sd(obs_precip_sub)
-      obs_month_sd_temp[is.na(obs_month_sd_temp)] <- sd(obs_temp_sub)
-
-      # Apply SD floor (numerical consistency)
-      sd_floor_precip <- 0.1
-      sd_floor_temp <- 0.1
-      obs_month_sd_precip <- pmax(obs_month_sd_precip, sd_floor_precip)
-      obs_month_sd_temp <- pmax(obs_month_sd_temp, sd_floor_temp)
-
-      knn_weights_by_month <- lapply(seq_along(year_month_order), function(i) {
-        c(knn_weight_precip / obs_month_sd_precip[year_month_order[i]],
-          knn_weight_temp / obs_month_sd_temp[year_month_order[i]])
-      })
-
-      # Thresholds aligned to year_month_order
-      wet_threshold_by_month_order <- sapply(year_month_order, function(m) {
-        vals <- obs_precip_by_month[[as.character(m)]]
-        if (is.null(vals) || !length(vals)) NA_real_ else quantile(vals, wet_q, names = FALSE)
-      })
-
-      extreme_threshold_by_month_order <- sapply(year_month_order, function(m) {
-        vals <- obs_precip_by_month[[as.character(m)]]
-        if (is.null(vals) || !length(vals)) return(NA_real_)
-        vals <- vals[vals > 0]
-        if (!length(vals)) NA_real_ else quantile(vals, extreme_q, names = FALSE)
-      })
-
-      wet_threshold_by_month_order[is.na(wet_threshold_by_month_order)] <- quantile(obs_precip_sub, wet_q)
-      extreme_threshold_by_month_order[is.na(extreme_threshold_by_month_order)] <-
-        quantile(obs_precip_sub[obs_precip_sub > 0], extreme_q)
-
-      assign(
-        subset_key,
-        list(
-          obs_subset_idx = obs_subset_idx,
-          obs_precip_sub = obs_precip_sub,
-          obs_temp_sub = obs_temp_sub,
-          obs_date_sub = obs_date_sub,
-          obs_month_sub = obs_month_sub,
-          obs_day_sub = obs_day_sub,
-          obs_wyear_sub = obs_wyear_sub,
-          obs_day_lookup = obs_day_lookup,
-          obs_month_mean_precip = obs_month_mean_precip,
-          obs_month_mean_temp = obs_month_mean_temp,
-          knn_weights_by_month = knn_weights_by_month,
-          wet_threshold_by_month_order = wet_threshold_by_month_order,
-          extreme_threshold_by_month_order = extreme_threshold_by_month_order
-        ),
-        envir = year_subset_cache
-      )
+      vals_t <- obs_temp_by_month[[m]]
+      if (!is.null(vals_t) && length(vals_t)) {
+        obs_month_mean_temp[m] <- mean(vals_t)
+        obs_month_sd_temp[m] <- stats::sd(vals_t)
+      }
     }
 
-    subset_data <- get(subset_key, envir = year_subset_cache, inherits = FALSE)
-    obs_subset_idx <- subset_data$obs_subset_idx
-    obs_precip_sub <- subset_data$obs_precip_sub
-    obs_temp_sub <- subset_data$obs_temp_sub
-    obs_date_sub <- subset_data$obs_date_sub
-    obs_month_sub <- subset_data$obs_month_sub
-    obs_day_sub <- subset_data$obs_day_sub
-    obs_wyear_sub <- subset_data$obs_wyear_sub
-    obs_day_lookup <- subset_data$obs_day_lookup
-    obs_month_mean_precip <- subset_data$obs_month_mean_precip
-    obs_month_mean_temp <- subset_data$obs_month_mean_temp
-    knn_weights_by_month <- subset_data$knn_weights_by_month
-    wet_threshold_by_month_order <- subset_data$wet_threshold_by_month_order
-    extreme_threshold_by_month_order <- subset_data$extreme_threshold_by_month_order
+    obs_month_mean_precip[is.na(obs_month_mean_precip)] <- mean(obs_precip_sub)
+    obs_month_mean_temp[is.na(obs_month_mean_temp)] <- mean(obs_temp_sub)
+
+    # Global fallback
+    obs_month_sd_precip[is.na(obs_month_sd_precip)] <- sd(obs_precip_sub)
+    obs_month_sd_temp[is.na(obs_month_sd_temp)] <- sd(obs_temp_sub)
+
+    # Apply SD floor (numerical consistency)
+    sd_floor_precip <- 0.1
+    sd_floor_temp <- 0.1
+    obs_month_sd_precip <- pmax(obs_month_sd_precip, sd_floor_precip)
+    obs_month_sd_temp <- pmax(obs_month_sd_temp, sd_floor_temp)
+
+    knn_weights_by_month <- lapply(seq_along(year_month_order), function(i) {
+      c(knn_weight_precip / obs_month_sd_precip[year_month_order[i]],
+        knn_weight_temp / obs_month_sd_temp[year_month_order[i]])
+    })
+
+    # Thresholds aligned to year_month_order
+    wet_threshold_by_month_order <- sapply(year_month_order, function(m) {
+      vals <- obs_precip_by_month[[as.character(m)]]
+      if (is.null(vals) || !length(vals)) NA_real_ else quantile(vals, wet_q, names = FALSE)
+    })
+
+    extreme_threshold_by_month_order <- sapply(year_month_order, function(m) {
+      vals <- obs_precip_by_month[[as.character(m)]]
+      if (is.null(vals) || !length(vals)) return(NA_real_)
+      vals <- vals[vals > 0]
+      if (!length(vals)) NA_real_ else quantile(vals, extreme_q, names = FALSE)
+    })
+
+    wet_threshold_by_month_order[is.na(wet_threshold_by_month_order)] <- quantile(obs_precip_sub, wet_q)
+    extreme_threshold_by_month_order[is.na(extreme_threshold_by_month_order)] <-
+      quantile(obs_precip_sub[obs_precip_sub > 0], extreme_q)
 
     # Markov probabilities
     markov_probs <- estimate_monthly_markov_probs(
