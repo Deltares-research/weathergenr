@@ -21,16 +21,16 @@ library(tidyr)
 year_start_month <- 10
 
 # --- Path Configuration ---
-#ncfile_dir <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-#out_dir <- file.path("C:/TEMP/ntoum/", year_start_month)
-#ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir))
+ncfile_dir <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+out_dir <- file.path("C:/TEMP/ntoum/", year_start_month)
+ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir))
 
 ### ---> FOR VECHTE DATA
-ncfile_dir   <- "C:/Users/taner/WS/spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
-out_dir <- file.path("C:/TEMP/vechte", year_start_month)
-ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir),
-    var = c("precip", "temp", "tn", "tx"),
-    var_name = c(tn = "temp_min", tx = "temp_max"))
+#ncfile_dir   <- "C:/Users/taner/WS/spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
+#out_dir <- file.path("C:/TEMP/vechte", year_start_month)
+#ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir),
+#    var = c("precip", "temp", "tn", "tx"),
+#    var_name = c(tn = "temp_min", tx = "temp_max"))
 
 ### ---> FOR RHINE BASIN
 #ncfile_dir   <- "C:/Users/taner/WS/Spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
