@@ -48,7 +48,15 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          # `local::.` installs weathergenr itself before the check runs.
+          # Required because VignetteBuilder is quarto: the quarto CLI renders
+          # each .qmd in a SEPARATE R session that does not inherit the
+          # temporary library R CMD build/check sets up, so the vignettes'
+          # `library(weathergenr)` fails with "there is no package called
+          # 'weathergenr'" unless the package is in a standard library path.
+          # The pkgdown and lint workflows already do this and both pass while
+          # this one did not.
+          extra-packages: any::rcmdcheck, local::.
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
