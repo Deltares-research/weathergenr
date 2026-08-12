@@ -448,11 +448,25 @@ generate_weather <- function(
   # ---------------------------------------------------------------------------
   .log("Running daily KNN + Markov Chain resampling", tag = "RESAMPLE", verbose = verbose)
 
-  if (isTRUE(parallel)) {
+  # Realizations are the only unit of parallelism here: the daily loop carries
+  # state across days (the Markov chain) and across years (the calendar-year
+  # transition safeguard), so it cannot be split within a realization without
+  # changing results. Throughput is therefore capped by n_realizations, and any
+  # worker beyond that would idle while still paying PSOCK startup and memory.
+  # Matches the cap .summarize_simulated_data() already applies.
+  n_cores_daily <- max(1L, min(as.integer(n_cores), n_realizations))
+  use_parallel_daily <- isTRUE(parallel) && n_cores_daily > 1L && n_realizations > 1L
+
+  if (isTRUE(parallel) && n_cores_daily < n_cores) {
+    .log("Using {n_cores_daily} of {n_cores} cores: one per realization",
+         tag = "RESAMPLE", verbose = verbose)
+  }
+
+  if (use_parallel_daily) {
 
     # Create the cluster here, not at setup: filter_warm_pool() above spawns its
     # own, and holding this one across that call doubled the worker count.
-    cl <- parallel::makeCluster(n_cores)
+    cl <- parallel::makeCluster(n_cores_daily)
     doParallel::registerDoParallel(cl)
     if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
     on.exit(parallel::stopCluster(cl), add = TRUE)
