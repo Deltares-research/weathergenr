@@ -1,5 +1,34 @@
 # weathergenr (development version)
 
+## Bug fixes
+
+* `evaluate_weather_generator()`'s fit metrics were computed against the wrong
+  observed statistics. `.summarize_realization_fit()` filtered the *simulated*
+  side to one statistic but joined the *observed* side unfiltered, so `stat` and
+  `type` were missing from the join keys. Observed `stats.season` holds a `mean`,
+  an `sd` and a `skewness` row per grid-month-variable, and observed `wetdry`
+  holds a `days` and a `spells` row per grid-month-stat -- so every simulated
+  mean was differenced against all three observed statistics, and every wet-day
+  count against spell lengths too, with the results averaged together.
+
+  Four of the six metrics in `fit_summary` were affected, and with them
+  `overall_score` and `rank`. The errors were large and inflated the apparent
+  error: on the bundled fixture `mae_mean_precip` falls from 2.38 to 0.25,
+  `mae_days_Wet` from 9.32 to 0.52, and `mae_mean_temp` from 17.11 to 0.04
+  (temperature means had been compared against temperature skewness). Realization
+  *ranking* also changes in some cases. `mae_cor_crossgrid` and
+  `mae_cor_intervariable` were already correct and are unchanged.
+
+  **Any previously recorded fit metrics or realization rankings should be
+  regenerated.** Simulated output itself is unaffected: `generate_weather()` is
+  byte-identical, as the end-to-end baseline confirms -- only the evaluation
+  summary changes.
+
+* `evaluate_weather_generator()` no longer emits tidyselect deprecation warnings
+  from `tidyr::separate()`, `tidyr::unite()` and `dplyr::mutate(.after =)`. Six
+  remaining `.data$` references in tidyselect arguments now pass column names as
+  strings, completing the change begun for `select()`/`rename()`/`pivot_*()`.
+
 ## Performance
 
 * Calendar fields are extracted with a single `as.POSIXlt()` conversion instead
