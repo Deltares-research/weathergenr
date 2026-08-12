@@ -12,11 +12,20 @@
   vector rather than a `Date`-classed one. Assigning into a classed vector
   dispatches `[<-.Date` and copies the whole vector on every assignment, making
   the daily loop quadratic in `n_years`; the class is restored once on exit.
-  Resampling a 80-year simulation drops from 14.7 s to 9.6 s.
+  The saving grows with simulation length, from about 8% at 20 years to about
+  a third at 80 years (14.7 s to 9.6 s).
 * `read_netcdf()` parses the NetCDF time axis once instead of once per variable
   when dropping Feb 29.
+* `resample_weather_dates()` no longer keeps a per-year cache of the drawn
+  observed subset. Its key was built from `annual_knn_n` order-dependent draws
+  with replacement, so it never hit, while retaining every subset for the
+  lifetime of the call in each parallel worker.
+* `.align_obs_sim_periods()` derives the year-filter row index once per side
+  rather than once per grid per realization.
 * End to end on the bundled ntoum fixture (30 years, 3 realizations,
-  `save_plots = FALSE`), generation plus evaluation drops from 25.8 s to 18.9 s.
+  `save_plots = FALSE`), generation plus evaluation drops from 17.9 s to 11.7 s
+  (-35%); the evaluation stage alone drops from 4.6 s to 1.5 s. Timings are the
+  minimum of three runs.
   **Outputs are unchanged**: for a fixed `seed` these changes are bit-identical,
   verified by the end-to-end baseline gate over both water-year and
   calendar-year scenarios.

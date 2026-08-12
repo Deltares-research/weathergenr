@@ -572,23 +572,26 @@ evaluate_weather_generator <- function(
   years[start_idx:(start_idx + window_years - 1L)]
 }
 
-#' Filter a single grid data frame to selected years (keeps original columns)
+#' Row index selecting the rows of a shared date vector falling in given years
 #'
-#' @param df Data frame with a `date` column.
+#' Every grid within `daily_obs` (and within one realization of `daily_sim`)
+#' shares a single date vector, so the row index is computed once here and
+#' reused across grids rather than recomputing the year vector per grid. With
+#' 25 grids and 3 realizations that is one call instead of 100.
+#'
+#' @param dates Date vector shared by every grid on this side.
 #' @param years_keep Integer vector of years (calendar or water years) to retain.
 #' @param year_start_month Integer 1-12. When > 1, uses water-year grouping.
-#' @return Filtered data frame with the same columns as `df`.
+#' @return Logical vector, length `length(dates)`.
 #' @keywords internal
-.filter_grid_years <- function(df, years_keep, year_start_month = 1L) {
+.year_keep_index <- function(dates, years_keep, year_start_month = 1L) {
 
-  if (!("date" %in% names(df))) stop("df must contain 'date'", call. = FALSE)
-
-  if (year_start_month == 1L) {
-    yrs <- .date_parts(df$date)$year
+  yrs <- if (year_start_month == 1L) {
+    .date_parts(dates)$year
   } else {
-    yrs <- compute_water_year(df$date, year_start_month)
+    compute_water_year(dates, year_start_month)
   }
-  df[yrs %in% years_keep, , drop = FALSE]
+  yrs %in% years_keep
 }
 
 #' Standardize obs and sim to the same full-year length via random windowing
@@ -641,15 +644,32 @@ evaluate_weather_generator <- function(
   obs_years_keep <- .pick_contiguous_year_window(obs_block, window_years = n_years)
   sim_years_keep <- .pick_contiguous_year_window(sim_block, window_years = n_years)
 
-  # 4) Apply year filtering (water-year-aware)
-  daily_obs2 <- lapply(daily_obs, .filter_grid_years,
-                       years_keep = obs_years_keep,
-                       year_start_month = year_start_month)
+  # 4) Apply year filtering (water-year-aware).
+  #    The row index is identical for every grid on a side -- they share one
+  #    date vector, which the leap-day removal in step 1 already relies on -- so
+  #    derive it once per side instead of once per grid per realization.
+  obs_keep <- .year_keep_index(obs_dates, obs_years_keep, year_start_month)
+  sim_keep <- .year_keep_index(sim_dates, sim_years_keep, year_start_month)
+
+  # Make the shared-date-vector assumption explicit: a grid of a different
+  # length would be silently mis-subset by a shared index.
+  .check_shared_length <- function(grids, n, what) {
+    lens <- vapply(grids, nrow, integer(1))
+    if (any(lens != n)) {
+      stop("All ", what, " grids must share one date vector; found row counts ",
+           paste(unique(lens), collapse = ", "), " against ", n, " dates.",
+           call. = FALSE)
+    }
+  }
+  .check_shared_length(daily_obs, length(obs_keep), "observed")
+  for (i in seq_len(n_realizations)) {
+    .check_shared_length(daily_sim[[i]], length(sim_keep), "simulated")
+  }
+
+  daily_obs2 <- lapply(daily_obs, function(df) df[obs_keep, , drop = FALSE])
 
   daily_sim2 <- lapply(seq_len(n_realizations), function(i) {
-    lapply(daily_sim[[i]], .filter_grid_years,
-           years_keep = sim_years_keep,
-           year_start_month = year_start_month)
+    lapply(daily_sim[[i]], function(df) df[sim_keep, , drop = FALSE])
   })
 
   # Basic integrity check: after filtering, all grids should have same nrow within obs and sim
