@@ -1,4 +1,4 @@
-# weathergenr (development version)
+# weathergenr 1.3.0
 
 ## Bug fixes
 
@@ -106,8 +106,8 @@
   the simulated time axis, now with one vectorised assignment instead of twelve
   full-length `which()` scans.
 * End to end on the bundled ntoum fixture (30 years, 3 realizations,
-  `save_plots = FALSE`): generation 9.3 s to 5.7 s, evaluation 3.6 s to 1.1 s,
-  together 12.9 s to 6.8 s (-47%). Timings are the minimum of four runs in one
+  `save_plots = FALSE`): generation 8.7 s to 4.9 s, evaluation 3.7 s to 1.2 s,
+  together 12.4 s to 6.1 s (-51%). Timings are the minimum of four runs in one
   session, since machine load shifts absolute figures between sessions.
   **Outputs are unchanged**: for a fixed `seed` these changes are bit-identical,
   verified by the end-to-end baseline gate over both water-year and
