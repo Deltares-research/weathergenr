@@ -530,7 +530,7 @@ evaluate_weather_generator <- function(
   if (!inherits(dates, "Date")) stop("dates must be Date", call. = FALSE)
 
   if (year_start_month == 1L) {
-    yrs <- as.integer(format(dates, "%Y"))
+    yrs <- .date_parts(dates)$year
   } else {
     yrs <- compute_water_year(dates, year_start_month)
   }
@@ -584,7 +584,7 @@ evaluate_weather_generator <- function(
   if (!("date" %in% names(df))) stop("df must contain 'date'", call. = FALSE)
 
   if (year_start_month == 1L) {
-    yrs <- as.integer(format(df$date, "%Y"))
+    yrs <- .date_parts(df$date)$year
   } else {
     yrs <- compute_water_year(df$date, year_start_month)
   }
@@ -766,8 +766,10 @@ evaluate_weather_generator <- function(
 
   # Use water year for the 'year' column when year_start_month > 1;
   # 'mon' stays as calendar month (correct for monthly statistics).
+  his.parts <- .date_parts(his.date)
+
   if (year_start_month == 1L) {
-    yr_vec <- as.integer(format(his.date, "%Y"))
+    yr_vec <- his.parts$year
   } else {
     yr_vec <- compute_water_year(his.date, year_start_month)
   }
@@ -775,8 +777,8 @@ evaluate_weather_generator <- function(
   his.datemat <- dplyr::tibble(
     date = his.date,
     year = yr_vec,
-    mon = as.integer(format(his.date, "%m")),
-    day = as.integer(format(his.date, "%d")))
+    mon = his.parts$month,
+    day = his.parts$day)
 
   his <- lapply(seq_len(grid_count), function(i) {
     df <- daily_obs[[i]][, variables, drop = FALSE]
@@ -826,8 +828,10 @@ evaluate_weather_generator <- function(
 
   sim.date <- daily_sim[[1]][[1]]$date
 
+  sim.parts <- .date_parts(sim.date)
+
   if (year_start_month == 1L) {
-    yr_vec <- as.integer(format(sim.date, "%Y"))
+    yr_vec <- sim.parts$year
   } else {
     yr_vec <- compute_water_year(sim.date, year_start_month)
   }
@@ -835,8 +839,8 @@ evaluate_weather_generator <- function(
   sim.datemat <- dplyr::tibble(
     date = sim.date,
     year = yr_vec,
-    mon = as.integer(format(sim.date, "%m")),
-    day = as.integer(format(sim.date, "%d"))
+    mon = sim.parts$month,
+    day = sim.parts$day
   )
 
   .summarize_one_realization <- function(i, daily_sim, variables, mc_thresholds, sim.datemat) {
@@ -1722,7 +1726,7 @@ prepare_evaluation_data <- function(gen_output,
   .log("Identifying complete years (min {min_days_per_year} days)", tag = "EVAL", verbose = verbose)
 
   if (year_start_month == 1L) {
-    sim_years <- as.integer(format(sim_dates, "%Y"))
+    sim_years <- .date_parts(sim_dates)$year
   } else {
     sim_years <- compute_water_year(sim_dates, year_start_month)
   }

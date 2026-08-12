@@ -320,14 +320,18 @@ generate_weather <- function(
   sim_date_end   <- as.Date(sprintf("%04d-%02d-01", sim_year_end, year_start_month)) - 1
 
   sim_date_ini <- seq.Date(sim_date_start, sim_date_end, by = "day")
-  sim_date_ini <- sim_date_ini[format(sim_date_ini, "%m-%d") != "02-29"]
+  sim_lt <- as.POSIXlt(sim_date_ini)
+  sim_date_ini <- sim_date_ini[!(sim_lt$mon == 1L & sim_lt$mday == 29L)]
+
+  # One POSIXlt conversion feeds all three fields; see .date_parts().
+  sim_parts <- .date_parts(sim_date_ini)
 
   sim_dates_d <- tibble::tibble(
     dateo = sim_date_ini,
-    year  = as.integer(format(sim_date_ini, "%Y")),
+    year  = sim_parts$year,
     wyear = compute_water_year(sim_date_ini, year_start_month),
-    month = as.integer(format(sim_date_ini, "%m")),
-    day   = as.integer(format(sim_date_ini, "%d"))
+    month = sim_parts$month,
+    day   = sim_parts$day
   ) |>
     dplyr::mutate(
       date = if (year_start_month == 1) {

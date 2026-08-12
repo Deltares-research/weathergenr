@@ -316,7 +316,13 @@ resample_weather_dates <- function(
   sim_daily_precip <- numeric(n_sim_day)
   sim_daily_temp <- numeric(n_sim_day)
   sim_precip_state <- integer(n_sim_day)
-  sim_obs_date <- as.Date(rep(NA, n_sim_day))
+  # Plain double, not a Date: every `x[i] <- v` on a classed vector dispatches
+  # `[<-.Date`, which defeats R's in-place modification and copies the whole
+  # vector on each of the 365 * n_years assignments below -- quadratic in
+  # n_years. The Date class is restored once, at the end of the function.
+  # NA_real_ rather than NA: bare NA would make this logical and coerce on the
+  # first assignment.
+  sim_obs_date <- rep(NA_real_, n_sim_day)
   sim_obs_idx <- integer(n_sim_day)
 
   # Weights used in daily KNN sampling
