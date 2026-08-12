@@ -150,7 +150,14 @@ testthat::test_that("print and summary methods are stable", {
   seasonal <- c(1, 1.5, 2, 2.5, 3, 3.5, 4, 3.5, 3, 2.5, 2, 1.5)
 
   ref <- as.numeric(outer(base, seasonal))
-  adj <- ref * 1.25
+
+  # Deliberately 1.2, not 1.25. The snapshot prints the achieved variance ratio
+  # at three decimals, and 1.25^2 is exactly 1.5625 -- an exact rounding
+  # midpoint, which C libraries break differently: macOS rounds half to even
+  # ("1.562"), Windows and glibc round half away from zero ("1.563"). That made
+  # this snapshot fail on macOS only. 1.2^2 = 1.44 is not a midpoint, so the
+  # printed digits are stable everywhere.
+  adj <- ref * 1.2
 
   n <- length(ref)
   month <- rep(1:12, each = length(base))
@@ -161,8 +168,8 @@ testthat::test_that("print and summary methods are stable", {
     precip_adj = adj,
     month = month,
     year = year,
-    mean_factor = matrix(1.25, nrow = 1, ncol = 12),
-    var_factor = matrix(1.25^2, nrow = 1, ncol = 12)
+    mean_factor = matrix(1.2, nrow = 1, ncol = 12),
+    var_factor = matrix(1.2^2, nrow = 1, ncol = 12)
   )
 
   testthat::expect_snapshot(print(out))
