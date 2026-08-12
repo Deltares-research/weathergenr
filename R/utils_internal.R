@@ -297,7 +297,26 @@ compute_area_averages <- function(obs_data, wyear_idx, wyear, vars) {
 }
 
 
+#' Collapse a value that rounds to zero onto positive zero
+#'
+#' @description
+#' `sprintf("%+.3f", -1e-16)` prints `-0.000`. The sign there is noise: a
+#' residual that rounds to zero at the displayed precision may land on either
+#' side of zero depending on the platform's floating point, so the printed sign
+#' is neither stable nor meaningful. Snapping such values to `0` makes the
+#' output identical across platforms and removes a nonsensical `-0%`.
+#'
+#' @param x Numeric vector.
+#' @param digits Integer. Displayed precision the value is judged against.
+#' @return `x` with values rounding to zero replaced by `0`.
+#' @keywords internal
+#' @noRd
+.zap_signed_zero <- function(x, digits = 0) {
+  ifelse(is.na(x) | round(x, digits) != 0, x, 0)
+}
+
 .format_pct <- function(x, digits = 0) {
+  x <- .zap_signed_zero(x, digits)
   ifelse(is.na(x), NA_character_, sprintf(paste0("%+.", digits, "f%%"), x))
 }
 
