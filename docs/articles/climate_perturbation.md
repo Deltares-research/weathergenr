@@ -70,7 +70,6 @@ precip_qm <- adjust_precipitation_qm(
 print(precip_qm$diagnostics)
 ```
 
-
     === Precipitation QM Diagnostics ===
 
     Mean and variance changes:
@@ -110,7 +109,7 @@ print(precip_qm$diagnostics)
        Apr   -30%     -30%   +0%
        May   -30%     -30%   +0%
        Jun   -30%     -30%   +0%
-       Jul   -30%     -30%   -0%
+       Jul   -30%     -30%   +0%
        Aug   -30%     -30%   +0%
        Sep   -30%     -30%   +0%
        Oct   -30%     -30%   +0%
@@ -338,7 +337,7 @@ rlz_extreme <- apply_climate_perturbations(
 sessionInfo()
 ```
 
-    R version 4.5.2 (2025-10-31 ucrt)
+    R version 4.6.0 (2026-04-24 ucrt)
     Platform: x86_64-w64-mingw32/x64
     Running under: Windows 11 x64 (build 26200)
 
@@ -346,11 +345,11 @@ sessionInfo()
       LAPACK version 3.12.1
 
     locale:
-    [1] LC_COLLATE=English_United States.utf8 
-    [2] LC_CTYPE=English_United States.utf8   
-    [3] LC_MONETARY=English_United States.utf8
-    [4] LC_NUMERIC=C                          
-    [5] LC_TIME=English_United States.utf8    
+    [1] LC_COLLATE=English_United Kingdom.utf8 
+    [2] LC_CTYPE=English_United Kingdom.utf8   
+    [3] LC_MONETARY=English_United Kingdom.utf8
+    [4] LC_NUMERIC=C                           
+    [5] LC_TIME=English_United Kingdom.utf8    
 
     time zone: Europe/Amsterdam
     tzcode source: internal
@@ -359,19 +358,19 @@ sessionInfo()
     [1] stats     graphics  grDevices utils     datasets  methods   base     
 
     other attached packages:
-    [1] ggplot2_4.0.1     weathergenr_1.1.0
+    [1] ggplot2_4.0.3     weathergenr_1.3.1
 
     loaded via a namespace (and not attached):
-     [1] generics_0.1.4     tidyr_1.3.2        class_7.3-23       lattice_0.22-7    
-     [5] digest_0.6.39      magrittr_2.0.4     evaluate_1.0.5     grid_4.5.2        
-     [9] RColorBrewer_1.1-3 waveslim_1.8.5     multitaper_1.0-17  iterators_1.0.14  
-    [13] fastmap_1.2.0      foreach_1.5.2      jsonlite_2.0.0     Matrix_1.7-4      
-    [17] e1071_1.7-17       survival_3.8-6     purrr_1.2.1        scales_1.4.0      
-    [21] codetools_0.2-20   cli_3.6.5          rlang_1.1.7        splines_4.5.2     
-    [25] withr_3.0.2        yaml_2.3.12        otel_0.2.0         tools_4.5.2       
-    [29] dplyr_1.1.4        ncdf4_1.24         fitdistrplus_1.2-4 vctrs_0.6.5       
-    [33] R6_2.6.1           proxy_0.4-29       lifecycle_1.0.5    MASS_7.3-65       
-    [37] pkgconfig_2.0.3    pillar_1.11.1      gtable_0.3.6       glue_1.8.0        
-    [41] xfun_0.55          tibble_3.3.1       tidyselect_1.2.1   rstudioapi_0.18.0 
-    [45] knitr_1.51         farver_2.1.2       htmltools_0.5.9    patchwork_1.3.2   
-    [49] labeling_0.4.3     rmarkdown_2.30     compiler_4.5.2     S7_0.2.1          
+     [1] Matrix_1.7-5       gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1       
+     [5] compiler_4.6.0     tidyselect_1.2.1   waveslim_1.8.5     tidyr_1.3.2       
+     [9] splines_4.6.0      scales_1.4.0       yaml_2.3.12        fastmap_1.2.0     
+    [13] lattice_0.22-9     R6_2.6.1           labeling_0.4.3     generics_0.1.4    
+    [17] patchwork_1.3.2    knitr_1.51         MASS_7.3-65        iterators_1.0.14  
+    [21] tibble_3.3.1       pillar_1.11.1      RColorBrewer_1.1-3 rlang_1.3.0       
+    [25] multitaper_1.0-17  xfun_0.60          S7_0.2.2           otel_0.2.0        
+    [29] cli_3.6.6          withr_3.0.3        magrittr_2.0.5     fitdistrplus_1.2-6
+    [33] class_7.3-23       ncdf4_1.24         digest_0.6.39      foreach_1.5.2     
+    [37] grid_4.6.0         lifecycle_1.0.5    vctrs_0.7.3        proxy_0.4-29      
+    [41] evaluate_1.0.5     glue_1.8.1         farver_2.1.2       codetools_0.2-20  
+    [45] survival_3.8-6     e1071_1.7-17       rmarkdown_2.31     purrr_1.2.2       
+    [49] tools_4.6.0        pkgconfig_2.0.3    htmltools_0.5.9   

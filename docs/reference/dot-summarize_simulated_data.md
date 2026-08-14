@@ -10,6 +10,7 @@ Summarize simulated weather data
   n_realizations,
   variables,
   mc_thresholds,
+  year_start_month = 1L,
   parallel = FALSE,
   n_cores = NULL,
   seed = NULL

@@ -10,6 +10,7 @@ Summarize observed weather data
   variables,
   grid_count,
   wet_quantile,
-  extreme_quantile
+  extreme_quantile,
+  year_start_month = 1L
 )
 ```

@@ -15,6 +15,7 @@ evaluate_weather_generator(
   vars = NULL,
   variable_labels = NULL,
   n_realizations = NULL,
+  year_start_month = 1L,
   wet_q = 0.2,
   extreme_q = 0.8,
   output_dir = NULL,
@@ -24,7 +25,9 @@ evaluate_weather_generator(
   parallel = FALSE,
   n_cores = NULL,
   eval_max_grids = 25,
-  seed = NULL
+  seed = NULL,
+  plot_dpi = 300,
+  plot_device = NULL
 )
 ```
 
@@ -54,6 +57,13 @@ evaluate_weather_generator(
 - n_realizations:
 
   Integer. Number of synthetic realizations in \`daily_sim\`.
+
+- year_start_month:
+
+  Integer in 1:12. First month of the simulation year. Use 1 for
+  calendar-year simulations (default), or another month for water-year
+  simulations (e.g., 10 for October). Used to correctly identify
+  complete years and align observation/simulation periods.
 
 - wet_q:
 
@@ -102,6 +112,22 @@ evaluate_weather_generator(
 
   Optional integer. Random seed for reproducible grid subsampling and
   year window selection. If NULL, results will vary between runs.
+
+- plot_dpi:
+
+  Numeric. Raster resolution for saved diagnostic plots (default = 300).
+  Rendering and writing the PNGs is roughly a quarter of an evaluation
+  run, and that cost scales with \`dpi\`, so lowering this is the
+  simplest way to speed up iterative work. Ignored when \`save_plots =
+  FALSE\`.
+
+- plot_device:
+
+  Optional graphics device passed to \[ggplot2::ggsave()\] (default
+  \`NULL\`, letting \`ggsave()\` infer it from the file extension).
+  Supplying a faster device, for example \`ragg::agg_png\`, typically
+  halves the remaining render cost. \`ragg\` is not a dependency of this
+  package; pass the function only if you have it installed.
 
 ## Value
 
@@ -153,28 +179,28 @@ out <- evaluate_weather_generator(
   save_plots = FALSE,
   show_title = FALSE
 )
-#> [2026-01-23 22:15:26] [EVAL] Evaluation Started: Variables = precip,temp
-#> [2026-01-23 22:15:26] [EVAL] Parameters: wet.q = 0.2 | extreme.q = 0.8
-#> [2026-01-23 22:15:26] [EVAL] Standardizing obs/sim periods to full years and equal length
-#> [2026-01-23 22:15:26] [EVAL] Standardized period | Obs = 2001-2001 | Sim = 2001-2001
-#> [2026-01-23 22:15:26] [EVAL] Processing observed data
-#> [2026-01-23 22:15:26] [EVAL] Processing simulated data (1 realizations)
-#> [2026-01-23 22:15:26] [EVAL] Generating diagnostic plots
+#> 15:38:01 - eval - Evaluation Started: Variables = precip,temp
+#> 15:38:01 - eval - Parameters: wet.q = 0.2 | extreme.q = 0.8
+#> 15:38:02 - eval - Standardizing obs/sim periods to full years and equal length
+#> 15:38:02 - eval - Standardized period | Obs = 2001-2001 | Sim = 2001-2001
+#> 15:38:02 - eval - Processing observed data
+#> 15:38:02 - eval - Processing simulated data (1 realizations)
+#> 15:38:02 - eval - Generating diagnostic plots
 #> Warning: There were 2 warnings in `dplyr::summarise()`.
 #> The first warning was:
 #> ℹ In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm
 #>   = TRUE)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
-#> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> [2026-01-23 22:15:26] [EVAL] Computing fit metrics for all realizations
+#> ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
+#> 15:38:02 - eval - Computing fit metrics for all realizations
 #> Warning: There were 2 warnings in `dplyr::mutate()`.
 #> The first warning was:
 #> ℹ In argument: `dplyr::across(...)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
-#> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> [2026-01-23 22:15:27] [EVAL] Displaying fit assessment summary
+#> ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
+#> 15:38:02 - eval - Displaying fit assessment summary
 #> 
 #> =============================================================================================== 
 #>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS
@@ -193,7 +219,7 @@ out <- evaluate_weather_generator(
 #> 
 #>    Rlz   Rank   Mean.precip   SD.precip   Days.Wet   Spell.Wet   Cor.Cross   Cor.Inter    Score 
 #> ----------------------------------------------------------------------------------------------- 
-#>      1      1        1.6773      1.1552    11.5091     10.2257          NA      0.0479   0.0000 
+#>      1      1        0.6260      0.5144     2.8333      2.5618          NA      0.0479   0.0000 
 #> =============================================================================================== 
 #> 
 #>  Summary:
@@ -201,7 +227,7 @@ out <- evaluate_weather_generator(
 #>   - Worst realization : 1 (score = 0.0000)
 #>   - Median score      : 0.0000
 #> 
-#> [2026-01-23 22:15:27] [EVAL] Assessment completed successfully
+#> 15:38:02 - eval - Assessment completed successfully
 class(out)
 #> [1] "weather_assessment" "list"              
 ```

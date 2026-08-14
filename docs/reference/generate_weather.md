@@ -230,6 +230,10 @@ downstream processing and outputs therefore use a 365-day calendar.
 4.  **Output construction:** Map resampled internal dates back to
     historical observation dates (`dateo`) and return simulated dates.
 
+Daily disaggregation currently requires `vars` to include `"precip"` and
+`"temp"`, which are used as precipitation and temperature drivers in
+KNN + Markov resampling.
+
 ## Examples
 
 ``` r

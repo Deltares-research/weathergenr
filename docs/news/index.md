@@ -1,0 +1,265 @@
+# Changelog
+
+## weathergenr 1.3.1
+
+### Other changes
+
+- Console log lines now read `HH:MM:SS - tag - message` (e.g.
+  `14:51:42 - resample - Processing realization: 1/2`) instead of
+  `[YYYY-MM-DD HH:MM:SS] [TAG] message`. The date is dropped and the
+  phase tag is lower-cased, so `weathergenr` output interleaves cleanly
+  with the `blueearth_cst` toolkit’s logging. Message text is unchanged;
+  anything parsing the old prefix needs updating.
+
+## weathergenr 1.3.0
+
+### Bug fixes
+
+- [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)’s
+  `relax_priority` argument had no effect. It was accepted, validated
+  and documented as being forwarded to \[filter_warm_pool()\] as
+  `relax_order`, but the call passed a hard-coded ordering and discarded
+  the argument. It is now forwarded as documented. `relax_priority`
+  breaks ties between WARM filters that share the lowest pass rate, so a
+  run where one filter is strictly most restrictive is unaffected.
+
+- [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)
+  now forwards `config$relax_priority`, which was missing from the
+  arguments it passes on to
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md).
+
+- [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)
+  no longer fails when `config` omits `warm_filter_bounds` or
+  `relax_priority`. An absent entry arrives as `NULL` rather than as a
+  missing argument, so the formal defaults never applied and validation
+  rejected the `NULL`; both now fall back to their documented defaults.
+
+- [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  validates `relax_priority` against its documented contract (each of
+  `mean`, `sd`, `tail_low`, `tail_high`, `wavelet` exactly once) on
+  entry.
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
+  already enforced this, but only after the wavelet analysis and pool
+  simulation had run.
+
+- [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)’s
+  fit metrics were computed against the wrong observed statistics.
+  [`.summarize_realization_fit()`](https://deltares-research.github.io/weathergenr/reference/dot-summarize_realization_fit.md)
+  filtered the *simulated* side to one statistic but joined the
+  *observed* side unfiltered, so `stat` and `type` were missing from the
+  join keys. Observed `stats.season` holds a `mean`, an `sd` and a
+  `skewness` row per grid-month-variable, and observed `wetdry` holds a
+  `days` and a `spells` row per grid-month-stat – so every simulated
+  mean was differenced against all three observed statistics, and every
+  wet-day count against spell lengths too, with the results averaged
+  together.
+
+  Four of the six metrics in `fit_summary` were affected, and with them
+  `overall_score` and `rank`. The errors were large and inflated the
+  apparent error: on the bundled fixture `mae_mean_precip` falls from
+  2.38 to 0.25, `mae_days_Wet` from 9.32 to 0.52, and `mae_mean_temp`
+  from 17.11 to 0.04 (temperature means had been compared against
+  temperature skewness). Realization *ranking* also changes in some
+  cases. `mae_cor_crossgrid` and `mae_cor_intervariable` were already
+  correct and are unchanged.
+
+  **Any previously recorded fit metrics or realization rankings should
+  be regenerated.** Simulated output itself is unaffected:
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  is byte-identical, as the end-to-end baseline confirms – only the
+  evaluation summary changes.
+
+- [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
+  no longer emits tidyselect deprecation warnings from
+  [`tidyr::separate()`](https://tidyr.tidyverse.org/reference/separate.html),
+  [`tidyr::unite()`](https://tidyr.tidyverse.org/reference/unite.html)
+  and `dplyr::mutate(.after =)`. Six remaining `.data$` references in
+  tidyselect arguments now pass column names as strings, completing the
+  change begun for
+  [`select()`](https://dplyr.tidyverse.org/reference/select.html)/[`rename()`](https://dplyr.tidyverse.org/reference/rename.html)/`pivot_*()`.
+
+### New features
+
+- [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
+  gains `plot_dpi` (default `300`) and `plot_device` (default `NULL`),
+  forwarded to \[ggplot2::ggsave()\]. Writing the diagnostic PNGs
+  dominates an evaluation run that saves plots — 4.7 s of 5.7 s on the
+  bundled fixture — and that cost scales with resolution:
+  `plot_dpi = 150` takes 5.0 s, `plot_dpi = 96` takes 4.3 s, against 1.1
+  s for `save_plots = FALSE`. `plot_device` accepts a faster device such
+  as [`ragg::agg_png`](https://ragg.r-lib.org/reference/agg_png.html);
+  `ragg` is not a dependency, so pass the function only if it is
+  installed. Both are reachable through
+  [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)
+  as `config$plot_dpi` and `config$plot_device`. Defaults reproduce the
+  previous output exactly.
+
+### Performance
+
+- Calendar fields are extracted with a single
+  [`as.POSIXlt()`](https://rdrr.io/r/base/as.POSIXlt.html) conversion
+  instead of `as.integer(format(date, "%Y"))`, which routed every value
+  through string formatting and an integer re-parse. On a 27,375-day
+  series
+  [`compute_water_year()`](https://deltares-research.github.io/weathergenr/reference/compute_water_year.md)
+  drops from 536 ms to 7.5 ms. Applied across
+  [`compute_water_year()`](https://deltares-research.github.io/weathergenr/reference/compute_water_year.md),
+  [`find_leap_day_indices()`](https://deltares-research.github.io/weathergenr/reference/find_leap_day_indices.md),
+  [`build_historical_dates()`](https://deltares-research.github.io/weathergenr/reference/build_historical_dates.md),
+  [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md),
+  the evaluation summaries, and the perturbation time indices.
+- [`resample_weather_dates()`](https://deltares-research.github.io/weathergenr/reference/resample_weather_dates.md)
+  accumulates resampled dates in a plain double vector rather than a
+  `Date`-classed one. Assigning into a classed vector dispatches
+  `[<-.Date` and copies the whole vector on every assignment, making the
+  daily loop quadratic in `n_years`; the class is restored once on exit.
+  The saving grows with simulation length, from about 8% at 20 years to
+  about a third at 80 years (14.7 s to 9.6 s).
+- [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
+  parses the NetCDF time axis once instead of once per variable when
+  dropping Feb 29.
+- [`resample_weather_dates()`](https://deltares-research.github.io/weathergenr/reference/resample_weather_dates.md)
+  no longer keeps a per-year cache of the drawn observed subset. Its key
+  was built from `annual_knn_n` order-dependent draws with replacement,
+  so it never hit, while retaining every subset for the lifetime of the
+  call in each parallel worker.
+- [`.align_obs_sim_periods()`](https://deltares-research.github.io/weathergenr/reference/dot-align_obs_sim_periods.md)
+  derives the year-filter row index once per side rather than once per
+  grid per realization.
+- `generate_weather(parallel = TRUE)` no longer starts more workers than
+  there are realizations. Realizations are the only unit of parallelism
+  in the daily resampling — it carries state across days and years, so
+  it cannot be split within a realization — and every extra worker idled
+  while still paying PSOCK startup and memory. With `n_cores = 10` and
+  `n_realizations = 2` a run drops from 21.9 s to 12.0 s, output
+  unchanged.
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
+  still uses the full `n_cores`, since its work does divide further.
+  When the cap leaves a single worker the daily loop runs sequentially,
+  which produces the same output and skips cluster setup entirely.
+- The daily resampling loop no longer rebuilds a `"month.day"` string
+  key per simulated day, nor coerces the month to character to read
+  monthly means. Both are now integer lookups.
+- The three-state precipitation classification uses a sum of two
+  comparisons instead of nested
+  [`ifelse()`](https://rdrr.io/r/base/ifelse.html), which allocated a
+  logical mask and both branch vectors on every call. The encoding is
+  monotone in precipitation, so the result is identical; the operation
+  itself is about 4.5x faster.
+- [`estimate_monthly_markov_probs()`](https://deltares-research.github.io/weathergenr/reference/estimate_monthly_markov_probs.md)
+  no longer allocates nine vectors of length `365 * n_years` per
+  simulated year to fill 365 rows of each – quadratic in `n_years` in
+  aggregate. The computation now returns one row per month internally,
+  and the daily resampling loop indexes it by month. The exported
+  function’s return value is unchanged: it still broadcasts those rows
+  across the simulated time axis, now with one vectorised assignment
+  instead of twelve full-length
+  [`which()`](https://rdrr.io/r/base/which.html) scans.
+- End to end on the bundled ntoum fixture (30 years, 3 realizations,
+  `save_plots = FALSE`): generation 8.7 s to 4.9 s, evaluation 3.7 s to
+  1.2 s, together 12.4 s to 6.1 s (-51%). Timings are the minimum of
+  four runs in one session, since machine load shifts absolute figures
+  between sessions. **Outputs are unchanged**: for a fixed `seed` these
+  changes are bit-identical, verified by the end-to-end baseline gate
+  over both water-year and calendar-year scenarios.
+
+### Bug fixes (parallel execution)
+
+- `generate_weather(parallel = TRUE)` no longer holds an idle PSOCK
+  cluster while
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
+  runs.
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
+  spawns its own cluster, once per relaxation iteration, so the two
+  overlapped: a run with `n_cores = 3` peaked at 8 R processes where 4
+  were expected. The cluster is now created immediately before the daily
+  disaggregation that uses it. Output is unchanged, bit for bit. On a
+  machine with cores to spare this does not change runtime; it matters
+  at the default `n_cores = parallel::detectCores() - 1`, where the
+  overlap oversubscribed every core.
+
+### Breaking changes
+
+- `generate_weather(parallel = TRUE)` now reproduces `parallel = FALSE`
+  for the same `seed`. It previously did not.
+  [`parallel::clusterSetRNGStream()`](https://rdrr.io/r/parallel/RngStream.html)
+  switches workers to the L’Ecuyer-CMRG generator, and
+  [`resample_weather_dates()`](https://deltares-research.github.io/weathergenr/reference/resample_weather_dates.md)
+  called [`set.seed()`](https://rdrr.io/r/base/Random.html) without
+  naming a generator, so the seed was applied to whichever one happened
+  to be active: the same integer produced one stream in the master and a
+  different one on a worker. Seeding now pins Mersenne-Twister, so a
+  seed denotes one stream everywhere.
+
+  **Sequential output is unchanged** – the master already used
+  Mersenne-Twister, so the pin is a no-op there, as the end-to-end
+  baseline confirms. **Output from previous parallel runs is not
+  reproducible under this version**; re-run rather than mixing old and
+  new parallel ensembles. Parallel results were already stable across
+  worker counts and remain so.
+
+- [`estimate_monthly_markov_probs()`](https://deltares-research.github.io/weathergenr/reference/estimate_monthly_markov_probs.md)
+  and
+  [`match_transition_positions()`](https://deltares-research.github.io/weathergenr/reference/match_transition_positions.md)
+  now error when `wet_threshold` exceeds `extreme_threshold`. The
+  three-state encoding has always assumed the thresholds are ordered; an
+  inverted pair previously passed silently and produced a “wet” state no
+  observation could occupy.
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  already validated `extreme_q > wet_q`, so this only affects direct
+  calls to the two exported functions.
+
+### Bug fixes
+
+- [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
+  no longer emits tidyselect deprecation warnings (“Use of `.data` in
+  tidyselect expressions was deprecated in tidyselect 1.2.0”). Thirty
+  `.data$` references inside
+  [`dplyr::select()`](https://dplyr.tidyverse.org/reference/select.html),
+  [`dplyr::rename()`](https://dplyr.tidyverse.org/reference/rename.html),
+  [`tidyr::pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html)
+  and
+  [`tidyr::pivot_wider()`](https://tidyr.tidyverse.org/reference/pivot_wider.html)
+  now pass column names as strings. Results are unchanged; the `.data`
+  pronoun is still used in data-masking verbs, where it remains correct.
+
+### Internal
+
+- `DESCRIPTION` declares authorship with `Authors@R` instead of the
+  deprecated `Author`/`Maintainer` pair.
+- The abandoned Zarr I/O prototypes moved from `inst/experiments/` to
+  `dev/scripts/zarr-prototype/`, so no part of the development tree sits
+  under `inst/` any more.
+- Added `testthat` coverage for `R/qm_diagnostics.R` and the wavelet
+  plotting functions, including regression tests for the spell-length
+  and dry-day diagnostics’ `NA` handling.
+- Added pkgdown and lint GitHub Actions workflows, plus a `.lintr`
+  baseline that scopes linting to semantic findings.
+
+## weathergenr 1.2.0
+
+### Bug fixes
+
+- Fixed warnings raised by the evaluation and diagnostic plotting
+  functions.
+- Fixed netCDF template propagation when writing gridded output.
+
+### Internal
+
+- `inst/experiments/` and `inst/extcode/` are no longer installed with
+  the package. Both held development scratch material — including
+  abandoned Zarr I/O prototypes — that was previously shipping into user
+  libraries.
+- Consolidated the two
+  [`utils::globalVariables()`](https://rdrr.io/r/utils/globalVariables.html)
+  declarations into `R/globals.R` and removed `R/zzz_globals.R`. Of the
+  42 names the removed file declared, 28 were unused. `colorRampPalette`
+  was among them: declaring a function there also silences R CMD check’s
+  “no visible global function definition”, which would have masked the
+  missing `grDevices` import had a call been reintroduced.
+- Dropped the `LazyData` field. The package ships no `data/` directory,
+  so it produced an R CMD check note without effect.
+- `AGENTS.md` is now the canonical agent-instruction file, with
+  `CLAUDE.md` importing it.
+
+Versions before 1.2.0 predate this changelog; see the commit history.

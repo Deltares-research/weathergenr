@@ -70,7 +70,7 @@ Install the latest version from GitHub:
 
 # Getting started
 
-A quick tutorial is available here:  
+A quick tutorial is available here:\
 <https://deltares-research.github.io/weathergenr/articles/getting_started.html>
 
 # References
@@ -178,9 +178,3 @@ Licensed under the MIT License. See `LICENSE` for details.
 
   Applying monthly perturbations to stochastic weather, and validate
   precipitation changes.
-
-- [Running from
-  Python](https://deltares-research.github.io/weathergenr/articles/running_from_python.md):
-
-  Read NetCDF inputs, generate stochastic realizations, and evaluate
-  generator skill.

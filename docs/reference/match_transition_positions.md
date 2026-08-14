@@ -37,7 +37,8 @@ match_transition_positions(
 
 - wet_threshold:
 
-  Numeric. Threshold separating dry and wet days.
+  Numeric. Threshold separating dry and wet days. Must not exceed
+  `extreme_threshold`; an inverted pair is an error.
 
 - extreme_threshold:
 

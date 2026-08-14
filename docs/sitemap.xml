@@ -1,13 +1,15 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://deltares-research.github.io/weathergenr/404.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/AGENTS.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/articles/climate_perturbation.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/articles/getting_started.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/articles/index.html</loc></url>
-<url><loc>https://deltares-research.github.io/weathergenr/articles/running_from_python.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/authors.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/CLAUDE.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/index.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/LICENSE-text.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/LICENSE.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/news/index.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/adjust_precipitation_qm.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_additive.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.html</loc></url>
@@ -47,6 +49,7 @@
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-check_boundary.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-compute_anomaly_correlations.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-compute_conditional_precip_correlations.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/reference/dot-compute_gws_batch.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-compute_intended_ratios.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-compute_timeseries_stats.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-create_annual_precip_plot.html</loc></url>
@@ -63,7 +66,6 @@
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-export_multipanel_plot.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-fast_col_sd.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-filter_correlation_pairs.html</loc></url>
-<url><loc>https://deltares-research.github.io/weathergenr/reference/dot-filter_grid_years.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-fit_arma_aic.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-fit_warm_arima_forecast.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-get_filter_length.html</loc></url>
@@ -95,6 +97,7 @@
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-warm_block_bootstrap.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-warm_fit_arima_safe.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/dot-warm_simulate_from_fit.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/reference/dot-year_keep_index.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/estimate_monthly_markov_probs.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/expand_indices.html</loc></url>
