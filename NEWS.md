@@ -1,4 +1,4 @@
-# weathergenr (development version)
+# weathergenr 1.3.1
 
 ## Other changes
 
