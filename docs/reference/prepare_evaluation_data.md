@@ -17,6 +17,7 @@ prepare_evaluation_data(
   obs_dates,
   grid_ids,
   variables,
+  year_start_month = 1L,
   min_days_per_year = 365L,
   verbose = TRUE
 )
@@ -52,6 +53,13 @@ prepare_evaluation_data(
 
   Character vector of variable names to extract (e.g.,
   `c("precip", "temp")`).
+
+- year_start_month:
+
+  Integer in 1:12. First month of the simulation year. When \> 1,
+  complete years are identified using water-year boundaries (via
+  [`compute_water_year()`](https://deltares-research.github.io/weathergenr/reference/compute_water_year.md))
+  instead of calendar-year boundaries. Default is 1 (calendar year).
 
 - min_days_per_year:
 
@@ -95,9 +103,8 @@ The function performs the following transformations:
 4.  Formats both simulated and observed data as required by the
     evaluator
 
-Complete years are identified by calendar year boundaries. For
-water-year simulations, users should ensure the simulation spans full
-water years.
+Complete years are identified by calendar-year or water-year boundaries
+depending on `year_start_month`.
 
 ## See also
 

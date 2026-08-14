@@ -82,7 +82,8 @@ estimate_monthly_markov_probs(
 - wet_threshold:
 
   Numeric vector of length 12. Monthly precipitation thresholds
-  separating dry and wet states, aligned to month_order.
+  separating dry and wet states, aligned to month_order. Must not exceed
+  `extreme_threshold` elementwise; an inverted pair is an error.
 
 - extreme_threshold:
 
@@ -116,7 +117,9 @@ estimate_monthly_markov_probs(
 - dry_spell_factor_month:
 
   Numeric vector of length 12. Monthly multiplicative factors
-  controlling dry-state persistence.
+  controlling dry-state persistence. Values greater than 1 reduce
+  dry-state exit probabilities (dry-\>wet and dry-\>very wet) before
+  renormalization, which lengthens dry spells.
 
 - wet_spell_factor_month:
 

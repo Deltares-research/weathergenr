@@ -100,7 +100,10 @@ resample_weather_dates(
 - dry_spell_factor:
 
   Numeric vector of length 12. Monthly adjustment factors controlling
-  dry spell persistence in the Markov chain.
+  dry spell persistence in the Markov chain. Values greater than 1
+  increase dry-state persistence by reducing dry-to-wet and
+  dry-to-very-wet transition probabilities before renormalization (for
+  example, with factor 2 these off-diagonal transitions are halved).
 
 - wet_spell_factor:
 

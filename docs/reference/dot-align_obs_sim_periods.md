@@ -2,12 +2,20 @@
 
 Applies the chosen window consistently across all grids and all
 realizations after removing leap days. The window is drawn from the
-longest contiguous full-year blocks available in each series.
+longest contiguous full-year blocks available in each series. When
+\`year_start_month \> 1\`, water-year grouping is used to identify
+complete years.
 
 ## Usage
 
 ``` r
-.align_obs_sim_periods(daily_obs, daily_sim, n_realizations, variables)
+.align_obs_sim_periods(
+  daily_obs,
+  daily_sim,
+  n_realizations,
+  variables,
+  year_start_month = 1L
+)
 ```
 
 ## Arguments
@@ -27,6 +35,10 @@ longest contiguous full-year blocks available in each series.
 - variables:
 
   Character vector of variables used for evaluation.
+
+- year_start_month:
+
+  Integer 1-12. First month of the simulation year.
 
 ## Value
 

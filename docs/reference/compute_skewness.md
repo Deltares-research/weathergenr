@@ -1,7 +1,7 @@
 # Compute sample skewness
 
-Computes the (non-bias-corrected) third standardized central moment
-(skewness) for a numeric vector, excluding `NA` values.
+Computes sample skewness as \\\sum (x-\bar{x})^3 / (n s^3)\\ for a
+numeric vector, excluding `NA` values.
 
 ## Usage
 
@@ -23,3 +23,6 @@ Numeric scalar. Skewness estimate, or `NA`.
 
 Returns `NA` if fewer than 3 non-missing values are available or if the
 standard deviation is zero (which yields undefined standardization).
+This estimator uses [`stats::sd()`](https://rdrr.io/r/stats/sd.html)
+(denominator \\n-1\\) in the standardization term and follows the same
+convention used by `e1071::skewness(type = 2)`.

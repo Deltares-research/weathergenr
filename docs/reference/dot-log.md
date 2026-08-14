@@ -4,8 +4,9 @@ Unified internal logging helper for the package.
 
 Features: - Single entry point for all logging - Brace interpolation
 resolved in caller environment (base R, no glue) - Supports log levels
-(info, warn, error) - Silent unless verbose = TRUE - Timestamps in ISO
-format
+(info, warn, error) - Silent unless verbose = TRUE - Lines are formatted
+as `HH:MM:SS - tag - message`, matching the downstream \`blueearth_cst\`
+console syntax
 
 ## Usage
 
@@ -29,7 +30,8 @@ format
 
 - tag:
 
-  Optional character scalar. Component tag (e.g. "WARM", "KNN").
+  Optional character scalar. Component tag (e.g. "WARM", "KNN"), emitted
+  lower-cased.
 
 ## Value
 

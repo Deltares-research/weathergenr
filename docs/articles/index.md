@@ -13,9 +13,3 @@
 
   Applying monthly perturbations to stochastic weather, and validate
   precipitation changes.
-
-- [Running from
-  Python](https://deltares-research.github.io/weathergenr/articles/running_from_python.md):
-
-  Read NetCDF inputs, generate stochastic realizations, and evaluate
-  generator skill.

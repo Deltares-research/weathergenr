@@ -6,7 +6,7 @@ contiguous block
 ## Usage
 
 ``` r
-.get_full_year_run(dates)
+.get_full_year_run(dates, year_start_month = 1L)
 ```
 
 ## Arguments
@@ -14,6 +14,11 @@ contiguous block
 - dates:
 
   Date vector (leap days should already be removed).
+
+- year_start_month:
+
+  Integer 1-12. First month of the simulation year. When \> 1, groups by
+  water year via \`compute_water_year()\`.
 
 ## Value
 

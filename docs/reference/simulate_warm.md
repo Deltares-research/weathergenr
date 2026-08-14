@@ -76,7 +76,8 @@ simulate_warm(
 - check_diagnostics:
 
   Logical. If TRUE, runs a Ljung Box test on ARMA residuals and warns
-  when residual autocorrelation remains.
+  when residual autocorrelation remains. In component mode, also warns
+  when pre-correction aggregate variance mismatch is large.
 
 - verbose:
 
@@ -95,7 +96,21 @@ transforms. - No drift and no mean: include.mean is FALSE. The code
 centers series before fitting and re adds the observed mean after
 simulation.
 
-Fallback logic - Fallback is applied per component in component mode.
-Components that fit successfully use ARMA simulation; failed components
-use block bootstrap. - In bypass mode, fallback is applied to the whole
-series.
+Cross-component covariance correction (component mode only) MODWT MRA
+components are additive but not orthogonal; fitting independent ARMAs
+and summing inflates ensemble variance when cross-component covariances
+are non-zero. Two tiers of correction are applied. - Tier 2 (Cholesky):
+when \>= 2 variable components are ARMA-viable and the component
+covariance matrix is well-conditioned (condition number \< 1e6),
+components are decorrelated via X fit to the whitened series, and
+simulations are re-correlated by multiplying back by L before summing. -
+Tier 1 (aggregate): after summing, the total simulated series is
+rescaled to match the observed total standard deviation when the
+relative mismatch exceeds var_tol. Applied in both the Tier 2 path (as a
+safety check) and the fallback path (as the primary correction).
+
+Fallback logic - If any variable component fails the ARMA viability
+pre-scan, Tier 2 is skipped and per-component variance matching is
+applied instead. - If the covariance matrix is ill-conditioned, Tier 2
+is skipped; Tier 1 remains active. - In bypass mode, fallback is applied
+to the whole series (block bootstrap).

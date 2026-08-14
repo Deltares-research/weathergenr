@@ -70,7 +70,7 @@ Install the latest version from GitHub:
 
 # Getting started
 
-A quick tutorial is available here:  
+A quick tutorial is available here:\
 <https://deltares-research.github.io/weathergenr/articles/getting_started.html>
 
 # References

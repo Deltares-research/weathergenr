@@ -13,7 +13,8 @@ using facet layout to infer width/height. Returns the plot invisibly.
   save_plots,
   title = NULL,
   subtitle = NULL,
-  output_dir
+  output_dir,
+  plot_config = NULL
 )
 ```
 
@@ -46,6 +47,13 @@ using facet layout to infer width/height. Returns the plot invisibly.
 - output_dir:
 
   Character; output directory for saved plots.
+
+- plot_config:
+
+  List; optional plotting configuration. `dpi` and `device` are read
+  from it when present, so callers can trade raster resolution for speed
+  or swap in a faster device. Rendering and writing the diagnostic PNGs
+  is roughly a quarter of an evaluation run at the default 300 dpi.
 
 ## Value
 
