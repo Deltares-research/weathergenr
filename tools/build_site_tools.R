@@ -703,7 +703,9 @@ build_pkgdown_site <- function(run_tests = TRUE,
   current_step <- current_step + 1
   .local_step(current_step, total_steps, "Installing package")
 
-  devtools::install(upgrade = "never", build_vignettes = FALSE, quiet = TRUE)
+  # `upgrade = FALSE`, not "never": devtools 2.5.x validates this argument as a
+  # logical and aborts on the string form that older versions accepted.
+  devtools::install(upgrade = FALSE, build_vignettes = FALSE, quiet = TRUE)
   .local_success("Package installed")
 
   # BUILD PKGDOWN SITE
