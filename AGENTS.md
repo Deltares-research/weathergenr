@@ -120,7 +120,7 @@ source that file instead.
   `cadence: manual`, and `1.2.0.9000`-style development versions hold steady until an
   explicitly requested release. See that file for the release gate and apply command.
 - IMPORTANT: a downstream consumer pins this package by **Git tag**. The `blueearth_cst`
-  toolkit installs `tanerumit/weathergenr@v1.2.0` via `remotes::install_github()` from
+  toolkit installs `Deltares-research/weathergenr@v1.2.0` via `remotes::install_github()` from
   `dev/scripts/install_weathergenr.R`, driven by `pixi run install-rdeps`. Consequences:
   a release is not delivered until its tag is **pushed to `origin`** — with
   `auto_push: false` that is a deliberate, owner-run final step, so never report a
