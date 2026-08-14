@@ -339,12 +339,14 @@ compute_area_averages <- function(obs_data, wyear_idx, wyear, vars) {
 #' - Brace interpolation resolved in caller environment (base R, no glue)
 #' - Supports log levels (info, warn, error)
 #' - Silent unless verbose = TRUE
-#' - Timestamps in ISO format
+#' - Lines are formatted as \code{HH:MM:SS - tag - message}, matching the
+#'   downstream `blueearth_cst` console syntax
 #'
 #' @param msg Character scalar. Log message template with \code{{variable}} syntax.
 #' @param level Character scalar. One of "info", "warn", "error".
 #' @param verbose Logical. If FALSE, suppress output.
-#' @param tag Optional character scalar. Component tag (e.g. "WARM", "KNN").
+#' @param tag Optional character scalar. Component tag (e.g. "WARM", "KNN"),
+#'   emitted lower-cased.
 #'
 #' @return Invisibly returns NULL.
 #'
@@ -391,11 +393,11 @@ compute_area_averages <- function(obs_data, wyear_idx, wyear, vars) {
     }
   }
 
-  timestamp <- format(Sys.time(), "[%Y-%m-%d %H:%M:%S]")
+  timestamp <- format(Sys.time(), "%H:%M:%S")
   if (!is.null(tag) && nzchar(tag)) {
-    prefix <- paste0(timestamp, " [", tag, "] ")
+    prefix <- paste0(timestamp, " - ", tolower(tag), " - ")
   } else {
-    prefix <- paste0(timestamp, " ")
+    prefix <- paste0(timestamp, " - ")
   }
 
   rendered <- paste0(prefix, rendered)

@@ -228,7 +228,7 @@ simulate_warm <- function(
 
     if (is.null(fit)) {
       bl <- .default_block_len(n)
-      if (verbose) .log(paste0("[WARM] Bypass mode: ARMA fit failed, using block bootstrap (block_len=", bl, ")"))
+      if (verbose) .log(paste0("Bypass mode: ARMA fit failed, using block bootstrap (block_len=", bl, ")"), tag = "WARM")
       out <- matrix(NA_real_, nrow = n, ncol = n_sim)
       for (j in seq_len(n_sim)) {
         out[, j] <- .block_bootstrap(series_obs, n = n, block_len = bl)
@@ -259,7 +259,7 @@ simulate_warm <- function(
       sim <- .variance_match_matrix(sim, target_sd = target_sd, tol = var_tol, target_mean = obs_mean)
     }
 
-    if (verbose) .log(paste0("[WARM] Bypass mode used (n=", n, " < ", bypass_n, ")"))
+    if (verbose) .log(paste0("Bypass mode used (n=", n, " < ", bypass_n, ")"), tag = "WARM")
     return(sim)
   }
 
@@ -359,18 +359,18 @@ simulate_warm <- function(
           for (ki in seq_along(var_idx)) comp_list[[var_idx[ki]]] <- Z_mat[, ki]
           use_decorrelation <- TRUE
           if (verbose) .log(paste0(
-            "[WARM] Cholesky decorrelation active (cond=", round(cond_num, 1), ", nvar=", nvar, ")"
-          ))
+            "Cholesky decorrelation active (cond=", round(cond_num, 1), ", nvar=", nvar, ")"
+          ), tag = "WARM")
         }
       }
 
       if (!use_decorrelation && verbose) .log(paste0(
-        "[WARM] Cholesky decorrelation skipped (cond=",
+        "Cholesky decorrelation skipped (cond=",
         if (is.finite(cond_num)) round(cond_num, 1) else "Inf",
         "); falling back to per-component variance correction"
-      ))
+      ), tag = "WARM")
     } else if (verbose) {
-      .log("[WARM] Cholesky decorrelation skipped: one or more variable components not ARMA-viable")
+      .log("Cholesky decorrelation skipped: one or more variable components not ARMA-viable", tag = "WARM")
     }
   }
 
@@ -437,10 +437,10 @@ simulate_warm <- function(
       bl <- .default_block_len(n)
       if (verbose) {
         .log(paste0(
-          "[WARM] Component ", k,
+          "Component ", k,
           if (nzchar(nm)) paste0(" (", nm, ")") else "",
           ": ARMA fit failed, using block bootstrap (block_len=", bl, ")"
-        ))
+        ), tag = "WARM")
       }
       sim_comp <- matrix(NA_real_, nrow = n, ncol = n_sim)
       for (j in seq_len(n_sim)) sim_comp[, j] <- .warm_block_bootstrap(component, n = n)
@@ -503,14 +503,14 @@ simulate_warm <- function(
     for (k in const_idx) output <- output + comp_sims[[k]]
     # Re-add original means (sum of all components' means = observed total mean).
     output <- output + sum(comp_means_all)
-    if (verbose) .log("[WARM] Cholesky re-correlation applied")
+    if (verbose) .log("Cholesky re-correlation applied", tag = "WARM")
 
   } else {
     # No decorrelation: simple sum; per-component means are stored separately.
     output <- matrix(0, nrow = n, ncol = n_sim)
     for (k in seq_along(comp_sims)) output <- output + comp_sims[[k]] + comp_means_all[k]
     if (verbose && match_variance && isTRUE(variance_corrections)) {
-      .log("[WARM] Per-component variance correction applied")
+      .log("Per-component variance correction applied", tag = "WARM")
     }
   }
 
@@ -543,7 +543,7 @@ simulate_warm <- function(
       target_mean = obs_total_mean
     )
     if (!identical(output2, output)) {
-      if (verbose) .log("[WARM] Aggregate variance correction applied")
+      if (verbose) .log("Aggregate variance correction applied", tag = "WARM")
     }
     output <- output2
   }
