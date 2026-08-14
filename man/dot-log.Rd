@@ -13,7 +13,8 @@
 
 \item{verbose}{Logical. If FALSE, suppress output.}
 
-\item{tag}{Optional character scalar. Component tag (e.g. "WARM", "KNN").}
+\item{tag}{Optional character scalar. Component tag (e.g. "WARM", "KNN"),
+emitted lower-cased.}
 }
 \value{
 Invisibly returns NULL.
@@ -26,6 +27,7 @@ Features:
 - Brace interpolation resolved in caller environment (base R, no glue)
 - Supports log levels (info, warn, error)
 - Silent unless verbose = TRUE
-- Timestamps in ISO format
+- Lines are formatted as \code{HH:MM:SS - tag - message}, matching the
+  downstream `blueearth_cst` console syntax
 }
 \keyword{internal}

@@ -1791,15 +1791,15 @@ criteria_string_compact <- function(filter_name, bounds, tail_metrics,
 #' @keywords internal
 log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, relax_priority) {
 
-  .log("[FILTER] ===========================================================================")
-  .log("[FILTER] FILTERING SETUP")
-  .log("[FILTER] ===========================================================================")
-  .log("[FILTER] Observed series: {format(n_obs, big.mark = ',')} years")
-  .log("[FILTER] Simulated series: {format(n_sim, big.mark = ',')} years x {format(n_realizations, big.mark = ',')} candidate realizations")
-  .log("[FILTER] Target: select {format(sample_target, big.mark = ',')} realizations from pool")
-  .log("[FILTER] Relaxation priority: {paste(relax_priority, collapse = ' > ')}")
-  .log("[FILTER] Filters relax left-to-right: {relax_priority[1]} relaxes FIRST, {relax_priority[length(relax_priority)]} relaxes LAST")
-  .log("[FILTER] ===========================================================================")
+  .log("===========================================================================", tag = "FILTER")
+  .log("FILTERING SETUP", tag = "FILTER")
+  .log("===========================================================================", tag = "FILTER")
+  .log("Observed series: {format(n_obs, big.mark = ',')} years", tag = "FILTER")
+  .log("Simulated series: {format(n_sim, big.mark = ',')} years x {format(n_realizations, big.mark = ',')} candidate realizations", tag = "FILTER")
+  .log("Target: select {format(sample_target, big.mark = ',')} realizations from pool", tag = "FILTER")
+  .log("Relaxation priority: {paste(relax_priority, collapse = ' > ')}", tag = "FILTER")
+  .log("Filters relax left-to-right: {relax_priority[1]} relaxes FIRST, {relax_priority[length(relax_priority)]} relaxes LAST", tag = "FILTER")
+  .log("===========================================================================", tag = "FILTER")
 
   invisible(NULL)
 }
@@ -1837,38 +1837,38 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
   pool_pct <- if (n_total > 0) 100 * pool_size / n_total else 0
 
   if (iter == 0L) {
-    .log("[FILTER] ---------------------------------------------------------------------------")
-    .log("[FILTER] ITERATION {format(iter, big.mark = ',')} | Initial evaluation")
+    .log("---------------------------------------------------------------------------", tag = "FILTER")
+    .log("ITERATION {format(iter, big.mark = ',')} | Initial evaluation", tag = "FILTER")
   } else {
-    .log("[FILTER] ---------------------------------------------------------------------------")
+    .log("---------------------------------------------------------------------------", tag = "FILTER")
     if (!is.null(note)) {
-      .log("[FILTER] ITERATION {format(iter, big.mark = ',')} | {note}")
+      .log("ITERATION {format(iter, big.mark = ',')} | {note}", tag = "FILTER")
     } else {
-      .log("[FILTER] ITERATION {format(iter, big.mark = ',')}")
+      .log("ITERATION {format(iter, big.mark = ',')}", tag = "FILTER")
     }
   }
-  .log("[FILTER] ---------------------------------------------------------------------------")
+  .log("---------------------------------------------------------------------------", tag = "FILTER")
 
   filter_order <- c("mean", "sd", "tail_low", "tail_high", "wavelet")
   show_filters <- intersect(filter_order, active)
 
   if (length(show_filters) > 0) {
-    .log("[FILTER] {sprintf('%-12s %10s %8s  %-40s', 'Filter', 'Passed', 'Rate', 'Criteria')}")
-    .log("[FILTER] ---------------------------------------------------------------------------")
+    .log("{sprintf('%-12s %10s %8s  %-40s', 'Filter', 'Passed', 'Rate', 'Criteria')}", tag = "FILTER")
+    .log("---------------------------------------------------------------------------", tag = "FILTER")
 
     for (nm in show_filters) {
       n_pass <- sum(passes[[nm]])
       rate <- 100 * mean(passes[[nm]])
       crit <- criteria_string_compact(nm, bounds, tail_metrics, wavelet_active, spectral_diag)
-      .log("[FILTER] {sprintf('%-12s %10s %7.1f%%  %-40s', nm, format(n_pass, big.mark = ','), rate, crit)}")
+      .log("{sprintf('%-12s %10s %7.1f%%  %-40s', nm, format(n_pass, big.mark = ','), rate, crit)}", tag = "FILTER")
     }
-    .log("[FILTER] ---------------------------------------------------------------------------")
+    .log("---------------------------------------------------------------------------", tag = "FILTER")
   }
 
   status_icon <- if (pool_size >= target) "[OK]" else "[>>]"
   status_txt  <- if (pool_size >= target) "TARGET REACHED" else "Need more candidates"
 
-  .log("[FILTER] {status_icon} Pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pool_pct)}%) | Need: {format(target, big.mark = ',')} | Status: {status_txt}")
+  .log("{status_icon} Pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pool_pct)}%) | Need: {format(target, big.mark = ',')} | Status: {status_txt}", tag = "FILTER")
 
   invisible(NULL)
 }
@@ -1891,13 +1891,13 @@ log_final_summary <- function(pool_size, n_total, n_sampled, relaxation_level) {
 
   pct <- if (n_total > 0) 100 * pool_size / n_total else NA_real_
 
-  .log("[FILTER] ===========================================================================")
-  .log("[FILTER] FILTERING COMPLETE")
-  .log("[FILTER] ===========================================================================")
-  .log("[FILTER] Final pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pct)}%)")
-  .log("[FILTER] Sampled: {format(n_sampled, big.mark = ',')} realizations")
-  .log("[FILTER] Selection mode: {relaxation_level}")
-  .log("[FILTER] ===========================================================================")
+  .log("===========================================================================", tag = "FILTER")
+  .log("FILTERING COMPLETE", tag = "FILTER")
+  .log("===========================================================================", tag = "FILTER")
+  .log("Final pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pct)}%)", tag = "FILTER")
+  .log("Sampled: {format(n_sampled, big.mark = ',')} realizations", tag = "FILTER")
+  .log("Selection mode: {relaxation_level}", tag = "FILTER")
+  .log("===========================================================================", tag = "FILTER")
 
   invisible(NULL)
 }

@@ -170,13 +170,15 @@ evaluate_weather_generator <- function(
 
   .log(
     paste0(
-      "[EVAL] Evaluation Started: Variables = {paste(vars, collapse = ',')}"
+      "Evaluation Started: Variables = {paste(vars, collapse = ',')}"
     ),
-    verbose = verbose
+    verbose = verbose,
+    tag = "EVAL"
   )
   .log(
-    paste0("[EVAL] Parameters: wet.q = {wet_q} | extreme.q = {extreme_q}"),
-    verbose = verbose
+    paste0("Parameters: wet.q = {wet_q} | extreme.q = {extreme_q}"),
+    verbose = verbose,
+    tag = "EVAL"
   )
 
 
@@ -228,7 +230,7 @@ evaluate_weather_generator <- function(
   # STANDARDIZE PERIODS (FULL YEARS + MATCH LENGTH VIA RANDOM WINDOW)
   # ============================================================================
 
-  .log("[EVAL] Standardizing obs/sim periods to full years and equal length", verbose = verbose)
+  .log("Standardizing obs/sim periods to full years and equal length", verbose = verbose, tag = "EVAL")
 
   std <- .align_obs_sim_periods(
     daily_obs = daily_obs,
@@ -242,16 +244,16 @@ evaluate_weather_generator <- function(
   daily_sim <- std$daily_sim
 
   .log(paste0(
-    "[EVAL] Standardized period | ",
+    "Standardized period | ",
     "Obs = ", std$obs_year_start, "-", std$obs_year_end, " | ",
     "Sim = ", std$sim_year_start, "-", std$sim_year_end),
-    verbose = verbose)
+    verbose = verbose, tag = "EVAL")
 
   # ============================================================================
   # PROCESS OBSERVED DATA
   # ============================================================================
 
-  .log("[EVAL] Processing observed data", verbose = verbose)
+  .log("Processing observed data", verbose = verbose, tag = "EVAL")
 
   obs_results <- .summarize_observed_data(
     daily_obs = daily_obs,
@@ -265,7 +267,7 @@ evaluate_weather_generator <- function(
   # PROCESS SIMULATED DATA
   # ============================================================================
 
-  .log("[EVAL] Processing simulated data ({format(n_realizations, big.mark = ',')} realizations)", verbose = verbose)
+  .log("Processing simulated data ({format(n_realizations, big.mark = ',')} realizations)", verbose = verbose, tag = "EVAL")
 
   sim_results <- .summarize_simulated_data(
     daily_sim = daily_sim,
@@ -291,7 +293,7 @@ evaluate_weather_generator <- function(
   # GENERATE DIAGNOSTIC PLOTS
   # ============================================================================
 
-  .log("[EVAL] Generating diagnostic plots", verbose = verbose)
+  .log("Generating diagnostic plots", verbose = verbose, tag = "EVAL")
 
   plots <- create_all_diagnostic_plots(
     plot_data = plot_data,
@@ -303,14 +305,14 @@ evaluate_weather_generator <- function(
   )
 
   if (save_plots) {
-    .log("[EVAL] Generated {format(length(plots): {output_dir}, big.mark = ',')} diagnostic plots.", verbose = verbose)
+    .log("Generated {format(length(plots): {output_dir}, big.mark = ',')} diagnostic plots.", verbose = verbose, tag = "EVAL")
   }
 
   # ============================================================================
   # COMPUTE FIT METRICS SUMMARY TABLE
   # ============================================================================
 
-  .log("[EVAL] Computing fit metrics for all realizations", verbose = verbose)
+  .log("Computing fit metrics for all realizations", verbose = verbose, tag = "EVAL")
 
   fit_summary <- .summarize_realization_fit(
     obs_results = obs_results,
@@ -322,13 +324,13 @@ evaluate_weather_generator <- function(
   # DISPLAY FIT SUMMARY TABLE
   # ============================================================================
 
-  .log("[EVAL] Displaying fit assessment summary", verbose = verbose)
+  .log("Displaying fit assessment summary", verbose = verbose, tag = "EVAL")
 
   if (isTRUE(verbose)) {
     .print_fit_summary_table(fit_summary)
   }
 
-  .log("[EVAL] Assessment completed successfully", verbose = verbose)
+  .log("Assessment completed successfully", verbose = verbose, tag = "EVAL")
 
   structure(
     plots,

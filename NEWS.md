@@ -1,3 +1,14 @@
+# weathergenr (development version)
+
+## Other changes
+
+* Console log lines now read `HH:MM:SS - tag - message` (e.g.
+  `14:51:42 - resample - Processing realization: 1/2`) instead of
+  `[YYYY-MM-DD HH:MM:SS] [TAG] message`. The date is dropped and the phase tag
+  is lower-cased, so `weathergenr` output interleaves cleanly with the
+  `blueearth_cst` toolkit's logging. Message text is unchanged; anything parsing
+  the old prefix needs updating.
+
 # weathergenr 1.3.0
 
 ## Bug fixes

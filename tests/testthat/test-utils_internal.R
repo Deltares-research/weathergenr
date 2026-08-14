@@ -113,6 +113,18 @@ testthat::test_that(".log respects verbose and levels", {
   )
 })
 
+testthat::test_that(".log prefixes lines as 'HH:MM:SS - tag - message'", {
+  testthat::expect_message(
+    weathergenr:::.log("building index", tag = "EVAL", verbose = TRUE),
+    regexp = "^[0-9]{2}:[0-9]{2}:[0-9]{2} - eval - building index"
+  )
+
+  testthat::expect_message(
+    weathergenr:::.log("untagged line", verbose = TRUE),
+    regexp = "^[0-9]{2}:[0-9]{2}:[0-9]{2} - untagged line"
+  )
+})
+
 testthat::test_that("format_elapsed returns unit-based strings", {
   out_secs <- weathergenr:::format_elapsed(Sys.time() - 30)
   out_mins <- weathergenr:::format_elapsed(Sys.time() - 90)
