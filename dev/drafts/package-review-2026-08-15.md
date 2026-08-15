@@ -199,11 +199,26 @@ marks this deliberate ("legacy messages preserved"), but a user who passes
 Related: the latitude check (`:145-148`) accepts `lat` or `y`, but the message
 names only `'y'`.
 
-### B8. `test-wavelet.R` is a strict subset of `test-warm.R`
+### B8. `test-wavelet.R` and `test-warm.R` duplicate 8 test blocks
 
-All 8 `test_that()` titles in `test-wavelet.R` are duplicated verbatim among
-`test-warm.R`'s 24. Its header comment cites `R/wavelet.R`, a file that no
-longer exists — leftover from the `wavelet_cwt.R`/`wavelet_warm.R` split.
+All 8 `test_that()` titles in `test-wavelet.R` also appear in `test-warm.R`'s
+24 — leftover from the `wavelet_cwt.R`/`wavelet_warm.R` split.
+
+> **Corrected 2026-08-15 while closing `t2608151254j`.** This section
+> originally called `test-wavelet.R` "a strict subset" of `test-warm.R` and
+> attributed the stale `R/wavelet.R` header to it. Both halves are wrong, and
+> acting on either would have destroyed coverage.
+>
+> Diffing the bodies: six blocks are byte-identical, and in the other two
+> `test-wavelet.R` is the **stronger** file — its `analyze_wavelet_spectrum`
+> structure test asserts eight more return fields, and its `simulate_warm`
+> determinism test handles warnings the other does not. The stale `R/wavelet.R`
+> header is in **`test-warm.R`**; `test-wavelet.R` cites the current module
+> names and `git log` shows it is the newer file.
+>
+> The claim was made by matching `test_that()` titles without diffing the
+> bodies. Titles are not content, and same-name-different-body is exactly the
+> case a title comparison cannot see.
 
 ### B9. `simulate_warm()` doc says `bypass_n` default is 25; the formal is `15L`
 
