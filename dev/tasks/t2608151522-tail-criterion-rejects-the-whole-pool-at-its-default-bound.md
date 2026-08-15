@@ -24,9 +24,9 @@ updated: 2026-08-15
 - [x] Measured the alternatives at production scale, pool size and relaxation iterations: `log(1.03)` → 24 after 4 iterations; `log(1.25)` → 157, none; `log(1.50)` → 297, none; `log(2.00)` → 495, none.
 - [x] Changed the default to `log(1.25)`. It still rejects about 97% of candidates so it stays a real constraint, needs no relaxation, and sits well inside `relax_tail_tol_log_max = log(2.0)` — a ceiling the author already treated as acceptable.
 - [x] Checked lower and upper tails separately, as the step asked: `logdiff_low` is the larger and more stable of the two, `logdiff_high` shrinks with trace length. A shared bound is defensible at `log(1.25)`, where each admits a comparable share; splitting them would be a separate change and is not needed to fix this.
-- [ ] **Owner decision pending** — baseline delta reviewed but *not* re-recorded. See below.
+- [x] Baseline delta accepted by the owner on 2026-08-15 and re-recorded with `record_baseline.R --force`. Gate green afterwards (8 pass); full suite with the gate enabled on merged master: 960 pass, 0 fail, 0 skip. `check_only()` 0/0/0.
 
-## Baseline delta — awaiting acceptance
+## Baseline delta — accepted 2026-08-15
 
 **60 of 106 keys differ.** Realization selection changes, so the analogue dates
 and every downstream statistic change with it. All `config.*` and structural
