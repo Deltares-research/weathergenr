@@ -22,9 +22,9 @@ updated: 2026-08-15
 - [x] `.fast_col_sd()` now returns the sample sd (`* n/(n-1)`, `NA` for `n < 2`), matching the `stats::sd()` targets it is compared against. Kept the `m2 - m1^2` form: cancellation costs ~2 of ~16 significant digits on annual totals, nowhere near the tolerances in play.
 - [x] Pass rates re-checked on the packaged fixture, 3,000 candidates: mean 99.5% → 98.4%, sd 72.4% → 71.2%, both 72.4% → 70.0%. The pool does not starve and the default 3% bounds need no revisiting.
 - [x] Verified the per-component branch separately. Both the packaged fixture and my probe take the Tier 2 (Cholesky) path, which **skips** per-component matching — so neither exercised `:474-484`. Forced it with a single variable component: the total mean reconstitutes to within 0.004%, no double-counting, no NaN.
-- [ ] **Owner decision pending** — baseline delta reviewed but *not* re-recorded. See below.
+- [x] Baseline delta accepted by the owner on 2026-08-15 and re-recorded with `record_baseline.R --force`. Gate green afterwards (8 pass); full suite with the gate enabled on merged master: 958 pass, 0 fail, 0 skip.
 
-## Baseline delta — awaiting acceptance
+## Baseline delta — accepted 2026-08-15
 
 `Rscript tools/record_baseline.R --dry-run`: **60 of 106 keys differ.**
 
