@@ -13,6 +13,8 @@ Rows are appended by `todoboard done`, never hand-edited.
 
 | Closed     | ID           | Item                                     | Area         |
 | ---------- | ------------ | ---------------------------------------- | ------------ |
+| 2026-08-15 | t2608151451  | Decide whether the WARM peak criterion should be a similarity filter | warm         |
+| 2026-08-15 | t2608151254d | Document or reshape the Markov spell-length factors | resample     |
 | 2026-08-15 | t2608151254h | Fix the RNG restore and legacy error messages in apply_climate_perturbations() | perturbations |
 | 2026-08-15 | t2608151254g | Fix the three consistency defects in generate_weather() | api          |
 | 2026-08-15 | t2608151254f | Fix the list-components length check and bypass_n doc in simulate_warm() | warm         |
