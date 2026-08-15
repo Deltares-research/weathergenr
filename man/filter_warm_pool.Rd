@@ -104,3 +104,26 @@ If the pool is still smaller than \code{n_select} after relaxation, a
 deterministic fallback selects the \code{n_select} realizations with the
 smallest absolute relative mean difference.
 }
+\section{Length harmonisation}{
+
+When \code{obs_series} and \code{sim_series} differ in length, both are
+truncated to the shorter of the two before any statistic is computed. The
+spectral criterion requires this: a 60-year series resolves low-frequency
+power that a 20-year one cannot, so comparing their spectra unmatched would
+score length rather than shape.
+
+The truncation takes the \strong{last} \code{min(n_obs, n_sim)} values of
+each series, deterministically and at the same position for every candidate.
+It is reported in the returned \code{diagnostics} as \code{obs_window} and
+\code{window_index}.
+
+Two consequences are worth knowing. Simulating more years than the observed
+record means each candidate is judged on a slice of itself -- a 60-year trace
+against a 20-year record is scored on 20 of its years, and the full-length
+trace is what \code{selected} returns. And the bounds in
+\code{\link{filter_warm_bounds_defaults}} are relative differences against
+statistics of that common length, so they are implicitly calibrated for it;
+scoring the criteria on full series instead was measured and moves the mean
+and standard-deviation criteria in opposite directions.
+}
+
