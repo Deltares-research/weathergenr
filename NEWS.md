@@ -1,5 +1,27 @@
 # weathergenr (development version)
 
+## New features
+
+* `apply_climate_perturbations()` gains `temp_range_factor`, a monthly
+  multiplier on the diurnal temperature range applied about its own midpoint, so
+  `temp_min` and `temp_max` move apart or together without shifting the daily
+  mean. It accepts a length-12 vector or an `n_years x 12` matrix like the other
+  factors, and ramps with `temp_transient`. `NULL` (the default) reproduces the
+  previous behaviour exactly.
+
+  The gap it fills: `temp_delta` is added to `temp`, `temp_min` and `temp_max`
+  alike, so warming on its own left the diurnal range untouched — and the
+  Hargreaves PET this package computes goes as the square root of that range.
+  Warming alone therefore moves PET by only about 2.3% per degree, and the range
+  decides how much more. At +4 degC, PET rises 3.7% with the range a tenth
+  smaller, 9.3% with it fixed, and 14.7% with it a tenth larger. Holding it
+  fixed was a choice for the middle of a fourfold span, not a neutral default,
+  and it matters wherever PET drives the water balance.
+
+  There is no defensible non-null default, because observed and projected
+  diurnal-range trends vary by region and season; supply values for the region
+  being studied, or vary the factor as a stress-test dimension in its own right.
+
 ## Other changes
 
 * Documented why the WARM pool's peak-matching criterion often constrains
