@@ -24,9 +24,10 @@ updated: 2026-08-15
 - [x] Both baseline scenarios go from 1 significant peak to 0 (water_year 4/14 testable, calendar_year 5/14).
 - [x] Log now states when the criterion has nothing to test, and reports the testable-scale count. Moved it out of `compute_spectral_metrics()` — which takes no `verbose` — into `filter_warm_pool()`, which does, after a first attempt raised six R-level warnings across the suite.
 - [x] Corrected the roxygen on both unmasked fields. `gws_unmasked` is not "plotting only": it is the right curve for comparing two spectra computed the same way, which is what this filter does. `gws_signif_unmasked` genuinely is plotting-only, and now says why — it floors the effective sample size at 1 so a plot has no gaps, which makes it permissive exactly where it matters.
-- [ ] **Owner decision pending** — baseline delta reviewed but *not* re-recorded. See below.
+- [x] Baseline delta accepted by the owner on 2026-08-15 and re-recorded with `record_baseline.R --force`. Gate green afterwards (8 pass); full suite with the gate enabled on merged master: 949 pass, 0 fail, 0 skip. `check_only()` 0/0/0.
+- [x] Option 2 below — restoring the filtering power as an explicit similarity criterion — opened as its own item rather than folded in.
 
-## Baseline delta — awaiting acceptance
+## Baseline delta — accepted 2026-08-15
 
 `Rscript tools/record_baseline.R --dry-run`: **15 of 106 keys differ** — all in
 `water_year`, all in realization 2. `calendar_year` is untouched, and
