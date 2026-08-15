@@ -764,7 +764,10 @@ write_netcdf <- function(
     if (anyNA(dates)) {
       stop("'dates' must not contain NA.", call. = FALSE)
     }
-    if (!identical(dates[1], origin)) {
+    # Value comparison, not identical(): origin_date may arrive as a character,
+    # a Date, or a POSIXct-derived Date, and identical() would reject an equal
+    # date carrying a different attribute set.
+    if (!isTRUE(dates[1] == origin)) {
       stop("'origin_date' (", format(origin), ") must be the first entry of 'dates' (",
            format(dates[1]), "); the time coordinate is written relative to it.",
            call. = FALSE)
