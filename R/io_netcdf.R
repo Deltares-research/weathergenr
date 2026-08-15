@@ -1,3 +1,193 @@
+# ==============================================================================
+# CF calendar handling
+# ==============================================================================
+#
+# A CF time axis is "<unit> since <origin>" plus a `calendar` attribute, and the
+# attribute changes what an offset means: on `noleap` the year is always 365
+# days, so day 60 after 2020-01-01 is 2 March, where the Gregorian answer is
+# 1 March. Decoding without reading the attribute silently loses one day per
+# leap year -- which is what this package did to files it had written itself.
+#
+# The generator runs on a 365-day calendar throughout (see calendar.R), so
+# `noleap` is the case that matters here; `all_leap` and `360_day` are rejected
+# rather than approximated, because their dates (29 February in a common year,
+# 30 February) have no representation in R's Date class at all.
+
+#' Classify a CF calendar attribute
+#'
+#' @param calendar Character scalar or NULL. Raw `calendar` attribute value.
+#' @return One of `"standard"`, `"noleap"`, `"unrepresentable"`, `"unknown"`.
+#'   An absent or empty attribute is `"standard"`, per CF.
+#' @keywords internal
+#' @noRd
+.cf_calendar_kind <- function(calendar) {
+  if (is.null(calendar) || length(calendar) != 1L) return("standard")
+  if (is.na(calendar) || !nzchar(as.character(calendar))) return("standard")
+
+  cal <- tolower(trimws(as.character(calendar)))
+
+  # `julian` diverges from Gregorian only before 1582, which no weather-generator
+  # axis reaches; treating it as standard beats refusing to read the file.
+  if (cal %in% c("standard", "gregorian", "proleptic_gregorian", "julian")) return("standard")
+  if (cal %in% c("noleap", "no_leap", "365_day", "365day")) return("noleap")
+  if (cal %in% c("all_leap", "366_day", "366day", "360_day", "360day")) return("unrepresentable")
+
+  "unknown"
+}
+
+#' Days elapsed before the first of each month in a 365-day year
+#' @keywords internal
+#' @noRd
+.noleap_month_offsets <- function() {
+  c(0L, 31L, 59L, 90L, 120L, 151L, 181L, 212L, 243L, 273L, 304L, 334L)
+}
+
+#' Absolute day index on a 365-day calendar
+#'
+#' Counts days from a fixed origin with no leap adjustment whatsoever, so
+#' differences between two indices are exact 365-day-calendar day counts.
+#'
+#' @param year,month,day Integer vectors.
+#' @return Numeric vector of day indices.
+#' @keywords internal
+#' @noRd
+.noleap_ymd_to_index <- function(year, month, day) {
+  as.numeric(year) * 365 + .noleap_month_offsets()[month] + (as.numeric(day) - 1)
+}
+
+#' Invert [.noleap_ymd_to_index()]
+#'
+#' @param idx Numeric vector of 365-day-calendar day indices.
+#' @return List with integer `year`, `month`, `day` vectors.
+#' @keywords internal
+#' @noRd
+.noleap_index_to_ymd <- function(idx) {
+  cum <- .noleap_month_offsets()
+  year <- floor(idx / 365)
+  doy0 <- idx - year * 365            # 0..364
+  month <- findInterval(doy0, cum)    # 1..12
+  list(
+    year  = as.integer(year),
+    month = as.integer(month),
+    day   = as.integer(doy0 - cum[month] + 1)
+  )
+}
+
+#' Convert 365-day-calendar offsets to Date
+#'
+#' @param origin_date Date scalar. The axis origin. Must not be 29 February,
+#'   which does not exist on this calendar.
+#' @param offsets_days Numeric vector of offsets in days; fractional values are
+#'   floored, matching how `as.Date()` truncates a POSIXct.
+#' @return Date vector.
+#' @keywords internal
+#' @noRd
+.noleap_offset_to_date <- function(origin_date, offsets_days) {
+  lt <- as.POSIXlt(origin_date)
+  if (lt$mon == 1L && lt$mday == 29L) {
+    stop("NetCDF time origin is 29 February, which does not exist on a noleap calendar.",
+         call. = FALSE)
+  }
+
+  base <- .noleap_ymd_to_index(lt$year + 1900L, lt$mon + 1L, lt$mday)
+  idx <- floor(base + as.numeric(offsets_days))
+
+  if (any(!is.finite(idx))) {
+    stop("NetCDF time axis contains non-finite offsets.", call. = FALSE)
+  }
+
+  ymd <- .noleap_index_to_ymd(idx)
+  if (any(ymd$year < 0L | ymd$year > 9999L)) {
+    stop("NetCDF time axis decodes to a year outside 0-9999 on the noleap calendar.",
+         call. = FALSE)
+  }
+
+  as.Date(sprintf("%04d-%02d-%02d", ymd$year, ymd$month, ymd$day))
+}
+
+#' Convert Dates to 365-day-calendar offsets
+#'
+#' The inverse of [.noleap_offset_to_date()], used when encoding a time axis.
+#'
+#' @param origin_date Date scalar.
+#' @param dates Date vector. Must contain no 29 February.
+#' @return Numeric vector of day offsets from `origin_date`.
+#' @keywords internal
+#' @noRd
+.noleap_date_to_offset <- function(origin_date, dates) {
+  d <- as.POSIXlt(dates)
+  if (any(d$mon == 1L & d$mday == 29L)) {
+    stop("Dates contain 29 February, which does not exist on a noleap calendar.",
+         call. = FALSE)
+  }
+
+  o <- as.POSIXlt(origin_date)
+  .noleap_ymd_to_index(d$year + 1900L, d$mon + 1L, d$mday) -
+    .noleap_ymd_to_index(o$year + 1900L, o$mon + 1L, o$mday)
+}
+
+#' Decode a CF time axis to Date
+#'
+#' @param units Character scalar. The `units` attribute, e.g.
+#'   `"days since 2020-01-01 00:00:00"`.
+#' @param calendar Character scalar or NULL. The `calendar` attribute.
+#' @param time_vals Numeric vector of raw time coordinate values.
+#' @return Date vector, or NULL when the units string is missing or unsupported.
+#' @keywords internal
+#' @noRd
+.cf_time_to_date <- function(units, calendar, time_vals) {
+  if (is.null(units) || length(units) != 1L || is.na(units) || !nzchar(units)) return(NULL)
+  if (is.null(time_vals) || !is.numeric(time_vals) || length(time_vals) < 1L) return(NULL)
+
+  m <- regexec("^\\s*(seconds|second|minutes|minute|hours|hour|days|day)\\s+since\\s+(.+?)\\s*$",
+               units, ignore.case = TRUE)
+  r <- regmatches(units, m)[[1]]
+  if (length(r) != 3L) return(NULL)
+
+  mult <- switch(tolower(r[2]),
+                 "second" = 1, "seconds" = 1,
+                 "minute" = 60, "minutes" = 60,
+                 "hour"   = 3600, "hours" = 3600,
+                 "day"    = 86400, "days" = 86400,
+                 NULL)
+  if (is.null(mult)) return(NULL)
+
+  kind <- .cf_calendar_kind(calendar)
+
+  if (identical(kind, "unrepresentable")) {
+    stop("NetCDF time uses the '", calendar, "' calendar, whose dates cannot be ",
+         "represented by R's Date class (29 February in a common year, or 30 February). ",
+         "Convert the file to a standard or noleap calendar before reading.",
+         call. = FALSE)
+  }
+
+  if (identical(kind, "unknown")) {
+    warning("Unrecognised NetCDF calendar '", calendar,
+            "'; decoding the time axis as a standard (Gregorian) calendar.",
+            call. = FALSE)
+    kind <- "standard"
+  }
+
+  origin_posix <- suppressWarnings(as.POSIXct(r[3], tz = "UTC"))
+  if (is.na(origin_posix)) {
+    origin_date <- suppressWarnings(as.Date(r[3]))
+    if (is.na(origin_date)) return(NULL)
+    origin_posix <- as.POSIXct(origin_date, tz = "UTC")
+  }
+
+  if (identical(kind, "standard")) {
+    return(as.Date(origin_posix + as.numeric(time_vals) * mult))
+  }
+
+  # noleap: count 365-day years rather than adding real days to the origin.
+  origin_date <- as.Date(origin_posix)
+  origin_frac <- as.numeric(
+    difftime(origin_posix, as.POSIXct(origin_date, tz = "UTC"), units = "days")
+  )
+  .noleap_offset_to_date(origin_date, origin_frac + as.numeric(time_vals) * mult / 86400)
+}
+
+
 #' Read NetCDF variables into tidy data frames
 #'
 #' Reads one or more variables from a NetCDF file and returns a named list of
@@ -113,40 +303,24 @@ read_netcdf <- function(
     x
   }
 
+  # Reads the two CF attributes off the time variable and hands them to the
+  # file-level decoder, which is shared with write_netcdf()'s encoder so the two
+  # directions cannot drift apart.
   .parse_time_to_date <- function(nc_obj, time_var, time_vals) {
     if (is.null(time_var) || is.null(time_vals) || length(time_vals) < 1L) return(NULL)
     if (!is.numeric(time_vals)) return(NULL)
 
     att <- ncdf4::ncatt_get(nc_obj, time_var, "units")
     if (is.null(att) || isTRUE(att$hasatt == FALSE)) return(NULL)
-    units <- as.character(att$value)
-    if (!nzchar(units)) return(NULL)
 
-    m <- regexec("^\\s*(seconds|second|minutes|minute|hours|hour|days|day)\\s+since\\s+(.+?)\\s*$",
-                 units, ignore.case = TRUE)
-    r <- regmatches(units, m)[[1]]
-    if (length(r) != 3L) return(NULL)
+    cal_att <- ncdf4::ncatt_get(nc_obj, time_var, "calendar")
+    calendar <- if (isTRUE(cal_att$hasatt)) as.character(cal_att$value) else NULL
 
-    u <- tolower(r[2])
-    origin_str <- r[3]
-
-    origin_posix <- suppressWarnings(as.POSIXct(origin_str, tz = "UTC"))
-    if (is.na(origin_posix)) {
-      origin_date <- suppressWarnings(as.Date(origin_str))
-      if (is.na(origin_date)) return(NULL)
-      origin_posix <- as.POSIXct(origin_date, tz = "UTC")
-    }
-
-    mult <- switch(u,
-                   "second"  = 1, "seconds" = 1,
-                   "minute"  = 60, "minutes" = 60,
-                   "hour"    = 3600, "hours" = 3600,
-                   "day"     = 86400, "days" = 86400,
-                   NULL
+    .cf_time_to_date(
+      units     = as.character(att$value),
+      calendar  = calendar,
+      time_vals = time_vals
     )
-    if (is.null(mult)) return(NULL)
-
-    as.Date(origin_posix + as.numeric(time_vals) * mult)
   }
 
   coord_x_alias <- c("lon","longitude","x","rlon")
@@ -228,14 +402,23 @@ read_netcdf <- function(
     stop("Could not identify/read time dimension.", call. = FALSE)
   }
 
-  date <- .parse_time_to_date(nc, time_dim_name, as.vector(time_vals_raw))
-  if (is.null(date) || !inherits(date, "Date")) {
+  # Parsed exactly once. The date vector and the row mask that drops Feb 29 from
+  # every variable must come from the same decode: two parses could disagree
+  # about the calendar while still producing matching row counts, which nothing
+  # downstream would catch.
+  date_full <- .parse_time_to_date(nc, time_dim_name, as.vector(time_vals_raw))
+  if (is.null(date_full) || !inherits(date_full, "Date")) {
     stop("Could not convert NetCDF time to Date (missing/unsupported CF units).", call. = FALSE)
   }
 
+  # On a noleap axis this mask is all-TRUE by construction -- Feb 29 cannot be
+  # decoded -- so keep_leap_day is simply inert there rather than special-cased.
+  leap_keep_idx <- NULL
+  date <- date_full
   if (isFALSE(keep_leap_day)) {
-    date_lt <- as.POSIXlt(date)
-    date <- date[!(date_lt$mon == 1L & date_lt$mday == 29L)]
+    date_lt <- as.POSIXlt(date_full)
+    leap_keep_idx <- !(date_lt$mon == 1L & date_lt$mday == 29L)
+    date <- date_full[leap_keep_idx]
   }
 
   # ---------------------------------------------------------------------------
@@ -295,15 +478,8 @@ read_netcdf <- function(
   var_mats <- list()
   kept_vars <- character(0)
 
-  # Loop-invariant: the time axis is the same for every variable, so parse it
-  # once here rather than re-parsing the whole NetCDF time vector per variable.
-  leap_keep_idx <- NULL
-  if (isFALSE(keep_leap_day)) {
-    raw_lt <- as.POSIXlt(
-      .parse_time_to_date(nc, time_dim_name, as.vector(time_vals_raw))
-    )
-    leap_keep_idx <- !(raw_lt$mon == 1L & raw_lt$mday == 29L)
-  }
+  # leap_keep_idx was built above from the same decode that produced `date`, so
+  # the row mask and the date vector cannot disagree about the calendar.
 
   for (v in var) {
     .msg("Reading variable: ", v)
@@ -387,9 +563,24 @@ read_netcdf <- function(
 #' @param grid data.frame with at least \code{xind} and \code{yind} integer indices
 #'   mapping each list element to an output grid cell.
 #' @param out_dir Character. Output directory.
-#' @param origin_date Character or Date. Origin date used for NetCDF time units
-#'   (e.g., \code{"1970-01-01"}).
-#' @param calendar Character. NetCDF calendar type (e.g., \code{"noleap"}).
+#' @param origin_date Character or Date. \strong{The date of the first time step},
+#'   not an arbitrary reference epoch. The time coordinate is written as
+#'   \code{0:(nt - 1)}, so the axis is only correct when \code{origin_date} is the
+#'   series start -- passing a conventional epoch such as \code{"1970-01-01"} for a
+#'   series that begins in 2020 silently relocates it by 50 years. Pass
+#'   \code{dates} to have this checked rather than assumed.
+#' @param calendar Character. CF calendar for the time axis. One of
+#'   \code{"noleap"} (\code{"365_day"}), \code{"standard"}, \code{"gregorian"},
+#'   \code{"proleptic_gregorian"}, or \code{"julian"}. Must match the calendar the
+#'   data are actually on: \code{\link{generate_weather}} output is 365-day, so
+#'   \code{"noleap"} is correct for it, and mislabelling it shifts every date for
+#'   any CF-aware reader.
+#' @param dates Optional Date vector, one entry per time step, giving the axis the
+#'   data are on. When supplied it is validated against \code{nt},
+#'   \code{origin_date}, and \code{calendar}, and the time coordinate is computed
+#'   from it instead of being assumed contiguous. When \code{NULL} (default) the
+#'   axis is assumed to be \code{nt} consecutive days starting at
+#'   \code{origin_date}.
 #' @param template_path Character. Path to a template NetCDF file.
 #' @param compression Integer 0-9. NetCDF4 deflation level.
 #' @param spatial_ref Character. Spatial reference variable name in template.
@@ -407,6 +598,7 @@ write_netcdf <- function(
     out_dir = NULL,
     origin_date = NULL,
     calendar = "noleap",
+    dates = NULL,
     template_path = NULL,
     compression = 4,
     spatial_ref = "spatial_ref",
@@ -423,6 +615,15 @@ write_netcdf <- function(
   # ---------------------------------------------------------------------------
   # Input validation
   # ---------------------------------------------------------------------------
+  cal_kind <- .cf_calendar_kind(calendar)
+  if (!identical(cal_kind, "standard") && !identical(cal_kind, "noleap")) {
+    stop(
+      "'calendar' must be one of 'noleap', '365_day', 'standard', 'gregorian', ",
+      "'proleptic_gregorian' or 'julian'; got '", calendar, "'.",
+      call. = FALSE
+    )
+  }
+
   tryCatch(
     as.Date(origin_date),
     error = function(e) {
@@ -543,12 +744,48 @@ write_netcdf <- function(
   # ---------------------------------------------------------------------------
   # Define dimensions
   # ---------------------------------------------------------------------------
-  time_units <- paste0("days since ", format(as.Date(origin_date), "%Y-%m-%d"), " 00:00:00")
+  origin <- as.Date(origin_date)
+  time_units <- paste0("days since ", format(origin, "%Y-%m-%d"), " 00:00:00")
+
+  # Without `dates`, the axis is assumed to be nt consecutive days from the
+  # origin -- correct for everything this package produces, but unverifiable
+  # here. With `dates`, the offsets are computed on the declared calendar
+  # instead, which is what turns a mislabelled origin into an error.
+  if (is.null(dates)) {
+    time_vals <- 0:(nt - 1)
+  } else {
+    if (!inherits(dates, "Date")) {
+      stop("'dates' must be a Date vector, or NULL.", call. = FALSE)
+    }
+    if (length(dates) != nt) {
+      stop("'dates' must have one entry per time step: got ", length(dates),
+           " for nt = ", nt, ".", call. = FALSE)
+    }
+    if (anyNA(dates)) {
+      stop("'dates' must not contain NA.", call. = FALSE)
+    }
+    if (!identical(dates[1], origin)) {
+      stop("'origin_date' (", format(origin), ") must be the first entry of 'dates' (",
+           format(dates[1]), "); the time coordinate is written relative to it.",
+           call. = FALSE)
+    }
+
+    time_vals <- if (identical(cal_kind, "noleap")) {
+      .noleap_date_to_offset(origin, dates)
+    } else {
+      as.numeric(dates - origin)
+    }
+
+    if (is.unsorted(time_vals, strictly = TRUE)) {
+      stop("'dates' must be strictly increasing on the '", calendar, "' calendar.",
+           call. = FALSE)
+    }
+  }
 
   dim_time <- ncdf4::ncdim_def(
     name = "time",
     units = time_units,
-    vals = 0:(nt - 1),
+    vals = time_vals,
     unlim = FALSE
   )
 
@@ -646,8 +883,10 @@ write_netcdf <- function(
     }
   }
 
-  # Calendar attribute on time
-  try(ncdf4::ncatt_put(nc_out, "time", "calendar", calendar), silent = TRUE)
+  # Calendar attribute on time. Not wrapped in try(): every reader depends on
+  # this attribute to decode the axis, so a file that silently lost it would be
+  # off by a day per leap year for anyone who read it back.
+  ncdf4::ncatt_put(nc_out, "time", "calendar", calendar)
 
   # ---------------------------------------------------------------------------
   # Write data cube per variable (time x y x x)

@@ -10,6 +10,7 @@ write_netcdf(
   out_dir = NULL,
   origin_date = NULL,
   calendar = "noleap",
+  dates = NULL,
   template_path = NULL,
   compression = 4,
   spatial_ref = "spatial_ref",
@@ -29,10 +30,26 @@ mapping each list element to an output grid cell.}
 
 \item{out_dir}{Character. Output directory.}
 
-\item{origin_date}{Character or Date. Origin date used for NetCDF time units
-(e.g., \code{"1970-01-01"}).}
+\item{origin_date}{Character or Date. \strong{The date of the first time step},
+not an arbitrary reference epoch. The time coordinate is written as
+\code{0:(nt - 1)}, so the axis is only correct when \code{origin_date} is the
+series start -- passing a conventional epoch such as \code{"1970-01-01"} for a
+series that begins in 2020 silently relocates it by 50 years. Pass
+\code{dates} to have this checked rather than assumed.}
 
-\item{calendar}{Character. NetCDF calendar type (e.g., \code{"noleap"}).}
+\item{calendar}{Character. CF calendar for the time axis. One of
+\code{"noleap"} (\code{"365_day"}), \code{"standard"}, \code{"gregorian"},
+\code{"proleptic_gregorian"}, or \code{"julian"}. Must match the calendar the
+data are actually on: \code{\link{generate_weather}} output is 365-day, so
+\code{"noleap"} is correct for it, and mislabelling it shifts every date for
+any CF-aware reader.}
+
+\item{dates}{Optional Date vector, one entry per time step, giving the axis the
+data are on. When supplied it is validated against \code{nt},
+\code{origin_date}, and \code{calendar}, and the time coordinate is computed
+from it instead of being assumed contiguous. When \code{NULL} (default) the
+axis is assumed to be \code{nt} consecutive days starting at
+\code{origin_date}.}
 
 \item{template_path}{Character. Path to a template NetCDF file.}
 
