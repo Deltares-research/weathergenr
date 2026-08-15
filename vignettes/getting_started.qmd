@@ -493,7 +493,11 @@ write_netcdf(
   data = data_to_write,
   grid = ncdata$grid,
   out_dir = output_dir,
+  # origin_date is the date of the *first* time step, not a reference epoch:
+  # the time coordinate is written relative to it. Passing `dates` as well has
+  # write_netcdf() check that rather than take it on trust.
   origin_date = stochastic_weather$dates[1],
+  dates = stochastic_weather$dates,
   calendar = "noleap",
   template_path = ncfile,
   file_prefix = "synthetic_weather",

@@ -1,3 +1,49 @@
+# weathergenr (development version)
+
+## Bug fixes
+
+* `read_netcdf()` ignored the CF `calendar` attribute and always decoded the
+  time axis as a proleptic Gregorian calendar. Files on a `noleap` / `365_day`
+  calendar — including every file `write_netcdf()` produces with its default
+  `calendar = "noleap"` — therefore read back one day short per Gregorian leap
+  year crossed: a run written as 2020-01-01 to 2021-12-31 returned
+  2020-01-01 to 2021-12-30, drifting 25 days over a century. `read_netcdf()`
+  now decodes `noleap` / `365_day` axes on a 365-day calendar, so a
+  `write_netcdf()` / `read_netcdf()` round trip is exact.
+
+  CF-aware readers such as `xarray` and the Wflow toolchain already honoured
+  the attribute, so files written by earlier versions were correct on disk and
+  need no migration — only `read_netcdf()` was misreading them. Any workflow
+  that compensated for the old off-by-one when reading `noleap` files must drop
+  that correction. Files on `standard`, `gregorian`, `proleptic_gregorian`, or
+  `julian` calendars, and files with no `calendar` attribute, decode exactly as
+  before.
+
+* `read_netcdf()` now raises an informative error for `360_day`, `all_leap`, and
+  `366_day` axes, whose dates (30 February; 29 February in a common year) have
+  no representation in R's `Date` class and were previously decoded to silently
+  wrong dates. An unrecognised calendar name warns and falls back to the
+  standard decode rather than failing the read.
+
+## Other changes
+
+* `write_netcdf()` gains an optional `dates` argument. When supplied it is
+  checked against the number of time steps, `origin_date`, and `calendar`, and
+  the time coordinate is computed from it rather than assumed contiguous. This
+  catches the case where `origin_date` is given as a conventional epoch such as
+  `"1970-01-01"` instead of the first date of the series — the time coordinate
+  is written as `0:(nt - 1)`, so that silently relocated the whole series.
+  The argument is optional and the default behaviour is unchanged.
+
+* `write_netcdf()` now rejects a `calendar` value it cannot write correctly,
+  instead of accepting arbitrary text. The `calendar` attribute is also no
+  longer written inside `try()`, so failing to record it is an error rather
+  than a silently mislabelled file.
+
+* `write_netcdf()`'s `origin_date` documentation now states that it must be the
+  date of the first time step. The previous example suggested `"1970-01-01"`,
+  which is wrong for any series not starting on that date.
+
 # weathergenr 1.3.1
 
 ## Other changes

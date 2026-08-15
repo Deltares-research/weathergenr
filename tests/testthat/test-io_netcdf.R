@@ -330,3 +330,158 @@ test_that("write_netcdf round-trip matches read_netcdf", {
   expect_equal(ncdata2$data, ncdata$data)
   expect_equal(ncdata2$grid, ncdata$grid)
 })
+
+
+################################################################################
+# CF calendar handling
+################################################################################
+
+test_that(".cf_calendar_kind classifies the CF calendar names", {
+  kind <- weathergenr:::.cf_calendar_kind
+
+  # Absent or empty means standard, per CF.
+  expect_equal(kind(NULL), "standard")
+  expect_equal(kind(NA_character_), "standard")
+  expect_equal(kind(""), "standard")
+
+  expect_equal(kind("standard"), "standard")
+  expect_equal(kind("proleptic_gregorian"), "standard")
+  expect_equal(kind("  Gregorian  "), "standard")
+  expect_equal(kind("julian"), "standard")
+
+  expect_equal(kind("noleap"), "noleap")
+  expect_equal(kind("365_day"), "noleap")
+
+  expect_equal(kind("360_day"), "unrepresentable")
+  expect_equal(kind("all_leap"), "unrepresentable")
+
+  expect_equal(kind("martian"), "unknown")
+})
+
+test_that("noleap index conversion round-trips and skips Feb 29", {
+  to_date <- weathergenr:::.noleap_offset_to_date
+
+  # 2020 is a Gregorian leap year; on a noleap axis Feb 29 must not appear.
+  d <- to_date(as.Date("2020-01-01"), 0:364)
+  expect_equal(length(d), 365L)
+  expect_equal(d[1], as.Date("2020-01-01"))
+  expect_equal(d[365], as.Date("2020-12-31"))
+  expect_false(any(format(d, "%m-%d") == "02-29"))
+
+  # Day 59 is 1 March on a noleap calendar, where Gregorian 2020 gives 29 Feb.
+  expect_equal(to_date(as.Date("2020-01-01"), 59), as.Date("2020-03-01"))
+
+  # Offsets may run backwards from the origin.
+  expect_equal(to_date(as.Date("2020-01-01"), -1), as.Date("2019-12-31"))
+  expect_equal(to_date(as.Date("2020-01-01"), -365), as.Date("2019-01-01"))
+
+  # Fractional offsets truncate, matching as.Date() on a POSIXct.
+  expect_equal(to_date(as.Date("2020-01-01"), 1.75), as.Date("2020-01-02"))
+
+  # An origin that does not exist on this calendar is rejected.
+  expect_error(to_date(as.Date("2020-02-29"), 0), "29 February")
+})
+
+test_that(".noleap_date_to_offset inverts .noleap_offset_to_date", {
+  origin <- as.Date("2020-01-01")
+  offsets <- c(0, 1, 59, 364, 365, 730, 1095)
+
+  d <- weathergenr:::.noleap_offset_to_date(origin, offsets)
+  expect_equal(weathergenr:::.noleap_date_to_offset(origin, d), offsets)
+
+  expect_error(
+    weathergenr:::.noleap_date_to_offset(origin, as.Date("2020-02-29")),
+    "29 February"
+  )
+})
+
+test_that(".cf_time_to_date honours the calendar attribute", {
+  f <- weathergenr:::.cf_time_to_date
+  units <- "days since 2020-01-01 00:00:00"
+
+  # The two calendars diverge as soon as a Gregorian leap day is crossed.
+  expect_equal(f(units, "standard", 59), as.Date("2020-02-29"))
+  expect_equal(f(units, "noleap", 59), as.Date("2020-03-01"))
+
+  # An absent calendar keeps the standard decode.
+  expect_equal(f(units, NULL, 59), as.Date("2020-02-29"))
+
+  # Sub-daily units reduce to the same day.
+  expect_equal(f("hours since 2020-01-01 00:00:00", "noleap", 24 * 59), as.Date("2020-03-01"))
+
+  # Calendars R's Date class cannot represent are refused, not approximated.
+  expect_error(f(units, "360_day", 0), "cannot be represented", fixed = TRUE)
+  expect_error(f(units, "all_leap", 0), "cannot be represented", fixed = TRUE)
+
+  # An unrecognised calendar warns and falls back rather than failing the read.
+  expect_warning(res <- f(units, "martian", 59), "Unrecognised NetCDF calendar")
+  expect_equal(res, as.Date("2020-02-29"))
+})
+
+test_that("write_netcdf/read_netcdf round-trip a noleap time axis", {
+  template_path <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+  skip_if(!file.exists(template_path), "template NetCDF not available")
+
+  ncdata <- weathergenr::read_netcdf(template_path, keep_leap_day = TRUE, verbose = FALSE)
+
+  # Two 365-day years spanning a Gregorian leap year: this is exactly where the
+  # old proleptic-Gregorian decode lost a day.
+  expected <- generate_noleap_dates(as.Date("2020-01-01"), 730)
+  nt <- length(expected)
+  expect_equal(expected[nt], as.Date("2021-12-31"))
+
+  payload <- lapply(1:2, function(i) list(precip = as.numeric(ncdata$data[[i]]$precip[seq_len(nt)])))
+
+  out_dir <- tempfile("nc_noleap_")
+  dir.create(out_dir)
+  on.exit(unlink(out_dir, recursive = TRUE), add = TRUE)
+
+  out_path <- weathergenr::write_netcdf(
+    data          = payload,
+    grid          = ncdata$grid[1:2, ],
+    out_dir       = out_dir,
+    origin_date   = expected[1],
+    calendar      = "noleap",
+    dates         = expected,
+    template_path = template_path,
+    verbose       = FALSE
+  )
+
+  back <- weathergenr::read_netcdf(out_path, keep_leap_day = TRUE, verbose = FALSE)
+  expect_equal(back$date, expected)
+  expect_equal(back$date[nt], as.Date("2021-12-31"))
+})
+
+test_that("write_netcdf validates calendar and dates against origin_date", {
+  template_path <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
+  skip_if(!file.exists(template_path), "template NetCDF not available")
+
+  ncdata <- weathergenr::read_netcdf(template_path, keep_leap_day = TRUE, verbose = FALSE)
+  dates <- generate_noleap_dates(as.Date("2020-01-01"), 365)
+  nt <- length(dates)
+  payload <- lapply(1:2, function(i) list(precip = as.numeric(ncdata$data[[i]]$precip[seq_len(nt)])))
+  out_dir <- tempfile("nc_validate_")
+  dir.create(out_dir)
+  on.exit(unlink(out_dir, recursive = TRUE), add = TRUE)
+
+  wr <- function(...) {
+    weathergenr::write_netcdf(
+      data = payload, grid = ncdata$grid[1:2, ], out_dir = out_dir,
+      template_path = template_path, verbose = FALSE, ...
+    )
+  }
+
+  expect_error(wr(origin_date = dates[1], calendar = "360_day"), "'calendar' must be one of")
+  expect_error(wr(origin_date = dates[1], calendar = "martian"), "'calendar' must be one of")
+
+  # The trap this guards: a conventional epoch instead of the series start.
+  expect_error(
+    wr(origin_date = as.Date("1970-01-01"), calendar = "noleap", dates = dates),
+    "must be the first entry of 'dates'"
+  )
+
+  expect_error(
+    wr(origin_date = dates[1], calendar = "noleap", dates = dates[-1]),
+    "one entry per time step"
+  )
+})
