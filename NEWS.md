@@ -1,5 +1,23 @@
 # weathergenr (development version)
 
+## Other changes
+
+* Documented why the WARM pool's peak-matching criterion often constrains
+  nothing, following the significance fix above. It is length-adaptive by
+  design: the cone of influence leaves only the shorter periods testable, so on
+  a 20-year annual series no observed peak qualifies and every candidate passes,
+  while a longer record activates it. `peak_match_frac_min = 1.0` therefore
+  reads as maximally strict but is only as strict as the record allows — check
+  `diagnostics$spectral_diag$n_sig_peaks_found` before concluding it did
+  anything.
+
+  Matching the strongest peaks regardless of significance was considered and
+  rejected. It would not be redundant — measured against the spectral
+  correlation it discriminates on something largely independent (r = 0.11) — but
+  on the packaged 20-year record the two strongest peaks sit at 5.8 and 16.5
+  years, and requiring simulated traces to reproduce a 16.5-year cycle seen in
+  20 years of data selects for a sampling artefact.
+
 ## Bug fixes
 
 * `dry_spell_factor` and `wet_spell_factor` now mean what their names say: each
