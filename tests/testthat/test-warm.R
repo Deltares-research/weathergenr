@@ -768,3 +768,30 @@ testthat::test_that("simulate_warm keeps spread in the trace mean in component m
   expect_gt(length(unique(round(colMeans(sim), 9))), 290)
   expect_gt(stats::sd(colMeans(sim)), 0)
 })
+
+testthat::test_that("simulate_warm bypass mode rescales without pinning the mean", {
+  # n_fit = 12 < bypass_n forces the bypass branch, the third
+  # .variance_match_matrix() call site. Unlike the other two it operates in
+  # absolute space, with the observed mean already added.
+  set.seed(21)
+  series_obs <- as.numeric(stats::arima.sim(list(ar = 0.4), 12)) * 25 + 850
+  comps <- cbind(D1 = series_obs - mean(series_obs), S1 = rep(mean(series_obs), 12))
+
+  sim <- simulate_warm(components = comps, n = 12, n_sim = 300, seed = 9,
+                       match_variance = TRUE, verbose = FALSE)
+
+  expect_true(all(is.finite(sim)))
+  expect_equal(dim(sim), c(12L, 300L))
+
+  obs_mean <- mean(series_obs)
+  obs_sd   <- stats::sd(series_obs)
+
+  # No realization is pinned to the observed mean, and the ensemble still
+  # centres on it.
+  expect_equal(sum(abs(colMeans(sim) - obs_mean) < 1e-9), 0L)
+  expect_equal(mean(sim), obs_mean, tolerance = 0.01)
+
+  # Corrected traces land on the sample sd, not on obs_sd * sqrt(n / (n - 1)).
+  sds <- apply(sim, 2, stats::sd)
+  expect_false(any(abs(sds - obs_sd * sqrt(12 / 11)) < 1e-8))
+})

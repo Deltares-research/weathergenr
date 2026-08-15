@@ -7,11 +7,14 @@
   re-centred it on the observed *mean*, replacing the trace's own mean rather
   than preserving it. On the packaged fixture this affected 60% of a 3,000-trace
   pool, putting a point mass exactly on the observed mean: those realizations
-  carried no spread in their own 20-year mean, and `filter_warm_pool()`'s mean
-  criterion could not reject any of them. Traces are now rescaled about their
-  own mean, which restores roughly 58% more spread in the simulated mean — the
-  sampling variability of a multi-decadal mean under a persistent process is
-  what WARM exists to reproduce, not noise to be removed.
+  carried no spread in their own 20-year mean, so `filter_warm_pool()`'s mean
+  criterion was structurally unable to reject them. The practical effect on
+  filtering was small — that criterion admitted 99.5% of candidates before the
+  fix and 98.4% after — but the ensemble was misrepresenting its own
+  variability. Traces are now rescaled about their own mean, restoring roughly
+  58% more spread in the simulated multi-decadal mean, which is the
+  low-frequency variability WARM exists to reproduce rather than noise to be
+  removed.
 
 * WARM compared a *population* standard deviation against `stats::sd()` targets.
   The internal column-sd helper omitted the Bessel correction, so every
@@ -21,12 +24,11 @@
 
   Both fixes change simulated output: realization selection shifts, so the daily
   analogue dates and every evaluation statistic downstream shift with it. A run
-  reproduced from a given seed will not match one from an earlier version.
-  Filter pass rates are essentially unchanged (mean 99.5% to 98.4%, sd 72.4% to
-  71.2% on the packaged fixture), so pool sizes and relaxation behaviour are
-  unaffected. Evaluation metrics move in both directions; `mae_mean_precip` in
-  particular worsens, because the previous ensemble matched the observed mean
-  artificially well.
+  reproduced from a given seed will not match one from an earlier version. Pool
+  sizes and relaxation behaviour are unaffected (the sd criterion moves 72.4% to
+  71.2% on the packaged fixture). Evaluation metrics move in both directions;
+  `mae_mean_precip` in particular worsens, because the previous ensemble matched
+  the observed mean artificially well.
 
 * `read_netcdf()` ignored the CF `calendar` attribute and always decoded the
   time axis as a proleptic Gregorian calendar. Files on a `noleap` / `365_day`
