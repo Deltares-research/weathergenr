@@ -822,8 +822,20 @@ build_vignettes_only <- function(clean = TRUE) {
 #' Run R CMD check without building the pkgdown site.
 #'
 #' @param as_cran Logical. Use CRAN check settings? Default TRUE.
-#' @param build_vignettes Logical. Build vignettes during check build phase? Default FALSE.
-#'   If FALSE, passes `--no-build-vignettes` via `build_args`.
+#' @param build_vignettes Logical. Build vignettes during the check build phase?
+#'   Default FALSE, which skips vignettes entirely: `--no-build-vignettes` when
+#'   building the tarball and `--ignore-vignettes` when checking it.
+#'
+#'   Both flags are needed. `--no-build-vignettes` alone stops them being
+#'   rendered but leaves the vignette *checks* running, so every quick check
+#'   reports two warnings -- "no files in inst/doc" and "vignettes without
+#'   corresponding PDF/HTML" -- for output it was just told not to produce.
+#'   Those warnings are unavoidable noise rather than findings, and noise in a
+#'   gate is worse than no gate: it trains you to read past the warning count,
+#'   which is how a real one gets missed.
+#'
+#'   Pass TRUE for the release gate, which renders the vignettes and checks
+#'   them properly. That is the form CI runs; see AGENTS.md.
 #' @param document Logical. Run `devtools::document()` before check? Default TRUE.
 #'
 #' @export
@@ -836,7 +848,11 @@ check_only <- function(as_cran = TRUE, build_vignettes = FALSE, document = TRUE)
   args <- c("--no-manual")
   if (isTRUE(as_cran)) args <- c(args, "--as-cran")
 
-  build_args <- if (isTRUE(build_vignettes)) NULL else "--no-build-vignettes"
+  build_args <- NULL
+  if (!isTRUE(build_vignettes)) {
+    build_args <- "--no-build-vignettes"
+    args <- c(args, "--ignore-vignettes")
+  }
 
   devtools::check(args = args, build_args = build_args)
 }

@@ -5,7 +5,7 @@ status: backlog
 effort: 2
 area: api
 origin: review-2026-08-15
-queue: 1
+queue: 13
 created: 2026-08-15
 updated: 2026-08-15
 ---
@@ -14,6 +14,10 @@ updated: 2026-08-15
 > **What** — apply_climate_perturbations() is unreachable from either entry point, and the interfaces do not meet: it needs temp_min/temp_max per cell, while generate_weather() validates only precip/temp and returns dates rather than values.
 > **Why** — The README calls the three components coupled; component 3 is hand-assembled by every user. Either wire it up or stop claiming the coupling.
 > **Effort** — Large if wired up, since `generate_weather()` would have to return values rather than dates and carry temp_min/temp_max; trivial if the answer is to correct the README instead. Decide that first.
+
+*Deferred 2026-08-15 at the owner's request — moved to the back of the queue,
+not blocked. Nothing external is waiting on it; the scope question below is a
+design decision the owner wants to take separately.*
 
 ## Progress
 

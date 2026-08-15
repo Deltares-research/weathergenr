@@ -34,8 +34,11 @@
 ^vignettes/.*_files$
 ^vignettes/.*\.html$
 ^vignettes/\.quarto$
-
-
+# Quarto's freeze cache. Tracked in Git on purpose -- committing it is what
+# stops the vignettes re-executing the generator on every build -- but it must
+# not ship in the tarball, where R CMD check reports it as vignette files with
+# no rendered output. Distinct from vignettes/.quarto above: both exist.
+^vignettes/_freeze$
 
 # Optional repo-only tools folder
 ^tools$
