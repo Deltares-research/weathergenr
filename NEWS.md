@@ -72,6 +72,25 @@
   date of the first time step. The previous example suggested `"1970-01-01"`,
   which is wrong for any series not starting on that date.
 
+* `generate_weather()`'s `warm_signif` was documented as the "wavelet
+  significance level used to retain low-frequency components in WARM". It does
+  not retain anything: every MODWT MRA component is modelled, significant or
+  not, and the `cwt_to_modwt_map` a significance-based selection would use is
+  computed for diagnostics and never consumed. Anyone who tuned `warm_signif`
+  expecting it to control which components are simulated was misled. Its two
+  real effects are now documented — the peak-significance threshold in
+  `filter_warm_pool()`, and a conditional MODWT level bump that rarely fires on
+  20-40 year records. Behaviour is unchanged.
+
+  `generate_weather()` also gains a Details section setting out how the annual
+  generator relates to the wavelet autoregressive model of Kwon et al. (2007)
+  and Steinschneider & Brown (2013). The original retains globally-significant
+  CWT scales as signals and models the remainder as a residual term; this
+  package uses an exactly-additive MODWT multiresolution analysis, which leaves
+  no residual to relegate a non-significant band to, and on records of this
+  length the red-noise significance test detects nothing at any conventional
+  level. Both departures are deliberate and are now stated rather than implied.
+
 # weathergenr 1.3.1
 
 ## Other changes
