@@ -304,6 +304,20 @@ filter_warm_pool <- function(
   period <- spectral_results$period
   gws_obs <- spectral_results$gws_obs
   gws_signif <- spectral_results$gws_signif
+
+  # A wavelet criterion with no testable peak admits every candidate and then
+  # reports a 100 percent pass rate, which is indistinguishable from a criterion
+  # that ran and was satisfied. Say which it was.
+  if (isTRUE(wavelet_active) && isTRUE(spectral_diag$n_sig_peaks_found == 0L)) {
+    .log(
+      paste0(
+        "No observed spectral peak is testable ({spectral_diag$n_testable_scales} of ",
+        "{spectral_diag$n_periods} scales have enough degrees of freedom inside the ",
+        "cone of influence); the wavelet peak criterion admits every candidate"
+      ),
+      tag = "FILTER", verbose = verbose
+    )
+  }
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
@@ -755,6 +769,20 @@ find_local_maxima <- function(x, strict = TRUE) {
 #' function returns an empty result, treating the significance information as
 #' unavailable.
 #'
+#' @details
+#' Gaps in \code{gws} are interpolated; gaps in \code{gws_signif} are not, and
+#' the asymmetry is deliberate. The spectrum is a measured quantity, so
+#' interpolating across a gap in it is reasonable. The significance curve is
+#' \code{NA} precisely where the cone of influence leaves too few effective
+#' degrees of freedom for the test to run, and filling it there would invent a
+#' test the record cannot support. A scale whose threshold is \code{NA} yields
+#' no significant peak, which is the correct answer rather than a missing one.
+#'
+#' This matters most on short records. A 20-year annual series can support a
+#' test only out to periods of roughly 3.5 years, so pass \code{gws_signif}
+#' unfilled -- supplying a filled curve will report peaks at decadal periods
+#' from a threshold carried over from 3.5 years.
+#'
 #' @param gws Numeric vector. Observed global wavelet spectrum values.
 #' @param gws_signif Numeric vector or NULL. Significance curve aligned to
 #'   \code{gws}. Must have the same length as \code{gws}.
@@ -777,6 +805,13 @@ identify_significant_peaks <- function(gws, gws_signif, period, n_max = 3L) {
                       power = numeric(0), signif = numeric(0), snr = numeric(0)))
   }
 
+  # The power curve is a measured quantity, so interpolating across a gap in it
+  # is reasonable. The threshold is not: it is NA exactly where the cone of
+  # influence leaves too few effective degrees of freedom to run the test, and
+  # filling it there invents a test that the record cannot support. On a
+  # 20-year annual series only periods up to about 3.5 years are testable, so a
+  # filled threshold was declaring 5.8-year peaks significant off a value
+  # carried over from 3.5 years. Hence: fill the power, never the threshold.
   gws_clean <- fill_nearest(as.numeric(gws))
 
   # If signif is missing or wrong length: treat as "no significance available"
@@ -785,7 +820,7 @@ identify_significant_peaks <- function(gws, gws_signif, period, n_max = 3L) {
                       power = numeric(0), signif = numeric(0), snr = numeric(0)))
   }
 
-  signif_clean <- fill_nearest(as.numeric(gws_signif))
+  signif_clean <- as.numeric(gws_signif)
 
   peak_idx <- find_local_maxima(gws_clean, strict = FALSE)
   if (length(peak_idx) == 0L) {
@@ -1290,25 +1325,51 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
   gws_obs <- gws_regrid(wv_obs, period, use_unmasked = TRUE)
   gws_obs <- fill_nearest(gws_obs)
 
-  # Significance curve aligned to 'period' (single regrid only)
-  gws_signif <- wv_obs$gws_signif_unmasked
-  if (is.null(gws_signif)) gws_signif <- wv_obs$gws_signif
+  # Significance threshold aligned to 'period'.
+  #
+  # This is the COI-masked inference curve, not gws_signif_unmasked. The two are
+  # not interchangeable: the unmasked curve floors the effective sample size at
+  # 1 so a plot has no gaps, which makes it systematically permissive at exactly
+  # the long periods this filter cares about. The masked curve is NA where the
+  # cone of influence leaves too few degrees of freedom to test at all, and that
+  # NA is the answer -- it must survive to identify_significant_peaks().
+  #
+  # Hence rule = 1 rather than gws_regrid()'s rule = 2: flat extrapolation would
+  # carry the last testable threshold out over every untestable scale, which is
+  # the same fabrication as filling it.
+  gws_signif <- wv_obs$gws_signif
 
   if (!is.null(gws_signif) && is.numeric(gws_signif)) {
-    wv_sig <- list(period = wv_obs$period, gws = as.numeric(gws_signif))
-    gws_signif <- gws_regrid(wv_sig, target_period = period, use_unmasked = FALSE)
-    gws_signif <- fill_nearest(as.numeric(gws_signif))
+    obs_period <- as.numeric(wv_obs$period)
+    keep <- is.finite(obs_period) & is.finite(gws_signif)
+
+    gws_signif <- if (sum(keep) >= 2L) {
+      stats::approx(x = obs_period[keep], y = as.numeric(gws_signif)[keep],
+                    xout = period, rule = 1)$y
+    } else {
+      rep(NA_real_, length(period))
+    }
   } else {
     gws_signif <- NULL
   }
 
-  # Significant observed peaks only
+  # Significant observed peaks only. Peak power comes from the unmasked curve so
+  # it is comparable with the simulated spectra, which are unmasked by
+  # construction; only the threshold above is an inference quantity.
   obs_peaks_sig <- identify_significant_peaks(
     gws = gws_obs,
     gws_signif = gws_signif,
     period = period,
     n_max = n_sig_peaks_max
   )
+
+  # How many scales the record can actually support a test at. Reported rather
+  # than logged here: this function takes no `verbose`, and filter_warm_pool()
+  # does. compute_peak_match_metrics() returns peak_match_frac = 1 for an empty
+  # peak set, so every candidate passes and the filter shows a 100 percent pass
+  # rate -- which reads as a criterion being met rather than one that never ran,
+  # and is worth saying out loud where the caller controls the output.
+  n_testable_scales <- sum(is.finite(gws_signif))
 
   # Pre-compute log2(period) once for all realizations (avoids redundant computation)
   log2_period <- log2(period)
@@ -1460,6 +1521,7 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
     n_periods = length(period),
     obs_peaks_sig = obs_peaks_sig,
     n_sig_peaks_found = nrow(obs_peaks_sig),
+    n_testable_scales = n_testable_scales,
     gws_obs_summary = c(
       min = min(gws_obs, na.rm = TRUE),
       median = stats::median(gws_obs, na.rm = TRUE),
