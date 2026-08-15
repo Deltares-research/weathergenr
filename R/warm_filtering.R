@@ -1019,6 +1019,15 @@ compute_spectral_match_single <- function(gws_obs, gws_sim, period,
   chunk_size <- max(1L, as.integer(chunk_size))
   parallel <- isTRUE(parallel)
 
+  # Everything from here to the rescale below is a batched reimplementation of
+  # analyze_wavelet_spectrum()'s transform, kept separate so an ensemble of
+  # thousands of traces can share one set of pre-computed Morlet daughters and
+  # one mvfft per chunk. Nothing enforces the equivalence but
+  # tests/testthat/test-warm_filtering.R, which asserts this function against
+  # analyze_wavelet_spectrum() on a single series with detrend on and off. Any
+  # change to dj, s0, k0, the padding, the detrend or the normalisation there
+  # has to be mirrored here, and that test is what should catch it.
+
   # CWT grid (identical to analyze_wavelet_spectrum internals) ----------------
   dt <- 1; dj <- 0.25; s0 <- 2 * dt
   J  <- floor((1 / dj) * log2(n1 * dt / s0))

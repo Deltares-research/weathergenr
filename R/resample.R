@@ -182,6 +182,85 @@ knn_sample <- function(
 }
 
 
+#' Single rank-weighted KNN draw from a pre-supplied uniform
+#'
+#' @description
+#' A speed-oriented fork of [knn_sample()]'s core, used once per simulated day
+#' by [resample_weather_dates()]. It reproduces that function's weighted squared
+#' distance, neighbour selection and rank probabilities exactly, and differs
+#' only in how the draw is made: `knn_sample()` calls `sample.int(prob = )`,
+#' while this takes a uniform `u` drawn once for the whole simulation and
+#' inverts the cumulative rank probabilities. Same neighbours and same
+#' probabilities; a given `u` and a given seed do not select the same rank.
+#'
+#' The fork avoids `as.matrix()` dispatch, the per-call RNG setup and the
+#' argument validation that `knn_sample()` performs, none of which is free at
+#' `365 * n_years` calls per realization.
+#'
+#' Nothing enforces the shared behaviour but
+#' `tests/testthat/test-resample.R`, which asserts neighbour selection and
+#' probabilities against `knn_sample()` on both the partial-sort and full-order
+#' branches. Change the distance metric, the neighbour selection or the rank
+#' weights in either function and that test is what should catch the other.
+#'
+#' @param candidates Numeric matrix, one candidate per row.
+#' @param target Numeric vector, one entry per column of `candidates`.
+#' @param k Integer. Neighbours to consider.
+#' @param weights Numeric vector of per-column weights, or `NULL` for equal.
+#' @param u Numeric scalar in [0, 1]. Non-finite values fall back to 0.5.
+#' @return Integer row index of the drawn candidate.
+#' @keywords internal
+#' @noRd
+.knn_draw_one_rank <- function(candidates, target, k, weights, u) {
+  # The sole caller passes cbind(), which is already a matrix; as.matrix()
+  # would dispatch once per simulated day for nothing.
+  if (!is.matrix(candidates)) candidates <- as.matrix(candidates)
+  nc <- nrow(candidates)
+  p <- ncol(candidates)
+  if (nc < 1L) stop("No candidates provided to knn draw.", call. = FALSE)
+
+  if (is.null(weights)) {
+    weights <- rep(1, p)
+  } else if (length(weights) != p) {
+    stop("Length of weights must equal number of columns in candidates.", call. = FALSE)
+  }
+
+  if (p == 2L) {
+    d1 <- candidates[, 1L] - target[1L]
+    d2 <- candidates[, 2L] - target[2L]
+    d2_sq <- weights[1L] * d1 * d1 + weights[2L] * d2 * d2
+  } else if (p <= 5L) {
+    diffs <- sweep(candidates, 2, target, "-")
+    weighted_sq <- sweep(diffs^2, 2, weights, "*")
+    d2_sq <- rowSums(weighted_sq)
+  } else {
+    d2_sq <- numeric(nc)
+    for (j in seq_len(p)) {
+      dj <- candidates[, j] - target[j]
+      d2_sq <- d2_sq + weights[j] * dj * dj
+    }
+  }
+
+  k_eff <- min(as.integer(k), nc)
+  if (k_eff < nc * 0.2) {
+    threshold <- sort(d2_sq, partial = k_eff)[k_eff]
+    candidates_idx <- which(d2_sq <= threshold)
+    sorted_subset_order <- order(d2_sq[candidates_idx])
+    nn_indices <- candidates_idx[sorted_subset_order[seq_len(k_eff)]]
+  } else {
+    nn_indices <- order(d2_sq)[seq_len(k_eff)]
+  }
+  if (k_eff == 1L) return(nn_indices[1L])
+
+  probs <- 1 / seq_len(k_eff)
+  probs <- probs / sum(probs)
+  if (!is.finite(u)) u <- 0.5
+  u <- min(max(u, 0), 1 - .Machine$double.eps)
+  draw <- which(u <= cumsum(probs))[1L]
+  nn_indices[draw]
+}
+
+
 #' Resample Daily Weather Dates Using Annual KNN and Markov Chain Logic
 #'
 #' @description
@@ -349,55 +428,6 @@ resample_weather_dates <- function(
   k_annual <- ceiling(sqrt(length(obs_annual_precip)))
   obs_idx_by_year <- split(seq_along(obs_wyear), obs_wyear)
   annual_seed_by_year <- if (is.null(base_seed)) NULL else base_seed + seq_len(n_years)
-
-  .knn_draw_one_rank <- function(candidates, target, k, weights, u) {
-    # The sole caller passes cbind(), which is already a matrix; as.matrix()
-    # would dispatch once per simulated day for nothing.
-    if (!is.matrix(candidates)) candidates <- as.matrix(candidates)
-    nc <- nrow(candidates)
-    p <- ncol(candidates)
-    if (nc < 1L) stop("No candidates provided to knn draw.", call. = FALSE)
-
-    if (is.null(weights)) {
-      weights <- rep(1, p)
-    } else if (length(weights) != p) {
-      stop("Length of weights must equal number of columns in candidates.", call. = FALSE)
-    }
-
-    if (p == 2L) {
-      d1 <- candidates[, 1L] - target[1L]
-      d2 <- candidates[, 2L] - target[2L]
-      d2_sq <- weights[1L] * d1 * d1 + weights[2L] * d2 * d2
-    } else if (p <= 5L) {
-      diffs <- sweep(candidates, 2, target, "-")
-      weighted_sq <- sweep(diffs^2, 2, weights, "*")
-      d2_sq <- rowSums(weighted_sq)
-    } else {
-      d2_sq <- numeric(nc)
-      for (j in seq_len(p)) {
-        dj <- candidates[, j] - target[j]
-        d2_sq <- d2_sq + weights[j] * dj * dj
-      }
-    }
-
-    k_eff <- min(as.integer(k), nc)
-    if (k_eff < nc * 0.2) {
-      threshold <- sort(d2_sq, partial = k_eff)[k_eff]
-      candidates_idx <- which(d2_sq <= threshold)
-      sorted_subset_order <- order(d2_sq[candidates_idx])
-      nn_indices <- candidates_idx[sorted_subset_order[seq_len(k_eff)]]
-    } else {
-      nn_indices <- order(d2_sq)[seq_len(k_eff)]
-    }
-    if (k_eff == 1L) return(nn_indices[1L])
-
-    probs <- 1 / seq_len(k_eff)
-    probs <- probs / sum(probs)
-    if (!is.finite(u)) u <- 0.5
-    u <- min(max(u, 0), 1 - .Machine$double.eps)
-    draw <- which(u <= cumsum(probs))[1L]
-    nn_indices[draw]
-  }
 
   for (y in seq_len(n_years)) {
 
