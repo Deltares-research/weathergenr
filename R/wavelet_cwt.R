@@ -380,10 +380,21 @@ extract_wavelet_components <- function(
 #' @return A list. Always includes (at minimum):
 #' \describe{
 #'   \item{gws}{Numeric vector. COI-masked global wavelet spectrum.}
-#'   \item{gws_unmasked}{Numeric vector. Unmasked global wavelet spectrum (plotting only).}
+#'   \item{gws_unmasked}{Numeric vector. Global wavelet spectrum averaged over
+#'     all times, including scales where the cone of influence warns of edge
+#'     effects. Use for plotting, and for comparing one spectrum against another
+#'     computed the same way -- \code{\link{filter_warm_pool}} matches observed
+#'     against simulated spectra on this curve, which is like-for-like. Do not
+#'     use it for inference; \code{gws} is the curve for that.}
 #'   \item{period}{Numeric vector. Fourier periods corresponding to wavelet scales.}
 #'   \item{gws_signif}{Numeric vector. COI- and neff-corrected GWS significance threshold (inference).}
-#'   \item{gws_signif_unmasked}{Numeric vector. Unmasked GWS significance threshold (plotting only).}
+#'   \item{gws_signif_unmasked}{Numeric vector. Significance threshold computed
+#'     from the full record length with the effective sample size floored at 1,
+#'     so that it is finite at every scale. \strong{Plotting only, and this one
+#'     means it}: the floor makes it systematically permissive at long periods,
+#'     where the record cannot in fact support a test. Never decide significance
+#'     from it -- use \code{gws_signif}, which is NA exactly where no test is
+#'     possible.}
 #'   \item{has_significance}{Logical. Whether any significant scales were detected.}
 #'   \item{signif_periods}{Integer vector. Indices of significant scales retained (one per contiguous band).}
 #'   \item{coi}{Numeric vector. Cone of influence in time units.}
