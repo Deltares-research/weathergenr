@@ -2,6 +2,20 @@
 
 ## Bug fixes
 
+* `generate_weather()` could fail with `set.seed(NA)` partway through a run.
+  Derived seeds were built by integer addition onto a base drawn from
+  `sample.int(.Machine$integer.max, 1L)`, which overflows to `NA` when the base
+  falls within the offset of the maximum. The arithmetic now wraps instead. Every
+  seed that did not overflow is unchanged, so simulated output is identical.
+  `simulate_warm()` had the same pattern and is fixed with it.
+
+* `generate_weather(save_plots = FALSE)` still built the three WARM filtering
+  diagnostic panels over every selected realization, skipping only the write.
+  `save_plots` is now passed through, so the plots are not built either.
+
+* One `.log()` call in `generate_weather()` ignored `verbose`, so a failure to
+  write the WARM filtering plots was reported even in a quiet run.
+
 * `simulate_warm()` rejected list-form `components` whenever `n` differed from
   the observed series length — that is, whenever the simulation length differed
   from the record, which is the normal case. The list branch validated component

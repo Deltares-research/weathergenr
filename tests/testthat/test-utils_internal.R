@@ -134,3 +134,26 @@ testthat::test_that("format_elapsed returns unit-based strings", {
   testthat::expect_true(grepl("min", out_mins))
   testthat::expect_true(grepl("hr", out_hrs))
 })
+
+
+testthat::test_that(".seed_offset wraps instead of overflowing to NA", {
+  m <- .Machine$integer.max
+
+  # Ordinary values are returned unchanged -- this is used on paths the
+  # recorded baseline depends on, so a fix that shifted normal seeds would move
+  # numeric output for no reason.
+  testthat::expect_equal(weathergenr:::.seed_offset(1000L, 1L), 1001L)
+  testthat::expect_equal(weathergenr:::.seed_offset(12345L, 7L), 12352L)
+  testthat::expect_equal(weathergenr:::.seed_offset(m - 10L, 5L), m - 5L)
+
+  # At the boundary, integer addition would give NA and set.seed(NA) errors.
+  testthat::expect_true(is.na(suppressWarnings(m + 1L)))
+  testthat::expect_false(is.na(weathergenr:::.seed_offset(m, 1L)))
+  testthat::expect_equal(weathergenr:::.seed_offset(m, 1L), 1L)
+
+  # Result is always a usable seed.
+  wrapped <- weathergenr:::.seed_offset(m, 0:5)
+  testthat::expect_true(all(wrapped >= 1L & wrapped <= m))
+  testthat::expect_true(all(is.finite(wrapped)))
+  testthat::expect_true(is.integer(wrapped))
+})
