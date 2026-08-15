@@ -735,3 +735,52 @@ testthat::test_that("apply_climate_perturbations names its own arguments in erro
     "'lat' or 'y'", fixed = TRUE
   )
 })
+
+
+testthat::test_that("temp_range_factor scales the diurnal range about its midpoint", {
+  grid <- data.frame(lat = c(10, 11))
+  dates <- generate_noleap_dates(as.Date("2020-01-01"), 730)
+  set.seed(8)
+  n <- length(dates)
+  cell <- data.frame(
+    precip = pmax(stats::rnorm(n, 3, 3), 0),
+    temp = stats::rnorm(n, 25, 3),
+    temp_min = stats::rnorm(n, 20, 3),
+    temp_max = stats::rnorm(n, 30, 3)
+  )
+  cell$temp_max <- pmax(cell$temp_max, cell$temp_min + 1)
+  dat <- list(cell, cell)
+
+  run <- function(...) {
+    apply_climate_perturbations(
+      data = dat, grid = grid, date = dates,
+      precip_mean_factor = rep(1, 12), temp_delta = rep(0, 12),
+      temp_transient = FALSE, verbose = FALSE, diagnostic = FALSE,
+      compute_pet = TRUE, ...
+    )
+  }
+
+  base <- run()[[1]]
+  wide <- run(temp_range_factor = rep(1.2, 12))[[1]]
+
+  base_dtr <- base$temp_max - base$temp_min
+  wide_dtr <- wide$temp_max - wide$temp_min
+
+  testthat::expect_equal(wide_dtr, base_dtr * 1.2)
+
+  # The midpoint of min and max is preserved, so the daily mean is untouched.
+  testthat::expect_equal((wide$temp_max + wide$temp_min) / 2,
+                         (base$temp_max + base$temp_min) / 2)
+  testthat::expect_equal(wide$temp, base$temp)
+
+  # PET goes as sqrt(range), so a 1.2x range is a sqrt(1.2)x PET.
+  testthat::expect_equal(mean(wide$pet) / mean(base$pet), sqrt(1.2), tolerance = 1e-6)
+
+  # NULL is the previous behaviour exactly.
+  testthat::expect_equal(run(temp_range_factor = NULL)[[1]], base)
+
+  # A shrinking range lowers PET, and the range stays positive.
+  narrow <- run(temp_range_factor = rep(0.5, 12))[[1]]
+  testthat::expect_true(all(narrow$temp_max >= narrow$temp_min))
+  testthat::expect_lt(mean(narrow$pet), mean(base$pet))
+})

@@ -13,6 +13,7 @@ apply_climate_perturbations(
   precip_occurrence_factor = NULL,
   precip_intensity_threshold = 0,
   temp_delta = NULL,
+  temp_range_factor = NULL,
   temp_transient = TRUE,
   precip_transient = TRUE,
   precip_occurrence_transient = TRUE,
@@ -58,8 +59,28 @@ Also passed to [adjust_precipitation_qm()] as `intensity_threshold`. Default is 
 \item{temp_delta}{Numeric vector of length 12. Monthly additive temperature deltas (degC) applied to
 `temp`, `temp_min`, and `temp_max`.}
 
+\item{temp_range_factor}{Optional numeric vector of length 12 or numeric matrix
+  `(n_years x 12)`. Multiplicative factors applied to the diurnal temperature
+  range, `temp_max - temp_min`, scaled about its own midpoint so the daily
+  mean is unchanged. `NULL` (default) leaves the range as it is.
+
+  Worth setting deliberately rather than leaving alone. `temp_delta` is added
+  to `temp`, `temp_min` and `temp_max` alike, so warming on its own leaves the
+  diurnal range untouched — and the Hargreaves PET used here goes as the
+  square root of that range. Warming alone therefore moves PET by only about
+  2.3 percent per degree, while the range is the term that decides how much
+  more: at +4 degC, PET rises 3.7 percent with the range a tenth smaller,
+  9.3 percent with it fixed, and 14.7 percent with it a tenth larger. Leaving
+  this `NULL` is a choice for the middle of that span, not a neutral default,
+  and it matters wherever PET drives the water balance.
+
+  Observed and projected diurnal-range trends vary by region and season, so
+  there is no defensible non-null default; supply values for the region being
+  studied, or vary the factor as one of the stress-test dimensions.}
+
 \item{temp_transient}{Logical. If TRUE, temperature deltas ramp linearly from zero to twice `temp_delta`
-across simulation years, preserving the same mean change.}
+across simulation years, preserving the same mean change. Also governs
+`temp_range_factor`, which ramps from 1 on the same principle.}
 
 \item{precip_transient}{Logical. If TRUE, precipitation mean and variance factors ramp linearly across
 simulation years using the same transient logic.}
