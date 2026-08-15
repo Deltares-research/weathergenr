@@ -80,15 +80,15 @@
 #' are non-zero. Two tiers of correction are applied.
 #' - Tier 2 (symmetric whitening): when >= 2 variable components are ARMA-viable
 #'   and the component covariance matrix is well-conditioned (condition number
-#'   < 1e6), components are whitened via X %*% S^{-1/2} where S = cov(X), ARMA is
+#'   < 1e6), components are whitened via X %*% \eqn{S^{-1/2}} where S = cov(X), ARMA is
 #'   fit to the whitened series, and simulations are re-correlated by multiplying
-#'   back by S^{1/2} before summing.
+#'   back by \eqn{S^{1/2}} before summing.
 #'
 #'   The symmetric square root is used rather than a Cholesky factor because a
 #'   triangular factor whitens sequentially: the first component passes through
 #'   scaled, the last is a mixture of all of them, so the fitted models depend on
 #'   the order the components happen to be listed in. That order is a naming
-#'   convention (D1..DJ, SJ), not a property of the data. S^{-1/2} is
+#'   convention (D1..DJ, SJ), not a property of the data. \eqn{S^{-1/2}} is
 #'   permutation-equivariant, so relabelling the components leaves the simulated
 #'   series unchanged, and it is the whitening that stays closest to the original
 #'   components -- each whitened series still corresponds to its own scale rather
