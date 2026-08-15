@@ -2,7 +2,32 @@
 
 # TODO
 
-| ID | Item | Area | # | State |
-| --- | --- | --- | --- | --- |
-| t2608061641 | Clear lintr findings and make the lint job blocking | ci |  | backlog |
-| t2608061641a | Cover create_all_diagnostic_plots and plot_filter_diagnostics with tests | tests |  | backlog |
+| ID                                                                                                                 | Item                                                                           | Area          | Origin            | #   | State   |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------- | ----------------- | --- | ------- |
+| [t2608151253](tasks/t2608151253-fix-the-netcdf-noleap-calendar-round-trip.md)                                      | Fix the NetCDF noleap calendar round trip                                      | io            | review-2026-08-15 | 1   | backlog |
+| [t2608151253a](tasks/t2608151253a-fix-the-mean-pinning-and-sample-sd-bias-in-variance-match-matrix.md)             | Fix the mean pinning and sample-sd bias in .variance_match_matrix()            | warm          | review-2026-08-15 | 2   | backlog |
+| [t2608151253b](tasks/t2608151253b-reconcile-warm-signif-with-the-documented-warm-component-selection.md)           | Reconcile warm_signif with the documented WARM component selection             | warm          | review-2026-08-15 | 3   | backlog |
+| [t2608151253c](tasks/t2608151253c-add-equivalence-tests-for-the-two-forked-numeric-routines.md)                    | Add equivalence tests for the two forked numeric routines                      | tests         | review-2026-08-15 | 4   | backlog |
+| [t2608151254](tasks/t2608151254-decide-whether-climate-perturbation-belongs-in-run-weather-generator.md)           | Decide whether climate perturbation belongs in run_weather_generator()         | api           | review-2026-08-15 | 5   | backlog |
+| [t2608151254a](tasks/t2608151254a-make-the-warm-filter-s-observed-benchmark-deterministic.md)                      | Make the WARM filter's observed benchmark deterministic                        | warm          | review-2026-08-15 | 6   | backlog |
+| [t2608151254b](tasks/t2608151254b-give-pet-a-diurnal-range-response-to-warming.md)                                 | Give PET a diurnal-range response to warming                                   | perturbations | review-2026-08-15 | 7   | backlog |
+| [t2608151254c](tasks/t2608151254c-resolve-the-order-dependent-cholesky-whitening-in-simulate-warm.md)              | Resolve the order-dependent Cholesky whitening in simulate_warm()              | warm          | review-2026-08-15 | 8   | backlog |
+| [t2608151254d](tasks/t2608151254d-document-or-reshape-the-markov-spell-length-factors.md)                          | Document or reshape the Markov spell-length factors                            | resample      | review-2026-08-15 | 9   | backlog |
+| [t2608151254e](tasks/t2608151254e-make-markov-month-probs-respect-the-configured-thresholds.md)                    | Make .markov_month_probs() respect the configured thresholds                   | resample      | review-2026-08-15 | 10  | backlog |
+| [t2608151254f](tasks/t2608151254f-fix-the-list-components-length-check-and-bypass-n-doc-in-simulate-warm.md)       | Fix the list-components length check and bypass_n doc in simulate_warm()       | warm          | review-2026-08-15 | 11  | backlog |
+| [t2608151254g](tasks/t2608151254g-fix-the-three-consistency-defects-in-generate-weather.md)                        | Fix the three consistency defects in generate_weather()                        | api           | review-2026-08-15 | 12  | backlog |
+| [t2608151254h](tasks/t2608151254h-fix-the-rng-restore-and-legacy-error-messages-in-apply-climate-perturbations.md) | Fix the RNG restore and legacy error messages in apply_climate_perturbations() | perturbations | review-2026-08-15 | 13  | backlog |
+| [t2608151254i](tasks/t2608151254i-unignore-vignettes-quarto-so-check-only-passes.md)                               | Unignore vignettes/.quarto so check_only() passes                              | ci            | review-2026-08-15 | 14  | backlog |
+| [t2608151254j](tasks/t2608151254j-remove-the-duplicated-test-wavelet-r.md)                                         | Remove the duplicated test-wavelet.R                                           | tests         | review-2026-08-15 | 15  | backlog |
+| [t2608151254k](tasks/t2608151254k-trim-the-export-surface.md)                                                      | Trim the export surface                                                        | api           | review-2026-08-15 | 16  | backlog |
+| [t2608061641](tasks/t2608061641-clear-lintr-findings-and-make-the-lint-job-blocking.md)                            | Clear lintr findings and make the lint job blocking                            | ci            |                   |     | backlog |
+| [t2608061641a](tasks/t2608061641a-cover-create-all-diagnostic-plots-and-plot-filter-diagnostics-with-tests.md)     | Cover create_all_diagnostic_plots and plot_filter_diagnostics with tests       | tests         |                   |     | backlog |
+
+## Watching
+
+| ID                                                                                               | Item                                                          | Area         | Origin            | Trigger                                                                                                                    |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | ------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [t2608151255](tasks/t2608151255-warm-filtering-r-and-evaluate-generator-r-are-god-modules.md)    | warm_filtering.R and evaluate_generator.R are god modules     | architecture | review-2026-08-15 | A change to either file needs more than a localized edit.                                                                  |
+| [t2608151255a](tasks/t2608151255a-set-seed-discipline-is-held-by-convention-not-construction.md) | set.seed() discipline is held by convention, not construction | warm         | review-2026-08-15 | Any function containing a bare set.seed() gains a worker call site -- most likely simulate_warm() gaining parallel = TRUE. |
+| [t2608151255b](tasks/t2608151255b-argument-names-drift-across-the-generate-evaluate-boundary.md) | Argument names drift across the generate/evaluate boundary    | api          | review-2026-08-15 | A major version is cut, or a new argument is added across the same boundary.                                               |
+| [t2608151255c](tasks/t2608151255c-internal-helpers-use-three-competing-naming-conventions.md)    | Internal helpers use three competing naming conventions       | architecture | review-2026-08-15 | A convention is chosen and written into the AGENTS.md Conventions section.                                                 |
