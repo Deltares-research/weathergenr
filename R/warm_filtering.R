@@ -206,30 +206,35 @@ filter_warm_pool <- function(
   # ---------------------------------------------------------------------------
   # Length harmonisation
   # ---------------------------------------------------------------------------
+  # The observed and simulated series are truncated to a common length because
+  # the spectral criterion needs like-for-like: a 60-year spectrum resolves
+  # low-frequency power that a 20-year one cannot, so comparing them unmatched
+  # would penalise length rather than shape.
+  #
+  # The window is taken deterministically, from the END of each series. It used
+  # to be drawn at random -- once for the observations, and independently per
+  # candidate for the simulations -- which had two consequences. Every
+  # acceptance threshold moved with the seed: across the windows of a 21-year
+  # record truncated to 15, the observed standard deviation spans 19 percent,
+  # against an sd tolerance of 3. And because each candidate got its own draw,
+  # candidates were not being compared on the same footing at all. Scoring a
+  # 60-year trace on 20 of its years is a real limitation of harmonisation, but
+  # it should at least be the same 20 years for every candidate.
   n_use <- min(n_obs0, n_sim0)
 
   if (n_obs0 > n_use) {
-    max_start_obs <- n_obs0 - n_use + 1L
-    start_obs <- sample.int(max_start_obs, size = 1L)
-    end_obs <- start_obs + n_use - 1L
-    obs_use <- obs_series[start_obs:end_obs]
-    obs_window <- c(start = start_obs, end = end_obs)
+    start_obs <- n_obs0 - n_use + 1L
+    obs_use <- obs_series[start_obs:n_obs0]
+    obs_window <- c(start = start_obs, end = n_obs0)
   } else {
     obs_use <- obs_series
     obs_window <- NULL
   }
 
   if (n_sim0 > n_use) {
-    max_start_sim <- n_sim0 - n_use + 1L
-    starts <- sample.int(max_start_sim, size = n_rlz, replace = TRUE)
-    ends <- starts + n_use - 1L
-    window_index <- lapply(seq_len(n_rlz), function(j) c(start = starts[j], end = ends[j]))
-
-    sim_use <- vapply(
-      seq_len(n_rlz),
-      FUN = function(j) sim_series[starts[j]:ends[j], j],
-      FUN.VALUE = numeric(n_use)
-    )
+    start_sim <- n_sim0 - n_use + 1L
+    window_index <- lapply(seq_len(n_rlz), function(j) c(start = start_sim, end = n_sim0))
+    sim_use <- sim_series[start_sim:n_sim0, , drop = FALSE]
     colnames(sim_use) <- colnames(sim_series)
   } else {
     window_index <- NULL
@@ -1622,7 +1627,15 @@ compute_tailmass_metrics <- function(obs_use, sim_series_stats,
     ))
   }
 
-  denom <- max(n_use * scale_obs, 1e-12)
+  # Tail mass is a per-observation quantity, so each side is normalised by its
+  # own length. Dividing the simulated column sums by the observed length works
+  # only while the caller has truncated both to a common length -- which it
+  # does today, making this numerically identical -- but it silently encoded
+  # that requirement into the metric. Normalising per side makes the function
+  # correct for unequal lengths rather than merely unused with them.
+  n_sim_rows <- nrow(sim_series_stats)
+  denom_obs <- max(n_use * scale_obs, 1e-12)
+  denom_sim <- max(n_sim_rows * scale_obs, 1e-12)
 
   # Lower-tail deficit mass
   X_low <- thr_low - sim_series_stats
@@ -1634,10 +1647,10 @@ compute_tailmass_metrics <- function(obs_use, sim_series_stats,
   S_sim_high <- colSums(pmax(X_high, 0), na.rm = TRUE)
   S_obs_high <- sum(pmax(obs_use - thr_high, 0), na.rm = TRUE)
 
-  M_obs_low <- S_obs_low / denom
-  M_obs_high <- S_obs_high / denom
-  M_sim_low <- S_sim_low / denom
-  M_sim_high <- S_sim_high / denom
+  M_obs_low <- S_obs_low / denom_obs
+  M_obs_high <- S_obs_high / denom_obs
+  M_sim_low <- S_sim_low / denom_sim
+  M_sim_high <- S_sim_high / denom_sim
 
   logdiff_low <- abs(log(M_sim_low + tail_eps) - log(M_obs_low + tail_eps))
   logdiff_high <- abs(log(M_sim_high + tail_eps) - log(M_obs_high + tail_eps))
