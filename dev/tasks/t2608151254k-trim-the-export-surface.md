@@ -5,7 +5,7 @@ status: backlog
 effort: 2
 area: api
 origin: review-2026-08-15
-queue: 16
+queue: 15
 created: 2026-08-15
 updated: 2026-08-15
 ---

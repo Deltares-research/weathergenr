@@ -13,3 +13,4 @@ Rows are appended by `todoboard done`, never hand-edited.
 
 | Closed     | ID           | Item                                     | Area         |
 | ---------- | ------------ | ---------------------------------------- | ------------ |
+| 2026-08-15 | t2608151253  | Fix the NetCDF noleap calendar round trip | io           |
