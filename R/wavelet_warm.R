@@ -15,9 +15,11 @@
 #
 # Notes
 # - In component mode, each component is modeled independently then summed.
-# - MODWT MRA components are additive but not orthogonal; independent modeling
-#   does not preserve cross component covariance unless you implement coupling
-#   externally.
+# - MODWT MRA components are additive but not orthogonal, so modeling them
+#   independently and summing would inflate ensemble variance. The coupling is
+#   implemented here rather than left to the caller: components are whitened
+#   before fitting and re-correlated after simulating (see the Tier 2 notes on
+#   simulate_warm()).
 #
 
 #' Simulate synthetic series with Wavelet Autoregressive Modeling (WARM)
@@ -76,11 +78,21 @@
 #' MODWT MRA components are additive but not orthogonal; fitting independent
 #' ARMAs and summing inflates ensemble variance when cross-component covariances
 #' are non-zero. Two tiers of correction are applied.
-#' - Tier 2 (Cholesky): when >= 2 variable components are ARMA-viable and the
-#'   component covariance matrix is well-conditioned (condition number < 1e6),
-#'   components are decorrelated via X %*% L^{-1} (L = chol(cov(X))), ARMA is
-#'   fit to the whitened series, and simulations are re-correlated by
-#'   multiplying back by L before summing.
+#' - Tier 2 (symmetric whitening): when >= 2 variable components are ARMA-viable
+#'   and the component covariance matrix is well-conditioned (condition number
+#'   < 1e6), components are whitened via X %*% S^{-1/2} where S = cov(X), ARMA is
+#'   fit to the whitened series, and simulations are re-correlated by multiplying
+#'   back by S^{1/2} before summing.
+#'
+#'   The symmetric square root is used rather than a Cholesky factor because a
+#'   triangular factor whitens sequentially: the first component passes through
+#'   scaled, the last is a mixture of all of them, so the fitted models depend on
+#'   the order the components happen to be listed in. That order is a naming
+#'   convention (D1..DJ, SJ), not a property of the data. S^{-1/2} is
+#'   permutation-equivariant, so relabelling the components leaves the simulated
+#'   series unchanged, and it is the whitening that stays closest to the original
+#'   components -- each whitened series still corresponds to its own scale rather
+#'   than to a running mixture.
 #' - Tier 1 (aggregate): after summing, the total simulated series is rescaled
 #'   to match the observed total standard deviation when the relative mismatch
 #'   exceeds var_tol. Applied in both the Tier 2 path (as a safety check) and
@@ -336,7 +348,7 @@ simulate_warm <- function(
   # needed mid-loop (which would leave comp_sims in a mixed decorr/original
   # space that cannot be cleanly re-correlated).
   use_decorrelation <- FALSE
-  L_chol            <- NULL
+  W_back            <- NULL
 
   if (nvar >= 2L) {
     # Pre-scan: all variable components must be ARMA-viable.
@@ -360,21 +372,45 @@ simulate_warm <- function(
       cond_num     <- tryCatch(kappa(comp_cov, exact = FALSE), error = function(e) Inf)
 
       if (is.finite(cond_num) && cond_num < 1e6) {
-        L_chol <- tryCatch(chol(comp_cov), error = function(e) NULL)  # upper: t(L) %*% L = cov
-        if (!is.null(L_chol)) {
-          # Z = X %*% L^{-1}  =>  cov(Z) ~ I
-          L_inv    <- backsolve(L_chol, diag(nvar))
-          Z_mat    <- comp_mat_var %*% L_inv  # n_fit x nvar, decorrelated, centered
+        # Symmetric square root, not a Cholesky factor.
+        #
+        # Both whiten. But chol() is triangular, so it whitens sequentially: the
+        # first component passes through scaled, the second is a mix of the
+        # first two, the last mixes everything. The fitted ARMAs then depend on
+        # the column order, which is a naming convention (D1..DJ, SJ) and not a
+        # fact about the data. Measured on the packaged driver, reversing the
+        # column order moved the ensemble's lag-1 autocorrelation from 0.050 to
+        # 0.191 -- and interannual persistence is the property WARM exists to
+        # reproduce.
+        #
+        # Sigma^{-1/2} is permutation-equivariant: permuting the columns
+        # permutes the whitened columns the same way and leaves the recombined
+        # series unchanged. It is also the whitening that stays closest to the
+        # original components in a least-squares sense, so each whitened series
+        # still corresponds to its own scale rather than to a running mixture.
+        decorr <- tryCatch({
+          e <- eigen(comp_cov, symmetric = TRUE)
+          vals <- pmax(e$values, 0)
+          if (any(vals <= 0)) stop("non-positive eigenvalue")
+          list(
+            fwd  = e$vectors %*% diag(1 / sqrt(vals), nvar) %*% t(e$vectors),
+            back = e$vectors %*% diag(sqrt(vals), nvar) %*% t(e$vectors)
+          )
+        }, error = function(e) NULL)
+
+        if (!is.null(decorr)) {
+          W_back <- decorr$back
+          Z_mat  <- comp_mat_var %*% decorr$fwd  # n_fit x nvar, whitened, centered
           for (ki in seq_along(var_idx)) comp_list[[var_idx[ki]]] <- Z_mat[, ki]
           use_decorrelation <- TRUE
           if (verbose) .log(paste0(
-            "Cholesky decorrelation active (cond=", round(cond_num, 1), ", nvar=", nvar, ")"
+            "Symmetric decorrelation active (cond=", round(cond_num, 1), ", nvar=", nvar, ")"
           ), tag = "WARM")
         }
       }
 
       if (!use_decorrelation && verbose) .log(paste0(
-        "Cholesky decorrelation skipped (cond=",
+        "Decorrelation skipped (cond=",
         if (is.finite(cond_num)) round(cond_num, 1) else "Inf",
         "); falling back to per-component variance correction"
       ), tag = "WARM")
@@ -499,12 +535,14 @@ simulate_warm <- function(
 
   if (use_decorrelation) {
     # Tier 2: re-correlate.
-    # X_sim (sum over components) = sum_k  sum_j Z_sim_j * L_chol[j, k]
-    #                              = sum_j Z_sim_j * rowSums(L_chol)[j]
-    L_row_sums <- rowSums(L_chol)
+    # X_sim (sum over components) = sum_k  sum_j Z_sim_j * W_back[j, k]
+    #                              = sum_j Z_sim_j * rowSums(W_back)[j]
+    # W_back is symmetric, so rowSums and colSums agree; rowSums is kept for
+    # symmetry with the derivation above.
+    W_row_sums <- rowSums(W_back)
     output <- matrix(0, nrow = n, ncol = n_sim)
     for (ki in seq_along(var_idx)) {
-      output <- output + comp_sims[[var_idx[ki]]] * L_row_sums[ki]
+      output <- output + comp_sims[[var_idx[ki]]] * W_row_sums[ki]
     }
     # Add constant-component contributions.
     const_idx <- setdiff(seq_along(comp_sims), var_idx)
