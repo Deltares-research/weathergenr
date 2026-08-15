@@ -301,13 +301,17 @@ knn_sample <- function(
 #'   threshold for daily precipitation states.
 #' @param extreme_q Numeric between 0 and 1. Quantile used to define the very
 #'   wet (extreme) precipitation threshold.
-#' @param dry_spell_factor Numeric vector of length 12. Monthly adjustment
-#'   factors controlling dry spell persistence in the Markov chain. Values
-#'   greater than 1 increase dry-state persistence by reducing dry-to-wet and
-#'   dry-to-very-wet transition probabilities before renormalization (for
-#'   example, with factor 2 these off-diagonal transitions are halved).
-#' @param wet_spell_factor Numeric vector of length 12. Monthly adjustment
-#'   factors controlling wet spell persistence in the Markov chain.
+#' @param dry_spell_factor Numeric vector of length 12. Per-month multiplier on
+#'   the mean dry spell length: the probability of leaving the dry state is
+#'   divided by the factor, so a factor of 2 doubles the mean run of dry days.
+#'   The split between the dry-to-wet and dry-to-extreme exits is preserved.
+#'   Lengthening dry spells necessarily lowers the wet-day fraction; see
+#'   \code{\link{generate_weather}} for that trade-off.
+#' @param wet_spell_factor Numeric vector of length 12. Per-month multiplier on
+#'   the mean wet spell length, where a wet spell is an unbroken run of wet or
+#'   extreme days. The return-to-dry probability is divided by the factor from
+#'   \emph{both} non-dry states, so an extreme day does not end a spell at the
+#'   historical rate while a merely wet one does.
 #' @param seed Optional integer. Base random seed for reproducibility.
 #'
 #' @details
@@ -1117,6 +1121,7 @@ estimate_monthly_markov_probs <- function(
 
     if (use_spell_adjustment) {
       # Index by calendar month (mm), not by position in month_order (m).
+      # See .scale_spell_length() for what the factors mean.
       # dry/wet_spell_factor_month are length-12 vectors indexed 1=Jan..12=Dec.
       dry_factor_m <- dry_spell_factor_month[mm]
       wet_factor_m <- wet_spell_factor_month[mm]
@@ -1124,18 +1129,18 @@ estimate_monthly_markov_probs <- function(
       if (!is.finite(dry_factor_m) || dry_factor_m <= 0) dry_factor_m <- 1
       if (!is.finite(wet_factor_m) || wet_factor_m <= 0) wet_factor_m <- 1
 
+      # A dry spell continues while the chain stays in state 0.
       if (abs(dry_factor_m - 1) > 1e-10) {
-        p_dry <- normalize_probs(
-          prob = c(p_dry[1], p_dry[2] / dry_factor_m, p_dry[3] / dry_factor_m),
-          fallback_prob = c(1, 0, 0)
-        )
+        p_dry <- .scale_spell_length(p_dry, stay = 1L, factor = dry_factor_m)
       }
 
+      # A wet spell continues while the chain stays in EITHER non-dry state, so
+      # both rows must slow their return to dry. Adjusting only the wet row --
+      # as this did -- left an extreme day ending a spell at the historical
+      # rate, so the factor did less the wetter the month was.
       if (abs(wet_factor_m - 1) > 1e-10) {
-        p_wet <- normalize_probs(
-          prob = c(p_wet[1] / wet_factor_m, p_wet[2], p_wet[3]),
-          fallback_prob = c(0, 1, 0)
-        )
+        p_wet <- .scale_spell_length(p_wet, stay = c(2L, 3L), factor = wet_factor_m)
+        p_vwt <- .scale_spell_length(p_vwt, stay = c(2L, 3L), factor = wet_factor_m)
       }
     }
 
@@ -1143,6 +1148,59 @@ estimate_monthly_markov_probs <- function(
   }
 
   probs_m
+}
+
+
+#' Rescale a transition row to a target mean spell length
+#'
+#' @description
+#' Given one row of a Markov transition matrix and the states that continue the
+#' current spell, rescales the row so the mean spell length is multiplied by
+#' `factor`.
+#'
+#' @details
+#' A spell that continues with probability `p_stay` has mean length
+#' `1 / (1 - p_stay)`, so multiplying that length by `f` means dividing the exit
+#' probability by `f`. The exit entries are scaled by `1 / f` and the staying
+#' entries absorb the remainder in proportion, which leaves the relative split
+#' among exit states, and among staying states, untouched.
+#'
+#' This replaces an earlier rule that divided the individual exit probabilities
+#' by the factor and renormalised. That rule moved spell length in the right
+#' direction but by an amount nobody could predict: on the packaged record a
+#' `dry_spell_factor` of 3 lengthened mean dry spells by 1.46x, and 1.5 by
+#' 1.11x. It also shifted the unconditional wet-day fraction as a side effect,
+#' by nearly 5 percent at a factor of 3, so the knob was not separable from the
+#' wet-day frequency it was not supposed to touch.
+#'
+#' @param p Numeric vector of transition probabilities summing to one.
+#' @param stay Integer indices of `p` whose states continue the spell.
+#' @param factor Positive numeric. Multiplier on the mean spell length.
+#' @param eps Numeric floor and ceiling on the resulting exit probability, so a
+#'   large factor cannot produce an absorbing state.
+#' @return Numeric vector of the same length, summing to one.
+#' @keywords internal
+#' @noRd
+.scale_spell_length <- function(p, stay, factor, eps = 1e-6) {
+  p <- as.numeric(p)
+  exit <- setdiff(seq_along(p), stay)
+
+  p_exit_old <- sum(p[exit])
+  if (!is.finite(p_exit_old) || p_exit_old <= 0) return(p)
+
+  p_exit_new <- min(max(p_exit_old / factor, eps), 1 - eps)
+
+  out <- p
+  out[exit] <- p[exit] * (p_exit_new / p_exit_old)
+
+  p_stay_old <- sum(p[stay])
+  out[stay] <- if (p_stay_old > 0) {
+    p[stay] * ((1 - p_exit_new) / p_stay_old)
+  } else {
+    (1 - p_exit_new) / length(stay)
+  }
+
+  normalize_probs(out, fallback_prob = p)
 }
 
 

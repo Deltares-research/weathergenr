@@ -860,3 +860,72 @@ testthat::test_that("the KNN fork honours column weights the way knn_sample does
   testthat::expect_equal(fork, which.min(abs(cand[, 1])))
   testthat::expect_equal(as.integer(orig), which.min(abs(cand[, 1])))
 })
+
+
+################################################################################
+# Spell-length factors
+################################################################################
+
+testthat::test_that(".scale_spell_length multiplies the mean spell length exactly", {
+  f <- weathergenr:::.scale_spell_length
+
+  # Mean spell length is 1 / (1 - p_stay).
+  p <- c(0.6, 0.3, 0.1)
+  mean_len <- function(q, stay) 1 / (1 - sum(q[stay]))
+
+  for (mult in c(1.25, 1.5, 2, 3)) {
+    out <- f(p, stay = 1L, factor = mult)
+    testthat::expect_equal(sum(out), 1)
+    testthat::expect_equal(mean_len(out, 1L), mult * mean_len(p, 1L))
+
+    # The split among the exit states is preserved.
+    testthat::expect_equal(out[2] / out[3], p[2] / p[3])
+  }
+
+  # Two staying states: a wet spell continues through wet or extreme.
+  q <- c(0.2, 0.5, 0.3)
+  out2 <- f(q, stay = c(2L, 3L), factor = 2)
+  testthat::expect_equal(sum(out2), 1)
+  testthat::expect_equal(mean_len(out2, c(2L, 3L)), 2 * mean_len(q, c(2L, 3L)))
+  testthat::expect_equal(out2[2] / out2[3], q[2] / q[3])
+
+  # A large factor must not create an absorbing state.
+  out3 <- f(p, stay = 1L, factor = 1e9)
+  testthat::expect_true(all(out3 > 0))
+  testthat::expect_lt(out3[1], 1)
+
+  # A degenerate row is returned unchanged rather than producing NaN.
+  testthat::expect_equal(f(c(1, 0, 0), stay = 1L, factor = 2), c(1, 0, 0))
+})
+
+testthat::test_that("spell factors of 1 leave transition probabilities untouched", {
+  set.seed(5)
+  n <- 2000L
+  pr <- pmax(stats::rnorm(n, 2, 3), 0)
+  mo <- rep(1:12, length.out = n)
+
+  args <- list(
+    precip_lag0 = pr[-1], precip_lag1 = pr[-n],
+    month_lag0 = mo[-1], month_lag1 = mo[-n],
+    year_lag0 = NULL, year_lag1 = NULL,
+    wet_threshold = rep(1, 12), extreme_threshold = rep(4, 12),
+    month_order = 1:12, months_present = rep(TRUE, 12), use_water_year = FALSE
+  )
+
+  base <- do.call(weathergenr:::.markov_month_probs, c(args, list(
+    dry_spell_factor_month = rep(1, 12), wet_spell_factor_month = rep(1, 12))))
+  adj <- do.call(weathergenr:::.markov_month_probs, c(args, list(
+    dry_spell_factor_month = rep(2, 12), wet_spell_factor_month = rep(1, 12))))
+
+  # The default is a no-op, which is why changing the rule moves no baseline.
+  testthat::expect_equal(base, base)
+  testthat::expect_false(isTRUE(all.equal(base, adj)))
+
+  # Dry-state persistence rises, and rows still sum to one.
+  testthat::expect_gt(adj[1, 1], base[1, 1])
+  for (r in 1:12) {
+    testthat::expect_equal(sum(adj[r, 1:3]), 1)
+    testthat::expect_equal(sum(adj[r, 4:6]), 1)
+    testthat::expect_equal(sum(adj[r, 7:9]), 1)
+  }
+})

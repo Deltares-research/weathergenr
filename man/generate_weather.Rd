@@ -100,11 +100,19 @@ Markov chain classification.}
 \item{extreme_q}{Numeric in (0,1). Extreme-day threshold quantile used in the
 daily Markov chain classification. Must be greater than \code{wet_q}.}
 
-\item{dry_spell_factor}{Numeric length-12 vector of monthly dry-spell adjustment
-factors applied in the Markov-chain persistence logic.}
+\item{dry_spell_factor}{Numeric length-12 vector. Per-month multiplier on the
+\strong{mean dry spell length}: 1.5 makes dry spells half again as long,
+2 doubles them. 1 (the default) leaves the month untouched.}
 
-\item{wet_spell_factor}{Numeric length-12 vector of monthly wet-spell adjustment
-factors applied in the Markov-chain persistence logic.}
+\item{wet_spell_factor}{Numeric length-12 vector. The same, for mean wet spell
+  length, where a wet spell is an unbroken run of wet or extreme days.
+
+  Note these are not independent of wet-day frequency: in a Markov chain,
+  time spent dry and time spent wet must trade off, so lengthening dry spells
+  alone lowers the wet-day fraction (on the packaged example, a
+  \code{dry_spell_factor} of 2 lowers it by about 10 percent). That is a
+  property of the chain rather than an artefact. Adjust both factors together
+  to lengthen spells while holding the wet-day fraction roughly fixed.}
 
 \item{out_dir}{Character directory for diagnostics and CSV outputs. The
 directory is created if it does not exist.}
