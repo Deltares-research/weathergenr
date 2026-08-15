@@ -635,7 +635,12 @@ filter_warm_pool <- function(
 #'   \item{tail_high_p}{Upper quantile used to define the high tail threshold in
 #'   the observed series. Default 0.80.}
 #'   \item{tail_tol_log}{Maximum absolute log difference between simulated and
-#'   observed tail mass metrics. Default log(1.03).}
+#'   observed tail mass metrics. Default log(1.25), i.e. the simulated tail mass
+#'   must be within a factor of 1.25 of the observed. Looser than the 3 percent
+#'   allowed on \code{mean} and \code{sd} because tail mass, computed over the
+#'   few points beyond a quantile of a two-decade record, is a far noisier
+#'   statistic; at log(1.03) this criterion admitted well under one percent of
+#'   candidates and the relaxation loop ended up setting the effective bound.}
 #'   \item{tail_eps}{Positive constant used for numerical stability in log
 #'   transforms. Default 1e-5.}
 #' }
@@ -706,7 +711,23 @@ filter_warm_bounds_defaults <- function() {
     # --- tail behaviour ---
     tail_low_p   = 0.20,
     tail_high_p  = 0.80,
-    tail_tol_log = log(1.03),
+    # log(1.25), not log(1.03). The mean and sd bounds are 3 percent because a
+    # mean and a standard deviation are stable statistics; tail mass over the
+    # four-or-so points beyond a quantile of a 21-year record is not, and its
+    # natural spread across candidates drawn from the fitted model is tens of
+    # percent. At log(1.03) it admitted 0.4 percent of candidates, so it was
+    # always the lowest pass rate, always the criterion the relaxation loop
+    # picked, and the loop -- which stops the moment the pool reaches n_select
+    # -- ended up doing the calibration. At generate_weather()'s own defaults
+    # that left a pool of 24 out of 5000 for 20 realizations, so the tiered
+    # ranking had almost nothing to choose between and the documented
+    # filter-then-select design was in practice relax-until-just-enough.
+    #
+    # log(1.25) still rejects roughly 97 percent of candidates, so it remains a
+    # real constraint; it leaves a pool of about 157 and needs no relaxation.
+    # It also sits well inside relax_tail_tol_log_max = log(2.0), which the
+    # relaxation ceiling already treats as acceptable.
+    tail_tol_log = log(1.25),
     tail_eps     = 1e-5,
 
     # --- spectral matching (overall shape) ---

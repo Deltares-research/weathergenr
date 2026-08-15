@@ -36,7 +36,12 @@ Tail mass behavior:
   \item{tail_high_p}{Upper quantile used to define the high tail threshold in
   the observed series. Default 0.80.}
   \item{tail_tol_log}{Maximum absolute log difference between simulated and
-  observed tail mass metrics. Default log(1.03).}
+  observed tail mass metrics. Default log(1.25), i.e. the simulated tail mass
+  must be within a factor of 1.25 of the observed. Looser than the 3 percent
+  allowed on \code{mean} and \code{sd} because tail mass, computed over the
+  few points beyond a quantile of a two-decade record, is a far noisier
+  statistic; at log(1.03) this criterion admitted well under one percent of
+  candidates and the relaxation loop ended up setting the effective bound.}
   \item{tail_eps}{Positive constant used for numerical stability in log
   transforms. Default 1e-5.}
 }
