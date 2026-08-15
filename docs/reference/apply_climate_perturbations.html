@@ -33,7 +33,7 @@ preserving realistic daily structure."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -87,6 +87,7 @@ preserving realistic daily structure.</p>
 <span>  precip_occurrence_factor <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  precip_intensity_threshold <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  temp_delta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  temp_range_factor <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  temp_transient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  precip_transient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  precip_occurrence_transient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -152,9 +153,29 @@ Also passed to [adjust_precipitation_qm()] as `intensity_threshold`. Default is 
 `temp`, `temp_min`, and `temp_max`.</p></dd>
 
 
+<dt id="arg-temp-range-factor">temp_range_factor<a class="anchor" aria-label="anchor" href="#arg-temp-range-factor"></a></dt>
+<dd><p>Optional numeric vector of length 12 or numeric matrix
+  `(n_years x 12)`. Multiplicative factors applied to the diurnal temperature
+  range, `temp_max - temp_min`, scaled about its own midpoint so the daily
+  mean is unchanged. `NULL` (default) leaves the range as it is.</p>
+<p>Worth setting deliberately rather than leaving alone. `temp_delta` is added
+  to `temp`, `temp_min` and `temp_max` alike, so warming on its own leaves the
+  diurnal range untouched — and the Hargreaves PET used here goes as the
+  square root of that range. Warming alone therefore moves PET by only about
+  2.3 percent per degree, while the range is the term that decides how much
+  more: at +4 degC, PET rises 3.7 percent with the range a tenth smaller,
+  9.3 percent with it fixed, and 14.7 percent with it a tenth larger. Leaving
+  this `NULL` is a choice for the middle of that span, not a neutral default,
+  and it matters wherever PET drives the water balance.</p>
+<p>Observed and projected diurnal-range trends vary by region and season, so
+  there is no defensible non-null default; supply values for the region being
+  studied, or vary the factor as one of the stress-test dimensions.</p></dd>
+
+
 <dt id="arg-temp-transient">temp_transient<a class="anchor" aria-label="anchor" href="#arg-temp-transient"></a></dt>
 <dd><p>Logical. If TRUE, temperature deltas ramp linearly from zero to twice `temp_delta`
-across simulation years, preserving the same mean change.</p></dd>
+across simulation years, preserving the same mean change. Also governs
+`temp_range_factor`, which ramps from 1 on the same principle.</p></dd>
 
 
 <dt id="arg-precip-transient">precip_transient<a class="anchor" aria-label="anchor" href="#arg-precip-transient"></a></dt>

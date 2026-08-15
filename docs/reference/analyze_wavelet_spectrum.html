@@ -33,7 +33,7 @@ MODWT-based component extraction.'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -170,7 +170,12 @@ required to trigger a warning.</p></dd>
 <dd><p>Numeric vector. COI-masked global wavelet spectrum.</p></dd>
 
   <dt>gws_unmasked</dt>
-<dd><p>Numeric vector. Unmasked global wavelet spectrum (plotting only).</p></dd>
+<dd><p>Numeric vector. Global wavelet spectrum averaged over
+    all times, including scales where the cone of influence warns of edge
+    effects. Use for plotting, and for comparing one spectrum against another
+    computed the same way – <code><a href="filter_warm_pool.html">filter_warm_pool</a></code> matches observed
+    against simulated spectra on this curve, which is like-for-like. Do not
+    use it for inference; <code>gws</code> is the curve for that.</p></dd>
 
   <dt>period</dt>
 <dd><p>Numeric vector. Fourier periods corresponding to wavelet scales.</p></dd>
@@ -179,7 +184,13 @@ required to trigger a warning.</p></dd>
 <dd><p>Numeric vector. COI- and neff-corrected GWS significance threshold (inference).</p></dd>
 
   <dt>gws_signif_unmasked</dt>
-<dd><p>Numeric vector. Unmasked GWS significance threshold (plotting only).</p></dd>
+<dd><p>Numeric vector. Significance threshold computed
+    from the full record length with the effective sample size floored at 1,
+    so that it is finite at every scale. <strong>Plotting only, and this one
+    means it</strong>: the floor makes it systematically permissive at long periods,
+    where the record cannot in fact support a test. Never decide significance
+    from it – use <code>gws_signif</code>, which is NA exactly where no test is
+    possible.</p></dd>
 
   <dt>has_significance</dt>
 <dd><p>Logical. Whether any significant scales were detected.</p></dd>

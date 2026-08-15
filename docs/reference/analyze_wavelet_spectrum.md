@@ -124,7 +124,14 @@ A list. Always includes (at minimum):
 
 - gws_unmasked:
 
-  Numeric vector. Unmasked global wavelet spectrum (plotting only).
+  Numeric vector. Global wavelet spectrum averaged over all times,
+  including scales where the cone of influence warns of edge effects.
+  Use for plotting, and for comparing one spectrum against another
+  computed the same way –
+  [`filter_warm_pool`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
+  matches observed against simulated spectra on this curve, which is
+  like-for-like. Do not use it for inference; `gws` is the curve for
+  that.
 
 - period:
 
@@ -137,7 +144,12 @@ A list. Always includes (at minimum):
 
 - gws_signif_unmasked:
 
-  Numeric vector. Unmasked GWS significance threshold (plotting only).
+  Numeric vector. Significance threshold computed from the full record
+  length with the effective sample size floored at 1, so that it is
+  finite at every scale. **Plotting only, and this one means it**: the
+  floor makes it systematically permissive at long periods, where the
+  record cannot in fact support a test. Never decide significance from
+  it – use `gws_signif`, which is NA exactly where no test is possible.
 
 - has_significance:
 

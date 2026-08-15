@@ -105,8 +105,23 @@ generate_weather(
 
 - warm_signif:
 
-  Numeric in (0,1). Wavelet significance level used to retain
-  low-frequency components in WARM.
+  Numeric in (0,1). Significance level for the wavelet spectrum tests,
+  against a red-noise background.
+
+  It does **not** select which wavelet components are simulated: every
+  MODWT MRA component is modelled, significant or not. See the WARM
+  section of *Details*. Its two live effects are:
+
+  - the threshold above which an observed spectral peak counts as
+    significant in
+    [`filter_warm_pool`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md),
+    and therefore must be reproduced by a candidate trace to pass the
+    `wavelet` criterion;
+
+  - raising the MODWT level count when the continuous wavelet transform
+    finds a significant period. On records of 20-40 years this test
+    rarely fires, so in practice the level count is set by series length
+    alone.
 
 - warm_pool_size:
 
@@ -149,13 +164,22 @@ generate_weather(
 
 - dry_spell_factor:
 
-  Numeric length-12 vector of monthly dry-spell adjustment factors
-  applied in the Markov-chain persistence logic.
+  Numeric length-12 vector. Per-month multiplier on the **mean dry spell
+  length**: 1.5 makes dry spells half again as long, 2 doubles them. 1
+  (the default) leaves the month untouched.
 
 - wet_spell_factor:
 
-  Numeric length-12 vector of monthly wet-spell adjustment factors
-  applied in the Markov-chain persistence logic.
+  Numeric length-12 vector. The same, for mean wet spell length, where a
+  wet spell is an unbroken run of wet or extreme days.
+
+  Note these are not independent of wet-day frequency: in a Markov
+  chain, time spent dry and time spent wet must trade off, so
+  lengthening dry spells alone lowers the wet-day fraction (on the
+  packaged example, a `dry_spell_factor` of 2 lowers it by about 10
+  percent). That is a property of the chain rather than an artefact.
+  Adjust both factors together to lengthen spells while holding the
+  wet-day fraction roughly fixed.
 
 - out_dir:
 
@@ -230,9 +254,63 @@ downstream processing and outputs therefore use a 365-day calendar.
 4.  **Output construction:** Map resampled internal dates back to
     historical observation dates (`dateo`) and return simulated dates.
 
+**WARM, and how it relates to Steinschneider & Brown (2013):** The
+annual generator follows the wavelet autoregressive model (WARM) of Kwon
+et al. (2007), as adopted by Steinschneider & Brown (2013), but differs
+in the decomposition and in component selection. Both differences are
+deliberate; neither is a partial implementation.
+
+In the original, a continuous wavelet transform (CWT) decomposes the
+annual series, the scales whose global wavelet power exceeds a red-noise
+significance level are retained as low-frequency signals, and the model
+is an autoregression per retained signal *plus* an autoregression on the
+residual. Nothing is discarded: what is not retained becomes the
+residual term. Steinschneider & Brown's own application retained a
+single signal.
+
+This package decomposes with a MODWT multiresolution analysis instead.
+That basis is exactly additive – the detail bands and the smooth sum
+back to the input, with reconstruction error at machine precision – so
+there is no residual left over to model separately, and every component
+is fitted with an ARMA. On a 20-year annual series the decomposition
+yields two components, `D1` and `S1`, so the fitted structure reduces to
+the same shape as the original with one retained signal. That is a
+consequence of how few levels a short record supports, not a
+correspondence between a MODWT band and the residual term: a longer
+record yields `D1`, `D2`, `S2` and no band plays that role.
+
+Significance is therefore *not* used to select components, for two
+reasons. There is no residual term to relegate a non-significant band
+to, so dropping one would discard variance rather than reclassify it –
+on the packaged example `D1` carries 23 percent of the total. And on
+records of this length the CWT global-power test against a red-noise
+background detects nothing at any conventional level, so a selection
+rule would either never fire or would collapse the model to a single
+ARMA on the whole series, discarding the scale structure the method
+exists to represent.
+
+Note that MODWT MRA components are additive but not orthogonal, so their
+variances do not sum to the total; on the packaged example the
+cross-covariance accounts for 18 percent.
+[`simulate_warm`](https://deltares-research.github.io/weathergenr/reference/simulate_warm.md)
+corrects for this when recombining simulated components.
+
 Daily disaggregation currently requires `vars` to include `"precip"` and
 `"temp"`, which are used as precipitation and temperature drivers in
 KNN + Markov resampling.
+
+## References
+
+Kwon, H.-H., Lall, U., & Khalil, A. F. (2007). Stochastic simulation
+model for nonstationary time series using an autoregressive wavelet
+decomposition: Applications to rainfall and temperature. *Water
+Resources Research*, 43(5), W05407.
+[doi:10.1029/2006WR005258](https://doi.org/10.1029/2006WR005258)
+
+Steinschneider, S., & Brown, C. (2013). A semiparametric multivariate,
+multisite weather generator with low-frequency variability for use in
+climate risk assessments. *Water Resources Research*, 49(11), 7205-7220.
+[doi:10.1002/wrcr.20528](https://doi.org/10.1002/wrcr.20528)
 
 ## Examples
 

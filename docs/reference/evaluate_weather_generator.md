@@ -179,13 +179,13 @@ out <- evaluate_weather_generator(
   save_plots = FALSE,
   show_title = FALSE
 )
-#> 15:38:01 - eval - Evaluation Started: Variables = precip,temp
-#> 15:38:01 - eval - Parameters: wet.q = 0.2 | extreme.q = 0.8
-#> 15:38:02 - eval - Standardizing obs/sim periods to full years and equal length
-#> 15:38:02 - eval - Standardized period | Obs = 2001-2001 | Sim = 2001-2001
-#> 15:38:02 - eval - Processing observed data
-#> 15:38:02 - eval - Processing simulated data (1 realizations)
-#> 15:38:02 - eval - Generating diagnostic plots
+#> 22:22:29 - eval - Evaluation Started: Variables = precip,temp
+#> 22:22:29 - eval - Parameters: wet.q = 0.2 | extreme.q = 0.8
+#> 22:22:29 - eval - Standardizing obs/sim periods to full years and equal length
+#> 22:22:29 - eval - Standardized period | Obs = 2001-2001 | Sim = 2001-2001
+#> 22:22:29 - eval - Processing observed data
+#> 22:22:29 - eval - Processing simulated data (1 realizations)
+#> 22:22:29 - eval - Generating diagnostic plots
 #> Warning: There were 2 warnings in `dplyr::summarise()`.
 #> The first warning was:
 #> ℹ In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm
@@ -193,14 +193,14 @@ out <- evaluate_weather_generator(
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
-#> 15:38:02 - eval - Computing fit metrics for all realizations
+#> 22:22:29 - eval - Computing fit metrics for all realizations
 #> Warning: There were 2 warnings in `dplyr::mutate()`.
 #> The first warning was:
 #> ℹ In argument: `dplyr::across(...)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
 #> ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
-#> 15:38:02 - eval - Displaying fit assessment summary
+#> 22:22:29 - eval - Displaying fit assessment summary
 #> 
 #> =============================================================================================== 
 #>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS
@@ -227,7 +227,7 @@ out <- evaluate_weather_generator(
 #>   - Worst realization : 1 (score = 0.0000)
 #>   - Median score      : 0.0000
 #> 
-#> 15:38:02 - eval - Assessment completed successfully
+#> 22:22:29 - eval - Assessment completed successfully
 class(out)
 #> [1] "weather_assessment" "list"              
 ```
