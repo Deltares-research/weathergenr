@@ -13,6 +13,7 @@ Rows are appended by `todoboard done`, never hand-edited.
 
 | Closed     | ID           | Item                                     | Area         |
 | ---------- | ------------ | ---------------------------------------- | ------------ |
+| 2026-08-15 | t2608151254e | Make .markov_month_probs() respect the configured thresholds | resample     |
 | 2026-08-15 | t2608151522  | Tail criterion rejects the whole pool at its default bound | warm         |
 | 2026-08-15 | t2608151507  | Score the non-spectral WARM criteria on full series, not a window [dropped] | warm         |
 | 2026-08-15 | t2608151254a | Make the WARM filter's observed benchmark deterministic | warm         |
