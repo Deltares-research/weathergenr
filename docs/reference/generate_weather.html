@@ -35,7 +35,7 @@ year_start_month != 1: water-year simulation starting in year_start_month.
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,8 +157,17 @@ Must be present in <code>vars</code>.</p></dd>
 
 
 <dt id="arg-warm-signif">warm_signif<a class="anchor" aria-label="anchor" href="#arg-warm-signif"></a></dt>
-<dd><p>Numeric in (0,1). Wavelet significance level used to retain
-low-frequency components in WARM.</p></dd>
+<dd><p>Numeric in (0,1). Significance level for the wavelet
+  spectrum tests, against a red-noise background.</p>
+<p>It does <strong>not</strong> select which wavelet components are simulated: every
+  MODWT MRA component is modelled, significant or not. See the WARM section of
+  <em>Details</em>. Its two live effects are:</p><ul><li><p>the threshold above which an observed spectral peak counts as
+      significant in <code><a href="filter_warm_pool.html">filter_warm_pool</a></code>, and therefore must be
+      reproduced by a candidate trace to pass the <code>wavelet</code> criterion;</p></li>
+<li><p>raising the MODWT level count when the continuous wavelet transform
+      finds a significant period. On records of 20-40 years this test rarely
+      fires, so in practice the level count is set by series length alone.</p></li>
+</ul></dd>
 
 
 <dt id="arg-warm-pool-size">warm_pool_size<a class="anchor" aria-label="anchor" href="#arg-warm-pool-size"></a></dt>
@@ -196,13 +205,20 @@ daily Markov chain classification. Must be greater than <code>wet_q</code>.</p><
 
 
 <dt id="arg-dry-spell-factor">dry_spell_factor<a class="anchor" aria-label="anchor" href="#arg-dry-spell-factor"></a></dt>
-<dd><p>Numeric length-12 vector of monthly dry-spell adjustment
-factors applied in the Markov-chain persistence logic.</p></dd>
+<dd><p>Numeric length-12 vector. Per-month multiplier on the
+<strong>mean dry spell length</strong>: 1.5 makes dry spells half again as long,
+2 doubles them. 1 (the default) leaves the month untouched.</p></dd>
 
 
 <dt id="arg-wet-spell-factor">wet_spell_factor<a class="anchor" aria-label="anchor" href="#arg-wet-spell-factor"></a></dt>
-<dd><p>Numeric length-12 vector of monthly wet-spell adjustment
-factors applied in the Markov-chain persistence logic.</p></dd>
+<dd><p>Numeric length-12 vector. The same, for mean wet spell
+  length, where a wet spell is an unbroken run of wet or extreme days.</p>
+<p>Note these are not independent of wet-day frequency: in a Markov chain,
+  time spent dry and time spent wet must trade off, so lengthening dry spells
+  alone lowers the wet-day fraction (on the packaged example, a
+  <code>dry_spell_factor</code> of 2 lowers it by about 10 percent). That is a
+  property of the chain rather than an artefact. Adjust both factors together
+  to lengthen spells while holding the wet-day fraction roughly fixed.</p></dd>
 
 
 <dt id="arg-out-dir">out_dir<a class="anchor" aria-label="anchor" href="#arg-out-dir"></a></dt>
@@ -266,9 +282,53 @@ All downstream processing and outputs therefore use a 365-day calendar.</p>
     historical analogue dates (in the internal 365-day calendar).</p></li>
 <li><p><strong>Output construction:</strong> Map resampled internal dates back to
     historical observation dates (<code>dateo</code>) and return simulated dates.</p></li>
-</ol><p>Daily disaggregation currently requires <code>vars</code> to include
+</ol><p><strong>WARM, and how it relates to Steinschneider &amp; Brown (2013):</strong>
+The annual generator follows the wavelet autoregressive model (WARM) of
+Kwon et al. (2007), as adopted by Steinschneider &amp; Brown (2013), but differs
+in the decomposition and in component selection. Both differences are
+deliberate; neither is a partial implementation.</p>
+<p>In the original, a continuous wavelet transform (CWT) decomposes the annual
+series, the scales whose global wavelet power exceeds a red-noise
+significance level are retained as low-frequency signals, and the model is an
+autoregression per retained signal <em>plus</em> an autoregression on the
+residual. Nothing is discarded: what is not retained becomes the residual
+term. Steinschneider &amp; Brown's own application retained a single signal.</p>
+<p>This package decomposes with a MODWT multiresolution analysis instead. That
+basis is exactly additive – the detail bands and the smooth sum back to the
+input, with reconstruction error at machine precision – so there is no
+residual left over to model separately, and every component is fitted with an
+ARMA. On a 20-year annual series the decomposition yields two components,
+<code>D1</code> and <code>S1</code>, so the fitted structure reduces to the same shape as
+the original with one retained signal. That is a consequence of how few
+levels a short record supports, not a correspondence between a MODWT band and
+the residual term: a longer record yields <code>D1</code>, <code>D2</code>, <code>S2</code> and
+no band plays that role.</p>
+<p>Significance is therefore <em>not</em> used to select components, for two
+reasons. There is no residual term to relegate a non-significant band to, so
+dropping one would discard variance rather than reclassify it – on the
+packaged example <code>D1</code> carries 23 percent of the total. And on records of
+this length the CWT global-power test against a red-noise background detects
+nothing at any conventional level, so a selection rule would either never
+fire or would collapse the model to a single ARMA on the whole series,
+discarding the scale structure the method exists to represent.</p>
+<p>Note that MODWT MRA components are additive but not orthogonal, so their
+variances do not sum to the total; on the packaged example the cross-covariance
+accounts for 18 percent. <code><a href="simulate_warm.html">simulate_warm</a></code> corrects for this when
+recombining simulated components.</p>
+<p>Daily disaggregation currently requires <code>vars</code> to include
 <code>"precip"</code> and <code>"temp"</code>, which are used as precipitation and
 temperature drivers in KNN + Markov resampling.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Kwon, H.-H., Lall, U., &amp; Khalil, A. F. (2007). Stochastic simulation model
+for nonstationary time series using an autoregressive wavelet decomposition:
+Applications to rainfall and temperature. <em>Water Resources Research</em>,
+43(5), W05407. <a href="https://doi.org/10.1029/2006WR005258" class="external-link">doi:10.1029/2006WR005258</a></p>
+<p>Steinschneider, S., &amp; Brown, C. (2013). A semiparametric multivariate,
+multisite weather generator with low-frequency variability for use in climate
+risk assessments. <em>Water Resources Research</em>, 49(11), 7205-7220.
+<a href="https://doi.org/10.1002/wrcr.20528" class="external-link">doi:10.1002/wrcr.20528</a></p>
     </div>
 
     <div class="section level2">

@@ -358,7 +358,7 @@ sessionInfo()
     [1] stats     graphics  grDevices utils     datasets  methods   base     
 
     other attached packages:
-    [1] ggplot2_4.0.3     weathergenr_1.3.1
+    [1] ggplot2_4.0.3     weathergenr_1.4.0
 
     loaded via a namespace (and not attached):
      [1] Matrix_1.7-5       gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1       

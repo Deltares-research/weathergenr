@@ -9,7 +9,7 @@ as the schema source (dimensions, spatial reference variable, and global attribu
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,7 @@ as the schema source (dimensions, spatial reference variable, and global attribu
 <span>  out_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  origin_date <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  calendar <span class="op">=</span> <span class="st">"noleap"</span>,</span>
+<span>  dates <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  template_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  compression <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  spatial_ref <span class="op">=</span> <span class="st">"spatial_ref"</span>,</span>
@@ -78,12 +79,30 @@ mapping each list element to an output grid cell.</p></dd>
 
 
 <dt id="arg-origin-date">origin_date<a class="anchor" aria-label="anchor" href="#arg-origin-date"></a></dt>
-<dd><p>Character or Date. Origin date used for NetCDF time units
-(e.g., <code>"1970-01-01"</code>).</p></dd>
+<dd><p>Character or Date. <strong>The date of the first time step</strong>,
+not an arbitrary reference epoch. The time coordinate is written as
+<code>0:(nt - 1)</code>, so the axis is only correct when <code>origin_date</code> is the
+series start – passing a conventional epoch such as <code>"1970-01-01"</code> for a
+series that begins in 2020 silently relocates it by 50 years. Pass
+<code>dates</code> to have this checked rather than assumed.</p></dd>
 
 
 <dt id="arg-calendar">calendar<a class="anchor" aria-label="anchor" href="#arg-calendar"></a></dt>
-<dd><p>Character. NetCDF calendar type (e.g., <code>"noleap"</code>).</p></dd>
+<dd><p>Character. CF calendar for the time axis. One of
+<code>"noleap"</code> (<code>"365_day"</code>), <code>"standard"</code>, <code>"gregorian"</code>,
+<code>"proleptic_gregorian"</code>, or <code>"julian"</code>. Must match the calendar the
+data are actually on: <code><a href="generate_weather.html">generate_weather</a></code> output is 365-day, so
+<code>"noleap"</code> is correct for it, and mislabelling it shifts every date for
+any CF-aware reader.</p></dd>
+
+
+<dt id="arg-dates">dates<a class="anchor" aria-label="anchor" href="#arg-dates"></a></dt>
+<dd><p>Optional Date vector, one entry per time step, giving the axis the
+data are on. When supplied it is validated against <code>nt</code>,
+<code>origin_date</code>, and <code>calendar</code>, and the time coordinate is computed
+from it instead of being assumed contiguous. When <code>NULL</code> (default) the
+axis is assumed to be <code>nt</code> consecutive days starting at
+<code>origin_date</code>.</p></dd>
 
 
 <dt id="arg-template-path">template_path<a class="anchor" aria-label="anchor" href="#arg-template-path"></a></dt>

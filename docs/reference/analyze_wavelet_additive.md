@@ -35,7 +35,12 @@ analyze_wavelet_additive(
 
 - signif:
 
-  Numeric scalar in (0, 1). Significance level for CWT.
+  Numeric scalar in (0, 1). Significance level for the CWT spectrum
+  test. It affects \`n_levels\` when the test finds a significant period
+  and \`n_levels\` is \`NULL\`, and nothing else: it does not select
+  which MODWT components are returned, and downstream
+  \`simulate_warm()\` models all of them. See \`cwt_to_modwt_map\` in
+  \*Value\*.
 
 - noise:
 
@@ -95,6 +100,14 @@ variance and fraction of total - `n_levels`, `filter`, `filter_length`,
 `boundary`, `include_smooth`, `max_period_frac` - `has_significance`,
 `cwt_signif_periods`: CWT significance flags and periods -
 `cwt_to_modwt_map`: MODWT levels implied by significant CWT periods
-(under caps) - variance-accounting fields copied from
+(under caps). **Diagnostic only** – nothing in the package filters
+`components` by it, and \`simulate_warm()\` models every component. It
+reports which levels a significance-based selection *would* retain, for
+comparison against the original WARM formulation; see the WARM section
+of
+[`generate_weather`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+for why that selection is not applied here. Empty when the CWT finds no
+significant period, which is the usual outcome for a 20-40 year annual
+series. - variance-accounting fields copied from
 [`modwt_mra()`](https://deltares-research.github.io/weathergenr/reference/modwt_mra.md) -
 optional `diagnostics` list when requested

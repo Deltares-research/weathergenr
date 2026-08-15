@@ -1,5 +1,286 @@
 # Changelog
 
+## weathergenr 1.4.0
+
+### New features
+
+- [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
+  gains `temp_range_factor`, a monthly multiplier on the diurnal
+  temperature range applied about its own midpoint, so `temp_min` and
+  `temp_max` move apart or together without shifting the daily mean. It
+  accepts a length-12 vector or an `n_years x 12` matrix like the other
+  factors, and ramps with `temp_transient`. `NULL` (the default)
+  reproduces the previous behaviour exactly.
+
+  The gap it fills: `temp_delta` is added to `temp`, `temp_min` and
+  `temp_max` alike, so warming on its own left the diurnal range
+  untouched — and the Hargreaves PET this package computes goes as the
+  square root of that range. Warming alone therefore moves PET by only
+  about 2.3% per degree, and the range decides how much more. At +4
+  degC, PET rises 3.7% with the range a tenth smaller, 9.3% with it
+  fixed, and 14.7% with it a tenth larger. Holding it fixed was a choice
+  for the middle of a fourfold span, not a neutral default, and it
+  matters wherever PET drives the water balance.
+
+  There is no defensible non-null default, because observed and
+  projected diurnal-range trends vary by region and season; supply
+  values for the region being studied, or vary the factor as a
+  stress-test dimension in its own right.
+
+### Other changes
+
+- Documented why the WARM pool’s peak-matching criterion often
+  constrains nothing, following the significance fix above. It is
+  length-adaptive by design: the cone of influence leaves only the
+  shorter periods testable, so on a 20-year annual series no observed
+  peak qualifies and every candidate passes, while a longer record
+  activates it. `peak_match_frac_min = 1.0` therefore reads as maximally
+  strict but is only as strict as the record allows — check
+  `diagnostics$spectral_diag$n_sig_peaks_found` before concluding it did
+  anything.
+
+  Matching the strongest peaks regardless of significance was considered
+  and rejected. It would not be redundant — measured against the
+  spectral correlation it discriminates on something largely independent
+  (r = 0.11) — but on the packaged 20-year record the two strongest
+  peaks sit at 5.8 and 16.5 years, and requiring simulated traces to
+  reproduce a 16.5-year cycle seen in 20 years of data selects for a
+  sampling artefact.
+
+### Bug fixes
+
+- `dry_spell_factor` and `wet_spell_factor` now mean what their names
+  say: each is a multiplier on the **mean spell length**, so 2 doubles
+  the mean run of dry (or wet) days. Previously they divided individual
+  off-diagonal transition probabilities and renormalised, which moved
+  spell length in the right direction by an unpredictable amount — on
+  the packaged record a `dry_spell_factor` of 3 lengthened mean dry
+  spells by 1.46x, and 1.5 by 1.11x.
+
+  `wet_spell_factor` also now slows the return to dry from **both**
+  non-dry states. Previously it adjusted only the wet row, so an extreme
+  day ended a wet spell at the historical rate while a merely wet one
+  did not, and the factor did progressively less the wetter the month.
+
+  Both default to 1, which is a no-op, so runs that do not set them are
+  unaffected. Runs that do set them will change, and a given factor now
+  produces a larger effect than before. Note the factors are not
+  independent of wet-day frequency: lengthening dry spells lowers the
+  wet-day fraction, which is a property of the Markov chain rather than
+  an artefact — adjust both together to hold it roughly fixed.
+
+- `apply_climate_perturbations(seed = )` no longer leaves the caller’s
+  random number stream reseeded. It was the only seeded entry point in
+  the package that did not restore `.Random.seed` on exit, so calling it
+  silently changed every random draw the caller made afterwards. If the
+  caller had never drawn a random number, no `.Random.seed` is left
+  behind either.
+
+- [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)’s
+  validation errors named arguments the function does not have —
+  `'climate.data'`, `'sim.dates'`, `'change.factor.precip.mean'` and
+  others, left over from before a rename. They now name the actual
+  arguments (`data`, `date`, `precip_mean_factor`, …). The latitude
+  error also names both accepted column names, `lat` and `y`, rather
+  than only `y`.
+
+- [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  could fail with `set.seed(NA)` partway through a run. Derived seeds
+  were built by integer addition onto a base drawn from
+  `sample.int(.Machine$integer.max, 1L)`, which overflows to `NA` when
+  the base falls within the offset of the maximum. The arithmetic now
+  wraps instead. Every seed that did not overflow is unchanged, so
+  simulated output is identical.
+  [`simulate_warm()`](https://deltares-research.github.io/weathergenr/reference/simulate_warm.md)
+  had the same pattern and is fixed with it.
+
+- `generate_weather(save_plots = FALSE)` still built the three WARM
+  filtering diagnostic panels over every selected realization, skipping
+  only the write. `save_plots` is now passed through, so the plots are
+  not built either.
+
+- One
+  [`.log()`](https://deltares-research.github.io/weathergenr/reference/dot-log.md)
+  call in
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  ignored `verbose`, so a failure to write the WARM filtering plots was
+  reported even in a quiet run.
+
+- [`simulate_warm()`](https://deltares-research.github.io/weathergenr/reference/simulate_warm.md)
+  rejected list-form `components` whenever `n` differed from the
+  observed series length — that is, whenever the simulation length
+  differed from the record, which is the normal case. The list branch
+  validated component lengths against `n` (the simulated length) where
+  the matrix and data.frame branches correctly used the observed length.
+  Matrix input returning a result where the identical list input errored
+  is now fixed, and the error message names the length it actually
+  requires.
+
+- [`simulate_warm()`](https://deltares-research.github.io/weathergenr/reference/simulate_warm.md)’s
+  `bypass_n` documentation said the default was 25; it is
+
+  15. 
+
+- [`estimate_monthly_markov_probs()`](https://deltares-research.github.io/weathergenr/reference/estimate_monthly_markov_probs.md)
+  gains `wet_q` and `extreme_q`. Its fallback for a month whose supplied
+  wet or extreme threshold is not finite derived a pooled threshold at
+  fixed quantiles of 0.2 and 0.8, regardless of the wet and extreme
+  definitions the rest of the run was using, so a degenerate month could
+  silently switch definition. The new arguments default to the previous
+  fixed values, and
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  now threads its own `wet_q` / `extreme_q` through. Behaviour is
+  unchanged for the package’s own pipeline, which fills such thresholds
+  with the configured quantiles before this point — the fallback matters
+  to direct callers of the exported function.
+
+- [`filter_warm_bounds_defaults()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_bounds_defaults.md)’s
+  `tail_tol_log` default changes from `log(1.03)` to `log(1.25)`. The 3%
+  figure matched the `mean` and `sd` bounds, but a mean and a standard
+  deviation are stable statistics whereas tail mass — computed over the
+  handful of points beyond a quantile of a ~20-year record — is not, and
+  its natural spread across candidates drawn from the fitted WARM model
+  is tens of percent.
+
+  At `log(1.03)` the tail criterion admitted 0.4% of candidates. It was
+  therefore always the lowest pass rate, always the criterion the
+  relaxation loop selected, and because that loop stops as soon as the
+  pool reaches `n_select`, the loop rather than the default was setting
+  the operative bound. At
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)’s
+  own defaults that left a pool of 24 out of 5,000 for 20 realizations,
+  so the documented filter-then-rank design was in practice
+  relax-until-just-enough and the ranking had almost nothing to choose
+  between.
+
+  `log(1.25)` still rejects roughly 97% of candidates, so it remains a
+  real constraint, and it needs no relaxation on the packaged example —
+  pool 157 of 5,000. Realization selection changes, so simulated output
+  changes with it. On the packaged fixture 26 of 40 evaluation error
+  metrics improved and 14 worsened, median −7.9%, consistent with the
+  ranking having a genuine pool to choose from; with two realizations
+  per scenario that is directional evidence rather than a significant
+  result.
+
+  Pass `filter_bounds = list(tail_tol_log = log(1.03))` to
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md),
+  or the same entry via `warm_filter_bounds` to
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md),
+  to restore the previous value.
+
+- WARM’s variance matching pinned the mean of every realization it
+  corrected. Rescaling a simulated trace onto the observed standard
+  deviation also re-centred it on the observed *mean*, replacing the
+  trace’s own mean rather than preserving it. On the packaged fixture
+  this affected 60% of a 3,000-trace pool, putting a point mass exactly
+  on the observed mean: those realizations carried no spread in their
+  own 20-year mean, so
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)’s
+  mean criterion was structurally unable to reject them. The practical
+  effect on filtering was small — that criterion admitted 99.5% of
+  candidates before the fix and 98.4% after — but the ensemble was
+  misrepresenting its own variability. Traces are now rescaled about
+  their own mean, restoring roughly 58% more spread in the simulated
+  multi-decadal mean, which is the low-frequency variability WARM exists
+  to reproduce rather than noise to be removed.
+
+- WARM compared a *population* standard deviation against
+  [`stats::sd()`](https://rdrr.io/r/stats/sd.html) targets. The internal
+  column-sd helper omitted the Bessel correction, so every corrected
+  trace landed at `target_sd * sqrt(n / (n - 1))` rather than on the
+  target — a one-sided +1.3% at `n = 40`, against a
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
+  sd tolerance of 3%. Both sides now use the sample standard deviation.
+
+  Both fixes change simulated output: realization selection shifts, so
+  the daily analogue dates and every evaluation statistic downstream
+  shift with it. A run reproduced from a given seed will not match one
+  from an earlier version. Pool sizes and relaxation behaviour are
+  unaffected (the sd criterion moves 72.4% to 71.2% on the packaged
+  fixture). Evaluation metrics move in both directions;
+  `mae_mean_precip` in particular worsens, because the previous ensemble
+  matched the observed mean artificially well.
+
+- [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
+  ignored the CF `calendar` attribute and always decoded the time axis
+  as a proleptic Gregorian calendar. Files on a `noleap` / `365_day`
+  calendar — including every file
+  [`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)
+  produces with its default `calendar = "noleap"` — therefore read back
+  one day short per Gregorian leap year crossed: a run written as
+  2020-01-01 to 2021-12-31 returned 2020-01-01 to 2021-12-30, drifting
+  25 days over a century.
+  [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
+  now decodes `noleap` / `365_day` axes on a 365-day calendar, so a
+  [`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)
+  /
+  [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
+  round trip is exact.
+
+  CF-aware readers such as `xarray` and the Wflow toolchain already
+  honoured the attribute, so files written by earlier versions were
+  correct on disk and need no migration — only
+  [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
+  was misreading them. Any workflow that compensated for the old
+  off-by-one when reading `noleap` files must drop that correction.
+  Files on `standard`, `gregorian`, `proleptic_gregorian`, or `julian`
+  calendars, and files with no `calendar` attribute, decode exactly as
+  before.
+
+- [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md)
+  now raises an informative error for `360_day`, `all_leap`, and
+  `366_day` axes, whose dates (30 February; 29 February in a common
+  year) have no representation in R’s `Date` class and were previously
+  decoded to silently wrong dates. An unrecognised calendar name warns
+  and falls back to the standard decode rather than failing the read.
+
+### Other changes
+
+- [`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)
+  gains an optional `dates` argument. When supplied it is checked
+  against the number of time steps, `origin_date`, and `calendar`, and
+  the time coordinate is computed from it rather than assumed
+  contiguous. This catches the case where `origin_date` is given as a
+  conventional epoch such as `"1970-01-01"` instead of the first date of
+  the series — the time coordinate is written as `0:(nt - 1)`, so that
+  silently relocated the whole series. The argument is optional and the
+  default behaviour is unchanged.
+
+- [`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)
+  now rejects a `calendar` value it cannot write correctly, instead of
+  accepting arbitrary text. The `calendar` attribute is also no longer
+  written inside [`try()`](https://rdrr.io/r/base/try.html), so failing
+  to record it is an error rather than a silently mislabelled file.
+
+- [`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)’s
+  `origin_date` documentation now states that it must be the date of the
+  first time step. The previous example suggested `"1970-01-01"`, which
+  is wrong for any series not starting on that date.
+
+- [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)’s
+  `warm_signif` was documented as the “wavelet significance level used
+  to retain low-frequency components in WARM”. It does not retain
+  anything: every MODWT MRA component is modelled, significant or not,
+  and the `cwt_to_modwt_map` a significance-based selection would use is
+  computed for diagnostics and never consumed. Anyone who tuned
+  `warm_signif` expecting it to control which components are simulated
+  was misled. Its two real effects are now documented — the
+  peak-significance threshold in
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md),
+  and a conditional MODWT level bump that rarely fires on 20-40 year
+  records. Behaviour is unchanged.
+
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  also gains a Details section setting out how the annual generator
+  relates to the wavelet autoregressive model of Kwon et al. (2007) and
+  Steinschneider & Brown (2013). The original retains
+  globally-significant CWT scales as signals and models the remainder as
+  a residual term; this package uses an exactly-additive MODWT
+  multiresolution analysis, which leaves no residual to relegate a
+  non-significant band to, and on records of this length the red-noise
+  significance test detects nothing at any conventional level. Both
+  departures are deliberate and are now stated rather than implied.
+
 ## weathergenr 1.3.1
 
 ### Other changes

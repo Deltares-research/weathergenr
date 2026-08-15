@@ -37,7 +37,7 @@ Bypass mode (n &amp;lt; bypass_n)
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -127,7 +127,8 @@ this in bypass mode to avoid reconstructing the series from components.</p></dd>
 
 
 <dt id="arg-bypass-n">bypass_n<a class="anchor" aria-label="anchor" href="#arg-bypass-n"></a></dt>
-<dd><p>Integer. Threshold for bypass mode. Default is 25.</p></dd>
+<dd><p>Integer. Threshold for bypass mode: observed series shorter
+than this skip component simulation. Default is 15.</p></dd>
 
 
 <dt id="arg-match-variance">match_variance<a class="anchor" aria-label="anchor" href="#arg-match-variance"></a></dt>
@@ -165,11 +166,20 @@ mode, also warns when pre-correction aggregate variance mismatch is large.</p></
 MODWT MRA components are additive but not orthogonal; fitting independent
 ARMAs and summing inflates ensemble variance when cross-component covariances
 are non-zero. Two tiers of correction are applied.
-- Tier 2 (Cholesky): when &gt;= 2 variable components are ARMA-viable and the
-  component covariance matrix is well-conditioned (condition number &lt; 1e6),
-  components are decorrelated via X <!-- %*% L^{-1} (L = chol(cov(X))), ARMA is -->
-  fit to the whitened series, and simulations are re-correlated by
-  multiplying back by L before summing.
+- Tier 2 (symmetric whitening): when &gt;= 2 variable components are ARMA-viable
+  and the component covariance matrix is well-conditioned (condition number
+  &lt; 1e6), components are whitened via X <!-- %*% \eqn{S^{-1/2}} where S = cov(X), ARMA is -->
+  fit to the whitened series, and simulations are re-correlated by multiplying
+  back by \(S^{1/2}\) before summing.</p>
+<p>The symmetric square root is used rather than a Cholesky factor because a
+  triangular factor whitens sequentially: the first component passes through
+  scaled, the last is a mixture of all of them, so the fitted models depend on
+  the order the components happen to be listed in. That order is a naming
+  convention (D1..DJ, SJ), not a property of the data. \(S^{-1/2}\) is
+  permutation-equivariant, so relabelling the components leaves the simulated
+  series unchanged, and it is the whitening that stays closest to the original
+  components – each whitened series still corresponds to its own scale rather
+  than to a running mixture.
 - Tier 1 (aggregate): after summing, the total simulated series is rescaled
   to match the observed total standard deviation when the relative mismatch
   exceeds var_tol. Applied in both the Tier 2 path (as a safety check) and

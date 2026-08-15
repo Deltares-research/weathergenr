@@ -15,7 +15,7 @@ package."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,7 +76,11 @@ package.</p>
 
 
 <dt id="arg-signif">signif<a class="anchor" aria-label="anchor" href="#arg-signif"></a></dt>
-<dd><p>Numeric scalar in (0, 1). Significance level for CWT.</p></dd>
+<dd><p>Numeric scalar in (0, 1). Significance level for the CWT
+spectrum test. It affects `n_levels` when the test finds a significant
+period and `n_levels` is `NULL`, and nothing else: it does not select which
+MODWT components are returned, and downstream `simulate_warm()` models all
+of them. See `cwt_to_modwt_map` in *Value*.</p></dd>
 
 
 <dt id="arg-noise">noise<a class="anchor" aria-label="anchor" href="#arg-noise"></a></dt>
@@ -134,7 +138,14 @@ Default is <code>1/3</code>.</p></dd>
 - <code>n_levels</code>, <code>filter</code>, <code>filter_length</code>, <code>boundary</code>, <code>include_smooth</code>,
   <code>max_period_frac</code>
 - <code>has_significance</code>, <code>cwt_signif_periods</code>: CWT significance flags and periods
-- <code>cwt_to_modwt_map</code>: MODWT levels implied by significant CWT periods (under caps)
+- <code>cwt_to_modwt_map</code>: MODWT levels implied by significant CWT periods
+  (under caps). <strong>Diagnostic only</strong> – nothing in the package filters
+  <code>components</code> by it, and `simulate_warm()` models every component. It
+  reports which levels a significance-based selection <em>would</em> retain, for
+  comparison against the original WARM formulation; see the WARM section of
+  <code><a href="generate_weather.html">generate_weather</a></code> for why that selection is not applied here.
+  Empty when the CWT finds no significant period, which is the usual outcome
+  for a 20-40 year annual series.
 - variance-accounting fields copied from <code><a href="modwt_mra.html">modwt_mra()</a></code>
 - optional <code>diagnostics</code> list when requested</p>
     </div>

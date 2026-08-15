@@ -25,7 +25,7 @@ logic is assumed."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -148,16 +148,20 @@ wet (extreme) precipitation threshold.</p></dd>
 
 
 <dt id="arg-dry-spell-factor">dry_spell_factor<a class="anchor" aria-label="anchor" href="#arg-dry-spell-factor"></a></dt>
-<dd><p>Numeric vector of length 12. Monthly adjustment
-factors controlling dry spell persistence in the Markov chain. Values
-greater than 1 increase dry-state persistence by reducing dry-to-wet and
-dry-to-very-wet transition probabilities before renormalization (for
-example, with factor 2 these off-diagonal transitions are halved).</p></dd>
+<dd><p>Numeric vector of length 12. Per-month multiplier on
+the mean dry spell length: the probability of leaving the dry state is
+divided by the factor, so a factor of 2 doubles the mean run of dry days.
+The split between the dry-to-wet and dry-to-extreme exits is preserved.
+Lengthening dry spells necessarily lowers the wet-day fraction; see
+<code><a href="generate_weather.html">generate_weather</a></code> for that trade-off.</p></dd>
 
 
 <dt id="arg-wet-spell-factor">wet_spell_factor<a class="anchor" aria-label="anchor" href="#arg-wet-spell-factor"></a></dt>
-<dd><p>Numeric vector of length 12. Monthly adjustment
-factors controlling wet spell persistence in the Markov chain.</p></dd>
+<dd><p>Numeric vector of length 12. Per-month multiplier on
+the mean wet spell length, where a wet spell is an unbroken run of wet or
+extreme days. The return-to-dry probability is divided by the factor from
+<em>both</em> non-dry states, so an extreme day does not end a spell at the
+historical rate while a merely wet one does.</p></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>

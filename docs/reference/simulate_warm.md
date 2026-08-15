@@ -62,7 +62,8 @@ simulate_warm(
 
 - bypass_n:
 
-  Integer. Threshold for bypass mode. Default is 25.
+  Integer. Threshold for bypass mode: observed series shorter than this
+  skip component simulation. Default is 15.
 
 - match_variance:
 
@@ -99,15 +100,26 @@ simulation.
 Cross-component covariance correction (component mode only) MODWT MRA
 components are additive but not orthogonal; fitting independent ARMAs
 and summing inflates ensemble variance when cross-component covariances
-are non-zero. Two tiers of correction are applied. - Tier 2 (Cholesky):
-when \>= 2 variable components are ARMA-viable and the component
-covariance matrix is well-conditioned (condition number \< 1e6),
-components are decorrelated via X fit to the whitened series, and
-simulations are re-correlated by multiplying back by L before summing. -
-Tier 1 (aggregate): after summing, the total simulated series is
-rescaled to match the observed total standard deviation when the
-relative mismatch exceeds var_tol. Applied in both the Tier 2 path (as a
-safety check) and the fallback path (as the primary correction).
+are non-zero. Two tiers of correction are applied. - Tier 2 (symmetric
+whitening): when \>= 2 variable components are ARMA-viable and the
+component covariance matrix is well-conditioned (condition number \<
+1e6), components are whitened via X fit to the whitened series, and
+simulations are re-correlated by multiplying back by \\S^{1/2}\\ before
+summing.
+
+The symmetric square root is used rather than a Cholesky factor because
+a triangular factor whitens sequentially: the first component passes
+through scaled, the last is a mixture of all of them, so the fitted
+models depend on the order the components happen to be listed in. That
+order is a naming convention (D1..DJ, SJ), not a property of the data.
+\\S^{-1/2}\\ is permutation-equivariant, so relabelling the components
+leaves the simulated series unchanged, and it is the whitening that
+stays closest to the original components – each whitened series still
+corresponds to its own scale rather than to a running mixture. - Tier 1
+(aggregate): after summing, the total simulated series is rescaled to
+match the observed total standard deviation when the relative mismatch
+exceeds var_tol. Applied in both the Tier 2 path (as a safety check) and
+the fallback path (as the primary correction).
 
 Fallback logic - If any variable component fails the ARMA viability
 pre-scan, Tier 2 is skipped and per-component variance matching is
