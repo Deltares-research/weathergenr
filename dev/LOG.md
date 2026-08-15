@@ -13,6 +13,7 @@ Rows are appended by `todoboard done`, never hand-edited.
 
 | Closed     | ID           | Item                                     | Area         |
 | ---------- | ------------ | ---------------------------------------- | ------------ |
+| 2026-08-15 | t2608151254g | Fix the three consistency defects in generate_weather() | api          |
 | 2026-08-15 | t2608151254f | Fix the list-components length check and bypass_n doc in simulate_warm() | warm         |
 | 2026-08-15 | t2608151254e | Make .markov_month_probs() respect the configured thresholds | resample     |
 | 2026-08-15 | t2608151522  | Tail criterion rejects the whole pool at its default bound | warm         |
