@@ -2,6 +2,33 @@
 
 ## Bug fixes
 
+* `filter_warm_bounds_defaults()`'s `tail_tol_log` default changes from
+  `log(1.03)` to `log(1.25)`. The 3% figure matched the `mean` and `sd` bounds,
+  but a mean and a standard deviation are stable statistics whereas tail mass —
+  computed over the handful of points beyond a quantile of a ~20-year record —
+  is not, and its natural spread across candidates drawn from the fitted WARM
+  model is tens of percent.
+
+  At `log(1.03)` the tail criterion admitted 0.4% of candidates. It was
+  therefore always the lowest pass rate, always the criterion the relaxation
+  loop selected, and because that loop stops as soon as the pool reaches
+  `n_select`, the loop rather than the default was setting the operative bound.
+  At `generate_weather()`'s own defaults that left a pool of 24 out of 5,000 for
+  20 realizations, so the documented filter-then-rank design was in practice
+  relax-until-just-enough and the ranking had almost nothing to choose between.
+
+  `log(1.25)` still rejects roughly 97% of candidates, so it remains a real
+  constraint, and it needs no relaxation on the packaged example — pool 157 of
+  5,000. Realization selection changes, so simulated output changes with it.
+  On the packaged fixture 26 of 40 evaluation error metrics improved and 14
+  worsened, median −7.9%, consistent with the ranking having a genuine pool to
+  choose from; with two realizations per scenario that is directional evidence
+  rather than a significant result.
+
+  Pass `filter_bounds = list(tail_tol_log = log(1.03))` to `filter_warm_pool()`,
+  or the same entry via `warm_filter_bounds` to `generate_weather()`, to restore
+  the previous value.
+
 * WARM's variance matching pinned the mean of every realization it corrected.
   Rescaling a simulated trace onto the observed standard deviation also
   re-centred it on the observed *mean*, replacing the trace's own mean rather
