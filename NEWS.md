@@ -2,6 +2,34 @@
 
 ## Bug fixes
 
+* WARM's variance matching pinned the mean of every realization it corrected.
+  Rescaling a simulated trace onto the observed standard deviation also
+  re-centred it on the observed *mean*, replacing the trace's own mean rather
+  than preserving it. On the packaged fixture this affected 60% of a 3,000-trace
+  pool, putting a point mass exactly on the observed mean: those realizations
+  carried no spread in their own 20-year mean, so `filter_warm_pool()`'s mean
+  criterion was structurally unable to reject them. The practical effect on
+  filtering was small — that criterion admitted 99.5% of candidates before the
+  fix and 98.4% after — but the ensemble was misrepresenting its own
+  variability. Traces are now rescaled about their own mean, restoring roughly
+  58% more spread in the simulated multi-decadal mean, which is the
+  low-frequency variability WARM exists to reproduce rather than noise to be
+  removed.
+
+* WARM compared a *population* standard deviation against `stats::sd()` targets.
+  The internal column-sd helper omitted the Bessel correction, so every
+  corrected trace landed at `target_sd * sqrt(n / (n - 1))` rather than on the
+  target — a one-sided +1.3% at `n = 40`, against a `filter_warm_pool()` sd
+  tolerance of 3%. Both sides now use the sample standard deviation.
+
+  Both fixes change simulated output: realization selection shifts, so the daily
+  analogue dates and every evaluation statistic downstream shift with it. A run
+  reproduced from a given seed will not match one from an earlier version. Pool
+  sizes and relaxation behaviour are unaffected (the sd criterion moves 72.4% to
+  71.2% on the packaged fixture). Evaluation metrics move in both directions;
+  `mae_mean_precip` in particular worsens, because the previous ensemble matched
+  the observed mean artificially well.
+
 * `read_netcdf()` ignored the CF `calendar` attribute and always decoded the
   time axis as a proleptic Gregorian calendar. Files on a `noleap` / `365_day`
   calendar — including every file `write_netcdf()` produces with its default

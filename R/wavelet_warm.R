@@ -256,7 +256,7 @@ simulate_warm <- function(
 
     if (match_variance) {
       target_sd <- stats::sd(series_obs)
-      sim <- .variance_match_matrix(sim, target_sd = target_sd, tol = var_tol, target_mean = obs_mean)
+      sim <- .variance_match_matrix(sim, target_sd = target_sd, tol = var_tol)
     }
 
     if (verbose) .log(paste0("Bypass mode used (n=", n, " < ", bypass_n, ")"), tag = "WARM")
@@ -474,8 +474,7 @@ simulate_warm <- function(
       sim_comp2 <- .variance_match_matrix(
         sim_centered + comp_mean,
         target_sd   = stats::sd(comp_list[[k]]),
-        tol         = var_tol,
-        target_mean = comp_mean
+        tol         = var_tol
       )
       variance_corrections <- variance_corrections || !identical(sim_comp2, sim_centered + comp_mean)
       # Store mean-subtracted version so post-loop mean addition is consistent.
@@ -518,10 +517,9 @@ simulate_warm <- function(
   # In decorrelation mode this is a safety check; in fallback mode it is the
   # primary correction for cross-component covariance leakage.
   if (match_variance) {
-    obs_total      <- .reconstruct_series_from_components(components, n = n_fit)
-    obs_total_sd   <- stats::sd(obs_total)
-    obs_total_mean <- mean(obs_total)
-    sim_total_sd   <- stats::sd(output)
+    obs_total    <- .reconstruct_series_from_components(components, n = n_fit)
+    obs_total_sd <- stats::sd(obs_total)
+    sim_total_sd <- stats::sd(output)
     variance_identity_error <- NA_real_
     if (is.finite(obs_total_sd) && obs_total_sd > 0 && is.finite(sim_total_sd)) {
       variance_identity_error <- abs(sim_total_sd - obs_total_sd) / obs_total_sd
@@ -538,9 +536,8 @@ simulate_warm <- function(
     }
     output2 <- .variance_match_matrix(
       output,
-      target_sd   = obs_total_sd,
-      tol         = var_tol,
-      target_mean = obs_total_mean
+      target_sd = obs_total_sd,
+      tol       = var_tol
     )
     if (!identical(output2, output)) {
       if (verbose) .log("Aggregate variance correction applied", tag = "WARM")
@@ -898,29 +895,60 @@ simulate_warm <- function(
 
 #' Fast column standard deviations
 #'
+#' @description
+#' The *sample* standard deviation, matching `stats::sd()`. The Bessel factor is
+#' not cosmetic here: the targets these values are compared against and rescaled
+#' to are produced by `stats::sd()`, so omitting it left every corrected column
+#' at `target_sd * sqrt(n / (n - 1))` -- a one-sided +1.3% at n = 40, against a
+#' `filter_warm_pool()` sd tolerance of 3%.
+#'
+#' `m2 - m1^2` rather than a centred sum: with annual totals the cancellation
+#' costs about two significant digits out of ~16, which is far from mattering at
+#' the tolerances involved.
+#'
 #' @param x Numeric matrix.
-#' @return Numeric vector of column standard deviations.
+#' @return Numeric vector of column sample standard deviations. `NA` per column
+#'   when `x` has fewer than two rows, which no caller can correct anyway.
 #' @keywords internal
 .fast_col_sd <- function(x) {
+  n <- nrow(x)
+  if (is.null(n) || n < 2L) return(rep(NA_real_, ncol(x)))
+
   m1 <- colMeans(x)
   m2 <- colMeans(x * x)
-  v <- pmax(m2 - m1 * m1, 0)
+  v <- pmax(m2 - m1 * m1, 0) * (n / (n - 1))
   sqrt(v)
 }
 
 #' Vectorized variance matching for simulation matrices
 #'
 #' @description
-#' If the relative standard deviation mismatch exceeds tol, rescales each column
-#' to match target_sd while keeping the column mean at target_mean.
+#' Where a column's sample standard deviation differs from `target_sd` by more
+#' than `tol`, rescales that column about **its own mean** so the deviation is
+#' corrected and the mean is left alone.
 #'
-#' @param sim Numeric matrix.
-#' @param target_sd Numeric scalar.
-#' @param tol Numeric scalar in [0, 1].
-#' @param target_mean Numeric scalar.
+#' @details
+#' This function previously re-centred each corrected column on a scalar
+#' `target_mean`, which replaced the column's mean rather than preserving it.
+#' Because roughly half an ensemble typically exceeds `tol`, that put a point
+#' mass on the observed mean: those realizations carried no spread in their
+#' own mean at all, and `filter_warm_pool()`'s mean criterion could not reject
+#' any of them.
+#'
+#' That spread is not noise to be removed. The sampling distribution of a
+#' 20-40 year mean under a persistent process is precisely the low-frequency
+#' variability WARM exists to reproduce, so collapsing it works against the
+#' method. Rescaling about the column's own mean is also what "variance
+#' matching" says on the tin, and it makes the corrected and uncorrected
+#' columns agree about how the mean is carried -- previously they did not.
+#'
+#' @param sim Numeric matrix, one realization per column.
+#' @param target_sd Numeric scalar. Sample standard deviation to match.
+#' @param tol Numeric scalar in [0, 1]. Relative tolerance below which a column
+#'   is left untouched.
 #' @return Numeric matrix with the same dimension as sim.
 #' @keywords internal
-.variance_match_matrix <- function(sim, target_sd, tol, target_mean) {
+.variance_match_matrix <- function(sim, target_sd, tol) {
   if (!is.finite(target_sd) || target_sd <= 0) return(sim)
 
   sim_sd <- .fast_col_sd(sim)
@@ -933,14 +961,14 @@ simulate_warm <- function(
   do_fix <- ok & (rel > tol)
   if (!any(do_fix)) return(sim)
 
-  scale <- rep(1, length(sim_sd))
-  scale[do_fix] <- target_sd / sim_sd[do_fix]
+  scale <- target_sd / sim_sd[do_fix]
 
   sim2 <- sim
   sim_fix <- sim2[, do_fix, drop = FALSE]
-  sim_fix <- (sim_fix - rep(sim_mean[do_fix], each = nrow(sim_fix))) *
-    rep(scale[do_fix], each = nrow(sim_fix)) + target_mean
-  sim2[, do_fix] <- sim_fix
+  means_fix <- rep(sim_mean[do_fix], each = nrow(sim_fix))
+
+  sim2[, do_fix] <- (sim_fix - means_fix) *
+    rep(scale, each = nrow(sim_fix)) + means_fix
 
   sim2
 }
