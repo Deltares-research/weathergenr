@@ -5,7 +5,7 @@ status: backlog
 effort: 1
 area: resample
 origin: review-2026-08-15
-queue: 9
+queue: 8
 created: 2026-08-15
 updated: 2026-08-15
 ---
