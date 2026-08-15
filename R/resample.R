@@ -552,7 +552,9 @@ resample_weather_dates <- function(
       use_water_year = use_water_year,
       dry_spell_factor_month = dry_spell_factor,
       wet_spell_factor_month = wet_spell_factor,
-      dirichlet_alpha = 1.0
+      dirichlet_alpha = 1.0,
+      wet_q = wet_q,
+      extreme_q = extreme_q
     )
 
     # FIRST DAY OF THIS SIM YEAR
@@ -857,7 +859,17 @@ expand_indices <- function(base_idx, offset_vec, n_max) {
 #' @param dirichlet_alpha Numeric. Base smoothing strength for transition-probability
 #'   estimation. The effective smoothing applied in each month is
 #'   dirichlet_alpha / sqrt(n_transitions_m), where n_transitions_m is the number of observed transitions
-#'   in that month.
+#'   in that month. Note this shrinks the prior itself with sample size, so its
+#'   influence falls off faster than the usual fixed-alpha smoothing: with a
+#'   month's worth of daily transitions from a few decades the effective alpha
+#'   is a few hundredths. \code{\link{generate_weather}} does not expose it and
+#'   always uses the default.
+#' @param wet_q,extreme_q Numeric in (0, 1). Quantiles defining the wet and
+#'   extreme states. Used only as a fallback, to derive a pooled threshold for
+#'   any month whose supplied \code{wet_threshold} or \code{extreme_threshold}
+#'   is not finite. Defaults reproduce the previous fixed 0.2 / 0.8 behaviour;
+#'   pass the values the rest of the run uses so a degenerate month does not
+#'   silently switch to a different definition of "wet".
 #'
 #' @return
 #' A named list of nine numeric vectors, each of length n_days_sim,
@@ -904,7 +916,9 @@ estimate_monthly_markov_probs <- function(
     dry_spell_factor_month,
     wet_spell_factor_month,
     n_days_sim,
-    dirichlet_alpha = 1.0
+    dirichlet_alpha = 1.0,
+    wet_q = 0.2,
+    extreme_q = 0.8
 ) {
 
   if (!is.finite(dirichlet_alpha) || dirichlet_alpha < 0) {
@@ -941,7 +955,9 @@ estimate_monthly_markov_probs <- function(
     use_water_year         = use_water_year,
     dry_spell_factor_month = dry_spell_factor_month,
     wet_spell_factor_month = wet_spell_factor_month,
-    dirichlet_alpha        = dirichlet_alpha
+    dirichlet_alpha        = dirichlet_alpha,
+    wet_q                  = wet_q,
+    extreme_q              = extreme_q
   )
 
   # Broadcast the per-month rows onto the simulated time axis. This is what the
@@ -1001,7 +1017,9 @@ estimate_monthly_markov_probs <- function(
     use_water_year,
     dry_spell_factor_month,
     wet_spell_factor_month,
-    dirichlet_alpha = 1.0
+    dirichlet_alpha = 1.0,
+    wet_q = 0.2,
+    extreme_q = 0.8
 ) {
 
   use_spell_adjustment <- any(abs(dry_spell_factor_month - 1) > 1e-10) ||
@@ -1033,9 +1051,14 @@ estimate_monthly_markov_probs <- function(
 
   # Handle non-finite thresholds (fallback to global)
   if (any(!is.finite(wet_threshold_lag1)) || any(!is.finite(extreme_threshold_lag1))) {
-    wet_threshold_global <- quantile(precip_lag1, 0.2, na.rm = TRUE)
+    # The run's own wet/extreme definitions, not fixed 0.2/0.8. This branch is
+    # unreachable from resample_weather_dates(), which fills any NA monthly
+    # threshold with the configured quantiles before calling in; it exists for
+    # direct callers of estimate_monthly_markov_probs(), where silently
+    # substituting a different definition of "wet" would be its own bug.
+    wet_threshold_global <- quantile(precip_lag1, wet_q, na.rm = TRUE)
     pos <- precip_lag1[precip_lag1 > 0]
-    extreme_threshold_global <- quantile(if (length(pos)) pos else precip_lag1, 0.8, na.rm = TRUE)
+    extreme_threshold_global <- quantile(if (length(pos)) pos else precip_lag1, extreme_q, na.rm = TRUE)
 
     wet_threshold_lag1[!is.finite(wet_threshold_lag1)] <- wet_threshold_global
     extreme_threshold_lag1[!is.finite(extreme_threshold_lag1)] <- extreme_threshold_global
