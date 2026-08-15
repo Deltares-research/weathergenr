@@ -418,7 +418,7 @@ test_that("apply_climate_perturbations: input validation errors are thrown", {
                                            precip_mean_factor = rep(1, 12),
                                            precip_var_factor = rep(1, 12),
                                            temp_delta = rep(0, 12)),
-               "'climate.data' must not be NULL")
+               "'data' must not be NULL")
 
   expect_error(apply_climate_perturbations(data = data, grid = NULL, date = date,
                                            precip_mean_factor = rep(1, 12),
@@ -430,7 +430,7 @@ test_that("apply_climate_perturbations: input validation errors are thrown", {
                                            precip_mean_factor = rep(1, 12),
                                            precip_var_factor = rep(1, 12),
                                            temp_delta = rep(0, 12)),
-               "'sim.dates' must not be NULL")
+               "'date' must not be NULL")
 
   expect_error(apply_climate_perturbations(data = data, grid = grid, date = date,
                                            precip_mean_factor = rep(1, 11),
@@ -524,28 +524,28 @@ test_that("apply_climate_perturbations: required change factors must be supplied
 
   expect_error(
     .cp_call(inputs, precip_mean_factor = NULL),
-    "'change.factor.precip.mean' must not be NULL"
+    "'precip_mean_factor' must not be NULL"
   )
   expect_error(
     .cp_call(inputs, temp_delta = NULL),
-    "'change.factor.temp.mean' must not be NULL"
+    "'temp_delta' must not be NULL"
   )
 
   # the variance factor is only required when it is not derived from the mean
   expect_error(
     .cp_call(inputs, precip_var_factor = NULL, scale_var_with_mean = FALSE),
-    "'change.factor.precip.variance' must not be NULL"
+    "'precip_var_factor' must not be NULL"
   )
 })
 
 test_that("apply_climate_perturbations: core argument types are checked", {
   inputs <- .cp_valid_inputs()
 
-  expect_error(.cp_call(inputs, data = "not-a-list"), "'climate.data' must be a list of data frames")
+  expect_error(.cp_call(inputs, data = "not-a-list"), "'data' must be a list of data frames")
   expect_error(.cp_call(inputs, grid = list(lat = 0)), "'grid' must be a data frame")
   expect_error(
     .cp_call(inputs, date = as.character(inputs$date)),
-    "'sim.dates' must be a Date vector"
+    "'date' must be a Date vector"
   )
 })
 
@@ -561,7 +561,7 @@ test_that("apply_climate_perturbations: data, grid and dates must conform", {
   # neither 'lat' nor 'y' present
   expect_error(
     .cp_call(inputs, grid = data.frame(id = 1, elevation = 100)),
-    "'grid' must contain a 'y' column"
+    "'grid' must contain a latitude column"
   )
 
   # a required variable is absent from the cell
@@ -670,5 +670,68 @@ test_that("apply_climate_perturbations: matrix change factors are validated agai
       diagnostic = FALSE,
       verbose = FALSE
     )
+  )
+})
+
+
+testthat::test_that("apply_climate_perturbations restores the caller's RNG state", {
+  grid <- data.frame(lat = c(10, 11))
+  dates <- generate_noleap_dates(as.Date("2020-01-01"), 365)
+  cell <- data.frame(
+    precip = pmax(stats::rnorm(365, 3, 3), 0),
+    temp = stats::rnorm(365, 20, 5),
+    temp_min = stats::rnorm(365, 15, 5),
+    temp_max = stats::rnorm(365, 25, 5)
+  )
+  dat <- list(cell, cell)
+
+  run <- function() {
+    apply_climate_perturbations(
+      data = dat, grid = grid, date = dates,
+      precip_mean_factor = rep(0.9, 12),
+      temp_delta = rep(1, 12),
+      seed = 42L, verbose = FALSE, diagnostic = FALSE,
+      compute_pet = FALSE
+    )
+  }
+
+  # Seeding inside the function must not move the caller's stream.
+  set.seed(99)
+  before <- .Random.seed
+  invisible(run())
+  testthat::expect_identical(.Random.seed, before)
+
+  # And the caller's next draw is unaffected.
+  set.seed(99)
+  expected <- stats::runif(3)
+  set.seed(99)
+  invisible(run())
+  testthat::expect_equal(stats::runif(3), expected)
+})
+
+testthat::test_that("apply_climate_perturbations names its own arguments in errors", {
+  grid <- data.frame(lat = 10)
+  dates <- generate_noleap_dates(as.Date("2020-01-01"), 365)
+
+  testthat::expect_error(
+    apply_climate_perturbations(data = NULL, grid = grid, date = dates,
+                                precip_mean_factor = rep(1, 12),
+                                temp_delta = rep(0, 12)),
+    "'data' must not be NULL", fixed = TRUE
+  )
+  testthat::expect_error(
+    apply_climate_perturbations(data = list(), grid = grid, date = NULL,
+                                precip_mean_factor = rep(1, 12),
+                                temp_delta = rep(0, 12)),
+    "'date' must not be NULL", fixed = TRUE
+  )
+
+  # The latitude message names both accepted column names.
+  bad_grid <- data.frame(z = 10)
+  testthat::expect_error(
+    apply_climate_perturbations(data = list(data.frame()), grid = bad_grid,
+                                date = dates, precip_mean_factor = rep(1, 12),
+                                temp_delta = rep(0, 12)),
+    "'lat' or 'y'", fixed = TRUE
   )
 })
