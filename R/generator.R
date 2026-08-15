@@ -492,10 +492,13 @@ generate_weather <- function(
     obs_series = warm_series_obs,
     sim_series = sim_annual,
     n_select = n_realizations,
-    seed = warm_seed + 1L,
+    seed = .seed_offset(warm_seed, 1L),
     filter_bounds = warm_filter_bounds,
     relax_order = relax_priority,
-    make_plots = TRUE,
+    # Follow save_plots: with it FALSE the three diagnostic panels were still
+    # being built over every selected realization, and only the ggsave() was
+    # skipped.
+    make_plots = save_plots,
     wavelet_args = list(
       signif_level = warm_signif,
       noise_type = "red",
@@ -515,7 +518,8 @@ generate_weather <- function(
         ggsave(file.path(out_dir, "warm_annual_wavelet.png"),
                sim_annual_sub$plots[[3]], width = pl_width, height = pl_height)
       },
-      error = function(e) .log("Failed to save warm filtering plots: {e$message}", level = "warn")
+      error = function(e) .log("Failed to save warm filtering plots: {e$message}",
+                               level = "warn", verbose = verbose)
     )
   }
 
@@ -566,7 +570,7 @@ generate_weather <- function(
         extreme_q       = extreme_q,
         dry_spell_factor = dry_spell_factor,
         wet_spell_factor = wet_spell_factor,
-        seed = daily_seed + n)
+        seed = .seed_offset(daily_seed, n))
     }
 
   } else {
@@ -594,7 +598,7 @@ generate_weather <- function(
         extreme_q   = extreme_q,
         dry_spell_factor = dry_spell_factor,
         wet_spell_factor = wet_spell_factor,
-        seed = daily_seed + n)
+        seed = .seed_offset(daily_seed, n))
     }
 
     progress_str <- paste(progress_parts, collapse = "..")

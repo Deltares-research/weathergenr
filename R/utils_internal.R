@@ -260,6 +260,33 @@ compute_area_averages <- function(obs_data, wyear_idx, wyear, vars) {
   invisible(NULL)
 }
 
+#' Offset a seed without overflowing to NA
+#'
+#' @description
+#' Derived seeds are built by adding a small offset to a base seed drawn from
+#' `sample.int(.Machine$integer.max, 1L)`. Integer addition overflows to `NA`
+#' when the base sits within the offset of the maximum, and `set.seed(NA)` is an
+#' error -- a hard failure deep into a long run, reproducible only under the one
+#' seed that triggers it.
+#'
+#' The arithmetic is done in double precision and wrapped, so every value that
+#' did not overflow is returned unchanged. That matters: this is used on paths
+#' the recorded numeric baseline depends on, and a fix that shifted ordinary
+#' seeds would move output for no reason.
+#'
+#' @param seed Numeric scalar base seed.
+#' @param offset Numeric scalar or vector added to `seed`.
+#' @return Integer vector of seeds, wrapped into `[1, .Machine$integer.max]`.
+#' @keywords internal
+#' @noRd
+.seed_offset <- function(seed, offset) {
+  m <- .Machine$integer.max
+  x <- as.numeric(seed) + as.numeric(offset)
+
+  # Wrap into 1..m rather than 0..m-1 so a wrapped value is still a usable seed.
+  as.integer(((x - 1) %% m) + 1)
+}
+
 #' Safely Compute Correlation with Pairwise Completeness Check
 #'
 #' @description
