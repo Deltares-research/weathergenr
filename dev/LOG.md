@@ -13,6 +13,7 @@ Rows are appended by `todoboard done`, never hand-edited.
 
 | Closed     | ID           | Item                                     | Area         |
 | ---------- | ------------ | ---------------------------------------- | ------------ |
+| 2026-08-15 | t2608151353  | Stop the WARM pool filter deciding from plotting-only spectra | warm         |
 | 2026-08-15 | t2608151254j | Remove the duplicated test-wavelet.R     | tests        |
 | 2026-08-15 | t2608151254i | Unignore vignettes/.quarto so check_only() passes | ci           |
 | 2026-08-15 | t2608151253c | Add equivalence tests for the two forked numeric routines | tests        |
