@@ -2,6 +2,32 @@
 
 ## Bug fixes
 
+* WARM's variance matching pinned the mean of every realization it corrected.
+  Rescaling a simulated trace onto the observed standard deviation also
+  re-centred it on the observed *mean*, replacing the trace's own mean rather
+  than preserving it. On the packaged fixture this affected 60% of a 3,000-trace
+  pool, putting a point mass exactly on the observed mean: those realizations
+  carried no spread in their own 20-year mean, and `filter_warm_pool()`'s mean
+  criterion could not reject any of them. Traces are now rescaled about their
+  own mean, which restores roughly 58% more spread in the simulated mean — the
+  sampling variability of a multi-decadal mean under a persistent process is
+  what WARM exists to reproduce, not noise to be removed.
+
+* WARM compared a *population* standard deviation against `stats::sd()` targets.
+  The internal column-sd helper omitted the Bessel correction, so every
+  corrected trace landed at `target_sd * sqrt(n / (n - 1))` rather than on the
+  target — a one-sided +1.3% at `n = 40`, against a `filter_warm_pool()` sd
+  tolerance of 3%. Both sides now use the sample standard deviation.
+
+  Both fixes change simulated output: realization selection shifts, so the daily
+  analogue dates and every evaluation statistic downstream shift with it. A run
+  reproduced from a given seed will not match one from an earlier version.
+  Filter pass rates are essentially unchanged (mean 99.5% to 98.4%, sd 72.4% to
+  71.2% on the packaged fixture), so pool sizes and relaxation behaviour are
+  unaffected. Evaluation metrics move in both directions; `mae_mean_precip` in
+  particular worsens, because the previous ensemble matched the observed mean
+  artificially well.
+
 * `read_netcdf()` ignored the CF `calendar` attribute and always decoded the
   time axis as a proleptic Gregorian calendar. Files on a `noleap` / `365_day`
   calendar — including every file `write_netcdf()` produces with its default

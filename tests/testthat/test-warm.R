@@ -697,3 +697,74 @@ testthat::test_that("simulate_warm accepts data.frame and list components in com
   testthat::expect_equal(as_df, as_matrix)
   testthat::expect_equal(as_list, as_matrix)
 })
+
+
+################################################################################
+# .fast_col_sd / .variance_match_matrix
+################################################################################
+
+testthat::test_that(".fast_col_sd returns the sample standard deviation", {
+  set.seed(1)
+  m <- matrix(stats::rnorm(40 * 5), nrow = 40)
+
+  # Must match stats::sd, because the targets it is compared against and
+  # rescaled to are produced by stats::sd. A population sd here left every
+  # corrected column at target_sd * sqrt(n / (n - 1)).
+  expect_equal(weathergenr:::.fast_col_sd(m), apply(m, 2, stats::sd))
+
+  # Fewer than two rows cannot support an estimate.
+  expect_true(all(is.na(weathergenr:::.fast_col_sd(matrix(1, nrow = 1, ncol = 3)))))
+})
+
+testthat::test_that(".variance_match_matrix rescales onto the target without bias", {
+  set.seed(2)
+  n <- 40
+  s <- matrix(stats::rnorm(n * 200, mean = 900, sd = 40), nrow = n)
+  target <- 69.371
+
+  out <- weathergenr:::.variance_match_matrix(s, target_sd = target, tol = 0.1)
+  sds <- apply(out, 2, stats::sd)
+
+  # Every column here is well outside tol, so all are corrected and must land
+  # exactly on the target -- not on target * sqrt(n / (n - 1)).
+  expect_equal(unname(sds), rep(target, ncol(s)))
+  expect_false(any(abs(sds - target * sqrt(n / (n - 1))) < 1e-8))
+})
+
+testthat::test_that(".variance_match_matrix preserves each column's own mean", {
+  set.seed(3)
+  n <- 40
+  s <- matrix(stats::rnorm(n * 200, mean = 900, sd = 40), nrow = n)
+
+  out <- weathergenr:::.variance_match_matrix(s, target_sd = 69.371, tol = 0.1)
+
+  # Rescaling is about the column's own mean. Re-centring on a scalar target
+  # put a point mass on it and made filter_warm_pool()'s mean criterion unable
+  # to reject any corrected realization.
+  expect_equal(colMeans(out), colMeans(s))
+  expect_gt(length(unique(round(colMeans(out), 9))), 190)
+})
+
+testthat::test_that("simulate_warm keeps spread in the trace mean in component mode", {
+  # A single variable component keeps nvar < 2, so Cholesky decorrelation is
+  # skipped and the per-component variance-matching branch runs -- the branch
+  # the packaged fixture never reaches.
+  set.seed(11)
+  comps <- cbind(
+    D1 = as.numeric(stats::arima.sim(list(ar = 0.5), 40)) * 30 + 400,
+    S1 = rep(500, 40)
+  )
+  obs_total <- rowSums(comps)
+
+  sim <- simulate_warm(components = comps, n = 40, n_sim = 300, seed = 5,
+                       match_variance = TRUE, verbose = FALSE)
+
+  expect_true(all(is.finite(sim)))
+
+  # The per-component means must be added back exactly once.
+  expect_equal(mean(sim), mean(obs_total), tolerance = 0.01)
+
+  # No realization's mean is pinned to a shared value.
+  expect_gt(length(unique(round(colMeans(sim), 9))), 290)
+  expect_gt(stats::sd(colMeans(sim)), 0)
+})
