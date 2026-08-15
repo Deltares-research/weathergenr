@@ -765,7 +765,13 @@ publish_docs <- function() {
     clean_build_artifacts = TRUE,
     clean_temp_files = TRUE,
     render_readme = TRUE,
-    check_args = c("--no-manual", "--as-cran"),
+    # --ignore-vignettes pairs with --no-build-vignettes for the same reason it
+    # does in check_only(): without it the vignette *checks* still run, against
+    # an inst/doc that clean_vignettes = TRUE has just removed, and report two
+    # warnings for output the check was told not to produce. That aborts the
+    # publish on noise. The vignettes are still built and checked properly by
+    # the release gate, check_only(build_vignettes = TRUE).
+    check_args = c("--no-manual", "--as-cran", "--ignore-vignettes"),
     check_build_args = c("--no-build-vignettes"),
     open_site = FALSE
   )
