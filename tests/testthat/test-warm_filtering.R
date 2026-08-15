@@ -273,3 +273,56 @@ testthat::test_that("plot_filter_diagnostics returns ggplot list", {
   testthat::expect_true(inherits(plots$stats, "ggplot"))
   testthat::expect_true(inherits(plots$wavelet_gws, "ggplot"))
 })
+
+
+################################################################################
+# Fork equivalence: .compute_gws_batch() vs analyze_wavelet_spectrum()
+################################################################################
+
+testthat::test_that(".compute_gws_batch reproduces analyze_wavelet_spectrum's GWS", {
+  # .compute_gws_batch() is a batched reimplementation of the CWT in
+  # analyze_wavelet_spectrum(), kept separate for speed over large ensembles.
+  # Nothing but this test holds the two together: a change to dj, s0, k0, the
+  # zero-padding, the detrend or the variance normalisation in one must be
+  # mirrored in the other.
+  set.seed(3)
+  x <- as.numeric(stats::arima.sim(list(ar = 0.5), 40)) * 20 + 800
+
+  for (dt in c(FALSE, TRUE)) {
+    ref <- analyze_wavelet_spectrum(x, signif = 0.90, noise = "red",
+                                    min_period = 2, detrend = dt, mode = "complete")
+    fork <- weathergenr:::.compute_gws_batch(
+      sim_matrix   = matrix(x, ncol = 1),
+      wavelet_pars = list(detrend = dt),
+      period       = NULL
+    )
+
+    testthat::expect_equal(nrow(fork), length(ref$gws_unmasked))
+    testthat::expect_equal(as.numeric(fork[, 1]), as.numeric(ref$gws_unmasked),
+                           tolerance = 1e-10)
+  }
+})
+
+testthat::test_that(".compute_gws_batch is column-wise independent", {
+  # The batching must not let one trace influence another: column j of the
+  # result has to equal the single-series result for that trace.
+  set.seed(4)
+  m <- cbind(
+    as.numeric(stats::arima.sim(list(ar = 0.3), 40)) * 10 + 500,
+    as.numeric(stats::arima.sim(list(ar = 0.7), 40)) * 30 + 900
+  )
+
+  batch <- weathergenr:::.compute_gws_batch(m, list(detrend = TRUE), period = NULL)
+
+  for (j in 1:2) {
+    one <- weathergenr:::.compute_gws_batch(m[, j, drop = FALSE],
+                                           list(detrend = TRUE), period = NULL)
+    testthat::expect_equal(as.numeric(batch[, j]), as.numeric(one[, 1]),
+                           tolerance = 1e-12)
+  }
+
+  # Chunking must not change the answer either.
+  chunked <- weathergenr:::.compute_gws_batch(m, list(detrend = TRUE),
+                                              period = NULL, chunk_size = 1L)
+  testthat::expect_equal(chunked, batch, tolerance = 1e-12)
+})

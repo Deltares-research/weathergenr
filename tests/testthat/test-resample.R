@@ -766,3 +766,97 @@ testthat::test_that("get_result_index returns provided index or samples", {
 
   testthat::expect_true(is.na(get_result_index(1, numeric(0))))
 })
+
+
+################################################################################
+# Fork equivalence: .knn_draw_one_rank() vs knn_sample()
+################################################################################
+
+# .knn_draw_one_rank() is a speed-oriented fork of knn_sample()'s core, called
+# once per simulated day. The two must agree on the weighted squared distance,
+# the neighbour selection and the rank probabilities. They deliberately differ
+# in one respect: knn_sample() draws with sample.int(prob = ), while the fork
+# inverts the cumulative probabilities against a pre-drawn uniform. A given seed
+# and a given u therefore do NOT select the same rank, and asserting that they
+# do would be asserting something false.
+
+testthat::test_that("the KNN fork and knn_sample pick the same nearest neighbour", {
+  set.seed(11)
+  cand <- cbind(stats::rnorm(200), stats::rnorm(200))
+  target <- c(0.3, -0.4)
+  w <- c(100, 10)
+
+  # k = 1 collapses both to a deterministic nearest-neighbour lookup, so this
+  # compares the distance metric and the selection with no sampling involved.
+  fork <- weathergenr:::.knn_draw_one_rank(cand, target, k = 1L, weights = w, u = 0.5)
+  orig <- knn_sample(cand, target, k = 1L, n = 1L, prob = TRUE, weights = w, seed = 1L)
+
+  d2 <- w[1] * (cand[, 1] - target[1])^2 + w[2] * (cand[, 2] - target[2])^2
+  testthat::expect_equal(fork, which.min(d2))
+  testthat::expect_equal(as.integer(orig), which.min(d2))
+})
+
+testthat::test_that("the KNN fork and knn_sample rank neighbours identically", {
+  # Exercises both selection branches: the partial-sort path (k < 0.2 * nc) and
+  # the full-order path.
+  cases <- list(
+    list(nc = 200L, k = 10L, label = "partial-sort branch"),
+    list(nc = 20L,  k = 10L, label = "full-order branch")
+  )
+
+  for (cs in cases) {
+    set.seed(12)
+    cand <- cbind(stats::rnorm(cs$nc), stats::rnorm(cs$nc))
+    target <- c(0.2, 0.1)
+    w <- c(100, 10)
+
+    d2 <- w[1] * (cand[, 1] - target[1])^2 + w[2] * (cand[, 2] - target[2])^2
+    ref <- order(d2)[seq_len(cs$k)]
+
+    # Drive the fork across ranks by placing u inside each cumulative bin.
+    probs <- (1 / seq_len(cs$k)) / sum(1 / seq_len(cs$k))
+    mids <- cumsum(probs) - probs / 2
+    fork_order <- vapply(
+      mids,
+      function(u) weathergenr:::.knn_draw_one_rank(cand, target, cs$k, w, u),
+      integer(1)
+    )
+    testthat::expect_equal(fork_order, ref, info = cs$label)
+
+    # knn_sample() ranks by sampling frequency: probabilities are 1, 1/2, 1/3...
+    # so ordering the drawn indices by frequency recovers the same ranking.
+    draws <- knn_sample(cand, target, k = cs$k, n = 40000L, prob = TRUE,
+                        sampling = "rank", weights = w, seed = 7L)
+    tab <- sort(table(draws), decreasing = TRUE)
+    orig_order <- as.integer(names(tab))
+
+    # Same neighbour set, whatever the order.
+    testthat::expect_setequal(orig_order, ref)
+
+    # Exact ordering only over the top five ranks. Their probabilities are
+    # 0.34, 0.17, 0.11, 0.085, 0.068 -- separated by far more than the sampling
+    # noise at 40,000 draws. Ranks 9 and 10 differ by 0.004, about four standard
+    # errors apart, so asserting their order would be a coin-flip away from a
+    # spurious failure if R ever changes sample.int().
+    testthat::expect_equal(orig_order[1:5], ref[1:5], info = cs$label)
+
+    # And the empirical frequencies match the shared rank weights.
+    testthat::expect_equal(as.numeric(tab) / sum(tab), probs, tolerance = 0.03,
+                           info = cs$label)
+  }
+})
+
+testthat::test_that("the KNN fork honours column weights the way knn_sample does", {
+  set.seed(13)
+  cand <- cbind(stats::rnorm(150), stats::rnorm(150))
+  target <- c(0, 0)
+
+  # Weighting one column to near-irrelevance must move the nearest neighbour to
+  # whichever candidate is closest on the other column alone.
+  w <- c(1000, 1e-6)
+  fork <- weathergenr:::.knn_draw_one_rank(cand, target, k = 1L, weights = w, u = 0.5)
+  orig <- knn_sample(cand, target, k = 1L, n = 1L, prob = TRUE, weights = w, seed = 2L)
+
+  testthat::expect_equal(fork, which.min(abs(cand[, 1])))
+  testthat::expect_equal(as.integer(orig), which.min(abs(cand[, 1])))
+})
