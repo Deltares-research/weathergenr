@@ -707,3 +707,35 @@ testthat::test_that("simulate_warm bypass mode rescales without pinning the mean
   sds <- apply(sim, 2, stats::sd)
   expect_false(any(abs(sds - obs_sd * sqrt(12 / 11)) < 1e-8))
 })
+
+
+testthat::test_that("simulate_warm is stable under component relabelling", {
+  # Column order is a naming convention (D1..DJ, SJ), not a property of the
+  # data, so reversing it must not change the ensemble. A Cholesky factor
+  # whitens sequentially and did: on the packaged driver this moved the
+  # ensemble lag-1 autocorrelation from 0.050 to 0.191, a 281% swing in the
+  # statistic WARM exists to reproduce. The symmetric square root is
+  # permutation-equivariant.
+  set.seed(21)
+  x <- as.numeric(stats::arima.sim(list(ar = 0.7), 64)) * 40 + 900
+  w <- analyze_wavelet_additive(x - mean(x), signif = 0.90, cwt_mode = "fast")
+  testthat::skip_if(ncol(w$components) < 2L, "needs >= 2 components")
+
+  run <- function(comps) {
+    simulate_warm(components = comps, n = 20L, n_sim = 400L, seed = 7L,
+                  match_variance = TRUE, verbose = FALSE)
+  }
+
+  a <- run(w$components)
+  b <- run(w$components[, rev(seq_len(ncol(w$components))), drop = FALSE])
+
+  lag1 <- function(s) mean(apply(s, 2, function(v) stats::acf(v, 1, plot = FALSE)$acf[2]))
+
+  # A residual difference remains because the per-component seed is
+  # seed + k * 1000L and AIC order selection is indexed by position, so the two
+  # runs consume different random numbers. That is Monte Carlo noise, not a
+  # structural dependence on the ordering.
+  testthat::expect_equal(stats::sd(as.numeric(b)), stats::sd(as.numeric(a)),
+                         tolerance = 0.05)
+  testthat::expect_equal(lag1(b), lag1(a), tolerance = 0.15)
+})
