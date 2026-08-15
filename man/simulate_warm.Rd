@@ -32,7 +32,8 @@ series_obs is not provided.}
 \item{series_obs}{Optional numeric vector. Observed original series. Provide
 this in bypass mode to avoid reconstructing the series from components.}
 
-\item{bypass_n}{Integer. Threshold for bypass mode. Default is 25.}
+\item{bypass_n}{Integer. Threshold for bypass mode: observed series shorter
+than this skip component simulation. Default is 15.}
 
 \item{match_variance}{Logical. If TRUE, rescale simulated outputs to match
 observed standard deviation when relative mismatch exceeds var_tol.}

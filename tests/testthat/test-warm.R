@@ -405,7 +405,7 @@ testthat::test_that("simulate_warm rejects malformed components in component mod
   testthat::expect_error(
     simulate_warm(components = list(a = good, b = good[-1]),
                   n = n, n_sim = 2L, series_obs = good, verbose = FALSE),
-    "All component vectors must have length 'n'"
+    "All component vectors must have length 'n_fit'"
   )
   testthat::expect_error(
     simulate_warm(components = "not-components", n = n, n_sim = 2L,
@@ -582,6 +582,32 @@ testthat::test_that("simulate_warm accepts data.frame and list components in com
   testthat::expect_equal(dim(as_matrix), c(n, 5L))
   testthat::expect_equal(as_df, as_matrix)
   testthat::expect_equal(as_list, as_matrix)
+
+  # Simulating a different number of years than the record holds is the normal
+  # case, and it is what the list branch used to reject: it validated component
+  # lengths against n (the simulated length) where the matrix and data.frame
+  # branches correctly used n_fit (the observed length). Using n == n_fit above
+  # is precisely why that went unnoticed.
+  n_out <- 25L
+  testthat::expect_false(identical(n_out, n))
+
+  short_matrix <- simulate_warm(
+    components = cbind(comp1, comp2), n = n_out, n_sim = 5L, seed = 3, verbose = FALSE
+  )
+  short_list <- simulate_warm(
+    components = list(comp1 = comp1, comp2 = comp2),
+    n = n_out, n_sim = 5L, seed = 3, verbose = FALSE
+  )
+
+  testthat::expect_equal(dim(short_matrix), c(n_out, 5L))
+  testthat::expect_equal(short_list, short_matrix)
+
+  # A genuine length mismatch between components is still rejected.
+  testthat::expect_error(
+    simulate_warm(components = list(comp1 = comp1, comp2 = comp2[-1]),
+                  n = n_out, n_sim = 2L, verbose = FALSE),
+    "must have length"
+  )
 })
 
 

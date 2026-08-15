@@ -2,6 +2,17 @@
 
 ## Bug fixes
 
+* `simulate_warm()` rejected list-form `components` whenever `n` differed from
+  the observed series length — that is, whenever the simulation length differed
+  from the record, which is the normal case. The list branch validated component
+  lengths against `n` (the simulated length) where the matrix and data.frame
+  branches correctly used the observed length. Matrix input returning a result
+  where the identical list input errored is now fixed, and the error message
+  names the length it actually requires.
+
+* `simulate_warm()`'s `bypass_n` documentation said the default was 25; it is
+  15.
+
 * `estimate_monthly_markov_probs()` gains `wet_q` and `extreme_q`. Its fallback
   for a month whose supplied wet or extreme threshold is not finite derived a
   pooled threshold at fixed quantiles of 0.2 and 0.8, regardless of the wet and
