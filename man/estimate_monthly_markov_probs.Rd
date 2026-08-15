@@ -21,7 +21,9 @@ estimate_monthly_markov_probs(
   dry_spell_factor_month,
   wet_spell_factor_month,
   n_days_sim,
-  dirichlet_alpha = 1
+  dirichlet_alpha = 1,
+  wet_q = 0.2,
+  extreme_q = 0.8
 )
 }
 \arguments{
@@ -79,7 +81,18 @@ length of the returned probability vectors.}
 \item{dirichlet_alpha}{Numeric. Base smoothing strength for transition-probability
 estimation. The effective smoothing applied in each month is
 dirichlet_alpha / sqrt(n_transitions_m), where n_transitions_m is the number of observed transitions
-in that month.}
+in that month. Note this shrinks the prior itself with sample size, so its
+influence falls off faster than the usual fixed-alpha smoothing: with a
+month's worth of daily transitions from a few decades the effective alpha
+is a few hundredths. \code{\link{generate_weather}} does not expose it and
+always uses the default.}
+
+\item{wet_q, extreme_q}{Numeric in (0, 1). Quantiles defining the wet and
+extreme states. Used only as a fallback, to derive a pooled threshold for
+any month whose supplied \code{wet_threshold} or \code{extreme_threshold}
+is not finite. Defaults reproduce the previous fixed 0.2 / 0.8 behaviour;
+pass the values the rest of the run uses so a degenerate month does not
+silently switch to a different definition of "wet".}
 }
 \value{
 A named list of nine numeric vectors, each of length n_days_sim,

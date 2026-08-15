@@ -2,6 +2,16 @@
 
 ## Bug fixes
 
+* `estimate_monthly_markov_probs()` gains `wet_q` and `extreme_q`. Its fallback
+  for a month whose supplied wet or extreme threshold is not finite derived a
+  pooled threshold at fixed quantiles of 0.2 and 0.8, regardless of the wet and
+  extreme definitions the rest of the run was using, so a degenerate month could
+  silently switch definition. The new arguments default to the previous fixed
+  values, and `generate_weather()` now threads its own `wet_q` / `extreme_q`
+  through. Behaviour is unchanged for the package's own pipeline, which fills
+  such thresholds with the configured quantiles before this point — the fallback
+  matters to direct callers of the exported function.
+
 * `filter_warm_bounds_defaults()`'s `tail_tol_log` default changes from
   `log(1.03)` to `log(1.25)`. The 3% figure matched the `mean` and `sd` bounds,
   but a mean and a standard deviation are stable statistics whereas tail mass —
