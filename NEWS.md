@@ -2,6 +2,25 @@
 
 ## Bug fixes
 
+* `dry_spell_factor` and `wet_spell_factor` now mean what their names say: each
+  is a multiplier on the **mean spell length**, so 2 doubles the mean run of dry
+  (or wet) days. Previously they divided individual off-diagonal transition
+  probabilities and renormalised, which moved spell length in the right
+  direction by an unpredictable amount — on the packaged record a
+  `dry_spell_factor` of 3 lengthened mean dry spells by 1.46x, and 1.5 by 1.11x.
+
+  `wet_spell_factor` also now slows the return to dry from **both** non-dry
+  states. Previously it adjusted only the wet row, so an extreme day ended a wet
+  spell at the historical rate while a merely wet one did not, and the factor
+  did progressively less the wetter the month.
+
+  Both default to 1, which is a no-op, so runs that do not set them are
+  unaffected. Runs that do set them will change, and a given factor now produces
+  a larger effect than before. Note the factors are not independent of wet-day
+  frequency: lengthening dry spells lowers the wet-day fraction, which is a
+  property of the Markov chain rather than an artefact — adjust both together to
+  hold it roughly fixed.
+
 * `apply_climate_perturbations(seed = )` no longer leaves the caller's random
   number stream reseeded. It was the only seeded entry point in the package that
   did not restore `.Random.seed` on exit, so calling it silently changed every

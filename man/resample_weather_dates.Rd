@@ -60,14 +60,18 @@ threshold for daily precipitation states.}
 \item{extreme_q}{Numeric between 0 and 1. Quantile used to define the very
 wet (extreme) precipitation threshold.}
 
-\item{dry_spell_factor}{Numeric vector of length 12. Monthly adjustment
-factors controlling dry spell persistence in the Markov chain. Values
-greater than 1 increase dry-state persistence by reducing dry-to-wet and
-dry-to-very-wet transition probabilities before renormalization (for
-example, with factor 2 these off-diagonal transitions are halved).}
+\item{dry_spell_factor}{Numeric vector of length 12. Per-month multiplier on
+the mean dry spell length: the probability of leaving the dry state is
+divided by the factor, so a factor of 2 doubles the mean run of dry days.
+The split between the dry-to-wet and dry-to-extreme exits is preserved.
+Lengthening dry spells necessarily lowers the wet-day fraction; see
+\code{\link{generate_weather}} for that trade-off.}
 
-\item{wet_spell_factor}{Numeric vector of length 12. Monthly adjustment
-factors controlling wet spell persistence in the Markov chain.}
+\item{wet_spell_factor}{Numeric vector of length 12. Per-month multiplier on
+the mean wet spell length, where a wet spell is an unbroken run of wet or
+extreme days. The return-to-dry probability is divided by the factor from
+\emph{both} non-dry states, so an extreme day does not end a spell at the
+historical rate while a merely wet one does.}
 
 \item{seed}{Optional integer. Base random seed for reproducibility.}
 }
