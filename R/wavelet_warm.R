@@ -52,7 +52,8 @@
 #' @param seed Optional integer. Base RNG seed for reproducibility.
 #' @param series_obs Optional numeric vector. Observed original series. Provide
 #'   this in bypass mode to avoid reconstructing the series from components.
-#' @param bypass_n Integer. Threshold for bypass mode. Default is 25.
+#' @param bypass_n Integer. Threshold for bypass mode: observed series shorter
+#'   than this skip component simulation. Default is 15.
 #' @param match_variance Logical. If TRUE, rescale simulated outputs to match
 #'   observed standard deviation when relative mismatch exceeds var_tol.
 #' @param var_tol Numeric in [0, 1]. Relative standard deviation tolerance.
@@ -293,8 +294,16 @@ simulate_warm <- function(
     ncomp <- length(components)
     comp_list <- components
     comp_names <- names(components)
+    # n_fit, not n: components describe the OBSERVED series, whose length is
+    # independent of how many years are being simulated. The matrix and
+    # data.frame branches above already test n_fit; this one tested n, so
+    # list-form components were rejected whenever the simulation length
+    # differed from the record -- which is the normal case.
     lens <- vapply(comp_list, length, integer(1))
-    if (any(lens != n)) stop("All component vectors must have length 'n'.", call. = FALSE)
+    if (any(lens != n_fit)) {
+      stop("All component vectors must have length 'n_fit' (the observed series length).",
+           call. = FALSE)
+    }
 
   } else {
     stop("'components' must be a matrix, data.frame, or list of numeric vectors.", call. = FALSE)
@@ -397,7 +406,7 @@ simulate_warm <- function(
       next
     }
 
-    if (!is.null(seed)) set.seed(seed + k * 1000L)
+    if (!is.null(seed)) set.seed(.seed_offset(seed, k * 1000L))
 
     # Decorrelated components are already centered (mean ~ 0); others need centering.
     is_decorr_comp <- use_decorrelation && (k %in% var_idx)
