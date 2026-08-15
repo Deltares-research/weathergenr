@@ -326,3 +326,72 @@ testthat::test_that(".compute_gws_batch is column-wise independent", {
                                               period = NULL, chunk_size = 1L)
   testthat::expect_equal(chunked, batch, tolerance = 1e-12)
 })
+
+
+################################################################################
+# Deterministic length harmonisation
+################################################################################
+
+testthat::test_that("the observed benchmark window does not depend on the seed", {
+  set.seed(1)
+  obs <- as.numeric(stats::arima.sim(list(ar = 0.5), 40)) * 30 + 900
+  sim <- matrix(stats::rnorm(25 * 60, mean = 900, sd = 30), nrow = 25)
+
+  runs <- lapply(c(1L, 2L, 999L), function(s) {
+    filter_warm_pool(obs_series = obs, sim_series = sim, n_select = 3L,
+                     seed = s, make_plots = FALSE, verbose = FALSE)
+  })
+
+  # The window is the tail of the observed record, identically for every seed.
+  for (r in runs) {
+    testthat::expect_equal(unname(r$diagnostics$obs_window),
+                           c(length(obs) - 25L + 1L, length(obs)))
+  }
+
+  # The acceptance statistics derive from that window, so they must agree too.
+  # (Which traces are drawn from the pool still depends on the seed; that is
+  # ensemble sampling, not a moving criterion.)
+  pools <- vapply(runs, function(r) length(r$diagnostics$pool_idx), integer(1))
+  testthat::expect_equal(length(unique(pools)), 1L)
+})
+
+testthat::test_that("every candidate is scored on the same simulated window", {
+  # n_sim > n_obs is the direction the packaged baseline never exercises: each
+  # candidate used to get its own random window, so candidates were not
+  # compared on the same footing.
+  set.seed(2)
+  obs <- as.numeric(stats::arima.sim(list(ar = 0.5), 20)) * 30 + 900
+  sim <- matrix(stats::rnorm(60 * 40, mean = 900, sd = 30), nrow = 60)
+
+  res <- filter_warm_pool(obs_series = obs, sim_series = sim, n_select = 3L,
+                          seed = 7L, make_plots = FALSE, verbose = FALSE)
+
+  wi <- res$diagnostics$window_index
+  testthat::expect_equal(length(wi), 40L)
+  testthat::expect_equal(length(unique(lapply(wi, unname))), 1L)
+  testthat::expect_equal(unname(wi[[1]]), c(60L - 20L + 1L, 60L))
+
+  # Selected traces are returned at full length, not windowed.
+  testthat::expect_equal(nrow(res$selected), 60L)
+})
+
+testthat::test_that("compute_tailmass_metrics normalises each side by its own length", {
+  set.seed(3)
+  obs <- stats::rnorm(20, mean = 900, sd = 30)
+
+  # The same trace repeated end-to-end has the same per-observation tail mass,
+  # so doubling its length must not double the metric.
+  one <- matrix(stats::rnorm(20, mean = 900, sd = 30), ncol = 1)
+  two <- matrix(rep(one[, 1], 2), ncol = 1)
+
+  m1 <- compute_tailmass_metrics(obs, one, tail_low_p = 0.2,
+                                 tail_high_p = 0.8, tail_eps = 1e-5)
+  m2 <- compute_tailmass_metrics(obs, two, tail_low_p = 0.2,
+                                 tail_high_p = 0.8, tail_eps = 1e-5)
+
+  testthat::expect_equal(m2$M_sim_low, m1$M_sim_low)
+  testthat::expect_equal(m2$M_sim_high, m1$M_sim_high)
+
+  # The observed side is unaffected by the simulated length.
+  testthat::expect_equal(m2$M_obs_low, m1$M_obs_low)
+})
