@@ -2,6 +2,19 @@
 
 ## Bug fixes
 
+* `apply_climate_perturbations(seed = )` no longer leaves the caller's random
+  number stream reseeded. It was the only seeded entry point in the package that
+  did not restore `.Random.seed` on exit, so calling it silently changed every
+  random draw the caller made afterwards. If the caller had never drawn a random
+  number, no `.Random.seed` is left behind either.
+
+* `apply_climate_perturbations()`'s validation errors named arguments the
+  function does not have — `'climate.data'`, `'sim.dates'`,
+  `'change.factor.precip.mean'` and others, left over from before a rename. They
+  now name the actual arguments (`data`, `date`, `precip_mean_factor`, …). The
+  latitude error also names both accepted column names, `lat` and `y`, rather
+  than only `y`.
+
 * `generate_weather()` could fail with `set.seed(NA)` partway through a run.
   Derived seeds were built by integer addition onto a base drawn from
   `sample.int(.Machine$integer.max, 1L)`, which overflows to `NA` when the base

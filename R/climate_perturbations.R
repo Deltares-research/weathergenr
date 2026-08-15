@@ -120,30 +120,34 @@ apply_climate_perturbations <- function(
   # INPUT VALIDATION (legacy messages preserved)
   # --------------------------------------------------------------------------
 
-  if (is.null(data)) stop("'climate.data' must not be NULL", call. = FALSE)
+  # Messages name the arguments this function actually has. They used to carry
+  # the pre-rename names -- 'climate.data', 'sim.dates', 'change.factor.*' --
+  # which sent anyone reading them looking for arguments that do not exist.
+  if (is.null(data)) stop("'data' must not be NULL", call. = FALSE)
   if (is.null(grid)) stop("'grid' must not be NULL", call. = FALSE)
-  if (is.null(date)) stop("'sim.dates' must not be NULL", call. = FALSE)
-  if (is.null(precip_mean_factor)) stop("'change.factor.precip.mean' must not be NULL", call. = FALSE)
+  if (is.null(date)) stop("'date' must not be NULL", call. = FALSE)
+  if (is.null(precip_mean_factor)) stop("'precip_mean_factor' must not be NULL", call. = FALSE)
   if (is.null(precip_var_factor) && !isTRUE(scale_var_with_mean)) {
-    stop("'change.factor.precip.variance' must not be NULL", call. = FALSE)
+    stop("'precip_var_factor' must not be NULL when 'scale_var_with_mean' is FALSE",
+         call. = FALSE)
   }
-  if (is.null(temp_delta)) stop("'change.factor.temp.mean' must not be NULL", call. = FALSE)
+  if (is.null(temp_delta)) stop("'temp_delta' must not be NULL", call. = FALSE)
 
-  if (!is.list(data)) stop("'climate.data' must be a list of data frames", call. = FALSE)
+  if (!is.list(data)) stop("'data' must be a list of data frames", call. = FALSE)
   if (!is.data.frame(grid)) stop("'grid' must be a data frame", call. = FALSE)
-  if (!inherits(date, "Date")) stop("'sim.dates' must be a Date vector", call. = FALSE)
+  if (!inherits(date, "Date")) stop("'date' must be a Date vector", call. = FALSE)
 
   n_grid <- length(data)
   if (n_grid != nrow(grid)) {
     stop(
-      "Length of 'climate.data' (", n_grid, ") must match ",
+      "Length of 'data' (", n_grid, ") must match ",
       "number of rows in 'grid' (", nrow(grid), ")",
       call. = FALSE
     )
   }
 
   if (!("lat" %in% names(grid)) && !("y" %in% names(grid))) {
-    stop("'grid' must contain a 'y' column (latitude)", call. = FALSE)
+    stop("'grid' must contain a latitude column, named 'lat' or 'y'.", call. = FALSE)
   }
   lat_col <- if ("lat" %in% names(grid)) "lat" else "y"
 
@@ -190,6 +194,26 @@ apply_climate_perturbations <- function(
     if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed)) {
       stop("'seed' must be a single finite numeric/integer", call. = FALSE)
     }
+
+    # Restore the caller's RNG state on exit. Without this, seeding here
+    # silently hijacked the stream for everything the caller did afterwards --
+    # this was the only one of the package's seeded entry points that did not
+    # put it back. The `rm()` branch matters too: if the caller had never drawn
+    # a random number there was no .Random.seed to restore, and leaving one
+    # behind is itself a change to their session.
+    old_seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      get(".Random.seed", envir = .GlobalEnv)
+    } else {
+      NULL
+    }
+    on.exit({
+      if (!is.null(old_seed)) {
+        assign(".Random.seed", old_seed, envir = .GlobalEnv)
+      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      }
+    }, add = TRUE)
+
     set.seed(as.integer(seed))
   }
 
