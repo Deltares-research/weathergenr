@@ -2,13 +2,12 @@
 
 # TODO
 
-| ID                                                                                                             | Item                                                                     | Area          | Origin            | #   | State   |
-| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------- | ----------------- | --- | ------- |
-| [t2608151254](tasks/t2608151254-decide-whether-climate-perturbation-belongs-in-run-weather-generator.md)       | Decide whether climate perturbation belongs in run_weather_generator()   | api           | review-2026-08-15 | 1   | backlog |
-| [t2608151254b](tasks/t2608151254b-give-pet-a-diurnal-range-response-to-warming.md)                             | Give PET a diurnal-range response to warming                             | perturbations | review-2026-08-15 | 1   | backlog |
-| [t2608151254k](tasks/t2608151254k-trim-the-export-surface.md)                                                  | Trim the export surface                                                  | api           | review-2026-08-15 | 1   | backlog |
-| [t2608061641](tasks/t2608061641-clear-lintr-findings-and-make-the-lint-job-blocking.md)                        | Clear lintr findings and make the lint job blocking                      | ci            |                   |     | backlog |
-| [t2608061641a](tasks/t2608061641a-cover-create-all-diagnostic-plots-and-plot-filter-diagnostics-with-tests.md) | Cover create_all_diagnostic_plots and plot_filter_diagnostics with tests | tests         |                   |     | backlog |
+| ID                                                                                                             | Item                                                                     | Area  | Origin            | #   | State   |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----- | ----------------- | --- | ------- |
+| [t2608151254](tasks/t2608151254-decide-whether-climate-perturbation-belongs-in-run-weather-generator.md)       | Decide whether climate perturbation belongs in run_weather_generator()   | api   | review-2026-08-15 | 1   | backlog |
+| [t2608151254k](tasks/t2608151254k-trim-the-export-surface.md)                                                  | Trim the export surface                                                  | api   | review-2026-08-15 | 1   | backlog |
+| [t2608061641](tasks/t2608061641-clear-lintr-findings-and-make-the-lint-job-blocking.md)                        | Clear lintr findings and make the lint job blocking                      | ci    |                   |     | backlog |
+| [t2608061641a](tasks/t2608061641a-cover-create-all-diagnostic-plots-and-plot-filter-diagnostics-with-tests.md) | Cover create_all_diagnostic_plots and plot_filter_diagnostics with tests | tests |                   |     | backlog |
 
 ## Watching
 
