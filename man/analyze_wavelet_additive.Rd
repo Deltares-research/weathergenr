@@ -22,7 +22,11 @@ analyze_wavelet_additive(
 \arguments{
 \item{series}{Numeric vector. Input series (regularly spaced, no missing values).}
 
-\item{signif}{Numeric scalar in (0, 1). Significance level for CWT.}
+\item{signif}{Numeric scalar in (0, 1). Significance level for the CWT
+spectrum test. It affects `n_levels` when the test finds a significant
+period and `n_levels` is `NULL`, and nothing else: it does not select which
+MODWT components are returned, and downstream `simulate_warm()` models all
+of them. See `cwt_to_modwt_map` in *Value*.}
 
 \item{noise}{Character. Background noise model for CWT significance testing. Typically
 \code{"white"} or \code{"red"}.}
@@ -58,7 +62,14 @@ A list with class \code{"wavelet_additive"}. The object contains:
 - \code{n_levels}, \code{filter}, \code{filter_length}, \code{boundary}, \code{include_smooth},
   \code{max_period_frac}
 - \code{has_significance}, \code{cwt_signif_periods}: CWT significance flags and periods
-- \code{cwt_to_modwt_map}: MODWT levels implied by significant CWT periods (under caps)
+- \code{cwt_to_modwt_map}: MODWT levels implied by significant CWT periods
+  (under caps). \strong{Diagnostic only} -- nothing in the package filters
+  \code{components} by it, and `simulate_warm()` models every component. It
+  reports which levels a significance-based selection \emph{would} retain, for
+  comparison against the original WARM formulation; see the WARM section of
+  \code{\link{generate_weather}} for why that selection is not applied here.
+  Empty when the CWT finds no significant period, which is the usual outcome
+  for a 20-40 year annual series.
 - variance-accounting fields copied from \code{modwt_mra()}
 - optional \code{diagnostics} list when requested
 }

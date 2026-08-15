@@ -41,9 +41,58 @@
 #'     historical observation dates (\code{dateo}) and return simulated dates.
 #' }
 #'
+#' \strong{WARM, and how it relates to Steinschneider & Brown (2013):}
+#' The annual generator follows the wavelet autoregressive model (WARM) of
+#' Kwon et al. (2007), as adopted by Steinschneider & Brown (2013), but differs
+#' in the decomposition and in component selection. Both differences are
+#' deliberate; neither is a partial implementation.
+#'
+#' In the original, a continuous wavelet transform (CWT) decomposes the annual
+#' series, the scales whose global wavelet power exceeds a red-noise
+#' significance level are retained as low-frequency signals, and the model is an
+#' autoregression per retained signal \emph{plus} an autoregression on the
+#' residual. Nothing is discarded: what is not retained becomes the residual
+#' term. Steinschneider & Brown's own application retained a single signal.
+#'
+#' This package decomposes with a MODWT multiresolution analysis instead. That
+#' basis is exactly additive -- the detail bands and the smooth sum back to the
+#' input, with reconstruction error at machine precision -- so there is no
+#' residual left over to model separately, and every component is fitted with an
+#' ARMA. On a 20-year annual series the decomposition yields two components,
+#' \code{D1} and \code{S1}, so the fitted structure reduces to the same shape as
+#' the original with one retained signal. That is a consequence of how few
+#' levels a short record supports, not a correspondence between a MODWT band and
+#' the residual term: a longer record yields \code{D1}, \code{D2}, \code{S2} and
+#' no band plays that role.
+#'
+#' Significance is therefore \emph{not} used to select components, for two
+#' reasons. There is no residual term to relegate a non-significant band to, so
+#' dropping one would discard variance rather than reclassify it -- on the
+#' packaged example \code{D1} carries 23 percent of the total. And on records of
+#' this length the CWT global-power test against a red-noise background detects
+#' nothing at any conventional level, so a selection rule would either never
+#' fire or would collapse the model to a single ARMA on the whole series,
+#' discarding the scale structure the method exists to represent.
+#'
+#' Note that MODWT MRA components are additive but not orthogonal, so their
+#' variances do not sum to the total; on the packaged example the cross-covariance
+#' accounts for 18 percent. \code{\link{simulate_warm}} corrects for this when
+#' recombining simulated components.
+#'
 #' Daily disaggregation currently requires \code{vars} to include
 #' \code{"precip"} and \code{"temp"}, which are used as precipitation and
 #' temperature drivers in KNN + Markov resampling.
+#'
+#' @references
+#' Kwon, H.-H., Lall, U., & Khalil, A. F. (2007). Stochastic simulation model
+#' for nonstationary time series using an autoregressive wavelet decomposition:
+#' Applications to rainfall and temperature. \emph{Water Resources Research},
+#' 43(5), W05407. \doi{10.1029/2006WR005258}
+#'
+#' Steinschneider, S., & Brown, C. (2013). A semiparametric multivariate,
+#' multisite weather generator with low-frequency variability for use in climate
+#' risk assessments. \emph{Water Resources Research}, 49(11), 7205-7220.
+#' \doi{10.1002/wrcr.20528}
 #'
 #' @param obs_data Named list of data.frames (one per grid cell) with observed
 #'   daily weather. Each data.frame must have one row per day corresponding to
@@ -67,8 +116,20 @@
 #' @param n_realizations Integer number of realizations to generate.
 #' @param warm_var Character name of the annual driver variable used in WARM.
 #'   Must be present in \code{vars}.
-#' @param warm_signif Numeric in (0,1). Wavelet significance level used to retain
-#'   low-frequency components in WARM.
+#' @param warm_signif Numeric in (0,1). Significance level for the wavelet
+#'   spectrum tests, against a red-noise background.
+#'
+#'   It does \strong{not} select which wavelet components are simulated: every
+#'   MODWT MRA component is modelled, significant or not. See the WARM section of
+#'   \emph{Details}. Its two live effects are:
+#'   \itemize{
+#'     \item the threshold above which an observed spectral peak counts as
+#'       significant in \code{\link{filter_warm_pool}}, and therefore must be
+#'       reproduced by a candidate trace to pass the \code{wavelet} criterion;
+#'     \item raising the MODWT level count when the continuous wavelet transform
+#'       finds a significant period. On records of 20-40 years this test rarely
+#'       fires, so in practice the level count is set by series length alone.
+#'   }
 #' @param warm_pool_size Integer number of candidate annual traces to generate
 #'   before filtering down to \code{n_realizations}.
 #' @param warm_filter_bounds Named list of filtering thresholds and relaxation controls
