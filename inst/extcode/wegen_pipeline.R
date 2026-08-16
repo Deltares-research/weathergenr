@@ -22,7 +22,7 @@ year_start_month <- 10
 
 # --- Path Configuration ---
 ncfile_dir <- system.file("extdata", "ntoum_era5_data.nc", package = "weathergenr")
-out_dir <- file.path("C:/TEMP/ntoum/", year_start_month)
+out_dir <- file.path("C:/TESTS/WEATHERGENR/ntoum/", year_start_month)
 ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir))
 
 ### ---> FOR VECHTE DATA
@@ -56,7 +56,7 @@ config <- list(
   warm_pool_size   = 20000L,              # Candidate WARM realizations before filtering
 
   # Resampling parameters
-  n_realizations   = 3L,                  # Number of synthetic realizations to generate
+  n_realizations   = 11L,                 # Number of synthetic realizations to generate
   annual_knn_n     = 100L,                # K for annual KNN analogue selection
   wet_q            = 0.20,                # Wet-day threshold quantile
   extreme_q        = 0.80,                # Extreme-day threshold quantile
