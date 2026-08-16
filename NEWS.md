@@ -35,6 +35,17 @@
 
 ## Bug fixes
 
+* `run_weather_generator()` did not honour its documented `config` contract. The
+  roxygen said an absent entry falls back to the receiving function's default,
+  but every entry was forwarded unconditionally, so an absent one arrived as an
+  explicit `NULL` that replaced the default and then failed validation. A
+  four-entry config died on `dry_spell_factor must have length 12` rather than
+  defaulting to `rep(1, 12)`. Absent entries are now omitted from the call, so
+  only `vars` and `n_realizations` are required and a config needs to name only
+  what it changes. `config$variable_labels` now reaches
+  `evaluate_weather_generator()` as well, where it was previously hardcoded to
+  `NULL` and silently ignored.
+
 * `annual_precip.png` rendered in ggplot2's default grey theme and at a hardcoded
   300 dpi, silently ignoring `plot_dpi` and `plot_device`. It bypassed the shared
   export path entirely; it no longer does.
