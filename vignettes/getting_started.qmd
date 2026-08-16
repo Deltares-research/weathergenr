@@ -9,6 +9,7 @@ format:
     toc-depth: 2
     toc-expand: 2
     page-layout: full
+    number-sections: true
     code-fold: true
     code-tools: true
     df-print: tibble

@@ -1,0 +1,19 @@
+/* weathergenr pkgdown overrides.
+ *
+ * pkgdown picks this file up automatically -- it needs no entry in
+ * _pkgdown.yml -- and copies it to docs/extra.css, linked from every page.
+ */
+
+/* Section numbers read "1 Purpose" / "6.3 Temperature time series" out of
+ * Quarto. House style puts a point after the number.
+ *
+ * Done here rather than in the vignettes because Pandoc inserts the number in
+ * its HTML writer, after Lua filters have run, so there is nothing in the
+ * document AST for a filter to rewrite and no Quarto option that formats it.
+ *
+ * This covers the headings only. The sidebar table of contents is built at run
+ * time by pkgdown.js from the heading text via jQuery .text(), which does not
+ * see CSS generated content -- pkgdown/extra.js handles that half. */
+.header-section-number::after {
+  content: ".";
+}
