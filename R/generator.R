@@ -169,6 +169,16 @@
 #'   \code{max(1, parallel::detectCores() - 1)}.
 #' @param verbose Logical; if \code{TRUE}, emits progress logs via \code{.log()}.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param plot_dpi Numeric; raster resolution for the diagnostic plots this
+#'   function writes (default 300). Ignored when \code{save_plots = FALSE}.
+#'   Matches the argument of the same name on
+#'   \code{\link{evaluate_weather_generator}}; before it existed here, the four
+#'   figures written by this function ignored the setting entirely.
+#' @param plot_device Optional graphics device passed to
+#'   \code{\link[ggplot2]{ggsave}}. \code{NULL} (the default) lets \code{ggsave()}
+#'   infer it from the file extension. Supplying a faster device, for example
+#'   \code{ragg::agg_png}, typically halves the render cost. \code{ragg} is not a
+#'   dependency of this package; pass the function only if you have it installed.
 #'
 #' @return A list with:
 #' \describe{
@@ -238,7 +248,9 @@ generate_weather <- function(
     parallel = FALSE,
     n_cores = NULL,
     verbose = FALSE,
-    save_plots = TRUE
+    save_plots = TRUE,
+    plot_dpi = 300,
+    plot_device = NULL
 ) {
 
 
@@ -298,10 +310,6 @@ generate_weather <- function(
   # ---------------------------------------------------------------------------
   # CONSTANTS -- no user-level change needed for now
   # ---------------------------------------------------------------------------
-
-  ## GGPLOT constants
-  pl_width <- 8
-  pl_height <- 5
 
   # WARM constants
   DETREND <- TRUE
@@ -465,7 +473,13 @@ generate_weather <- function(
     )
 
     tryCatch(
-      ggsave(file.path(out_dir, "obs_power_spectra.png"), p, width = 8, height = 5),
+      # An explicit size rather than a family: this is a patchwork, and
+      # patchwork exposes no stable accessor for its panel grid, so
+      # .panel_dims() reports a single canvas. The 9.0 splits at the
+      # plot_layout(widths = c(3, 1.2)) ratio into a ~6.4 in power field and a
+      # ~2.6 in spectrum companion.
+      .export_figure(p, "obs_power_spectra.png", output_dir = out_dir,
+                     size = c(9.0, 4.5), dpi = plot_dpi, device = plot_device),
       error = function(e) .log("Failed to save wavelet spectra plot: {e$message}", level = "warn", verbose = verbose)
     )
 
@@ -518,12 +532,18 @@ generate_weather <- function(
   if(save_plots) {
     tryCatch(
       {
-        ggsave(file.path(out_dir, "warm_annual_precip.png"),
-               sim_annual_sub$plots[[1]], width = pl_width, height = pl_height)
-        ggsave(file.path(out_dir, "warm_annual_stats.png"),
-               sim_annual_sub$plots[[2]], width = pl_width, height = pl_height)
-        ggsave(file.path(out_dir, "warm_annual_wavelet.png"),
-               sim_annual_sub$plots[[3]], width = pl_width, height = pl_height)
+        # [[2]] is the four-panel jitter strip: one column of dots per panel, so
+        # it takes the narrow family rather than square, which would give it
+        # 16 in of width for four columns of points.
+        .export_figure(sim_annual_sub$plots[[1]], "warm_annual_precip.png",
+                       output_dir = out_dir, family = "wide",
+                       dpi = plot_dpi, device = plot_device)
+        .export_figure(sim_annual_sub$plots[[2]], "warm_annual_stats.png",
+                       output_dir = out_dir, family = "narrow",
+                       dpi = plot_dpi, device = plot_device)
+        .export_figure(sim_annual_sub$plots[[3]], "warm_annual_wavelet.png",
+                       output_dir = out_dir, family = "wide",
+                       dpi = plot_dpi, device = plot_device)
       },
       error = function(e) .log("Failed to save warm filtering plots: {e$message}",
                                level = "warn", verbose = verbose)
@@ -853,7 +873,11 @@ run_weather_generator <- function(
       n_cores            = config$n_cores,
       seed               = config$seed,
       verbose            = config$verbose,
-      save_plots         = config$save_plots
+      save_plots         = config$save_plots,
+      # Same defaulting as the evaluate_weather_generator() call below, so both
+      # halves of a run honour one setting.
+      plot_dpi           = if (is.null(config$plot_dpi)) 300 else config$plot_dpi,
+      plot_device        = config$plot_device
     )
 
     # -------------------------------------------------------------------------

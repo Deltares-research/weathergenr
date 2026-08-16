@@ -23,8 +23,7 @@
 #'   plot_config <- list(
 #'     subtitle = "Example",
 #'     alpha = 0.4,
-#'     colors = c(Observed = "blue3", Simulated = "gray40"),
-#'     theme = ggplot2::theme_bw()
+#'     colors = c(Observed = "blue3", Simulated = "gray40")
 #'   )
 #'   plots <- create_all_diagnostic_plots(
 #'     plot_data = plot_data,
@@ -136,66 +135,6 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 }
 
 
-#' Export a faceted (multi-panel) ggplot
-#'
-#' Adds title/subtitle (optional) and saves the plot to disk (optional), using
-#' facet layout to infer width/height. Returns the plot invisibly.
-#'
-#' @param p ggplot object, typically faceted via \code{facet_wrap()} or \code{facet_grid()}.
-#' @param filename Character; output filename (e.g., \code{"daily_mean.png"}).
-#' @param show_title Logical; if \code{TRUE}, adds \code{title}/\code{subtitle} via \code{labs()}.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param title Character; plot title (only used when \code{show_title = TRUE}).
-#' @param subtitle Character; plot subtitle (only used when \code{show_title = TRUE}).
-#' @param output_dir Character; output directory for saved plots.
-#' @param plot_config List; optional plotting configuration. \code{dpi} and
-#'   \code{device} are read from it when present, so callers can trade raster
-#'   resolution for speed or swap in a faster device. Rendering and writing the
-#'   diagnostic PNGs is roughly a quarter of an evaluation run at the default
-#'   300 dpi.
-#'
-#' @return The ggplot object \code{p}, returned invisibly.
-#'
-#' @keywords internal
-#' @import ggplot2
-.export_multipanel_plot <- function(p, filename, show_title, save_plots,
-                                   title = NULL, subtitle = NULL, output_dir,
-                                   plot_config = NULL) {
-
-  if (show_title && !is.null(title)) {
-    p <- p + labs(title = title, subtitle = subtitle)
-  }
-
-  if (save_plots && !is.null(output_dir)) {
-    ncol <- p$facet$params$ncol
-    nrow <- p$facet$params$nrow
-    if (is.null(ncol)) ncol <- 2
-    if (is.null(nrow)) nrow <- 2
-
-    width <- ncol * 4
-    height <- nrow * 4 + 0.5
-
-    dpi <- if (!is.null(plot_config$dpi)) plot_config$dpi else 300
-    device <- plot_config$device
-
-    args <- list(
-      filename = file.path(output_dir, filename),
-      plot = p,
-      width = width,
-      height = height,
-      dpi = dpi
-    )
-    # Only pass `device` when set: ggsave() infers it from the extension
-    # otherwise, and an explicit NULL is not the same as omitting it.
-    if (!is.null(device)) args$device <- device
-
-    do.call(ggplot2::ggsave, args)
-  }
-
-  invisible(p)
-}
-
-
 #' Create daily mean diagnostic plot
 #'
 #' Faceted observed-vs-simulated comparison of daily mean values by variable, using
@@ -203,12 +142,14 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'
 #' @param daily_stats_season Data frame of seasonal daily statistics including columns
 #'   \code{stat}, \code{Observed}, \code{Simulated}, and \code{variable}.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -227,21 +168,22 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   )
 
   p <- ggplot(data_mean, aes(x = Observed, y = Simulated)) +
-    plot_config$theme +
+    theme_weathergenr() +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = 1.5
+      linewidth = .PLOT_GEOM$lwd_summary
     ) +
-    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha, size = 2) +
-    geom_abline(color = "blue") +
+    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
+                 size = .PLOT_GEOM$pt_summary) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = "daily_mean.png",
@@ -261,12 +203,14 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'
 #' @param daily_stats_season Data frame of seasonal daily statistics including columns
 #'   \code{stat}, \code{Observed}, \code{Simulated}, and \code{variable}.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -285,21 +229,22 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   )
 
   p <- ggplot(data_sd, aes(x = Observed, y = Simulated)) +
-    plot_config$theme +
+    theme_weathergenr() +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = 1.5
+      linewidth = .PLOT_GEOM$lwd_summary
     ) +
-    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha, size = 2) +
-    geom_abline(color = "blue") +
+    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
+                 size = .PLOT_GEOM$pt_summary) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = "daily_sd.png",
@@ -318,12 +263,14 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' spell type/statistic. Uses dummy points to enforce symmetric axes per facet.
 #'
 #' @param stats_wetdry Data frame of wet/dry diagnostics including spell statistics.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -350,21 +297,22 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     dplyr::select(stat, Observed = value, Simulated = value)
 
   p <- ggplot(data_spells, aes(x = Observed, y = Simulated)) +
-    plot_config$theme +
-    geom_abline(color = "blue") +
+    theme_weathergenr() +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = 1.5
+      linewidth = .PLOT_GEOM$lwd_summary
     ) +
-    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha, size = 2) +
+    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
+                 size = .PLOT_GEOM$pt_summary) +
     facet_wrap(~ stat, ncol = 2, nrow = 1, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = "spell_length.png",
@@ -383,12 +331,14 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' by statistic. Uses dummy points to enforce symmetric axes per facet.
 #'
 #' @param stats_wetdry Data frame of wet/dry diagnostics including day-count statistics.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -415,21 +365,22 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     dplyr::select(stat, Observed = value, Simulated = value)
 
   p <- ggplot(data_days, aes(x = Observed, y = Simulated)) +
-    plot_config$theme +
-    geom_abline(color = "blue") +
+    theme_weathergenr() +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = 1.5
+      linewidth = .PLOT_GEOM$lwd_summary
     ) +
-    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha, size = 2) +
+    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
+                 size = .PLOT_GEOM$pt_summary) +
     facet_wrap(~ stat, ncol = 2, nrow = 1, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = "wetdry_days_count.png",
@@ -449,12 +400,14 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'
 #' @param stats_crosscor Data frame of cross-grid correlation summaries with columns
 #'   \code{Observed}, \code{Simulated}, and \code{variable1}.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -469,21 +422,22 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   )
 
   p <- ggplot(stats_crosscor, aes(x = Observed, y = Simulated)) +
-    plot_config$theme +
-    geom_abline(color = "blue") +
+    theme_weathergenr() +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = 1.5
+      linewidth = .PLOT_GEOM$lwd_summary
     ) +
-    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha, size = 2) +
+    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
+                 size = .PLOT_GEOM$pt_summary) +
     facet_wrap(~ variable1, ncol = 2, nrow = 2, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = "crossgrid_correlations.png",
@@ -503,12 +457,14 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'
 #' @param stats_intercor Data frame of inter-variable correlation summaries with columns
 #'   \code{Observed}, \code{Simulated}, and \code{variable}.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -523,21 +479,22 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   )
 
   p <- ggplot(stats_intercor, aes(x = Observed, y = Simulated)) +
-    plot_config$theme +
-    geom_abline(color = "blue") +
+    theme_weathergenr() +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = 1.5
+      linewidth = .PLOT_GEOM$lwd_summary
     ) +
-    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha, size = 2) +
+    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
+                 size = .PLOT_GEOM$pt_summary) +
     facet_wrap(~ variable, ncol = 3, nrow = 2, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = "intergrid_correlations.png",
@@ -559,12 +516,14 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param stats_precip_cor_cond Data frame of conditional correlation summaries with columns
 #'   \code{variable1}, \code{variable2}, \code{id1}, \code{id2}, \code{regime},
 #'   \code{Observed}, and \code{Simulated}.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -584,21 +543,22 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   )
 
   p <- ggplot(dat, aes(x = Observed, y = Simulated)) +
-    plot_config$theme +
-    geom_abline(color = "blue") +
+    theme_weathergenr() +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = 1.5
+      linewidth = .PLOT_GEOM$lwd_summary
     ) +
-    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha, size = 2) +
+    stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
+                 size = .PLOT_GEOM$pt_summary) +
     facet_grid(regime ~ variable, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = "precip_conditional_correlations.png",
@@ -624,7 +584,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -655,28 +615,33 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     fill = type,
     color = type
   )) +
-    plot_config$theme +
-    geom_boxplot(alpha = 0.2) +
+    theme_weathergenr() +
+    geom_boxplot(alpha = .PLOT_GEOM$alpha_faint) +
     facet_wrap(~ stat, scales = "free", ncol = 2, nrow = 2) +
     scale_fill_manual("", values = plot_config$colors) +
     scale_color_manual("", values = plot_config$colors) +
     stat_summary(
       fun = "mean",
-      size = 3,
+      size = .PLOT_GEOM$pt_member,
       geom = "point",
       position = position_dodge(0.8),
       shape = 18
     ) +
     labs(x = "", y = "") +
+    # This is the only exported figure with a visible legend, so its styling
+    # stays local rather than becoming a package-wide rule inferred from one
+    # case. rel(1) reproduces the previous flat 12 pt at base_size 12 while now
+    # tracking base_size.
     theme(
-      legend.position = c(1, 0),
-      legend.justification = c(1, 0),
+      legend.position = "inside",
+      legend.position.inside = c(1, 0),
+      legend.justification.inside = c(1, 0),
       legend.background = element_rect(fill = "white", color = NA),
-      legend.text = element_text(size = 12)
+      legend.text = element_text(size = rel(1))
     ) +
     scale_x_discrete(labels = substr(month.name, 1, 1))
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = paste0("annual_pattern_", variable, ".png"),
@@ -695,12 +660,14 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' realizations, while the observed cycle is shown as a single reference line.
 #'
 #' @param daily_stats_season Data frame of daily seasonal statistics including mean values.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
 #'
-#' @return ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+#' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
@@ -733,14 +700,15 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     dplyr::ungroup()
 
   p <- ggplot(sim_avg, aes(x = as.factor(mon), y = value)) +
-    plot_config$theme +
+    theme_weathergenr() +
     facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
 
   if (nrow(sim_line) > 0) {
     p <- p + geom_line(
       data = sim_line,
       aes(group = rlz, color = rlz),
-      alpha = 0.8
+      linewidth = .PLOT_GEOM$lwd_simulated,
+      alpha = .PLOT_GEOM$alpha_bundle
     )
   }
 
@@ -749,7 +717,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
       data = obs_line,
       color = "black",
       group = 1,
-      linewidth = 1.25
+      linewidth = .PLOT_GEOM$lwd_observed
     )
   }
 
@@ -758,7 +726,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     labs(x = "", y = "") +
     guides(color = "none")
 
-  .export_multipanel_plot(
+  .export_figure(
     plot_config = plot_config,
     p = p,
     filename = "monthly_cycle.png",
@@ -778,7 +746,9 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'
 #' @param stats_annual_aavg_sim Data frame of simulated annual aggregated statistics.
 #' @param stats_annual_aavg_obs Data frame of observed annual aggregated statistics.
-#' @param plot_config List of plotting configuration options (theme, alpha, subtitle, etc.).
+#' @param plot_config List of plotting configuration options (subtitle, alpha,
+#'   colors, dpi, device). The theme is not among them: every builder calls
+#'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title to the plot.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
 #' @param output_dir Character; output directory for saved plots.
@@ -797,42 +767,42 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
   obs_precip <- stats_annual_aavg_obs %>%
     dplyr::filter(stat == "mean", variable == "precip")
 
-  p <- ggplot2::ggplot()
+  # This plot used to apply no theme at all -- so it alone rendered in ggplot2's
+  # default grey while its ten siblings were themed -- and it wrote itself
+  # rather than going through the shared exporter, which is how it also came to
+  # hardcode dpi and ignore plot_dpi/plot_device entirely.
+  p <- ggplot() + theme_weathergenr()
   p <- .add_line_if_possible(
     p = p,
     data = sim_precip,
-    mapping = ggplot2::aes(x = year, y = Simulated, group = rlz),
-    alpha = 0.5,
+    mapping = aes(x = year, y = Simulated, group = rlz),
+    alpha = .PLOT_GEOM$alpha_bundle,
     group_col = "rlz"
   )
 
   # observed
   if (nrow(obs_precip) >= 2) {
-    p <- p + ggplot2::geom_line(
+    p <- p + geom_line(
       data = obs_precip,
-      ggplot2::aes(x = year, y = Observed, group = 1), color = "blue",
-      linewidth = 1.25
+      aes(x = year, y = Observed, group = 1), color = "blue",
+      linewidth = .PLOT_GEOM$lwd_observed
     )
   }
 
-  p <- p + ggplot2::labs(x = "Serial year", y = "mm/day")
+  p <- p + labs(x = "Serial year", y = "mm/day")
 
-
-  if (show_title) {
-    p <- p + labs(title = "Annual mean precipitation")
-  }
-
-  if (save_plots && !is.null(output_dir)) {
-    ggsave(
-      filename = file.path(output_dir, "annual_precip.png"),
-      plot = p,
-      height = 4,
-      width = 8,
-      dpi = 300
-    )
-  }
-
-  invisible(p)
+  # The title block is attached by .export_figure(), not here: it is what tells
+  # the exporter to allow height for it.
+  .export_figure(
+    plot_config = plot_config,
+    p = p,
+    filename = "annual_precip.png",
+    show_title = show_title,
+    save_plots = save_plots,
+    title = "Annual mean precipitation",
+    output_dir = output_dir,
+    family = "wide"
+  )
 }
 
 
