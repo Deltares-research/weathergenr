@@ -38,6 +38,13 @@ Rscript tools/lint.R --changed   # lint changed R files; exit 1 = lints found
 Rscript tools/lint.R             # lint whole package — what CI runs
 ```
 
+IMPORTANT: `object_usage_linter` resolves symbols against the **installed** package, not
+the working tree, so a change that adds new internal objects or functions reports
+"no visible binding for global variable" for every one of them until
+`devtools::install()` runs. The findings are an artifact of a stale install, not a
+defect — do not "fix" them by restructuring the code or by adding names to
+`R/globals.R`. Install first, then re-lint, and only treat what survives as real.
+
 End-to-end numeric baseline — opt-in local gate, ~40 s (see *Workflow* below).
 The gate reads the `WEATHERGENR_BASELINE` environment variable, so the run command
 is shell-specific; the repo's default shell is PowerShell 7:
