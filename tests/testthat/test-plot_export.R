@@ -57,6 +57,59 @@ testthat::test_that(".figure_size rejects an unknown family", {
 
 
 ################################################################################
+# .PLOT_GEOM
+################################################################################
+
+testthat::test_that(".PLOT_GEOM groups roles by geom family with complete specs", {
+  testthat::expect_named(.PLOT_GEOM, c("line", "point", "area"))
+
+  # Every line role carries both weight and alpha. Splitting them across
+  # separate flat entries is how an ensemble came to be specified thick-and-
+  # opaque enough to compete with the observed series.
+  for (role in names(.PLOT_GEOM$line)) {
+    testthat::expect_named(.PLOT_GEOM$line[[role]], c("linewidth", "alpha"),
+                           info = role)
+  }
+  for (role in names(.PLOT_GEOM$point)) {
+    testthat::expect_named(.PLOT_GEOM$point[[role]], c("size", "alpha"),
+                           info = role)
+  }
+})
+
+testthat::test_that("the observed line outranks every ensemble trace", {
+  # The property the user-visible complaint came down to: in annual_precip and
+  # warm_annual_precip the blue observed series was not separable from the grey
+  # ensemble behind it. Separation comes from weight and alpha together, so
+  # assert both, against both trace styles.
+  obs <- .PLOT_GEOM$line$observed
+
+  for (trace in c("trace_mono", "trace_hued")) {
+    tr <- .PLOT_GEOM$line[[trace]]
+    testthat::expect_gt(obs$linewidth, tr$linewidth * 2, label = trace)
+    testthat::expect_gt(obs$alpha, tr$alpha, label = trace)
+  }
+
+  # And it is the heaviest thing in a line plot, guides included.
+  #
+  # `range` is deliberately excluded rather than being allowed to fail this:
+  # it is the stat_summary linerange in the observed-vs-simulated scatter
+  # panels, which draw no observed *line* at all, so the two never share a
+  # figure and their relative weight means nothing.
+  co_occurring <- c("observed", "trace_mono", "trace_hued", "reference")
+  widths <- vapply(.PLOT_GEOM$line[co_occurring], function(r) r$linewidth, numeric(1))
+  testthat::expect_identical(names(which.max(widths)), "observed")
+})
+
+testthat::test_that("monochrome traces sit lighter than hue-scaled ones", {
+  # The reason the two roles exist. Grey traces at the alpha a hue scale needs
+  # read as a dark mass; hue-scaled traces at the alpha grey needs are close to
+  # invisible. If these ever converge, one of the two figure families regressed.
+  testthat::expect_lt(.PLOT_GEOM$line$trace_mono$alpha,
+                      .PLOT_GEOM$line$trace_hued$alpha)
+})
+
+
+################################################################################
 # .base_size_for()
 ################################################################################
 

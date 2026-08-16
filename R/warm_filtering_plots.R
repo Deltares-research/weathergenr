@@ -130,10 +130,10 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
 
   p_timeseries <- ggplot() + theme_weathergenr() +
     geom_line(data = df_ts_sim_long, aes(x = year, y = value, group = series),
-              linewidth = .PLOT_GEOM$lwd_simulated,
-              alpha = .PLOT_GEOM$alpha_bundle) +
+              linewidth = .PLOT_GEOM$line$trace_mono$linewidth,
+              alpha = .PLOT_GEOM$line$trace_mono$alpha) +
     geom_line(data = df_ts_obs, aes(x = year, y = value),
-              color = "blue", linewidth = .PLOT_GEOM$lwd_observed) +
+              color = "blue", linewidth = .PLOT_GEOM$line$observed$linewidth) +
     labs(x = "Year index", y = "Value")
 
   # ===========================================================================
@@ -154,8 +154,8 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
   # theme_light() -- the clearest case of the drift the house theme removes.
   p_stats <- ggplot(stats_plot, aes(x = "a", y = .data$value)) +
     theme_weathergenr() +
-    geom_hline(yintercept = 0, linewidth = .PLOT_GEOM$lwd_reference, color = "blue") +
-    geom_point(size = .PLOT_GEOM$pt_member, alpha = .PLOT_GEOM$alpha_member,
+    geom_hline(yintercept = 0, linewidth = .PLOT_GEOM$line$reference$linewidth, color = "blue") +
+    geom_point(size = .PLOT_GEOM$point$member$size, alpha = .PLOT_GEOM$point$member$alpha,
                color = "black", position = "jitter") +
     facet_wrap(~par, nrow = 1, labeller = as_labeller(par_labels)) +
     labs(x = "Filtered realizations", y = "Relative difference (%)") +
@@ -184,24 +184,24 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
     geom_ribbon(
       data = df_gws_sum,
       aes(x = .data$period, ymin = .data$lo, ymax = .data$hi),
-      alpha = .PLOT_GEOM$alpha_faint
+      alpha = .PLOT_GEOM$area$ribbon$alpha
     ) +
     geom_line(
       data = df_gws_sum,
       aes(x = .data$period, y = .data$mean),
-      linewidth = .PLOT_GEOM$lwd_reference
+      linewidth = .PLOT_GEOM$line$reference$linewidth
     ) +
     geom_line(
       data = df_gws_lines,
       aes(x = .data$period, y = .data$obs),
       color = "blue",
-      linewidth = .PLOT_GEOM$lwd_observed
+      linewidth = .PLOT_GEOM$line$observed$linewidth
     ) +
     geom_line(
       data = df_gws_lines,
       aes(x = .data$period, y = .data$signif),
       color = "red",
-      linewidth = .PLOT_GEOM$lwd_reference,
+      linewidth = .PLOT_GEOM$line$reference$linewidth,
       linetype = "dashed"
     ) +
     labs(x = "Period", y = "Power")

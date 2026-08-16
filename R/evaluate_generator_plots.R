@@ -175,11 +175,11 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = .PLOT_GEOM$lwd_summary
+      linewidth = .PLOT_GEOM$line$range$linewidth
     ) +
     stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
-                 size = .PLOT_GEOM$pt_summary) +
-    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
+                 size = .PLOT_GEOM$point$summary$size) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$line$reference$linewidth) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
 
@@ -236,11 +236,11 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = .PLOT_GEOM$lwd_summary
+      linewidth = .PLOT_GEOM$line$range$linewidth
     ) +
     stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
-                 size = .PLOT_GEOM$pt_summary) +
-    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
+                 size = .PLOT_GEOM$point$summary$size) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$line$reference$linewidth) +
     labs(x = "Observed", y = "Simulated") +
     facet_wrap(~ variable, scales = "free", ncol = 2, nrow = 2)
 
@@ -298,17 +298,17 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 
   p <- ggplot(data_spells, aes(x = Observed, y = Simulated)) +
     theme_weathergenr() +
-    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$line$reference$linewidth) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = .PLOT_GEOM$lwd_summary
+      linewidth = .PLOT_GEOM$line$range$linewidth
     ) +
     stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
-                 size = .PLOT_GEOM$pt_summary) +
+                 size = .PLOT_GEOM$point$summary$size) +
     facet_wrap(~ stat, ncol = 2, nrow = 1, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
@@ -366,17 +366,17 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 
   p <- ggplot(data_days, aes(x = Observed, y = Simulated)) +
     theme_weathergenr() +
-    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$line$reference$linewidth) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = .PLOT_GEOM$lwd_summary
+      linewidth = .PLOT_GEOM$line$range$linewidth
     ) +
     stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
-                 size = .PLOT_GEOM$pt_summary) +
+                 size = .PLOT_GEOM$point$summary$size) +
     facet_wrap(~ stat, ncol = 2, nrow = 1, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
@@ -423,17 +423,17 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 
   p <- ggplot(stats_crosscor, aes(x = Observed, y = Simulated)) +
     theme_weathergenr() +
-    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$line$reference$linewidth) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = .PLOT_GEOM$lwd_summary
+      linewidth = .PLOT_GEOM$line$range$linewidth
     ) +
     stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
-                 size = .PLOT_GEOM$pt_summary) +
+                 size = .PLOT_GEOM$point$summary$size) +
     facet_wrap(~ variable1, ncol = 2, nrow = 2, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
@@ -480,17 +480,17 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 
   p <- ggplot(stats_intercor, aes(x = Observed, y = Simulated)) +
     theme_weathergenr() +
-    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$line$reference$linewidth) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = .PLOT_GEOM$lwd_summary
+      linewidth = .PLOT_GEOM$line$range$linewidth
     ) +
     stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
-                 size = .PLOT_GEOM$pt_summary) +
+                 size = .PLOT_GEOM$point$summary$size) +
     facet_wrap(~ variable, ncol = 3, nrow = 2, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
@@ -544,17 +544,17 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 
   p <- ggplot(dat, aes(x = Observed, y = Simulated)) +
     theme_weathergenr() +
-    geom_abline(color = "blue", linewidth = .PLOT_GEOM$lwd_reference) +
+    geom_abline(color = "blue", linewidth = .PLOT_GEOM$line$reference$linewidth) +
     geom_point(data = dummy_points, color = "blue", alpha = 0) +
     stat_summary(
       geom = "linerange",
       fun.max = max,
       fun.min = min,
       alpha = plot_config$alpha,
-      linewidth = .PLOT_GEOM$lwd_summary
+      linewidth = .PLOT_GEOM$line$range$linewidth
     ) +
     stat_summary(fun = "median", geom = "point", alpha = plot_config$alpha,
-                 size = .PLOT_GEOM$pt_summary) +
+                 size = .PLOT_GEOM$point$summary$size) +
     facet_grid(regime ~ variable, scales = "free") +
     labs(x = "Observed", y = "Simulated")
 
@@ -616,13 +616,13 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     color = type
   )) +
     theme_weathergenr() +
-    geom_boxplot(alpha = .PLOT_GEOM$alpha_faint) +
+    geom_boxplot(alpha = .PLOT_GEOM$area$box$alpha) +
     facet_wrap(~ stat, scales = "free", ncol = 2, nrow = 2) +
     scale_fill_manual("", values = plot_config$colors) +
     scale_color_manual("", values = plot_config$colors) +
     stat_summary(
       fun = "mean",
-      size = .PLOT_GEOM$pt_member,
+      size = .PLOT_GEOM$point$member$size,
       geom = "point",
       position = position_dodge(0.8),
       shape = 18
@@ -707,8 +707,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     p <- p + geom_line(
       data = sim_line,
       aes(group = rlz, color = rlz),
-      linewidth = .PLOT_GEOM$lwd_simulated,
-      alpha = .PLOT_GEOM$alpha_bundle
+      linewidth = .PLOT_GEOM$line$trace_hued$linewidth,
+      alpha = .PLOT_GEOM$line$trace_hued$alpha
     )
   }
 
@@ -717,7 +717,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
       data = obs_line,
       color = "black",
       group = 1,
-      linewidth = .PLOT_GEOM$lwd_observed
+      linewidth = .PLOT_GEOM$line$observed$linewidth
     )
   }
 
@@ -776,7 +776,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     p = p,
     data = sim_precip,
     mapping = aes(x = year, y = Simulated, group = rlz),
-    alpha = .PLOT_GEOM$alpha_bundle,
+    linewidth = .PLOT_GEOM$line$trace_mono$linewidth,
+    alpha = .PLOT_GEOM$line$trace_mono$alpha,
     group_col = "rlz"
   )
 
@@ -785,7 +786,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     p <- p + geom_line(
       data = obs_precip,
       aes(x = year, y = Observed, group = 1), color = "blue",
-      linewidth = .PLOT_GEOM$lwd_observed
+      linewidth = .PLOT_GEOM$line$observed$linewidth
     )
   }
 
