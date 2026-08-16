@@ -244,7 +244,9 @@ Settings are supplied as a single `config` list. Only `vars` and
 `n_realizations` are required; anything you leave out falls back to that
 function's own default, so a config names only what you want to change.
 
-```{r run_generator, results = 'hide'}
+```{r}
+#| label: run-generator
+#| results: hide
 # Set a seed for reproducibility
 seed <- 123
 
@@ -286,7 +288,8 @@ result <- run_weather_generator(
 - `evaluation`: the diagnostic plots comparing simulated against observed,
   covered in the next section
 
-```{r examine_output}
+```{r}
+#| label: examine-output
 # Top-level components
 names(result)
 
@@ -347,7 +350,9 @@ The evaluation needs the synthetic series as daily values, not as the resampled
 dates the generator returns. `run_weather_generator()` does that reshaping
 internally, so the diagnostics are already in the result:
 
-```{r run_evaluation, results = "hide"}
+```{r}
+#| label: run-evaluation
+#| results: hide
 evaluation_plots <- result$evaluation
 ```
 
@@ -393,7 +398,9 @@ Inter-site correlation matrices for each variable, comparing observed versus sim
 Each element of `evaluation_plots` is an ordinary ggplot object, so print one on
 its own or the whole list at once:
 
-```{r view_evaluation_usage, eval = FALSE}
+```{r}
+#| label: view-evaluation-usage
+#| eval: false
 # A single diagnostic
 evaluation_plots$daily_mean
 
@@ -401,22 +408,48 @@ evaluation_plots$daily_mean
 evaluation_plots
 ```
 
-```{r view_evaluation, output = "asis", echo = FALSE}
+```{r}
+#| label: view-evaluation
+#| output: asis
+#| echo: false
 # The diagnostics do not all have the same shape: most are 2x2 panel grids, but
 # the spell-length and wet/dry-day comparisons are a single row and the annual
 # series is a single panel. Rendering every one at one fixed height stretches
 # the short ones, so height follows the number of panel rows each plot actually
 # draws while the width stays constant.
+#
+# One child chunk per plot because knitr does not recycle a vector fig-height
+# across the plots printed by a single chunk -- it applies the last value to all
+# of them.
 panel_rows <- function(p) max(ggplot2::ggplot_build(p)$layout$layout$ROW)
 
+# Caption and alt text come from the plot's own title and subtitle, so they stay
+# in step with the figure rather than drifting as a separate hand-kept list.
+#
+# Both are emitted as single-line quoted YAML scalars, and several of these
+# titles and subtitles carry embedded newlines for layout inside the plot, so
+# they have to be flattened first or the scalar never closes.
+yaml_scalar <- function(x) {
+  x <- gsub('"', "'", x, fixed = TRUE)
+  trimws(gsub("[[:space:]]+", " ", x))
+}
+
 for (nm in names(evaluation_plots)) {
+  p <- evaluation_plots[[nm]]
+  # Not `%||%`: that is base R only from 4.4.0 and this package supports 4.1.
+  caption <- yaml_scalar(if (is.null(p$labels$title)) nm else p$labels$title)
+  alt <- yaml_scalar(paste(c(caption, p$labels$subtitle), collapse = ". "))
+
   cat(
     knitr::knit_child(
       text = c(
-        sprintf(
-          "```{r fig-%s, fig.width = 10, fig.height = %s, echo = FALSE}",
-          nm, 3.5 * panel_rows(evaluation_plots[[nm]]) + 1
-        ),
+        "```{r}",
+        sprintf("#| label: fig-%s", gsub("_", "-", nm)),
+        sprintf("#| fig-cap: \"%s\"", caption),
+        sprintf("#| fig-alt: \"%s\"", alt),
+        "#| fig-width: 10",
+        sprintf("#| fig-height: %s", 3.5 * panel_rows(p) + 1),
+        "#| echo: false",
         sprintf("evaluation_plots[[%s]]", dQuote(nm, q = FALSE)),
         "```"
       ),
@@ -488,7 +521,9 @@ wavelet_results <- analyze_wavelet_spectrum(
 
 For large spatial domains, enable parallel processing to accelerate computation:
 
-```{r parallel_example, eval = FALSE}
+```{r}
+#| label: parallel-example
+#| eval: false
 # Parallelism is a config entry like any other. Realizations are the unit of
 # work, so there is nothing to gain from more cores than realizations.
 result <- run_weather_generator(
