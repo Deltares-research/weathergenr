@@ -57,6 +57,69 @@ testthat::test_that(".figure_size rejects an unknown family", {
 
 
 ################################################################################
+# .base_size_for()
+################################################################################
+
+testthat::test_that(".base_size_for anchors the 2x2 square figure at 12 pt", {
+  # The reference shape most evaluation diagnostics take. If this drifts, every
+  # other figure's type moves with it.
+  testthat::expect_equal(.base_size_for(.figure_size(2, 2, "square", header = TRUE)), 12)
+})
+
+testthat::test_that(".base_size_for grows with figure extent", {
+  small <- .base_size_for(.figure_size(1, 2, "square", header = TRUE))   # 8 x 5.1
+  ref   <- .base_size_for(.figure_size(2, 2, "square", header = TRUE))   # 8 x 9.1
+  big   <- .base_size_for(.figure_size(2, 3, "square", header = TRUE))   # 12 x 9.1
+
+  testthat::expect_lt(small, ref)
+  testthat::expect_lt(ref, big)
+})
+
+testthat::test_that(".base_size_for compensates exactly between the clamps", {
+  # Where the rule is unclamped it is exact: base_size / extent is constant, so
+  # two figures scaled to a common width carry identically sized text.
+  geoms <- list(
+    .figure_size(2, 2, "square", header = TRUE),   # daily_mean, 8 x 9.1
+    .figure_size(2, 3, "square", header = TRUE)    # intergrid_correlations, 12 x 9.1
+  )
+  apparent <- vapply(geoms, function(g) {
+    .base_size_for(g) / sqrt(g[["width"]] * g[["height"]])
+  }, numeric(1))
+
+  testthat::expect_equal(apparent[1], apparent[2])
+})
+
+testthat::test_that(".base_size_for shrinks the apparent-size spread across the real figure set", {
+  # The property the scaling exists for, asserted over the shapes the package
+  # actually writes rather than a convenient subset. Two of the five clamp, so
+  # compensation is deliberately partial at the extremes -- the guarantee is a
+  # large reduction, not perfection.
+  geoms <- list(
+    .figure_size(1, 1, "wide",   header = FALSE),  # warm_annual_*,      8 x 4.5
+    .figure_size(1, 2, "square", header = TRUE),   # wetdry_days_count,  8 x 5.1
+    .figure_size(2, 2, "square", header = TRUE),   # daily_mean,         8 x 9.1
+    .figure_size(2, 3, "square", header = TRUE),   # intergrid_corr,    12 x 9.1
+    .figure_size(3, 3, "square", header = TRUE)    # precip_cond_corr,  12 x 13.1
+  )
+  extent <- vapply(geoms, function(g) sqrt(g[["width"]] * g[["height"]]), numeric(1))
+
+  spread <- function(bs) max(bs / extent) / min(bs / extent)
+
+  fixed  <- spread(rep(12, length(geoms)))
+  scaled <- spread(vapply(geoms, .base_size_for, numeric(1)))
+
+  testthat::expect_gt(fixed, 2)      # a fixed 12 pt varies ~2.1-fold
+  testthat::expect_lt(scaled, 1.25)  # scaling brings it under ~1.2
+  testthat::expect_lt(scaled, fixed / 1.7)
+})
+
+testthat::test_that(".base_size_for clamps both ends", {
+  testthat::expect_equal(.base_size_for(c(1, 1)), 9)
+  testthat::expect_equal(.base_size_for(c(60, 60)), 16)
+})
+
+
+################################################################################
 # .panel_dims()
 ################################################################################
 
@@ -281,6 +344,32 @@ testthat::test_that(".export_figure adds the title block and its height together
   .export_figure(p, "g.png", output_dir = tempdir(), family = "wide",
                  show_title = TRUE, title = NULL)
   testthat::expect_equal(rec$args[[2]]$height, 4.5)
+})
+
+testthat::test_that(".export_figure rescales type without discarding overrides", {
+  rec <- local_ggsave_recorder()
+
+  # A per-plot override added after the house theme, as the monthly-pattern and
+  # WARM stats figures do. Adding a *complete* theme at export would drop it;
+  # a partial theme() merges.
+  p <- ggplot2::ggplot(mtcars, ggplot2::aes(.data$wt, .data$mpg)) +
+    ggplot2::geom_point() +
+    theme_weathergenr() +
+    ggplot2::theme(axis.text.x = ggplot2::element_blank())
+
+  out <- .export_figure(p, "f.png", output_dir = tempdir(), family = "square",
+                        dims = c(ncol = 3L, nrow = 3L))
+
+  written  <- rec$args[[1]]$plot
+  expected <- .base_size_for(c(rec$args[[1]]$width, rec$args[[1]]$height))
+
+  testthat::expect_equal(written$theme$text$size, expected)
+  testthat::expect_gt(expected, 12)   # a 3x3 grid is larger than the reference
+  testthat::expect_s3_class(written$theme$axis.text.x, "element_blank")
+
+  # Derived elements are rel(), so they ride along rather than being stranded.
+  testthat::expect_s3_class(written$theme$plot.title$size, "rel")
+  testthat::expect_identical(out$theme$text$size, written$theme$text$size)
 })
 
 testthat::test_that(".export_figure writes nothing when told not to", {
