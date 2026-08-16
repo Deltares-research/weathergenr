@@ -6,7 +6,6 @@
 | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---- | ----------------- | --- | ------- |
 | [t2608151254](tasks/t2608151254-decide-whether-climate-perturbation-belongs-in-run-weather-generator.md) | Decide whether climate perturbation belongs in run_weather_generator() | api  | review-2026-08-15 | 1   | backlog |
 | [t2608151254k](tasks/t2608151254k-trim-the-export-surface.md)                                            | Trim the export surface                                                | api  | review-2026-08-15 | 1   | backlog |
-| [t2608061641](tasks/t2608061641-clear-lintr-findings-and-make-the-lint-job-blocking.md)                  | Clear lintr findings and make the lint job blocking                    | ci   |                   |     | backlog |
 
 ## Watching
 
