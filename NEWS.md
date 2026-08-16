@@ -1,3 +1,22 @@
+# weathergenr (development version)
+
+## Bug fixes
+
+* The significance threshold in `warm_annual_wavelet.png` is now drawn across the
+  full period axis, matching `obs_power_spectra.png`. The panel was being given
+  the cone-of-influence-masked threshold, which is `NA` at every scale the record
+  is too short to test — on a 20-year annual series that is everything beyond
+  roughly 3.5 years, so the red dashed line appeared as a stub over the shortest
+  periods and then vanished. It now receives the unmasked curve, as the observed
+  power-spectrum plot already did.
+
+  Filtering is unchanged: the masked curve remains the one
+  `identify_significant_peaks()` and the testable-scale count read, because there
+  an `NA` means "not testable" rather than "not significant". Note that the
+  plotted line is therefore the permissive threshold, drawn over scales the cone
+  of influence cannot actually test — the same convention `obs_power_spectra.png`
+  uses.
+
 # weathergenr 1.4.0
 
 ## New features

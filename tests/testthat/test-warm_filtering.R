@@ -56,6 +56,74 @@ testthat::test_that("compute_spectral_metrics returns cached spectra", {
   testthat::expect_true(is.matrix(out$gws_cache))
 })
 
+testthat::test_that("compute_spectral_metrics separates the display and inference signif curves", {
+  # The bug: filter_warm_pool() handed the COI-masked inference curve to the
+  # plot, so warm_annual_wavelet.png drew the red threshold only over the few
+  # short periods the cone of influence can test and left the rest of the axis
+  # bare. The display curve must be finite everywhere; the inference curve must
+  # keep its NAs, because identify_significant_peaks() reads that NA as "not
+  # testable" rather than "not significant".
+  series <- sin(seq(0, 4 * pi, length.out = 32))
+  sim_series_stats <- cbind(series, series * 0.9, series * 1.1)
+
+  out <- compute_spectral_metrics(
+    obs_use = series,
+    sim_series_stats = sim_series_stats,
+    wavelet_pars = list(
+      signif_level = 0.8,
+      noise_type = "white",
+      period_lower_limit = 2,
+      detrend = FALSE
+    )
+  )
+
+  testthat::expect_equal(length(out$gws_signif_display), length(out$period))
+  testthat::expect_true(all(is.finite(out$gws_signif_display)))
+
+  # Only meaningful if the two actually differ here -- otherwise the assertion
+  # above would pass on a record long enough that nothing was masked.
+  testthat::expect_true(anyNA(out$gws_signif))
+  testthat::expect_false(identical(out$gws_signif, out$gws_signif_display))
+})
+
+testthat::test_that("plotted signif curve spans every period the spectra do", {
+  # Binds the caller wiring: whatever filter_warm_pool() hands the plot must
+  # render an unbroken threshold line across the full period grid.
+  period <- c(2, 3, 5, 8, 12, 20)
+  signif_masked <- c(0.5, 0.6, NA, NA, NA, NA)
+  signif_display <- c(0.5, 0.6, 0.7, 0.8, 0.9, 1.0)
+
+  obs_series <- as.numeric(1:32)
+  sim_series <- vapply(1:3, function(j) obs_series + j, numeric(32))
+  tm <- compute_tailmass_metrics(obs_series, sim_series, 0.2, 0.8, 1e-5)
+
+  signif_rows <- function(power_signif) {
+    p <- plot_filter_diagnostics(
+      obs_series = obs_series, sim_series = sim_series, pool = c(1, 2),
+      rel_diff_mean = rep(0.05, 3), rel_diff_sd = rep(0.02, 3),
+      tail_metrics = tm,
+      power_period = period, power_obs = seq_along(period),
+      power_signif = power_signif,
+      wavelet_pars = list(signif_level = 0.8, noise_type = "white",
+                          period_lower_limit = 2, detrend = FALSE),
+      wavelet_q = c(0.5, 0.9)
+    )
+    # Layer 4 is the red dashed significance line.
+    ggplot2::ggplot_build(p$wavelet_gws)$data[[4]]
+  }
+
+  drawn <- signif_rows(signif_display)
+  testthat::expect_equal(nrow(drawn), length(period))
+  testthat::expect_true(all(is.finite(drawn$y)))
+  testthat::expect_equal(range(drawn$x), range(period))
+
+  # The masked curve is what produced the truncated line; keep the contrast
+  # visible so this test fails if the wiring is reverted. ggplot_build() keeps
+  # the NA rows, so the truncation shows up as a missing y, not a missing row.
+  masked <- suppressWarnings(signif_rows(signif_masked))
+  testthat::expect_lt(max(masked$x[is.finite(masked$y)]), max(period))
+})
+
 testthat::test_that("compute_spectral_metrics keeps duplicate realizations identical", {
   series <- sin(seq(0, 6 * pi, length.out = 48))
   sim_series_stats <- cbind(series * 0.95, series * 0.95, series * 1.05)
