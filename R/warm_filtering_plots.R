@@ -16,7 +16,10 @@
 #' @param tail_metrics Tail metrics list
 #' @param power_period Wavelet periods
 #' @param power_obs Observed GWS
-#' @param power_signif Significance curve
+#' @param power_signif Significance curve, for display only. Pass the unmasked
+#' variant (\code{gws_signif_unmasked}); the COI-masked inference curve is NA
+#' wherever the cone of influence cannot support a test, which draws the
+#' threshold as a stub over the short periods instead of across the axis.
 #' @param wavelet_pars Named list. Wavelet settings passed to analyze_wavelet_spectrum() (signif_level,
 #' noise_type, period_lower_limit, detrend).
 #' @param wavelet_q Two quantiles for ribbon (e.g., c(0.50, 0.95))

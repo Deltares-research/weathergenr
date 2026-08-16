@@ -35,7 +35,10 @@ plot_filter_diagnostics(
 
 \item{power_obs}{Observed GWS}
 
-\item{power_signif}{Significance curve}
+\item{power_signif}{Significance curve, for display only. Pass the unmasked
+variant (\code{gws_signif_unmasked}); the COI-masked inference curve is NA
+wherever the cone of influence cannot support a test, which draws the
+threshold as a stub over the short periods instead of across the axis.}
 
 \item{wavelet_pars}{Named list. Wavelet settings passed to analyze_wavelet_spectrum() (signif_level,
 noise_type, period_lower_limit, detrend).}

@@ -61,7 +61,12 @@ Named list with:
   \item{active}{Logical scalar. TRUE when wavelet metrics were computed.}
   \item{period}{Numeric vector. Period grid used for all spectra.}
   \item{gws_obs}{Numeric vector. Observed global wavelet spectrum on \code{period}.}
-  \item{gws_signif}{Numeric vector or NULL. Significance curve on \code{period}.}
+  \item{gws_signif}{Numeric vector or NULL. COI-masked significance curve on
+  \code{period}, used for inference. NA at scales the cone of influence cannot
+  test.}
+  \item{gws_signif_display}{Numeric vector or NULL. Unmasked significance curve
+  on \code{period}, finite at every scale. For plotting only -- never for
+  inference; see \code{\link{plot_filter_diagnostics}}.}
   \item{gws_cache}{Numeric matrix or NULL. Simulated spectra on \code{period}
   for each realization when \code{cache_gws = TRUE}; otherwise NULL.}
   \item{metrics}{List with numeric vectors \code{spectral_cor},

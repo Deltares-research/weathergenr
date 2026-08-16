@@ -329,6 +329,7 @@ filter_warm_pool <- function(
   period <- spectral_results$period
   gws_obs <- spectral_results$gws_obs
   gws_signif <- spectral_results$gws_signif
+  gws_signif_display <- spectral_results$gws_signif_display
 
   # A wavelet criterion with no testable peak admits every candidate and then
   # reports a 100 percent pass rate, which is indistinguishable from a criterion
@@ -566,7 +567,8 @@ filter_warm_pool <- function(
         tail_metrics  = tail_stats,
         power_period  = period,
         power_obs     = gws_obs,
-        power_signif  = gws_signif,
+        # Display curve, not the inference one: see compute_spectral_metrics().
+        power_signif  = if (is.null(gws_signif_display)) gws_signif else gws_signif_display,
         wavelet_pars  = wavelet_args,
         wavelet_q     = b$plot_wavelet_q
       )
@@ -1322,7 +1324,12 @@ compute_spectral_match_single <- function(gws_obs, gws_sim, period,
 #'   \item{active}{Logical scalar. TRUE when wavelet metrics were computed.}
 #'   \item{period}{Numeric vector. Period grid used for all spectra.}
 #'   \item{gws_obs}{Numeric vector. Observed global wavelet spectrum on \code{period}.}
-#'   \item{gws_signif}{Numeric vector or NULL. Significance curve on \code{period}.}
+#'   \item{gws_signif}{Numeric vector or NULL. COI-masked significance curve on
+#'   \code{period}, used for inference. NA at scales the cone of influence cannot
+#'   test.}
+#'   \item{gws_signif_display}{Numeric vector or NULL. Unmasked significance curve
+#'   on \code{period}, finite at every scale. For plotting only -- never for
+#'   inference; see \code{\link{plot_filter_diagnostics}}.}
 #'   \item{gws_cache}{Numeric matrix or NULL. Simulated spectra on \code{period}
 #'   for each realization when \code{cache_gws = TRUE}; otherwise NULL.}
 #'   \item{metrics}{List with numeric vectors \code{spectral_cor},
@@ -1415,6 +1422,22 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
     }
   } else {
     gws_signif <- NULL
+  }
+
+  # Display-only companion to the curve above. Plots need a threshold that is
+  # finite at every scale, or the line breaks off wherever the COI stops
+  # supporting a test -- which is what made warm_annual_wavelet.png draw a red
+  # stub over the first few periods while obs_power_spectra.png, which already
+  # used the unmasked curve, drew it across the whole axis. Kept as a separate
+  # element rather than filled into gws_signif: this one must never reach
+  # identify_significant_peaks() or n_testable_scales.
+  gws_signif_display <- wv_obs$gws_signif_unmasked
+
+  if (is.null(gws_signif_display) || !is.numeric(gws_signif_display) ||
+      length(gws_signif_display) != length(period)) {
+    gws_signif_display <- gws_signif
+  } else {
+    gws_signif_display <- as.numeric(gws_signif_display)
   }
 
   # Significant observed peaks only. Peak power comes from the unmasked curve so
@@ -1598,6 +1621,7 @@ compute_spectral_metrics <- function(obs_use, sim_series_stats, wavelet_pars,
     period = period,
     gws_obs = gws_obs,
     gws_signif = gws_signif,
+    gws_signif_display = gws_signif_display,
     gws_cache = gws_cache,
     metrics = list(
       spectral_cor = spectral_cor,
