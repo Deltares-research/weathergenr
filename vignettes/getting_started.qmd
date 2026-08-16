@@ -390,9 +390,41 @@ Inter-site correlation matrices for each variable, comparing observed versus sim
 
 ## Viewing Evaluation Results
 
-```{r view_evaluation, eval = TRUE, echo = TRUE, fig.width = 10, fig.height = 8}
-# Display all diagnostic plots
+Each element of `evaluation_plots` is an ordinary ggplot object, so print one on
+its own or the whole list at once:
+
+```{r view_evaluation_usage, eval = FALSE}
+# A single diagnostic
+evaluation_plots$daily_mean
+
+# ...or all of them
 evaluation_plots
+```
+
+```{r view_evaluation, output = "asis", echo = FALSE}
+# The diagnostics do not all have the same shape: most are 2x2 panel grids, but
+# the spell-length and wet/dry-day comparisons are a single row and the annual
+# series is a single panel. Rendering every one at one fixed height stretches
+# the short ones, so height follows the number of panel rows each plot actually
+# draws while the width stays constant.
+panel_rows <- function(p) max(ggplot2::ggplot_build(p)$layout$layout$ROW)
+
+for (nm in names(evaluation_plots)) {
+  cat(
+    knitr::knit_child(
+      text = c(
+        sprintf(
+          "```{r fig-%s, fig.width = 10, fig.height = %s, echo = FALSE}",
+          nm, 3.5 * panel_rows(evaluation_plots[[nm]]) + 1
+        ),
+        sprintf("evaluation_plots[[%s]]", dQuote(nm, q = FALSE)),
+        "```"
+      ),
+      quiet = TRUE
+    ),
+    sep = "\n"
+  )
+}
 ```
 
 ### Interpreting the Plots
