@@ -272,6 +272,53 @@ testthat::test_that("plot_filter_diagnostics returns ggplot list", {
   testthat::expect_true(inherits(plots$timeseries, "ggplot"))
   testthat::expect_true(inherits(plots$stats, "ggplot"))
   testthat::expect_true(inherits(plots$wavelet_gws, "ggplot"))
+
+  # inherits() is close to vacuous on its own: a bare ggplot() with no data and
+  # no layers passes it, and survives ggplot_build() too. Assert the structure
+  # each panel is supposed to have.
+  testthat::expect_equal(length(plots$timeseries$layers), 2L)
+  testthat::expect_equal(length(plots$stats$layers), 2L)
+  testthat::expect_equal(length(plots$wavelet_gws$layers), 4L)
+
+  rendered <- function(p) sum(vapply(ggplot2::ggplot_build(p)$data, nrow, integer(1)))
+
+  # The timeseries panel draws the observed record plus one line per pooled
+  # realization, so its rendered row count is tied to both. This is what fails
+  # if the panel stops reflecting `pool`.
+  testthat::expect_equal(rendered(plots$timeseries),
+                         length(obs_series) * (1L + length(pool)))
+
+  # The stats panel draws four summary statistics for the pool and the
+  # observations.
+  testthat::expect_equal(rendered(plots$stats), 4L * (length(pool) + 1L))
+
+  testthat::expect_gt(rendered(plots$wavelet_gws), 0L)
+})
+
+testthat::test_that("plot_filter_diagnostics tracks the pool it is given", {
+  # The row-count identities above only bind if they move with their inputs;
+  # a panel that ignored `pool` would satisfy a single fixed number.
+  obs_series <- as.numeric(1:32)
+  sim_series <- vapply(1:5, function(j) obs_series + j, numeric(32))
+
+  build <- function(pool) {
+    tm <- compute_tailmass_metrics(obs_series, sim_series, 0.2, 0.8, 1e-5)
+    p <- plot_filter_diagnostics(
+      obs_series = obs_series, sim_series = sim_series, pool = pool,
+      rel_diff_mean = rep(0.05, 5), rel_diff_sd = rep(0.02, 5),
+      tail_metrics = tm,
+      power_period = c(1, 2, 3), power_obs = c(1, 2, 3),
+      power_signif = c(0.5, 0.6, 0.7),
+      wavelet_pars = list(signif_level = 0.8, noise_type = "white",
+                          period_lower_limit = 2, detrend = FALSE),
+      wavelet_q = c(0.5, 0.9)
+    )
+    sum(vapply(ggplot2::ggplot_build(p$timeseries)$data, nrow, integer(1)))
+  }
+
+  testthat::expect_equal(build(c(1, 2)), 32L * 3L)
+  testthat::expect_equal(build(c(1, 2, 3)), 32L * 4L)
+  testthat::expect_equal(build(1:5), 32L * 6L)
 })
 
 

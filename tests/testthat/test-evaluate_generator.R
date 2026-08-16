@@ -757,9 +757,20 @@ test_that("create_all_diagnostic_plots returns expected plot names and ggplot ob
   )
   expect_true(all(expected %in% names(plots)))
 
-  # All are ggplot objects
+  # All are ggplot objects.
+  #
+  # expect_s3_class() alone is close to vacuous here: a bare ggplot() with no
+  # data and no layers is an S3 "ggplot" and even survives ggplot_build(), so a
+  # panel that silently stopped drawing anything would still pass. Each plot is
+  # therefore also built, and required to carry at least one layer and to render
+  # at least one row -- which is what fails if a geom stops receiving data.
   for (nm in expected) {
-    expect_s3_class(plots[[nm]], "ggplot")
+    p <- plots[[nm]]
+    expect_s3_class(p, "ggplot")
+    expect_gt(length(p$layers), 0L)
+
+    built <- ggplot2::ggplot_build(p)
+    expect_gt(sum(vapply(built$data, nrow, integer(1))), 0L)
   }
 })
 
