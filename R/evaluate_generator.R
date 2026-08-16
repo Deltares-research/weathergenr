@@ -203,7 +203,7 @@ evaluate_weather_generator <- function(
     subtitle = "Value range and median from all simulations shown against observed",
     dpi = plot_dpi,
     device = plot_device,
-    alpha = .PLOT_GEOM$alpha_summary,
+    alpha = .PLOT_GEOM$point$summary$alpha,
     colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated"))
   )
 

@@ -77,25 +77,56 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
 #' this existed the observed series was 0.9 in one module, 1.25 in another, and
 #' the device default in a third.
 #'
-#' @format Named list of numeric scalars.
+#' @details
+#' Grouped by geom family, because the value a role needs depends on how it is
+#' drawn. Each role carries its whole visual specification -- weight *and* alpha
+#' together -- rather than leaving the two to be picked independently at the call
+#' site, which is how an ensemble came to compete with the observed series it is
+#' meant to sit behind.
+#'
+#' \code{trace_mono} and \code{trace_hued} are the same conceptual role, an
+#' ensemble of realization traces, split because the alpha that reads correctly
+#' depends on the trace colour. Monochrome grey traces at 0.5 are nearly as heavy
+#' as the observed line drawn over them; hue-scaled pastel traces at 0.2 are
+#' close to invisible. One value cannot serve both, and trying made
+#' \code{annual_precip} and \code{warm_annual_precip} hard to read.
+#'
+#' @format Nested named list. Outer names are geom families, inner names are
+#'   roles, innermost are the aesthetic values that role sets.
 #' @keywords internal
 #' @noRd
 .PLOT_GEOM <- list(
-  lwd_observed  = 1.0,   # the observed / reference series
-  lwd_simulated = 0.5,   # a single simulated member
-  lwd_summary   = 1.5,   # stat_summary linerange spanning the ensemble
-  lwd_reference = 0.8,   # abline, hline, significance threshold
-  pt_summary    = 2,     # ensemble median marker
-  pt_member     = 3,     # single-member marker (jitter point, mean diamond)
-  alpha_faint   = 0.2,   # area fills: ribbons, boxplot interiors
-  # A bundle of realization lines drawn behind a reference series. Separate from
-  # alpha_faint because an area fill and a line bundle do not read the same at
-  # the same alpha: 0.2 is right for a ribbon but leaves hue-scaled lines almost
-  # invisible, which is what happened to monthly_cycle. Held below the 0.8 the
-  # bundles used to carry, where 20 realizations saturate to solid.
-  alpha_bundle  = 0.5,
-  alpha_member  = 0.3,   # individual member points
-  alpha_summary = 0.4    # ensemble range and median summaries
+
+  line = list(
+    # The observed series. Deliberately the heaviest line in any figure: it is
+    # the reference every other line is read against.
+    observed   = list(linewidth = 1.4, alpha = 1.00),
+
+    # An ensemble of realization traces in a single colour (grey or black).
+    trace_mono = list(linewidth = 0.4, alpha = 0.30),
+
+    # An ensemble of realization traces mapped to a colour scale. Needs more
+    # alpha than trace_mono to read at all, and can afford it: the hue scale
+    # keeps it from reading as one dark mass.
+    trace_hued = list(linewidth = 0.5, alpha = 0.70),
+
+    # Fixed guides: 1:1 ablines, zero hlines, significance thresholds, the cone
+    # of influence. Present but never competing with the data.
+    reference  = list(linewidth = 0.8, alpha = 1.00),
+
+    # A linerange spanning the ensemble at one x position.
+    range      = list(linewidth = 1.5, alpha = 0.40)
+  ),
+
+  point = list(
+    summary = list(size = 2, alpha = 0.40),   # ensemble median marker
+    member  = list(size = 3, alpha = 0.30)    # one member: jitter, mean diamond
+  ),
+
+  area = list(
+    ribbon = list(alpha = 0.20),
+    box    = list(alpha = 0.20)
+  )
 )
 
 

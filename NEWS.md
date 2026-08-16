@@ -80,12 +80,20 @@
 * Every write now sets `units`, `dpi` and background colour explicitly instead of
   leaving them to `ggsave()`'s defaults.
 
-* Line weights, point sizes and alpha values are shared constants keyed by role,
-  so the observed reference series is drawn at the same weight in every figure —
-  it was previously 0.9 in one module, 1.25 in another, and the device default in
-  a third. Bundles of realization lines are drawn at alpha 0.5 throughout, where
-  they previously ranged from 0.2 to 0.8 — the high end saturated to solid at 20
-  realizations, and the low end left hue-scaled lines almost invisible.
+* Line weights, point sizes and alpha values are shared constants grouped by geom
+  family, each role carrying its full specification. The observed series is now
+  drawn at one weight in every figure — it was previously 0.9 in one module, 1.25
+  in another, and the device default in a third — and is deliberately the
+  heaviest line in any plot that draws one, so it reads clearly against the
+  ensemble behind it. In `annual_precip.png` and `warm_annual_precip.png` it
+  previously competed with the simulated traces rather than standing out from
+  them.
+
+  Ensemble traces are split into two roles by how they are coloured, because the
+  alpha that reads correctly depends on it: monochrome grey traces are drawn
+  lighter (0.30) than hue-scaled per-realization traces (0.70). A single value
+  cannot serve both — grey at the hue scale's alpha reads as a dark mass, and
+  hue-scaled lines at grey's alpha are close to invisible.
 
 * The monthly-pattern legend used `legend.position = c(1, 0)`, superseded in
   ggplot2 3.5.0 by `legend.position = "inside"`.
