@@ -13,6 +13,7 @@ Rows are appended by `todoboard done`, never hand-edited.
 
 | Closed     | ID           | Item                                     | Area         |
 | ---------- | ------------ | ---------------------------------------- | ------------ |
+| 2026-08-16 | t2608161143  | Standardize figure export geometry and theming | plots        |
 | 2026-08-16 | t2608061641  | Clear lintr findings and make the lint job blocking | ci           |
 | 2026-08-16 | t2608061641a | Cover create_all_diagnostic_plots and plot_filter_diagnostics with tests | tests        |
 | 2026-08-15 | t2608151254b | Give PET a diurnal-range response to warming | perturbations |
