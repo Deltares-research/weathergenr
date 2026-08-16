@@ -43,8 +43,7 @@ It does not validate plot input structure beyond basic use in downstream plottin
   plot_config <- list(
     subtitle = "Example",
     alpha = 0.4,
-    colors = c(Observed = "blue3", Simulated = "gray40"),
-    theme = ggplot2::theme_bw()
+    colors = c(Observed = "blue3", Simulated = "gray40")
   )
   plots <- create_all_diagnostic_plots(
     plot_data = plot_data,

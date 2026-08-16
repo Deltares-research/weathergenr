@@ -128,11 +128,12 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
 
   df_ts_obs <- data.frame(year = seq_along(obs_series), value = obs_series)
 
-  p_timeseries <- ggplot() + theme_light() +
+  p_timeseries <- ggplot() + theme_weathergenr() +
     geom_line(data = df_ts_sim_long, aes(x = year, y = value, group = series),
-              linewidth = 0.7, alpha = 0.20) +
+              linewidth = .PLOT_GEOM$lwd_simulated,
+              alpha = .PLOT_GEOM$alpha_bundle) +
     geom_line(data = df_ts_obs, aes(x = year, y = value),
-              color = "blue", linewidth = 0.9) +
+              color = "blue", linewidth = .PLOT_GEOM$lwd_observed) +
     labs(x = "Year index", y = "Value")
 
   # ===========================================================================
@@ -149,10 +150,13 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
     dplyr::mutate(par = factor(.data$par, levels = c("mean", "sd", "tail_low", "tail_high")))
 
 
+  # This panel was the one of the three on theme_bw() while its siblings used
+  # theme_light() -- the clearest case of the drift the house theme removes.
   p_stats <- ggplot(stats_plot, aes(x = "a", y = .data$value)) +
-    theme_bw() +
-    geom_hline(yintercept = 0, linewidth = 0.8, color = "blue") +
-    geom_point(size = 3, alpha = 0.3, color = "black", position = "jitter") +
+    theme_weathergenr() +
+    geom_hline(yintercept = 0, linewidth = .PLOT_GEOM$lwd_reference, color = "blue") +
+    geom_point(size = .PLOT_GEOM$pt_member, alpha = .PLOT_GEOM$alpha_member,
+               color = "black", position = "jitter") +
     facet_wrap(~par, nrow = 1, labeller = as_labeller(par_labels)) +
     labs(x = "Filtered realizations", y = "Relative difference (%)") +
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
@@ -175,32 +179,32 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
     signif = as.numeric(power_signif)
   )
 
-  p_gws <- ggplot2::ggplot() +
-    ggplot2::theme_light() +
-    ggplot2::geom_ribbon(
+  p_gws <- ggplot() +
+    theme_weathergenr() +
+    geom_ribbon(
       data = df_gws_sum,
-      ggplot2::aes(x = .data$period, ymin = .data$lo, ymax = .data$hi),
-      alpha = 0.20
+      aes(x = .data$period, ymin = .data$lo, ymax = .data$hi),
+      alpha = .PLOT_GEOM$alpha_faint
     ) +
-    ggplot2::geom_line(
+    geom_line(
       data = df_gws_sum,
-      ggplot2::aes(x = .data$period, y = .data$mean),
-      linewidth = 0.8
+      aes(x = .data$period, y = .data$mean),
+      linewidth = .PLOT_GEOM$lwd_reference
     ) +
-    ggplot2::geom_line(
+    geom_line(
       data = df_gws_lines,
-      ggplot2::aes(x = .data$period, y = .data$obs),
+      aes(x = .data$period, y = .data$obs),
       color = "blue",
-      linewidth = 0.8
+      linewidth = .PLOT_GEOM$lwd_observed
     ) +
-    ggplot2::geom_line(
+    geom_line(
       data = df_gws_lines,
-      ggplot2::aes(x = .data$period, y = .data$signif),
+      aes(x = .data$period, y = .data$signif),
       color = "red",
-      linewidth = 0.8,
+      linewidth = .PLOT_GEOM$lwd_reference,
       linetype = "dashed"
     ) +
-    ggplot2::labs(x = "Period", y = "Power")
+    labs(x = "Period", y = "Power")
 
 
   list(timeseries = p_timeseries, stats = p_stats, wavelet_gws = p_gws)

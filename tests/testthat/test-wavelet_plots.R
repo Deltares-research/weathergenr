@@ -38,6 +38,34 @@ testthat::test_that("plot_wavelet_global_spectrum: builds a ggplot from analysis
   testthat::expect_no_error(ggplot2::ggplot_build(p))
 })
 
+testthat::test_that("wavelet plots carry the house theme", {
+  # This module used to set theme_light() itself, independently of the
+  # evaluation pipeline's theme_bw(base_size = 12) and of warm_filtering_plots'
+  # mix of the two. panel.border$colour is the discriminator: it separates all
+  # three, where panel.background$fill does not (theme_light and theme_bw both
+  # give white).
+  fx <- wavelet_fixture()
+  house <- theme_weathergenr()
+
+  p <- plot_wavelet_global_spectrum(
+    period = fx$w$period, signif = fx$w$gws_signif, obs_power = fx$w$gws
+  )
+  testthat::expect_identical(p$theme$panel.border$colour,
+                             house$panel.border$colour)
+  testthat::expect_identical(p$theme$text$size, house$text$size)
+
+  # And both panels of the patchwork, not just the one that is easy to reach.
+  pw <- plot_wavelet_power(
+    series = fx$series, period = fx$w$period, power = fx$w$power,
+    gws = fx$w$gws, gws_signif = fx$w$gws_signif, coi = fx$w$coi,
+    signif_mask = fx$w$sigm
+  )
+  for (panel in list(pw[[1]], pw[[2]])) {
+    testthat::expect_identical(panel$theme$panel.border$colour,
+                               house$panel.border$colour)
+  }
+})
+
 testthat::test_that("plot_wavelet_global_spectrum: sim_power adds the ensemble-mean layer", {
   fx <- wavelet_fixture()
   n_period <- length(fx$w$period)

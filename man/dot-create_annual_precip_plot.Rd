@@ -18,7 +18,9 @@
 
 \item{stats_annual_aavg_obs}{Data frame of observed annual aggregated statistics.}
 
-\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+\item{plot_config}{List of plotting configuration options (subtitle, alpha,
+colors, dpi, device). The theme is not among them: every builder calls
+\code{\link{theme_weathergenr}} directly.}
 
 \item{show_title}{Logical; if \code{TRUE}, adds title to the plot.}
 
