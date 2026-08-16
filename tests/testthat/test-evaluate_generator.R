@@ -726,11 +726,13 @@ test_that("create_all_diagnostic_plots returns expected plot names and ggplot ob
     stats_precip_cor_cond = stats_precip_cor_cond
   )
 
+  # No `theme` field: it was removed from plot_config, and a fixture carrying
+  # one would go inert -- silently supplying a value nothing reads, which is
+  # exactly how a theme regression would slip past this file.
   plot_config <- list(
     subtitle = "test subtitle",
     alpha = 0.4,
-    colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated")),
-    theme = ggplot2::theme_bw(base_size = 12)
+    colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated"))
   )
 
   variables <- c("precip", "temp")
@@ -756,6 +758,23 @@ test_that("create_all_diagnostic_plots returns expected plot names and ggplot ob
     "annual_pattern_precip", "annual_pattern_temp"
   )
   expect_true(all(expected %in% names(plots)))
+
+  # Every diagnostic carries the house theme.
+  #
+  # This is the assertion that was missing while annual_precip rendered in
+  # ggplot2's default grey: it applied no theme at all, and nothing here looked.
+  # panel.border$colour is the discriminator because it separates all three
+  # themes this package used to mix -- theme_light "#B3B3B3FF", theme_bw
+  # "#333333FF", theme_grey NULL. panel.background$fill would not: theme_light
+  # and theme_bw both give white. Compared against the function's own output so
+  # a deliberate house-theme change updates in one place.
+  house <- theme_weathergenr()
+  for (nm in expected) {
+    expect_identical(plots[[nm]]$theme$panel.border$colour,
+                     house$panel.border$colour,
+                     info = nm)
+    expect_identical(plots[[nm]]$theme$text$size, house$text$size, info = nm)
+  }
 
   # All are ggplot objects.
   #
@@ -875,19 +894,30 @@ test_that("create_all_diagnostic_plots calls ggsave when save_plots=TRUE (mocked
     stats_precip_cor_cond = stats_precip_cor_cond
   )
 
+  # plot_dpi deliberately non-default: a site that hardcodes 300 fails here,
+  # which is what annual_precip.png used to do.
   plot_config <- list(
     subtitle = "test subtitle",
     alpha = 0.4,
     colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated")),
-    theme = ggplot2::theme_bw(base_size = 12)
+    dpi = 150
   )
 
   out_dir <- tempdir()
-  calls <- 0L
 
+  # A recorder, not a counter.
+  #
+  # The previous version counted calls, and the count was misleading: the
+  # exporter called ggplot2::ggsave, and the namespace qualifier makes it
+  # invisible to local_mocked_bindings(). Only the one bare ggsave() in
+  # .create_annual_precip_plot() was ever intercepted, so `calls >= 1L` passed
+  # on a single write while ten others went unobserved -- which is how that
+  # function came to skip the theme and hardcode dpi without any test noticing.
+  captured <- list()
   testthat::local_mocked_bindings(
     ggsave = function(...) {
-      calls <<- calls + 1L
+      a <- list(...)
+      captured[[basename(a$filename)]] <<- a
       invisible(NULL)
     },
     .package = "weathergenr"
@@ -903,7 +933,53 @@ test_that("create_all_diagnostic_plots calls ggsave when save_plots=TRUE (mocked
   )
 
   expect_true(is.list(plots))
-  expect_true(calls >= 1L)
+
+  # Every figure goes through the shared writer, annual_precip.png included.
+  expect_setequal(
+    names(captured),
+    c("daily_mean.png", "daily_sd.png", "spell_length.png",
+      "wetdry_days_count.png", "crossgrid_correlations.png",
+      "intergrid_correlations.png", "precip_conditional_correlations.png",
+      "annual_pattern_precip.png", "monthly_cycle.png", "annual_precip.png")
+  )
+
+  # The export contract, asserted on every write rather than inferred from one.
+  for (nm in names(captured)) {
+    expect_identical(captured[[nm]]$units, "in", info = nm)
+    expect_identical(captured[[nm]]$bg, "white", info = nm)
+    expect_equal(captured[[nm]]$dpi, 150, info = nm)
+    expect_false("device" %in% names(captured[[nm]]), info = nm)
+  }
+
+  # Geometry comes from the panel grid. show_title = FALSE here, so no header.
+  #
+  # daily_mean is facet_wrap(~variable, ncol = 2, nrow = 2) and this fixture
+  # passes a single variable, so exactly one panel is drawn. Size follows the
+  # panels that render, not the grid that was requested: the old exporter read
+  # the requested 2x2 and wrote an 8 x 8.5 canvas holding one panel and three
+  # empty slots. With the usual four variables both agree at 8 x 8.5, which
+  # test-plot_export.R pins directly.
+  expect_equal(.panel_dims(plots$daily_mean), c(ncol = 1L, nrow = 1L))
+  expect_equal(unname(captured[["daily_mean.png"]][c("width", "height")]),
+               list(4, 4.5))
+
+  # spell_length facets on `stat`, which has both levels here, so it is a real
+  # 2 x 1 and keeps the geometry it has always had.
+  expect_equal(unname(captured[["spell_length.png"]][c("width", "height")]),
+               list(8, 4.5))
+
+  # annual_precip is unfaceted and takes the wide family.
+  expect_equal(unname(captured[["annual_precip.png"]][c("width", "height")]),
+               list(8, 4.5))
+
+  # precip_conditional_correlations is facet_grid(regime ~ variable). Its rows
+  # were previously read from facet_wrap-only fields, so it was always written
+  # as a 2x2 -- 8.5 in tall -- regardless of how many regimes it drew. Assert it
+  # now tracks the real grid rather than that fallback.
+  cond <- captured[["precip_conditional_correlations.png"]]
+  n_regimes <- length(unique(stats_precip_cor_cond$regime))
+  expect_equal(cond$height, .figure_size(n_regimes, 1, "square")[["height"]])
+  if (n_regimes != 2L) expect_false(isTRUE(all.equal(cond$height, 8.5)))
 })
 
 

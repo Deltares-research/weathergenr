@@ -30,7 +30,7 @@
 \item{output_dir}{Character; output directory for saved plots.}
 }
 \value{
-ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+ggplot object (returned invisibly by \code{.export_figure()}).
 }
 \description{
 Compares observed and simulated monthly distributions (boxplots) for a given variable,

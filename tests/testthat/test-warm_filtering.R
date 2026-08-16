@@ -363,6 +363,36 @@ testthat::test_that("plot_filter_diagnostics returns ggplot list", {
   testthat::expect_gt(rendered(plots$wavelet_gws), 0L)
 })
 
+testthat::test_that("all three filter diagnostic panels carry the house theme", {
+  # These three panels were the clearest case of the drift: two used
+  # theme_light() and the stats panel used theme_bw(), inside one function
+  # returning them as a set. panel.border$colour discriminates all three themes
+  # the package used to mix; panel.background$fill would not, since theme_light
+  # and theme_bw both give white.
+  obs_series <- as.numeric(1:32)
+  sim_series <- vapply(1:3, function(j) obs_series + j, numeric(32))
+  tm <- compute_tailmass_metrics(obs_series, sim_series, 0.2, 0.8, 1e-5)
+
+  plots <- plot_filter_diagnostics(
+    obs_series = obs_series, sim_series = sim_series, pool = c(1, 2),
+    rel_diff_mean = rep(0.05, 3), rel_diff_sd = rep(0.02, 3),
+    tail_metrics = tm,
+    power_period = c(1, 2, 3), power_obs = c(1, 2, 3),
+    power_signif = c(0.5, 0.6, 0.7),
+    wavelet_pars = list(signif_level = 0.8, noise_type = "white",
+                        period_lower_limit = 2, detrend = FALSE),
+    wavelet_q = c(0.5, 0.9)
+  )
+
+  house <- theme_weathergenr()
+  for (nm in c("timeseries", "stats", "wavelet_gws")) {
+    testthat::expect_identical(plots[[nm]]$theme$panel.border$colour,
+                               house$panel.border$colour, info = nm)
+    testthat::expect_identical(plots[[nm]]$theme$text$size,
+                               house$text$size, info = nm)
+  }
+})
+
 testthat::test_that("plot_filter_diagnostics tracks the pool it is given", {
   # The row-count identities above only bind if they move with their inputs;
   # a panel that ignored `pool` would satisfy a single fixed number.

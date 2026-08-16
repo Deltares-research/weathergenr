@@ -134,7 +134,7 @@ plot_wavelet_power <- function(
   x_limits <- range(c(xb$lower, xb$upper), finite = TRUE)
 
   p_spectrum <- ggplot(df_power) +
-    theme_light() +
+    theme_weathergenr() +
     geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = z)) +
     scale_y_reverse(expand = c(0, 0)) +
     scale_x_continuous(expand = c(0, 0)) +
@@ -146,7 +146,8 @@ plot_wavelet_power <- function(
     geom_line(
       data = data.frame(x = time_axis, y = coi),
       aes(x = x, y = y),
-      linetype = "dashed", color = "red"
+      linetype = "dashed", color = "red",
+      linewidth = .PLOT_GEOM$lwd_reference
     ) +
     stat_contour(
       data = data.frame(
@@ -161,9 +162,10 @@ plot_wavelet_power <- function(
   gws_df <- data.frame(period = period, gws = gws, signif = gws_signif)
 
   p_gws <- ggplot(gws_df, aes(x = period, y = gws)) +
-    theme_light() +
-    geom_line(color = "blue") +
-    geom_line(aes(y = signif), color = "red", linetype = "dashed") +
+    theme_weathergenr() +
+    geom_line(color = "blue", linewidth = .PLOT_GEOM$lwd_observed) +
+    geom_line(aes(y = signif), color = "red", linetype = "dashed",
+              linewidth = .PLOT_GEOM$lwd_reference) +
     scale_x_reverse(expand = c(0,0)) +
     coord_flip(xlim = range(period), expand = FALSE) +
     labs(y = bquote(Power ~ (.(unit)^2)), x = "")
@@ -234,9 +236,10 @@ plot_wavelet_global_spectrum <- function(
   )
 
   p <- ggplot(df_obs, aes(x = period)) +
-    theme_light() +
-    geom_line(aes(y = obs), color = "blue") +
-    geom_line(aes(y = signif), color = "red", linetype = "dashed") +
+    theme_weathergenr() +
+    geom_line(aes(y = obs), color = "blue", linewidth = .PLOT_GEOM$lwd_observed) +
+    geom_line(aes(y = signif), color = "red", linetype = "dashed",
+              linewidth = .PLOT_GEOM$lwd_reference) +
     scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)) +
     labs(x = "Period (years)", y = expression(paste("Power (", mm^2, ")")))
@@ -246,7 +249,8 @@ plot_wavelet_global_spectrum <- function(
     p <- p + geom_line(
       data = tibble(period = period, sim_mu = sim_mu),
       aes(x = period, y = sim_mu),
-      color = "black"
+      color = "black",
+      linewidth = .PLOT_GEOM$lwd_reference
     )
   }
 

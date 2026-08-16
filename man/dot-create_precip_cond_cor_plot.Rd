@@ -17,7 +17,9 @@
 \code{variable1}, \code{variable2}, \code{id1}, \code{id2}, \code{regime},
 \code{Observed}, and \code{Simulated}.}
 
-\item{plot_config}{List of plotting configuration options (theme, alpha, subtitle, etc.).}
+\item{plot_config}{List of plotting configuration options (subtitle, alpha,
+colors, dpi, device). The theme is not among them: every builder calls
+\code{\link{theme_weathergenr}} directly.}
 
 \item{show_title}{Logical; if \code{TRUE}, adds title/subtitle.}
 
@@ -26,7 +28,7 @@
 \item{output_dir}{Character; output directory for saved plots.}
 }
 \value{
-ggplot object (returned invisibly by \code{.export_multipanel_plot()}).
+ggplot object (returned invisibly by \code{.export_figure()}).
 }
 \description{
 Observed-vs-simulated within-grid correlations between precipitation and other variables,
