@@ -16,6 +16,15 @@
   they track `base_size` rather than being stranded at the fixed 14 and 10 points
   they used to be.
 
+  When the package writes a figure it scales that base size with the figure's
+  own dimensions, clamped to 9–16 pt. A fixed point size makes text physically
+  identical everywhere, which is not what a reader sees: these figures are
+  viewed fit-to-window or embedded at a common width, so each is scaled by its
+  own size first. At a fixed 12 pt the apparent size varied about twofold across
+  a run — large on the 8 × 4.5 in WARM figures, small on the 12 × 13.1 in
+  conditional-correlation grid. Scaling brings that spread under 1.2. Calling
+  `theme_weathergenr()` directly is unaffected and still gives 12 pt.
+
 * `generate_weather()` gains `plot_dpi` (default 300) and `plot_device`
   (default `NULL`), forwarded from `run_weather_generator()`'s `config`. The four
   figures it writes — `obs_power_spectra.png`, `warm_annual_precip.png`,

@@ -141,6 +141,54 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
 .HEADER_ALLOWANCE_IN <- 0.6
 
 
+#' Reference geometry and type size for base-size scaling
+#'
+#' The 2 x 2 square figure -- the shape most of the evaluation diagnostics take
+#' -- anchors the scale at \code{theme_weathergenr()}'s default 12 pt.
+#' @keywords internal
+#' @noRd
+.BASE_SIZE_REF    <- 12
+.BASE_SIZE_REF_IN <- sqrt(8 * 9.1)   # 2 x 2 square, titled
+.BASE_SIZE_RANGE  <- c(9, 16)
+
+
+#' Base font size for a figure of a given geometry
+#'
+#' @description
+#' Scales the type size with the figure's linear extent, so text reads at a
+#' consistent size once figures are viewed or placed at a common width.
+#'
+#' @details
+#' A fixed point size makes text physically identical in every figure, which
+#' sounds like consistency and is not what a reader sees: these are diagnostics
+#' viewed fit-to-window or embedded at a common column width, so a figure gets
+#' scaled by its own size before anyone reads it. At a fixed 12 pt the apparent
+#' size varied about 2.1-fold across the set -- large on the 8 x 4.5 in figures,
+#' small on the 12 x 13.1 in conditional-correlation grid.
+#'
+#' The measure is \code{sqrt(width * height)} rather than width alone because
+#' fitting to a window is constrained by both dimensions; the two figures that
+#' looked most different differ far more in height than in width.
+#'
+#' Clamped because compensation is a correction, not a licence: an unbounded
+#' rule would put absurd type on a pathological grid, and the residual mismatch
+#' at the two extremes is smaller than the one it removes.
+#'
+#' @param size Numeric vector \code{c(width, height)} in inches.
+#'
+#' @return Numeric scalar. Base font size in points.
+#'
+#' @keywords internal
+#' @noRd
+.base_size_for <- function(size) {
+
+  extent <- sqrt(max(1e-6, size[[1L]] * size[[2L]]))
+  bs <- .BASE_SIZE_REF * (extent / .BASE_SIZE_REF_IN)
+
+  min(max(bs, .BASE_SIZE_RANGE[[1L]]), .BASE_SIZE_RANGE[[2L]])
+}
+
+
 #' Figure dimensions for a panel grid
 #'
 #' @param nrow,ncol Integer. Panel grid dimensions.
@@ -275,6 +323,15 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
     size <- .figure_size(nrow = dims[["nrow"]], ncol = dims[["ncol"]],
                          family = family, header = header)
   }
+
+  # Type is scaled here rather than in the builders because the geometry it has
+  # to track is not known until now. Setting `text` alone is enough: every text
+  # element in theme_weathergenr() is rel() and inherits from it, so the whole
+  # hierarchy moves together. Adding a partial theme() also merges rather than
+  # replaces, which keeps the per-plot overrides -- the inside legend on the
+  # monthly-pattern figures, the blanked x axis on the WARM stats strip -- that
+  # adding a complete theme here would silently discard.
+  p <- p + theme(text = element_text(size = .base_size_for(size)))
 
   args <- list(
     filename = file.path(output_dir, filename),
