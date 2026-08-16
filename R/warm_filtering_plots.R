@@ -118,12 +118,12 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
   # ===========================================================================
 
   df_ts_sim_long <- data.frame(
-    year = seq_len(length(obs_series)),
+    year = seq_along(obs_series),
     as.data.frame(sim_pool, check.names = FALSE),
     check.names = FALSE) |>
     tidyr::pivot_longer(cols = -year, names_to = "series", values_to = "value")
 
-  df_ts_obs <- data.frame(year = seq_len(length(obs_series)), value = obs_series)
+  df_ts_obs <- data.frame(year = seq_along(obs_series), value = obs_series)
 
   p_timeseries <- ggplot() + theme_light() +
     geom_line(data = df_ts_sim_long, aes(x = year, y = value, group = series),

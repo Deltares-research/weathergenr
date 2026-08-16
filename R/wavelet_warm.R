@@ -159,14 +159,13 @@ simulate_warm <- function(
     }
     seed <- as.integer(seed)
 
-    if (exists(".Random.seed", envir = .GlobalEnv)) {
-      old_seed <- .Random.seed
-      has_seed <- TRUE
+    old_seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      get(".Random.seed", envir = .GlobalEnv)
     } else {
-      has_seed <- FALSE
+      NULL
     }
     on.exit({
-      if (has_seed) .Random.seed <<- old_seed
+      if (!is.null(old_seed)) assign(".Random.seed", old_seed, envir = .GlobalEnv)
     }, add = TRUE)
   }
 

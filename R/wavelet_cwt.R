@@ -585,14 +585,13 @@ analyze_wavelet_spectrum <- function(
  if (lag1_ci && noise == "red") {
 
    if (!is.null(seed)) {
-     if (exists(".Random.seed", envir = .GlobalEnv)) {
-       old_seed_lag1 <- .Random.seed
-       has_seed_lag1 <- TRUE
+     old_seed_lag1 <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+       get(".Random.seed", envir = .GlobalEnv)
      } else {
-       has_seed_lag1 <- FALSE
+       NULL
      }
      on.exit({
-       if (has_seed_lag1) .Random.seed <<- old_seed_lag1
+       if (!is.null(old_seed_lag1)) assign(".Random.seed", old_seed_lag1, envir = .GlobalEnv)
      }, add = TRUE)
      set.seed(seed)
    }

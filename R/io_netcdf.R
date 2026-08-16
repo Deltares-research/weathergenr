@@ -426,7 +426,7 @@ read_netcdf <- function(
   # ---------------------------------------------------------------------------
   nx <- length(x_vals)
   ny <- length(y_vals)
-  nt <- length(date)
+  nt <- length(date)  # nolint: object_usage_linter. used in a .log() glue string
   ncell <- nx * ny
 
   grid_base <- expand.grid(
