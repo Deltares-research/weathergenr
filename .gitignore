@@ -37,3 +37,13 @@ vignettes/.quarto/
 *.knit.md
 /doc/
 /Meta/
+
+# Dev-only root Markdown that pkgdown insists on rendering into the site.
+# pkgdown globs every root *.md and has no ignore mechanism, so a site build
+# recreates these; tools/build_site_tools.R deletes them afterwards and this is
+# the backstop for a build that bypasses it. The sources at the repo root are
+# tracked as normal -- only the rendered copies are ignored.
+/docs/AGENTS.md
+/docs/AGENTS.html
+/docs/CLAUDE.md
+/docs/CLAUDE.html

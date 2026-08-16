@@ -48,6 +48,17 @@ jobs:
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
 
+      # pkgdown renders every *.md in the package root -- package_mds() globs
+      # them and drops only a hardcoded list (README, NEWS, LICENSE, issue
+      # templates). There is no ignore mechanism, and .Rbuildignore does not
+      # apply because pkgdown reads the source tree, not the tarball. The agent
+      # instruction files have to sit at the repo root for Codex and Claude Code
+      # to find them, so they are removed here instead. Mirrors
+      # .strip_dev_only_md() in tools/build_site_tools.R, which does the same for
+      # local builds; keep the two lists in step.
+      - name: Drop dev-only pages pkgdown rendered
+        run: rm -f docs/AGENTS.md docs/AGENTS.html docs/CLAUDE.md docs/CLAUDE.html
+
       - name: Deploy to GitHub pages 🚀
         if: github.event_name != 'pull_request'
         uses: JamesIves/github-pages-deploy-action@v4.5.0

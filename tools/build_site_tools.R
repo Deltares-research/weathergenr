@@ -197,6 +197,43 @@
   invisible(TRUE)
 }
 
+# Root-level Markdown that is development-only and must not become a site page.
+#
+# pkgdown renders every `*.md` in the package root: `package_mds()` globs them
+# and drops only a hardcoded list (README, NEWS, LICENSE, the issue templates).
+# There is no ignore mechanism -- no `.pkgdownignore`, no `_pkgdown.yml` key --
+# and `.Rbuildignore` does not apply, because pkgdown reads the source tree
+# rather than the tarball. So the agent instruction files, which have to sit at
+# the repo root for Codex and Claude Code to find them, get published as site
+# pages unless they are removed afterwards.
+#
+# Adding another dev-only root `.md` means adding it here too.
+.DEV_ONLY_ROOT_MD <- c("AGENTS.md", "CLAUDE.md")
+
+#' Remove dev-only Markdown that pkgdown rendered into the site
+#'
+#' Deletes both the copied `.md` and the rendered `.html` for every entry in
+#' `.DEV_ONLY_ROOT_MD`. Safe to call when they are absent.
+#' @noRd
+.strip_dev_only_md <- function(dst = "docs") {
+  if (!dir.exists(dst)) return(invisible(character()))
+
+  leaked <- unlist(lapply(.DEV_ONLY_ROOT_MD, function(md) {
+    stem <- tools::file_path_sans_ext(md)
+    file.path(dst, c(md, paste0(stem, ".html")))
+  }))
+  leaked <- leaked[file.exists(leaked)]
+
+  if (length(leaked) == 0L) return(invisible(character()))
+
+  file.remove(leaked)
+  .local_success(sprintf(
+    "Removed %d dev-only page(s) pkgdown rendered into %s/: %s",
+    length(leaked), dst, paste(basename(leaked), collapse = ", ")
+  ))
+  invisible(leaked)
+}
+
 .check_git_clean <- function(strict = FALSE) {
   if (Sys.which("git") == "") {
     .local_warn("git not found; skipping repo cleanliness check.")
@@ -718,6 +755,8 @@ build_pkgdown_site <- function(run_tests = TRUE,
   }, error = function(e) {
     .local_stop("pkgdown site build failed: ", conditionMessage(e))
   })
+
+  .strip_dev_only_md()
 
   # SUMMARY
   elapsed <- round(difftime(Sys.time(), start_time, units = "mins"), 1)
