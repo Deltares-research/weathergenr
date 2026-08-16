@@ -242,7 +242,7 @@ generate_weather <- function(
 ) {
 
 
-  start_time <- Sys.time()
+  start_time <- Sys.time()  # nolint: object_usage_linter. used in a .log() glue string
   verbose <- isTRUE(verbose)
   save_plots <- isTRUE(save_plots)
 
@@ -315,14 +315,13 @@ generate_weather <- function(
 
   # save and restore state
   if (!is.null(seed)) {
-    if (exists(".Random.seed", envir = .GlobalEnv)) {
-      old_rng_state <- .Random.seed
-      has_rng_state <- TRUE
+    old_rng_state <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      get(".Random.seed", envir = .GlobalEnv)
     } else {
-      has_rng_state <- FALSE
+      NULL
     }
     on.exit({
-      if (has_rng_state) .Random.seed <<- old_rng_state
+      if (!is.null(old_rng_state)) assign(".Random.seed", old_rng_state, envir = .GlobalEnv)
     }, add = TRUE)
     set.seed(seed)
   }
@@ -352,7 +351,7 @@ generate_weather <- function(
   # Initial Logging
   # ---------------------------------------------------------------------------
 
-  n_grids <- length(obs_data)
+  n_grids <- length(obs_data)  # nolint: object_usage_linter. used in a .log() glue string
 
   # General info
   .log("Historical period: {obs_dates[1]} to {obs_dates[length(obs_dates)]}", tag = "INIT", verbose = verbose)
@@ -609,7 +608,7 @@ generate_weather <- function(
         seed = .seed_offset(daily_seed, n))
     }
 
-    progress_str <- paste(progress_parts, collapse = "..")
+    progress_str <- paste(progress_parts, collapse = "..")  # nolint: object_usage_linter. used in a .log() glue string
     .log("Processing realization: {progress_str}", tag = "RESAMPLE", verbose = verbose)
   }
 

@@ -32,11 +32,15 @@ jobs:
           extra-packages: any::lintr, local::.
           needs: lint
 
-      # Advisory for now: with the .lintr baseline in place the package still
-      # reports 28 semantic findings (unused locals, `seq_len(length(x))`, and
-      # the repeated `.Random.seed` save/restore idiom). Fixing them is tracked
-      # work, not a side effect of adding this job — so findings are reported
-      # without gating the branch. Drop `continue-on-error` once the count is 0.
+      # Blocking. The package lints clean under the .lintr baseline, so a new
+      # finding is a regression and should fail the branch rather than be
+      # reported and scrolled past.
+      #
+      # Where a variable is used only inside a `.log()` message, the use is
+      # inside a `{}` interpolation evaluated in the caller's frame, which lintr
+      # cannot see. Those sites carry a per-line
+      # `# nolint: object_usage_linter.` rather than the linter being disabled
+      # for the file, so a genuinely dead local in the same function is still
+      # reported.
       - name: Lint
         run: Rscript tools/lint.R
-        continue-on-error: true

@@ -214,13 +214,12 @@ filter_warm_pool <- function(
   # RNG management
   # ---------------------------------------------------------------------------
   if (!is.null(seed)) {
-    if (exists(".Random.seed", envir = .GlobalEnv)) {
-      old_seed <- .Random.seed
-      has_seed <- TRUE
+    old_seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      get(".Random.seed", envir = .GlobalEnv)
     } else {
-      has_seed <- FALSE
+      NULL
     }
-    on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
+    on.exit({ if (!is.null(old_seed)) assign(".Random.seed", old_seed, envir = .GlobalEnv) }, add = TRUE)
     set.seed(seed)
   }
 
@@ -1978,7 +1977,7 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
 
   active <- names(passes)[!vapply(passes, is.null, logical(1))]
   pool_size <- length(pool)
-  pool_pct <- if (n_total > 0) 100 * pool_size / n_total else 0
+  pool_pct <- if (n_total > 0) 100 * pool_size / n_total else 0  # nolint: object_usage_linter. used in a .log() glue string
 
   if (iter == 0L) {
     .log("---------------------------------------------------------------------------", tag = "FILTER")
@@ -2001,16 +2000,16 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
     .log("---------------------------------------------------------------------------", tag = "FILTER")
 
     for (nm in show_filters) {
-      n_pass <- sum(passes[[nm]])
-      rate <- 100 * mean(passes[[nm]])
-      crit <- criteria_string_compact(nm, bounds, tail_metrics, wavelet_active, spectral_diag)
+      n_pass <- sum(passes[[nm]])  # nolint: object_usage_linter. used in a .log() glue string
+      rate <- 100 * mean(passes[[nm]])  # nolint: object_usage_linter. used in a .log() glue string
+      crit <- criteria_string_compact(nm, bounds, tail_metrics, wavelet_active, spectral_diag)  # nolint: object_usage_linter. used in a .log() glue string
       .log("{sprintf('%-12s %10s %7.1f%%  %-40s', nm, format(n_pass, big.mark = ','), rate, crit)}", tag = "FILTER")
     }
     .log("---------------------------------------------------------------------------", tag = "FILTER")
   }
 
-  status_icon <- if (pool_size >= target) "[OK]" else "[>>]"
-  status_txt  <- if (pool_size >= target) "TARGET REACHED" else "Need more candidates"
+  status_icon <- if (pool_size >= target) "[OK]" else "[>>]"  # nolint: object_usage_linter. used in a .log() glue string
+  status_txt  <- if (pool_size >= target) "TARGET REACHED" else "Need more candidates"  # nolint: object_usage_linter. used in a .log() glue string
 
   .log("{status_icon} Pool: {format(pool_size, big.mark = ',')} / {format(n_total, big.mark = ',')} ({sprintf('%.1f', pool_pct)}%) | Need: {format(target, big.mark = ',')} | Status: {status_txt}", tag = "FILTER")
 
@@ -2033,7 +2032,7 @@ log_filter_iteration <- function(iter, passes, pool, n_total, target, bounds,
 #' @keywords internal
 log_final_summary <- function(pool_size, n_total, n_sampled, relaxation_level) {
 
-  pct <- if (n_total > 0) 100 * pool_size / n_total else NA_real_
+  pct <- if (n_total > 0) 100 * pool_size / n_total else NA_real_  # nolint: object_usage_linter. used in a .log() glue string
 
   .log("===========================================================================", tag = "FILTER")
   .log("FILTERING COMPLETE", tag = "FILTER")

@@ -86,13 +86,12 @@ knn_sample <- function(
   # RNG handling
   # -------------------------------------------------
   if (!is.null(seed)) {
-    if (exists(".Random.seed", envir = .GlobalEnv)) {
-      old_seed <- .Random.seed
-      has_seed <- TRUE
+    old_seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      get(".Random.seed", envir = .GlobalEnv)
     } else {
-      has_seed <- FALSE
+      NULL
     }
-    on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
+    on.exit({ if (!is.null(old_seed)) assign(".Random.seed", old_seed, envir = .GlobalEnv) }, add = TRUE)
     # Pins the generator as well as the seed; see .set_seed_fixed_kind(). This
     # function runs inside PSOCK workers, where the active generator is not the
     # master's.
@@ -371,13 +370,12 @@ resample_weather_dates <- function(
   }
 
   if (!is.null(base_seed)) {
-    if (exists(".Random.seed", envir = .GlobalEnv)) {
-      old_seed <- .Random.seed
-      has_seed <- TRUE
+    old_seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      get(".Random.seed", envir = .GlobalEnv)
     } else {
-      has_seed <- FALSE
+      NULL
     }
-    on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
+    on.exit({ if (!is.null(old_seed)) assign(".Random.seed", old_seed, envir = .GlobalEnv) }, add = TRUE)
     # Pins the generator as well as the seed; see .set_seed_fixed_kind(). This
     # is the function generate_weather() runs on PSOCK workers, so without the
     # pin one seed produced different output under parallel = TRUE.

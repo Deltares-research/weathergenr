@@ -154,13 +154,12 @@ evaluate_weather_generator <- function(
     if (!.is_int_scalar(seed)) {
       stop("'seed' must be NULL or a single integer", call. = FALSE)
     }
-    if (exists(".Random.seed", envir = .GlobalEnv)) {
-      old_seed <- .Random.seed
-      has_seed <- TRUE
+    old_seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      get(".Random.seed", envir = .GlobalEnv)
     } else {
-      has_seed <- FALSE
+      NULL
     }
-    on.exit({ if (has_seed) .Random.seed <<- old_seed }, add = TRUE)
+    on.exit({ if (!is.null(old_seed)) assign(".Random.seed", old_seed, envir = .GlobalEnv) }, add = TRUE)
     set.seed(seed)
   }
 
@@ -214,7 +213,7 @@ evaluate_weather_generator <- function(
   # ============================================================================
 
   grid_count <- length(daily_obs)
-  grid_count_original <- grid_count
+  grid_count_original <- grid_count  # nolint: object_usage_linter. used in a .log() glue string
 
   if (grid_count > eval_max_grids) {
 
@@ -966,8 +965,6 @@ evaluate_weather_generator <- function(
 #' @keywords internal
 .summarize_realization_fit <- function(obs_results, sim_results, variables) {
 
-  metrics_list <- list()
-
   # --- 1. MAE for means (by variable, across all grid-months) ---
   # `stat` belongs in the join key: obs stats.season holds mean, sd AND skewness
   # rows per (id, mon, variable), so joining without it matched every simulated
@@ -1319,59 +1316,22 @@ evaluate_weather_generator <- function(
   dat_wide <- dat %>%
     tidyr::pivot_wider(names_from = "variable", values_from = "value")
 
-  # Join wet thresholds if needed
+  # Join wet thresholds if needed. The join stays -- the per-cell block below
+  # reads df_id$wet.th from it -- but the wet/dry flags and the safe-correlation
+  # closure that used to live here are gone: the per-cell block defines its own,
+  # and these outer copies were left behind by the same superseded version
+  # described below. Computed over all cells at once, they could not have been
+  # used per cell without a length mismatch.
   if (wet_def == "monthly_quantile") {
     if (is.null(mc_thresholds)) stop("mc_thresholds required when wet_def='monthly_quantile'", call. = FALSE)
     dat_wide <- dat_wide %>% dplyr::left_join(mc_thresholds, by = c("id", "mon"))
-    wet_flag <- dat_wide$precip >= dat_wide$wet.th
-  } else {
-    wet_flag <- dat_wide$precip > 0
-  }
-  dry_flag <- !wet_flag & !is.na(dat_wide$precip)
-
-  # internal function for safe cor
-  .safe_cor <- function(x, y) {
-    ok <- is.finite(x) & is.finite(y)
-    n <- sum(ok)
-    if (n < min_pairs) return(c(value = NA_real_, n = n))
-    c(value = stats::cor(x[ok], y[ok], method = method), n = n)
   }
 
-  # Build results
-  out <- lapply(targets, function(v) {
-
-    # all days (raw/anom precip)
-    res_all <- .safe_cor(dat_wide$precip, dat_wide[[v]])
-
-    # wet days (optionally log1p on precip)
-    if (use_log_precip_on_wet) {
-      p_wet <- log1p(pmax(dat_wide$precip, 0))
-      res_wet <- .safe_cor(p_wet[wet_flag], dat_wide[[v]][wet_flag])
-      tr_wet <- "log1p_precip"
-    } else {
-      res_wet <- .safe_cor(dat_wide$precip[wet_flag], dat_wide[[v]][wet_flag])
-      tr_wet <- "precip"
-    }
-
-    # dry days (precip is ~0; correlation often meaningless for precip itself, but can be informative if precip anomalies exist)
-    res_dry <- .safe_cor(dat_wide$precip[dry_flag], dat_wide[[v]][dry_flag])
-
-    dplyr::tibble(
-      id1 = dat_wide$id[1],  # placeholder, fixed below
-      variable1 = "precip",
-      id2 = dat_wide$id[1],  # placeholder, fixed below
-      variable2 = v,
-      regime = c("all", "wet", "dry"),
-      transform = c("precip", tr_wet, "precip"),
-      value = c(res_all["value"], res_wet["value"], res_dry["value"]),
-      n = c(as.integer(res_all["n"]), as.integer(res_wet["n"]), as.integer(res_dry["n"]))
-    )
-  }) %>%
-    dplyr::bind_rows()
-
-  # Fix id columns per-grid: compute per id properly
-  # We need per-grid computation, not collapsing all ids.
-  # So do it by splitting dat_wide by id:
+  # Correlations are computed per grid cell, so split first. An earlier version
+  # computed them over all cells at once and filled id1/id2 with dat_wide$id[1]
+  # as a placeholder "fixed below"; the per-cell version below superseded it,
+  # but the collapsed one was left in place, building tibbles that were then
+  # discarded. Removed: it could not affect the result, only the runtime.
   by_id <- split(dat_wide, dat_wide$id)
 
   out2 <- lapply(by_id, function(df_id) {
@@ -1735,8 +1695,8 @@ prepare_evaluation_data <- function(gen_output,
     stop("gen_output$resampled has no columns (realizations).", call. = FALSE)
   }
 
-  n_grids <- length(grid_ids)
-  n_vars  <- length(variables)
+  n_grids <- length(grid_ids)  # nolint: object_usage_linter. used in a .log() glue string
+  n_vars  <- length(variables)  # nolint: object_usage_linter. used in a .log() glue string
 
   .log(
     "Configuration: {n_realizations} realizations, {n_grids} grids, {n_vars} variables",
