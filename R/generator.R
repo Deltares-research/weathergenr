@@ -689,8 +689,10 @@ generate_weather <- function(
 #' @param config List. Full simulation/evaluation configuration. Entries are
 #'   forwarded to [generate_weather()] and [evaluate_weather_generator()] under
 #'   the same names, including `warm_filter_bounds`, `relax_priority`,
-#'   `plot_dpi` and `plot_device`. An entry that is absent (`NULL`) falls back to
-#'   the receiving function's default.
+#'   `variable_labels`, `plot_dpi` and `plot_device`. An entry that is absent
+#'   (`NULL`) is not forwarded at all, so it falls back to the receiving
+#'   function's default -- only `vars` and `n_realizations` are required. A
+#'   config therefore needs to name only what it wants to change.
 #' @param eval_max_grids Integer. Maximum number of grids to evaluate.
 #' @param log_messages Logical. If TRUE, save console output to
 #'   \code{log_YYYYMMDD_HHMMSS.txt} in \code{out_dir}.
@@ -849,7 +851,8 @@ run_weather_generator <- function(
       )
     }
 
-    gen_output <- generate_weather(
+    gen_output <- .call_dropping_null(
+      generate_weather,
       obs_data           = obs_data,
       obs_grid           = obs_grid,
       obs_dates          = obs_dates,
@@ -883,7 +886,8 @@ run_weather_generator <- function(
     # -------------------------------------------------------------------------
     # Step 2: Prepare evaluation data (internal)
     # -------------------------------------------------------------------------
-    eval_data <- prepare_evaluation_data(
+    eval_data <- .call_dropping_null(
+      prepare_evaluation_data,
       gen_output = gen_output,
       obs_data   = obs_data,
       obs_dates  = obs_dates,
@@ -896,11 +900,12 @@ run_weather_generator <- function(
     # -------------------------------------------------------------------------
     # Step 3: Evaluate generator performance
     # -------------------------------------------------------------------------
-    evaluation <- evaluate_weather_generator(
+    evaluation <- .call_dropping_null(
+      evaluate_weather_generator,
       daily_sim       = eval_data$sim_data,
       daily_obs       = eval_data$obs_data,
       vars            = config$vars,
-      variable_labels = NULL,
+      variable_labels = config$variable_labels,
       n_realizations  = config$n_realizations,
       year_start_month = config$year_start_month,
       eval_max_grids  = eval_max_grids,

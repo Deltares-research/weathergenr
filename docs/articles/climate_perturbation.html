@@ -191,6 +191,13 @@ Monthly mean changes:
 <span>  temp_delta <span class="op">=</span> <span class="va">temp_mean_change</span>,</span>
 <span>  precip_occurrence_factor <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  precip_intensity_threshold <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  <span class="co"># Diurnal temperature range. NULL leaves it untouched, which is what warming</span></span>
+<span>  <span class="co"># alone does: temp_delta shifts temp, temp_min and temp_max together. That</span></span>
+<span>  <span class="co"># matters if you go on to compute PET -- Hargreaves goes as the square root of</span></span>
+<span>  <span class="co"># the range, so warming on its own moves PET by only about 2.3% per degree and</span></span>
+<span>  <span class="co"># the range decides how much more. There is no defensible default; supply</span></span>
+<span>  <span class="co"># values for the region you are studying, or vary it as a stress dimension.</span></span>
+<span>  temp_range_factor <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  temp_transient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  precip_transient <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  precip_occurrence_transient <span class="op">=</span> <span class="cn">TRUE</span>,</span>

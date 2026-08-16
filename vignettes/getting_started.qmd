@@ -49,6 +49,7 @@ library(ggplot2)
 ## Related functions
 
 - [`read_netcdf()`]
+- [`run_weather_generator()`]
 - [`generate_weather()`]
 - [`evaluate_weather_generator()`]
 - [`write_netcdf()`]
@@ -214,7 +215,7 @@ variable_labels <- c("Precipitation", "Temperature (mean)",
                      "Temperature (min)", "Temperature (max)")
 
 # Number of stochastic realizations to generate
-realization_num <- 3
+realization_num <- 9
 ```
 
 ### Understanding Simulation Parameters
@@ -235,43 +236,62 @@ Key parameters control different aspects of the weather generation:
 
 ## Running the Weather Generator
 
+`run_weather_generator()` is the entry point for a complete run. It generates
+the synthetic series, reshapes them for evaluation, and evaluates them against
+the observed record, returning both halves.
+
+Settings are supplied as a single `config` list. Only `vars` and
+`n_realizations` are required; anything you leave out falls back to that
+function's own default, so a config names only what you want to change.
+
 ```{r run_generator, results = 'hide'}
 # Set a seed for reproducibility
 seed <- 123
 
-# Generate synthetic weather series
-stochastic_weather <- generate_weather(
-  obs_data = ncdata$data,
-  obs_grid = ncdata$grid,
-  obs_dates = ncdata$date,
-  vars = variables,
-  n_years = 20,
-  start_year = 2020,
+config <- list(
+  vars             = variables,
+  n_realizations   = realization_num,
+  n_years          = 20,
+  start_year       = 2020,
   year_start_month = 1,
-  n_realizations = realization_num,
-  warm_var = "precip",
-  warm_signif = 0.90,
-  warm_pool_size = 10000,
-  annual_knn_n = 100,
-  wet_q = 0.2,
-  extreme_q = 0.8,
-  out_dir = output_dir,
-  seed = seed,
-  parallel = FALSE,
-  n_cores = NULL,
-  verbose = FALSE
+  warm_var         = "precip",
+  warm_signif      = 0.90,
+  warm_pool_size   = 10000,
+  annual_knn_n     = 100,
+  wet_q            = 0.2,
+  extreme_q        = 0.8,
+  variable_labels  = variable_labels,
+  seed             = seed,
+  parallel         = FALSE,
+  verbose          = FALSE,
+  save_plots       = FALSE
+)
+
+result <- run_weather_generator(
+  obs_data  = ncdata$data,
+  obs_grid  = ncdata$grid,
+  obs_dates = ncdata$date,
+  out_dir   = output_dir,
+  config    = config
 )
 ```
 
 ### Understanding the Output
 
-The function returns a list containing:
+`run_weather_generator()` returns a list with two components:
 
-- `resampled`: The historical dates selected as analogues for each simulation day
-- `dates`: The simulated daily time axis (always 365-day calendar, Feb 29 excluded)
+- `gen_output`: what the generator produced
+  - `resampled`: the historical dates selected as analogues for each simulation day
+  - `dates`: the simulated daily time axis (always 365-day calendar, Feb 29 excluded)
+- `evaluation`: the diagnostic plots comparing simulated against observed,
+  covered in the next section
 
 ```{r examine_output}
-# View the structure of the output
+# Top-level components
+names(result)
+
+# The generator's own output
+stochastic_weather <- result$gen_output
 names(stochastic_weather)
 
 # Check the simulated date range
@@ -321,55 +341,20 @@ for (i in 1:realization_num) {
 
 Validating the weather generator's performance is crucial to ensure that synthetic weather series are suitable for impact modeling. The `evaluate_weather_generator()` function provides comprehensive diagnostic comparisons between simulated and observed weather across multiple statistical dimensions.
 
-## Preparing Data for Evaluation
+## Where the Evaluation Comes From
 
-The evaluation function requires:
-
-1. Observed weather data in list format (one element per grid cell)
-2. Simulated weather data structured similarly
-3. Matching date columns in both datasets
-
-```{r prepare_evaluation, results = "hide"}
-# Create day order indices for each realization
-day_order <- sapply(
-  1:realization_num,
-  function(n) match(stochastic_weather$resampled[[n]], ncdata$date)
-)
-
-# Extract synthetic weather samples
-rlz_sample <- list()
-for (n in 1:realization_num) {
-  rlz_sample[[n]] <- lapply(ncdata$data[ncdata$grid$id], function(x) {
-    x[day_order[, n], ] %>%
-      select(precip, temp, temp_min, temp_max) %>%
-      mutate(date = stochastic_weather$dates, .before = 1)
-  })
-}
-
-# Prepare observed data
-obs_sample <- lapply(ncdata$data[ncdata$grid$id], function(x) {
-  x %>%
-    select(precip, temp, temp_min, temp_max) %>%
-    mutate(date = ncdata$date, .before = 1)
-})
-```
-
-## Running the Evaluation
+The evaluation needs the synthetic series as daily values, not as the resampled
+dates the generator returns. `run_weather_generator()` does that reshaping
+internally, so the diagnostics are already in the result:
 
 ```{r run_evaluation, results = "hide"}
-# Evaluate weather generator performance
-evaluation_plots <- evaluate_weather_generator(
-  daily_sim = rlz_sample,
-  daily_obs = obs_sample,
-  vars = variables,
-  variable_labels = variable_labels,
-  n_realizations = realization_num,
-  wet_q = 0.3,
-  extreme_q = 0.8,
-  output_dir = NULL,
-  save_plots = FALSE
-)
+evaluation_plots <- result$evaluation
 ```
+
+If you call `generate_weather()` directly instead, you have to build that input
+yourself before calling `evaluate_weather_generator()` -- map each realization's
+resampled dates back onto the observed record, one grid cell at a time. The
+section below on extracting synthetic weather shows the same indexing.
 
 ## Understanding Evaluation Metrics
 
@@ -472,11 +457,14 @@ wavelet_results <- analyze_wavelet_spectrum(
 For large spatial domains, enable parallel processing to accelerate computation:
 
 ```{r parallel_example, eval = FALSE}
-# Generate weather using multiple cores
-stochastic_weather <- generate_weather(
-  # ... other parameters ...
-  parallel = TRUE,
-  n_cores = 4
+# Parallelism is a config entry like any other. Realizations are the unit of
+# work, so there is nothing to gain from more cores than realizations.
+result <- run_weather_generator(
+  obs_data  = ncdata$data,
+  obs_grid  = ncdata$grid,
+  obs_dates = ncdata$date,
+  out_dir   = output_dir,
+  config    = modifyList(config, list(parallel = TRUE, n_cores = 4))
 )
 ```
 

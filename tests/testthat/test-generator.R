@@ -277,6 +277,50 @@ testthat::test_that("run_weather_generator threads config and out_dir into gener
   testthat::expect_identical(calls$evaluate$n_realizations, 3L)
 })
 
+testthat::test_that("run_weather_generator omits absent config entries rather than passing NULL", {
+  # The documented contract: "an entry that is absent (NULL) falls back to the
+  # receiving function's default". Passing config$x directly does the opposite --
+  # an absent entry becomes an explicit NULL that replaces the default and then
+  # fails validation, so a minimal config died on
+  # "dry_spell_factor must have length 12" instead of defaulting to rep(1, 12).
+  #
+  # Asserting on *absence from the forwarded call* rather than on the run
+  # succeeding: that is the mechanism, and it holds for every argument at once.
+  inputs <- make_generator_inputs()
+  calls <- new.env(parent = emptyenv())
+  .local_mock_run_steps(calls)
+
+  run_weather_generator(
+    obs_data  = inputs$obs_data,
+    obs_grid  = inputs$obs_grid,
+    obs_dates = inputs$obs_dates,
+    out_dir   = file.path(tempdir(), "weathergenr-run-minimal"),
+    config    = list(vars = c("precip", "temp"), n_realizations = 1L)
+  )
+
+  omitted <- c("dry_spell_factor", "wet_spell_factor", "wet_q", "extreme_q",
+               "warm_var", "warm_signif", "warm_pool_size", "annual_knn_n",
+               "start_year", "year_start_month", "relax_priority",
+               "warm_filter_bounds", "n_years", "seed")
+  for (nm in omitted) {
+    testthat::expect_false(nm %in% names(calls$generate), info = nm)
+  }
+
+  # The third call is easy to miss -- it is the one that still failed after the
+  # other two were fixed.
+  testthat::expect_false("year_start_month" %in% names(calls$prepare))
+  testthat::expect_false("wet_q" %in% names(calls$evaluate))
+
+  # What the caller did supply still arrives.
+  testthat::expect_identical(calls$generate$vars, c("precip", "temp"))
+  testthat::expect_identical(calls$generate$n_realizations, 1L)
+
+  # plot_dpi keeps its explicit default rather than being dropped, since both
+  # halves of a run must agree on it.
+  testthat::expect_identical(calls$generate$plot_dpi, 300)
+  testthat::expect_identical(calls$evaluate$plot_dpi, 300)
+})
+
 testthat::test_that("run_weather_generator threads plot_dpi and plot_device into both halves", {
   # These reached the evaluator only, so the four figures generate_weather()
   # writes ignored the documented setting and used ggsave()'s own default. The

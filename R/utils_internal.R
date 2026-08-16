@@ -274,6 +274,37 @@ compute_area_averages <- function(obs_data, wyear_idx, wyear, vars) {
 #' the recorded numeric baseline depends on, and a fix that shifted ordinary
 #' seeds would move output for no reason.
 #'
+#' Call a function, omitting arguments that are NULL
+#'
+#' @description
+#' Forwards only the named arguments that are non-`NULL`, so an absent one falls
+#' through to the callee's own default instead of overriding it.
+#'
+#' @details
+#' `run_weather_generator()` builds its call from a user `config` list and
+#' documents that "an entry that is absent (`NULL`) falls back to the receiving
+#' function's default". Passing `config$x` directly does not do that: an absent
+#' entry is an explicit `NULL`, which replaces the default and then fails the
+#' callee's validation. A minimal config died on `dry_spell_factor must have
+#' length 12` rather than defaulting to `rep(1, 12)`.
+#'
+#' Dropping the `NULL`s before the call is what makes the documented contract
+#' true. Note this means a config cannot explicitly request `NULL` for an
+#' argument whose default is non-`NULL` -- which is what "absent falls back to
+#' the default" means, and none of the forwarded arguments treat `NULL` as a
+#' meaningful value distinct from absence.
+#'
+#' @param .f Function to call.
+#' @param ... Named arguments; those that are `NULL` are dropped.
+#' @return The value of `.f` called with the retained arguments.
+#' @keywords internal
+#' @noRd
+.call_dropping_null <- function(.f, ...) {
+  args <- list(...)
+  do.call(.f, args[!vapply(args, is.null, logical(1))])
+}
+
+
 #' @param seed Numeric scalar base seed.
 #' @param offset Numeric scalar or vector added to `seed`.
 #' @return Integer vector of seeds, wrapped into `[1, .Machine$integer.max]`.
