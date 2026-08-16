@@ -1,6 +1,40 @@
 # weathergenr (development version)
 
+## New features
+
+* `theme_weathergenr()` is a new exported theme, applied to every figure the
+  package draws. Before it, a single run wrote PNGs in three different themes:
+  the evaluation diagnostics used `theme_bw(base_size = 12)`, the wavelet and
+  WARM panels used `theme_light()` — except one WARM panel on `theme_bw()` — and
+  `annual_precip.png` applied no theme at all, so it rendered in ggplot2's
+  default grey. It is exported because `evaluate_weather_generator()` returns its
+  diagnostics as ggplot objects: without it, a caller re-rendering one of those
+  plots cannot reproduce the package's styling.
+
+  It wraps `ggplot2::theme_light()` at `base_size = 12` — the size the evaluation
+  pipeline already produced — with title and subtitle sizes given as `rel()` so
+  they track `base_size` rather than being stranded at the fixed 14 and 10 points
+  they used to be.
+
+* `generate_weather()` gains `plot_dpi` (default 300) and `plot_device`
+  (default `NULL`), forwarded from `run_weather_generator()`'s `config`. The four
+  figures it writes — `obs_power_spectra.png`, `warm_annual_precip.png`,
+  `warm_annual_stats.png` and `warm_annual_wavelet.png` — previously ignored both
+  settings and used `ggsave()`'s own defaults, so `plot_dpi` governed only 12 of
+  the 17 PNGs a run produces. Both arguments are additive and default to the
+  previous behaviour.
+
 ## Bug fixes
+
+* `annual_precip.png` rendered in ggplot2's default grey theme and at a hardcoded
+  300 dpi, silently ignoring `plot_dpi` and `plot_device`. It bypassed the shared
+  export path entirely; it no longer does.
+
+* `precip_conditional_correlations.png` was written at a fixed 8 × 8.5 in
+  regardless of how many panels it actually drew. Its size was read from fields
+  that only `facet_wrap()` populates, and that figure uses `facet_grid()`, so its
+  three regime rows were being squeezed into a two-row canvas. Figure size is now
+  derived from the panel grid a plot actually renders.
 
 * The significance threshold in `warm_annual_wavelet.png` is now drawn across the
   full period axis, matching `obs_power_spectra.png`. The panel was being given
@@ -16,6 +50,36 @@
   plotted line is therefore the permissive threshold, drawn over scales the cone
   of influence cannot actually test — the same convention `obs_power_spectra.png`
   uses.
+
+## Other changes
+
+* Figure dimensions are derived from the panel grid for every output rather than
+  set per call site. Sizes remain internal — there are no width or height
+  arguments. Most geometry is unchanged: the family used by the faceted
+  observed-vs-simulated diagnostics reproduces the previous arithmetic exactly.
+  What does change: figures carrying a title are 0.6 in taller, since the old
+  allowance was sized for neither the title nor the two-line subtitles three of
+  them use; the three WARM figures and `warm_annual_stats.png` are 8 × 4.5 in
+  (from 8 × 5); `obs_power_spectra.png` is 9 × 4.5 in (from 8 × 5); and
+  `annual_precip.png` is 8 × 4.5 in (from 8 × 4).
+
+  A faceted figure is also now sized for the panels it actually draws rather than
+  the grid that was requested. With the usual four variables these agree; with
+  fewer, a plot that previously got a full-size canvas holding one panel and
+  three empty slots now gets a canvas that fits it.
+
+* Every write now sets `units`, `dpi` and background colour explicitly instead of
+  leaving them to `ggsave()`'s defaults.
+
+* Line weights, point sizes and alpha values are shared constants keyed by role,
+  so the observed reference series is drawn at the same weight in every figure —
+  it was previously 0.9 in one module, 1.25 in another, and the device default in
+  a third. Bundles of realization lines are drawn at alpha 0.5 throughout, where
+  they previously ranged from 0.2 to 0.8 — the high end saturated to solid at 20
+  realizations, and the low end left hue-scaled lines almost invisible.
+
+* The monthly-pattern legend used `legend.position = c(1, 0)`, superseded in
+  ggplot2 3.5.0 by `legend.position = "inside"`.
 
 # weathergenr 1.4.0
 

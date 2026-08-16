@@ -277,6 +277,49 @@ testthat::test_that("run_weather_generator threads config and out_dir into gener
   testthat::expect_identical(calls$evaluate$n_realizations, 3L)
 })
 
+testthat::test_that("run_weather_generator threads plot_dpi and plot_device into both halves", {
+  # These reached the evaluator only, so the four figures generate_weather()
+  # writes ignored the documented setting and used ggsave()'s own default. The
+  # assertion is on both call records because forwarding to one and not the
+  # other is exactly the state this fixes.
+  inputs <- make_generator_inputs()
+  calls <- new.env(parent = emptyenv())
+  .local_mock_run_steps(calls)
+
+  config <- .run_config(plot_dpi = 150, plot_device = grDevices::png)
+
+  run_weather_generator(
+    obs_data  = inputs$obs_data,
+    obs_grid  = inputs$obs_grid,
+    obs_dates = inputs$obs_dates,
+    out_dir   = file.path(tempdir(), "weathergenr-run-plotargs"),
+    config    = config
+  )
+
+  testthat::expect_identical(calls$generate$plot_dpi, 150)
+  testthat::expect_identical(calls$generate$plot_device, grDevices::png)
+  testthat::expect_identical(calls$evaluate$plot_dpi, 150)
+  testthat::expect_identical(calls$evaluate$plot_device, grDevices::png)
+})
+
+testthat::test_that("run_weather_generator defaults plot_dpi to 300 for both halves", {
+  inputs <- make_generator_inputs()
+  calls <- new.env(parent = emptyenv())
+  .local_mock_run_steps(calls)
+
+  run_weather_generator(
+    obs_data  = inputs$obs_data,
+    obs_grid  = inputs$obs_grid,
+    obs_dates = inputs$obs_dates,
+    out_dir   = file.path(tempdir(), "weathergenr-run-plotargs-default"),
+    config    = .run_config()
+  )
+
+  testthat::expect_identical(calls$generate$plot_dpi, 300)
+  testthat::expect_null(calls$generate$plot_device)
+  testthat::expect_identical(calls$evaluate$plot_dpi, 300)
+})
+
 testthat::test_that("run_weather_generator derives grid IDs from each supported obs_grid shape", {
   inputs <- make_generator_inputs()
 

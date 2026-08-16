@@ -28,7 +28,9 @@ generate_weather(
   parallel = FALSE,
   n_cores = NULL,
   verbose = FALSE,
-  save_plots = TRUE
+  save_plots = TRUE,
+  plot_dpi = 300,
+  plot_device = NULL
 )
 }
 \arguments{
@@ -130,6 +132,18 @@ realizations in parallel using a PSOCK cluster.}
 \item{verbose}{Logical; if \code{TRUE}, emits progress logs via \code{.log()}.}
 
 \item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{output_dir}.}
+
+\item{plot_dpi}{Numeric; raster resolution for the diagnostic plots this
+function writes (default 300). Ignored when \code{save_plots = FALSE}.
+Matches the argument of the same name on
+\code{\link{evaluate_weather_generator}}; before it existed here, the four
+figures written by this function ignored the setting entirely.}
+
+\item{plot_device}{Optional graphics device passed to
+\code{\link[ggplot2]{ggsave}}. \code{NULL} (the default) lets \code{ggsave()}
+infer it from the file extension. Supplying a faster device, for example
+\code{ragg::agg_png}, typically halves the render cost. \code{ragg} is not a
+dependency of this package; pass the function only if you have it installed.}
 }
 \value{
 A list with:

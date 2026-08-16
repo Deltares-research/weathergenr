@@ -193,17 +193,18 @@ evaluate_weather_generator <- function(
 
   options(dplyr.summarise.inform = FALSE, tidyverse.quiet = TRUE)
 
+  # Pure data: a subtitle, two numbers, a device or NULL, and a colour vector.
+  # The theme used to live here too, which put a ggplot2 object in a
+  # computational file and left the wavelet and warm-filtering plots -- which
+  # never receive plot_config -- on themes of their own. Every builder now calls
+  # theme_weathergenr() directly instead, which is what makes one theme reach
+  # all three plot modules.
   plot_config <- list(
     subtitle = "Value range and median from all simulations shown against observed",
     dpi = plot_dpi,
     device = plot_device,
-    alpha = 0.4,
-    colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated")),
-    theme = ggplot2::theme_bw(base_size = 12) +
-      ggplot2::theme(
-        plot.title = ggplot2::element_text(size = 14),
-        plot.subtitle = ggplot2::element_text(size = 10)
-      )
+    alpha = .PLOT_GEOM$alpha_summary,
+    colors = stats::setNames(c("blue3", "gray40"), c("Observed", "Simulated"))
   )
 
   plots <- list()
