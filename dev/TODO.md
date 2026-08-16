@@ -2,11 +2,10 @@
 
 # TODO
 
-| ID                                                                                                       | Item                                                                   | Area  | Origin            | #   | State   |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----- | ----------------- | --- | ------- |
-| [t2608151254](tasks/t2608151254-decide-whether-climate-perturbation-belongs-in-run-weather-generator.md) | Decide whether climate perturbation belongs in run_weather_generator() | api   | review-2026-08-15 | 1   | backlog |
-| [t2608151254k](tasks/t2608151254k-trim-the-export-surface.md)                                            | Trim the export surface                                                | api   | review-2026-08-15 | 1   | backlog |
-| [t2608161143](tasks/t2608161143-standardize-figure-export-geometry-and-theming.md)                       | Standardize figure export geometry and theming                         | plots |                   | 1   | backlog |
+| ID                                                                                                       | Item                                                                   | Area | Origin            | #   | State   |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---- | ----------------- | --- | ------- |
+| [t2608151254](tasks/t2608151254-decide-whether-climate-perturbation-belongs-in-run-weather-generator.md) | Decide whether climate perturbation belongs in run_weather_generator() | api  | review-2026-08-15 | 1   | backlog |
+| [t2608151254k](tasks/t2608151254k-trim-the-export-surface.md)                                            | Trim the export surface                                                | api  | review-2026-08-15 | 1   | backlog |
 
 ## Watching
 
