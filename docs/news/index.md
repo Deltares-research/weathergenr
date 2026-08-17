@@ -1,5 +1,287 @@
 # Changelog
 
+## weathergenr 2.0.0
+
+### Bug fixes
+
+- `precip_occurrence_factor` did nothing.
+  [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
+  reads the fitted Gamma parameters off the quantile-mapping result to
+  draw amounts for newly wet days, but
+  [`adjust_precipitation_qm()`](https://deltares-research.github.io/weathergenr/reference/adjust_precipitation_qm.md)
+  never returned them, so the guard on that branch could not be
+  satisfied and occurrence perturbation was skipped on every call.
+  Factors of 0.5, 0.7, 1.0 and 1.3 all produced byte-identical output.
+  `adjust_precipitation_qm(diagnostics = TRUE)` now returns `base_gamma`
+  and `target_gamma` alongside `adjusted` and `diagnostics`, which makes
+  the existing occurrence code reachable.
+
+  Wet-day frequency is a stress-test axis in its own right, so this
+  restores a documented scenario dimension rather than adding one.
+  `precip_occurrence_factor` and `precip_occurrence_transient` now
+  behave as their documentation describes: a factor of 0.7 gives roughly
+  70% of the observed wet days, and the transient form ramps from no
+  change to twice the change, averaging to it.
+
+  The failure was invisible from the outside. The skip warning fired
+  only under `verbose = TRUE` and blamed the input data — “all-dry or
+  insufficient wet days” — for series with thousands of wet days. That
+  warning is now unconditional and describes the actual condition. The
+  regression test passed vacuously, asserting `>=` on a wet-day count
+  that never moved; it now asserts the count strictly increases and
+  lands near the requested factor.
+
+### Breaking changes
+
+- Two arguments are renamed so that one concept has one name across the
+  functions that pass it to each other.
+  [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
+  and
+  [`create_all_diagnostic_plots()`](https://deltares-research.github.io/weathergenr/reference/create_all_diagnostic_plots.md)
+  take `out_dir` instead of `output_dir`, matching
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  and
+  [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md),
+  which already used that name.
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  takes `relax_order` instead of `relax_priority`, matching
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md),
+  which it forwards the value to; the same applies to
+  `config$relax_order` in
+  [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md).
+
+  Both old names still work and emit a deprecation warning. Supplying
+  both names for one setting is an error rather than a silent choice
+  between them. Positional calls are unaffected — each new name occupies
+  the position its predecessor did.
+
+  Deliberately narrow.
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)’s
+  `warm_filter_bounds` is *not* renamed to
+  [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)’s
+  `filter_bounds`, despite the same kind of mismatch: it belongs to a
+  coherent `warm_*` family alongside `warm_var`, `warm_signif` and
+  `warm_pool_size`, and breaking that family to match one niche function
+  would cost more than the inconsistency does. That drift is now an
+  accepted difference rather than an outstanding one.
+
+- Supplying a year-varying `n_years x 12` factor matrix together with
+  its transient flag is now an error. A transient factor is specified by
+  its end state and ramps from 1 to `2f - 1`, reading the first row
+  alone, so rows `2:n_years` were being discarded without a word — a
+  matrix encoding a 50% reduction came back as no change at all. Affects
+  `precip_mean_factor`, `precip_var_factor`, `precip_occurrence_factor`
+  and `temp_range_factor` against their matching `*_transient` argument.
+
+  Pass a length-12 vector and let the ramp build the path, or set the
+  transient flag to `FALSE` and have the matrix applied year by year. A
+  matrix whose rows are all identical is equivalent to a vector and is
+  still accepted, so code that expanded a vector to a constant matrix
+  keeps working.
+
+- Five helpers are no longer exported: `criteria_string_compact()`,
+  `generate_symmetric_dummy_points()`, `get_result_index()`,
+  `match_transition_positions()` and `relax_bounds_one_filter()`. They
+  format a log string, build dummy points for a plot’s symmetric axis
+  limits, look up an index, match Markov transition positions, and step
+  one filter’s bounds during relaxation — package internals with no
+  plausible external audience. They keep their documentation in the
+  source but no longer generate an `.Rd` page, matching how the
+  package’s other internal helpers are handled.
+
+  Checked before removing: the `blueearth_cst` toolkit, the only known
+  consumer, references four exports —
+  [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md),
+  [`read_netcdf()`](https://deltares-research.github.io/weathergenr/reference/read_netcdf.md),
+  [`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)
+  and
+  [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
+  — and none of these five. If you call one of them, use
+  `weathergenr:::` or open an issue and it can be reinstated.
+
+### New features
+
+- [`theme_weathergenr()`](https://deltares-research.github.io/weathergenr/reference/theme_weathergenr.md)
+  is a new exported theme, applied to every figure the package draws.
+  Before it, a single run wrote PNGs in three different themes: the
+  evaluation diagnostics used `theme_bw(base_size = 12)`, the wavelet
+  and WARM panels used
+  [`theme_light()`](https://ggplot2.tidyverse.org/reference/ggtheme.html)
+  — except one WARM panel on
+  [`theme_bw()`](https://ggplot2.tidyverse.org/reference/ggtheme.html) —
+  and `annual_precip.png` applied no theme at all, so it rendered in
+  ggplot2’s default grey. It is exported because
+  [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
+  returns its diagnostics as ggplot objects: without it, a caller
+  re-rendering one of those plots cannot reproduce the package’s
+  styling.
+
+  It wraps
+  [`ggplot2::theme_light()`](https://ggplot2.tidyverse.org/reference/ggtheme.html)
+  at `base_size = 12` — the size the evaluation pipeline already
+  produced — with title and subtitle sizes given as
+  [`rel()`](https://ggplot2.tidyverse.org/reference/element.html) so
+  they track `base_size` rather than being stranded at the fixed 14 and
+  10 points they used to be.
+
+  When the package writes a figure it scales that base size with the
+  figure’s own dimensions, clamped to 9–16 pt. A fixed point size makes
+  text physically identical everywhere, which is not what a reader sees:
+  these figures are viewed fit-to-window or embedded at a common width,
+  so each is scaled by its own size first. At a fixed 12 pt the apparent
+  size varied about twofold across a run — large on the 8 × 4.5 in WARM
+  figures, small on the 12 × 13.1 in conditional-correlation grid.
+  Scaling brings that spread under 1.2. Calling
+  [`theme_weathergenr()`](https://deltares-research.github.io/weathergenr/reference/theme_weathergenr.md)
+  directly is unaffected and still gives 12 pt.
+
+- [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  gains `plot_dpi` (default 300) and `plot_device` (default `NULL`),
+  forwarded from
+  [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)’s
+  `config`. The four figures it writes — `obs_power_spectra.png`,
+  `warm_annual_precip.png`, `warm_annual_stats.png` and
+  `warm_annual_wavelet.png` — previously ignored both settings and used
+  [`ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html)’s
+  own defaults, so `plot_dpi` governed only 12 of the 17 PNGs a run
+  produces. Both arguments are additive and default to the previous
+  behaviour.
+
+### Bug fixes
+
+- [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)
+  did not honour its documented `config` contract. The roxygen said an
+  absent entry falls back to the receiving function’s default, but every
+  entry was forwarded unconditionally, so an absent one arrived as an
+  explicit `NULL` that replaced the default and then failed validation.
+  A four-entry config died on `dry_spell_factor must have length 12`
+  rather than defaulting to `rep(1, 12)`. Absent entries are now omitted
+  from the call, so only `vars` and `n_realizations` are required and a
+  config needs to name only what it changes. `config$variable_labels`
+  now reaches
+  [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
+  as well, where it was previously hardcoded to `NULL` and silently
+  ignored.
+
+- `annual_precip.png` rendered in ggplot2’s default grey theme and at a
+  hardcoded 300 dpi, silently ignoring `plot_dpi` and `plot_device`. It
+  bypassed the shared export path entirely; it no longer does.
+
+- `precip_conditional_correlations.png` was written at a fixed 8 × 8.5
+  in regardless of how many panels it actually drew. Its size was read
+  from fields that only
+  [`facet_wrap()`](https://ggplot2.tidyverse.org/reference/facet_wrap.html)
+  populates, and that figure uses
+  [`facet_grid()`](https://ggplot2.tidyverse.org/reference/facet_grid.html),
+  so its three regime rows were being squeezed into a two-row canvas.
+  Figure size is now derived from the panel grid a plot actually
+  renders.
+
+- The significance threshold in `warm_annual_wavelet.png` is now drawn
+  across the full period axis, matching `obs_power_spectra.png`. The
+  panel was being given the cone-of-influence-masked threshold, which is
+  `NA` at every scale the record is too short to test — on a 20-year
+  annual series that is everything beyond roughly 3.5 years, so the red
+  dashed line appeared as a stub over the shortest periods and then
+  vanished. It now receives the unmasked curve, as the observed
+  power-spectrum plot already did.
+
+  Filtering is unchanged: the masked curve remains the one
+  [`identify_significant_peaks()`](https://deltares-research.github.io/weathergenr/reference/identify_significant_peaks.md)
+  and the testable-scale count read, because there an `NA` means “not
+  testable” rather than “not significant”. Note that the plotted line is
+  therefore the permissive threshold, drawn over scales the cone of
+  influence cannot actually test — the same convention
+  `obs_power_spectra.png` uses.
+
+### Other changes
+
+- Documented how climate perturbation composes with the generator, and
+  corrected the claim that it did so already. `README.md` described
+  three “coupled” components, but
+  [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
+  is reachable from neither entry point, so component 3 was left for
+  every user to wire up themselves. The wiring turns out to need no new
+  code:
+  [`prepare_evaluation_data()`](https://deltares-research.github.io/weathergenr/reference/prepare_evaluation_data.md)
+  — which
+  [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)
+  already uses to turn resampled dates into daily values — returns
+  exactly the per-cell shape
+  [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
+  expects. `README.md` now says the first two components are coupled
+  inside
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  while the third is a stage applied afterwards, and shows the chain;
+  the *Climate Perturbations* article gains a section doing the same on
+  a realization rather than on the observed record.
+
+  Perturbation stays outside
+  [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)
+  deliberately. That entry point evaluates its output against the
+  observed record, and a perturbed series is meant to depart from
+  observations, so folding the two together would break what the
+  evaluation means.
+
+  Three traps in that chain are now documented and covered by tests:
+  `vars` must include `temp_min` and `temp_max`, which
+  [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
+  does not require but
+  [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
+  does; the date vector must come from the returned frames rather than
+  `gen_output$dates`, which can be longer because incomplete years are
+  dropped; and `n_years x 12` factor matrices are sized by calendar
+  years spanned, so a 20-water-year series needs 21 rows.
+
+- [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)’s
+  “Year indexing convention” documentation is corrected. It described
+  `year_idx` as a simulation-year index running `1..n_years`, but the
+  index is derived as `calendar_year - min(calendar_year) + 1`. The two
+  agree only for calendar-year runs; under a water year they differ by
+  one, which is enough to have a correctly sized factor matrix rejected.
+  No behavior changed.
+
+- Figure dimensions are derived from the panel grid for every output
+  rather than set per call site. Sizes remain internal — there are no
+  width or height arguments. Most geometry is unchanged: the family used
+  by the faceted observed-vs-simulated diagnostics reproduces the
+  previous arithmetic exactly. What does change: figures carrying a
+  title are 0.6 in taller, since the old allowance was sized for neither
+  the title nor the two-line subtitles three of them use; the three WARM
+  figures and `warm_annual_stats.png` are 8 × 4.5 in (from 8 × 5);
+  `obs_power_spectra.png` is 9 × 4.5 in (from 8 × 5); and
+  `annual_precip.png` is 8 × 4.5 in (from 8 × 4).
+
+  A faceted figure is also now sized for the panels it actually draws
+  rather than the grid that was requested. With the usual four variables
+  these agree; with fewer, a plot that previously got a full-size canvas
+  holding one panel and three empty slots now gets a canvas that fits
+  it.
+
+- Every write now sets `units`, `dpi` and background colour explicitly
+  instead of leaving them to
+  [`ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html)’s
+  defaults.
+
+- Line weights, point sizes and alpha values are shared constants
+  grouped by geom family, each role carrying its full specification. The
+  observed series is now drawn at one weight in every figure — it was
+  previously 0.9 in one module, 1.25 in another, and the device default
+  in a third — and is deliberately the heaviest line in any plot that
+  draws one, so it reads clearly against the ensemble behind it. In
+  `annual_precip.png` and `warm_annual_precip.png` it previously
+  competed with the simulated traces rather than standing out from them.
+
+  Ensemble traces are split into two roles by how they are coloured,
+  because the alpha that reads correctly depends on it: monochrome grey
+  traces are drawn lighter (0.30) than hue-scaled per-realization traces
+  (0.70). A single value cannot serve both — grey at the hue scale’s
+  alpha reads as a dark mass, and hue-scaled lines at grey’s alpha are
+  close to invisible.
+
+- The monthly-pattern legend used `legend.position = c(1, 0)`,
+  superseded in ggplot2 3.5.0 by `legend.position = "inside"`.
+
 ## weathergenr 1.4.0
 
 ### New features
@@ -480,12 +762,10 @@
   worker counts and remain so.
 
 - [`estimate_monthly_markov_probs()`](https://deltares-research.github.io/weathergenr/reference/estimate_monthly_markov_probs.md)
-  and
-  [`match_transition_positions()`](https://deltares-research.github.io/weathergenr/reference/match_transition_positions.md)
-  now error when `wet_threshold` exceeds `extreme_threshold`. The
-  three-state encoding has always assumed the thresholds are ordered; an
-  inverted pair previously passed silently and produced a “wet” state no
-  observation could occupy.
+  and `match_transition_positions()` now error when `wet_threshold`
+  exceeds `extreme_threshold`. The three-state encoding has always
+  assumed the thresholds are ordered; an inverted pair previously passed
+  silently and produced a “wet” state no observation could occupy.
   [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
   already validated `extreme_q > wet_q`, so this only affects direct
   calls to the two exported functions.

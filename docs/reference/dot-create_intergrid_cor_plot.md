@@ -11,7 +11,7 @@ by variable. Uses dummy points to enforce symmetric axes per facet.
   plot_config,
   show_title,
   save_plots,
-  output_dir
+  out_dir
 )
 ```
 
@@ -24,7 +24,10 @@ by variable. Uses dummy points to enforce symmetric axes per facet.
 
 - plot_config:
 
-  List of plotting configuration options (theme, alpha, subtitle, etc.).
+  List of plotting configuration options (subtitle, alpha, colors, dpi,
+  device). The theme is not among them: every builder calls
+  [`theme_weathergenr`](https://deltares-research.github.io/weathergenr/reference/theme_weathergenr.md)
+  directly.
 
 - show_title:
 
@@ -32,13 +35,12 @@ by variable. Uses dummy points to enforce symmetric axes per facet.
 
 - save_plots:
 
-  Logical; if `TRUE`, writes plot to `output_dir`.
+  Logical; if `TRUE`, writes plot to `out_dir`.
 
-- output_dir:
+- out_dir:
 
   Character; output directory for saved plots.
 
 ## Value
 
-ggplot object (returned invisibly by
-[`.export_multipanel_plot()`](https://deltares-research.github.io/weathergenr/reference/dot-export_multipanel_plot.md)).
+ggplot object (returned invisibly by `.export_figure()`).

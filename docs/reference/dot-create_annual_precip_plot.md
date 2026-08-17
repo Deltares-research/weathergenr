@@ -13,7 +13,7 @@ as a single reference series.
   plot_config,
   show_title,
   save_plots,
-  output_dir
+  out_dir
 )
 ```
 
@@ -29,7 +29,10 @@ as a single reference series.
 
 - plot_config:
 
-  List of plotting configuration options (theme, alpha, subtitle, etc.).
+  List of plotting configuration options (subtitle, alpha, colors, dpi,
+  device). The theme is not among them: every builder calls
+  [`theme_weathergenr`](https://deltares-research.github.io/weathergenr/reference/theme_weathergenr.md)
+  directly.
 
 - show_title:
 
@@ -37,9 +40,9 @@ as a single reference series.
 
 - save_plots:
 
-  Logical; if `TRUE`, writes plot to `output_dir`.
+  Logical; if `TRUE`, writes plot to `out_dir`.
 
-- output_dir:
+- out_dir:
 
   Character; output directory for saved plots.
 

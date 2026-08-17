@@ -57,7 +57,10 @@ plot_filter_diagnostics(
 
 - power_signif:
 
-  Significance curve
+  Significance curve, for display only. Pass the unmasked variant
+  (`gws_signif_unmasked`); the COI-masked inference curve is NA wherever
+  the cone of influence cannot support a test, which draws the threshold
+  as a stub over the short periods instead of across the axis.
 
 - wavelet_pars:
 

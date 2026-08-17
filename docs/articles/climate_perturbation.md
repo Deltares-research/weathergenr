@@ -137,6 +137,13 @@ rlz_future <- apply_climate_perturbations(
   temp_delta = temp_mean_change,
   precip_occurrence_factor = NULL,
   precip_intensity_threshold = 0,
+  # Diurnal temperature range. NULL leaves it untouched, which is what warming
+  # alone does: temp_delta shifts temp, temp_min and temp_max together. That
+  # matters if you go on to compute PET -- Hargreaves goes as the square root of
+  # the range, so warming on its own moves PET by only about 2.3% per degree and
+  # the range decides how much more. There is no defensible default; supply
+  # values for the region you are studying, or vary it as a stress dimension.
+  temp_range_factor = NULL,
   temp_transient = TRUE,
   precip_transient = TRUE,
   precip_occurrence_transient = TRUE,

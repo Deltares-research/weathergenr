@@ -1,9 +1,12 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://deltares-research.github.io/weathergenr/404.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/AGENTS.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/articles/climate_perturbation.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/articles/getting_started.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/articles/index.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/articles/perturbation_parameters.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/authors.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/CLAUDE.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/index.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/LICENSE-text.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/LICENSE.html</loc></url>
@@ -140,6 +143,7 @@
 <url><loc>https://deltares-research.github.io/weathergenr/reference/run_weather_generator.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/simulate_warm.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/summary.precip_qm_diagnostics.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/reference/theme_weathergenr.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/validate_quantile_mapping.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/write_netcdf.html</loc></url>
 </urlset>

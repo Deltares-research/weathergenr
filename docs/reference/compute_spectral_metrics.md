@@ -109,7 +109,14 @@ Named list with:
 
 - gws_signif:
 
-  Numeric vector or NULL. Significance curve on `period`.
+  Numeric vector or NULL. COI-masked significance curve on `period`,
+  used for inference. NA at scales the cone of influence cannot test.
+
+- gws_signif_display:
+
+  Numeric vector or NULL. Unmasked significance curve on `period`,
+  finite at every scale. For plotting only – never for inference; see
+  [`plot_filter_diagnostics`](https://deltares-research.github.io/weathergenr/reference/plot_filter_diagnostics.md).
 
 - gws_cache:
 

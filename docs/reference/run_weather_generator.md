@@ -45,9 +45,14 @@ run_weather_generator(
 
   List. Full simulation/evaluation configuration. Entries are forwarded
   to \[generate_weather()\] and \[evaluate_weather_generator()\] under
-  the same names, including \`warm_filter_bounds\`, \`relax_priority\`,
-  \`plot_dpi\` and \`plot_device\`. An entry that is absent (\`NULL\`)
-  falls back to the receiving function's default.
+  the same names, including \`warm_filter_bounds\`, \`relax_order\`,
+  \`variable_labels\`, \`plot_dpi\` and \`plot_device\`.
+  \`config\$relax_priority\` is the superseded spelling of
+  \`config\$relax_order\` and still works, with a warning. An entry that
+  is absent (\`NULL\`) is not forwarded at all, so it falls back to the
+  receiving function's default – only \`vars\` and \`n_realizations\`
+  are required. A config therefore needs to name only what it wants to
+  change.
 
 - eval_max_grids:
 
