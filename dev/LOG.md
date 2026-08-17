@@ -13,6 +13,8 @@ Rows are appended by `todoboard done`, never hand-edited.
 
 | Closed     | ID           | Item                                     | Area         |
 | ---------- | ------------ | ---------------------------------------- | ------------ |
+| 2026-08-17 | t2608151254k | Trim the export surface                  | api          |
+| 2026-08-17 | t2608151254  | Decide whether climate perturbation belongs in run_weather_generator() | api          |
 | 2026-08-16 | t2608161143  | Standardize figure export geometry and theming | plots        |
 | 2026-08-16 | t2608061641  | Clear lintr findings and make the lint job blocking | ci           |
 | 2026-08-16 | t2608061641a | Cover create_all_diagnostic_plots and plot_filter_diagnostics with tests | tests        |
