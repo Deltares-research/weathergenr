@@ -13,6 +13,7 @@ Rows are appended by `todoboard done`, never hand-edited.
 
 | Closed     | ID           | Item                                     | Area         |
 | ---------- | ------------ | ---------------------------------------- | ------------ |
+| 2026-08-17 | t2608151255b | Argument names drift across the generate/evaluate boundary | api          |
 | 2026-08-17 | t2608151254k | Trim the export surface                  | api          |
 | 2026-08-17 | t2608151254  | Decide whether climate perturbation belongs in run_weather_generator() | api          |
 | 2026-08-16 | t2608161143  | Standardize figure export geometry and theming | plots        |
