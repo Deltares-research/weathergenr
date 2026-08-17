@@ -1,0 +1,647 @@
+---
+title: "Precipitation Perturbation Parameters"
+description: "How the precipitation perturbation arguments change the outcome, measured against a common baseline on one stylized site."
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc-title: "Contents"
+    toc-depth: 3
+    toc-expand: 2
+    page-layout: full
+    number-sections: true
+    code-tools: true
+    df-print: tibble
+    self-contained: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: false
+  freeze: true
+  execute-dir: project
+vignette: >
+  %\VignetteIndexEntry{Precipitation Perturbation Parameters}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Purpose
+
+[Climate Perturbations](climate_perturbation.html) shows *how* to apply a
+perturbation.
+This article asks a different question: given a target change, what do the
+remaining arguments actually do to the result?
+
+Every scenario below imposes the same headline change — a 20% reduction in
+wet-day precipitation — and varies one argument at a time.
+Holding the target fixed is the point: differences between panels are the
+argument's doing, not the scenario's.
+
+The site is stylized rather than real, so the mechanisms are visible without a
+region's idiosyncrasies on top.
+Everything runs in a few seconds and no weather-generator call is involved.
+
+::: {.callout-note}
+## What is not covered
+`compute_pet` and `pet_method` are driven by temperature, not precipitation, and
+are covered in [Climate Perturbations](climate_perturbation.html).
+`precip_cap_mm_day`, `precip_floor_mm_day` and `precip_cap_quantile` are safety
+rails applied after everything here, and do nothing until a bound is hit.
+:::
+
+# Setup
+
+```{r}
+#| label: setup
+library(weathergenr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+theme_set(theme_weathergenr())
+```
+
+## A stylized site
+
+Thirty years of daily precipitation on a 365-day calendar, with a wet season
+from November to March, gamma-distributed wet-day amounts, and a slow
+interannual oscillation.
+That last ingredient matters: without year-to-year variability, one of the
+arguments below has nothing to act on and looks inert when it is not.
+
+```{r}
+#| label: stylized-site
+n_years <- 30L
+start_year <- 2000L
+
+date <- as.Date("2000-01-01") + 0:(365L * n_years - 1L)
+month <- as.integer(format(date, "%m"))
+year_idx <- as.integer(format(date, "%Y")) - start_year + 1L
+
+wet_prob <- c(0.55, 0.50, 0.45, 0.25, 0.15, 0.10,
+              0.08, 0.10, 0.18, 0.30, 0.45, 0.55)[month]
+wet_scale <- c(9, 8.5, 7.5, 5, 3.5, 2.5,
+               2, 2.5, 4, 6, 8, 9)[month]
+
+# A slow wet/dry oscillation, so the series has interannual structure.
+ann_mult <- 1 + 0.35 * sin(2 * pi * seq_len(n_years) / 11)
+
+set.seed(20260817)
+precip <- numeric(length(date))
+is_wet <- runif(length(date)) < wet_prob * ann_mult[year_idx]
+precip[is_wet] <- rgamma(
+  sum(is_wet),
+  shape = 0.75,
+  scale = wet_scale[is_wet] * ann_mult[year_idx][is_wet]
+)
+```
+
+```{r}
+#| label: site-summary
+tibble(
+  days           = length(precip),
+  wet_days       = sum(precip > 0),
+  wet_fraction   = mean(precip > 0),
+  annual_mm      = mean(tapply(precip, year_idx, sum)),
+  wetday_mean_mm = mean(precip[precip > 0])
+)
+```
+
+## Instruments and metrics
+
+The shape arguments belong to `adjust_precipitation_qm()`, the quantile mapper
+that `apply_climate_perturbations()` calls internally.
+Going straight to it keeps the grid and temperature scaffolding out of the way.
+The two `*_transient` arguments exist only on the wrapper, so
+@sec-transient switches instruments.
+
+Note the one interface difference: the wrapper accepts a length-12 vector and
+expands it, while the mapper requires an `n_years x 12` matrix.
+
+```{r}
+#| label: helpers
+# The mapper wants a matrix; expand a monthly vector to one.
+as_factor_matrix <- function(v) {
+  matrix(v, nrow = n_years, ncol = 12, byrow = TRUE)
+}
+
+perturb <- function(mean_factor = 0.8, var_factor = 1, ...) {
+  adjust_precipitation_qm(
+    precip      = precip,
+    month       = month,
+    year        = year_idx,
+    mean_factor = as_factor_matrix(rep(mean_factor, 12)),
+    var_factor  = as_factor_matrix(rep(var_factor, 12)),
+    validate_output = FALSE,
+    diagnostics     = FALSE,
+    verbose         = FALSE,
+    ...
+  )
+}
+```
+
+Four metrics, chosen so the arguments separate rather than overlap.
+The last two are the ones that matter most, and pooling them — as a single
+overall coefficient of variation would — hides exactly the distinction
+@sec-two-knobs draws.
+
+```{r}
+#| label: metrics
+wet_of <- function(x) x[x > 0]
+
+# Groups are (month, year), the unit the perturbation itself works on.
+by_group <- function(x) {
+  w <- x > 0
+  g <- split(x[w], list(month[w], year_idx[w]), drop = TRUE)
+  g[lengths(g) >= 5]
+}
+
+summarise_series <- function(x, label) {
+  g <- by_group(x)
+  group_means <- vapply(g, mean, numeric(1))
+  tibble(
+    scenario    = label,
+    wetday_mean = mean(wet_of(x)),
+    p99         = unname(quantile(wet_of(x), 0.99)),
+    # Spread of daily values inside a (month, year) group, averaged.
+    within_cv   = mean(vapply(g, function(v) sd(v) / mean(v), numeric(1))),
+    # Spread of the group means themselves: the interannual signal.
+    between_cv  = sd(group_means) / mean(group_means)
+  )
+}
+```
+
+The baseline every scenario is measured against applies the 20% reduction with
+every other argument at its default.
+
+```{r}
+#| label: baseline
+baseline <- perturb()
+
+bind_rows(
+  summarise_series(precip, "observed"),
+  summarise_series(baseline, "baseline (-20%, defaults)")
+)
+```
+
+# The headline: two ways to make extremes worse {#sec-extremes}
+
+`exaggerate_extremes` amplifies the upper tail.
+`enforce_target_mean` rescales each (month, year) group so its wet-day mean hits
+the target exactly.
+They are usually described separately, but the second decides what the first
+*means*.
+
+```{r}
+#| label: extremes-grid
+grid_2x2 <- expand.grid(
+  exaggerate = c(FALSE, TRUE),
+  enforce    = c(TRUE, FALSE)
+)
+
+do.call(bind_rows, lapply(seq_len(nrow(grid_2x2)), function(i) {
+  ex <- grid_2x2$exaggerate[i]
+  en <- grid_2x2$enforce[i]
+  summarise_series(
+    perturb(exaggerate_extremes = ex, enforce_target_mean = en, extreme_k = 1.5),
+    sprintf("exaggerate=%s, enforce=%s", ex, en)
+  )
+}))
+```
+
+The target wet-day mean is `r round(0.8 * mean(precip[precip > 0]), 3)` mm.
+Three of the four rows sit exactly on it.
+The fourth — amplification with `enforce_target_mean = FALSE` — overshoots by
+about 13%.
+
+That is the whole interaction.
+Amplifying the tail moves probability mass upward, which *adds* water; the
+scenario then delivers a larger mean change than the one requested.
+`enforce_target_mean = TRUE` rescales the group back onto its target, so the
+same amplification instead *redistributes* water: more in the tail, less in the
+body, at the mean you asked for.
+
+::: {.callout-important}
+## Which one you want is a modelling choice
+Redistribution at a fixed mean is the usual intent for a stress test, because it
+keeps the mean-change axis interpretable.
+If you leave `enforce_target_mean = FALSE` while amplifying, the realized mean
+change is no longer the number in your scenario table.
+:::
+
+```{r}
+#| label: fig-extremes
+#| fig-cap: "Wet-day exceedance curves. With the mean enforced, tail amplification pivots the distribution about its mean; without it, the whole curve shifts up."
+#| fig-alt: "Log-scaled exceedance probability curves for four combinations of exaggerate_extremes and enforce_target_mean, showing the unenforced amplified case lying above the others across the full range."
+#| fig-width: 8
+#| fig-height: 4.5
+exceedance <- function(x, label) {
+  v <- sort(wet_of(x), decreasing = TRUE)
+  tibble(value = v, prob = seq_along(v) / (length(v) + 1), scenario = label)
+}
+
+bind_rows(
+  exceedance(baseline, "no amplification"),
+  exceedance(perturb(exaggerate_extremes = TRUE, enforce_target_mean = TRUE,
+                     extreme_k = 1.5), "amplified, mean enforced"),
+  exceedance(perturb(exaggerate_extremes = TRUE, enforce_target_mean = FALSE,
+                     extreme_k = 1.5), "amplified, mean free")
+) |>
+  filter(prob < 0.3) |>
+  ggplot(aes(prob, value, colour = scenario)) +
+  geom_line(linewidth = 0.9) +
+  scale_x_log10(labels = scales::percent) +
+  scale_colour_viridis_d(end = 0.85) +
+  labs(
+    title = "Enforcing the target mean turns amplification into redistribution",
+    x = "Exceedance probability", y = "Wet-day precipitation (mm)",
+    colour = NULL
+  ) +
+  theme(legend.position = "bottom")
+```
+
+## How hard to amplify: `extreme_k` {#sec-extreme-k}
+
+With the mean enforced, `extreme_k` is a clean dial.
+Values above 1 amplify, values below 1 dampen, and 1 is the identity.
+
+```{r}
+#| label: k-sweep
+k_values <- c(0.6, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5)
+
+k_sweep <- do.call(bind_rows, lapply(k_values, function(k) {
+  summarise_series(
+    perturb(exaggerate_extremes = TRUE, enforce_target_mean = TRUE, extreme_k = k),
+    sprintf("k = %.1f", k)
+  )
+})) |>
+  mutate(k = k_values, .before = 1)
+
+k_sweep
+```
+
+The wet-day mean does not move across the whole sweep, while the 99th percentile
+roughly doubles.
+That is the response surface a stress test wants from a tail dimension: one
+axis, no side effects on the others.
+
+```{r}
+#| label: fig-k-sweep
+#| fig-cap: "Tail severity against extreme_k, with the wet-day mean pinned by enforce_target_mean."
+#| fig-alt: "Two-panel plot: the 99th percentile rises steadily with extreme_k while the wet-day mean stays flat."
+#| fig-width: 8
+#| fig-height: 4
+k_sweep |>
+  select(k, `99th percentile` = p99, `wet-day mean` = wetday_mean) |>
+  pivot_longer(-k) |>
+  ggplot(aes(k, value)) +
+  geom_line(linewidth = 0.9, colour = "steelblue") +
+  geom_point(size = 2, colour = "steelblue") +
+  facet_wrap(~name, scales = "free_y") +
+  expand_limits(y = 0) +
+  labs(
+    title = "extreme_k moves the tail and leaves the mean alone",
+    x = "extreme_k", y = "mm/day"
+  )
+```
+
+## Where the tail starts: `extreme_prob_threshold`
+
+`extreme_prob_threshold` sets the probability above which amplification applies.
+Its effect is less intuitive than `extreme_k`, and worth seeing before use.
+
+```{r}
+#| label: u0-sweep
+u0_values <- c(0.80, 0.90, 0.95, 0.99)
+
+tail_quantiles <- function(x, label) {
+  tibble(
+    scenario = label,
+    p90  = unname(quantile(wet_of(x), 0.90)),
+    p99  = unname(quantile(wet_of(x), 0.99)),
+    p999 = unname(quantile(wet_of(x), 0.999)),
+    wetday_mean = mean(wet_of(x))
+  )
+}
+
+bind_rows(
+  tail_quantiles(baseline, "no amplification"),
+  do.call(bind_rows, lapply(u0_values, function(u0) {
+    tail_quantiles(
+      perturb(exaggerate_extremes = TRUE, enforce_target_mean = TRUE,
+              extreme_k = 1.5, extreme_prob_threshold = u0),
+      sprintf("u0 = %.2f", u0)
+    )
+  }))
+)
+```
+
+Read the columns, not the rows.
+Lowering the threshold widens the affected region: at `u0 = 0.80` even the 90th
+percentile rises, because amplification has reached into the body of the
+distribution.
+Raising it concentrates the effect — at `u0 = 0.99` the 90th and 99th
+percentiles are barely touched while the 99.9th still moves.
+
+The 99th percentile is not monotone across this sweep, which looks odd until you
+notice it sits *at* the threshold for the last row.
+With the mean enforced, widening the amplified region also forces a larger
+compensating rescale, so a given percentile can fall even as the far tail rises.
+Pick the threshold to match the return period you care about and read the
+quantile that matches it, rather than treating `u0` as a severity dial —
+that is `extreme_k`'s job.
+
+# Two knobs, two kinds of variability {#sec-two-knobs}
+
+`scale_var_with_mean` and `enforce_target_mean` both sound like they control
+"variability", and a single pooled coefficient of variation would make them look
+like rivals.
+They are not: they act on different things, and the two `*_cv` columns separate
+them cleanly.
+
+```{r}
+#| label: two-knobs
+knob_grid <- expand.grid(enforce = c(TRUE, FALSE), scale_var = c(TRUE, FALSE))
+
+bind_rows(
+  summarise_series(precip, "observed"),
+  do.call(bind_rows, lapply(seq_len(nrow(knob_grid)), function(i) {
+    en <- knob_grid$enforce[i]
+    sv <- knob_grid$scale_var[i]
+    summarise_series(
+      perturb(enforce_target_mean = en, scale_var_with_mean = sv),
+      sprintf("enforce=%s, scale_var=%s", en, sv)
+    )
+  }))
+)
+```
+
+`within_cv` responds only to `scale_var_with_mean`, and `between_cv` only to
+`enforce_target_mean`.
+
+**`scale_var_with_mean` preserves the shape of a wet day.**
+When `TRUE`, the effective variance factor becomes
+`var_factor * mean_factor^2`, so the standard deviation scales with the mean and
+the coefficient of variation within a group is unchanged — it matches the
+observed value exactly.
+When `FALSE`, a `var_factor` of 1 holds absolute variance while the mean drops
+20%, which inflates relative variability.
+Whether that is what you want depends on whether your scenario is "the same
+weather, less of it" or "the same absolute spread around a lower mean".
+
+**`enforce_target_mean` costs interannual variability.**
+Pinning each group to `climatological mean x factor` means every year receives
+the same target for a given month, so year-to-year differences in wet-day mean
+are largely erased: `between_cv` falls from the observed value to roughly half
+of it.
+
+::: {.callout-warning}
+## The default trades away the variability the generator produces
+`enforce_target_mean = TRUE` is the default, and it is the right default for
+hitting a scenario target exactly.
+But interannual variability is precisely what the WARM component of this package
+exists to generate, and pinning every year to a climatological target discards a
+large part of it.
+
+If your application is sensitive to sequences — multi-year drought, storage
+carry-over, anything with memory — check `between_cv` on your own output before
+accepting the default, and consider `enforce_target_mean = FALSE` with the
+realized mean change verified after the fact rather than imposed.
+:::
+
+```{r}
+#| label: fig-interannual
+#| fig-cap: "Annual mean wet-day precipitation. Enforcing the target mean flattens the interannual signal the observed series carries."
+#| fig-alt: "Time series of annual mean wet-day precipitation over thirty years, showing the observed oscillation preserved when enforce_target_mean is FALSE and largely flattened when it is TRUE."
+#| fig-width: 8
+#| fig-height: 4.5
+annual_wetmean <- function(x, label) {
+  tibble(
+    year = start_year + seq_len(n_years) - 1L,
+    value = vapply(split(x, year_idx), function(v) mean(v[v > 0]), numeric(1)),
+    scenario = label
+  )
+}
+
+bind_rows(
+  annual_wetmean(precip, "observed"),
+  annual_wetmean(perturb(enforce_target_mean = TRUE), "enforce_target_mean = TRUE"),
+  annual_wetmean(perturb(enforce_target_mean = FALSE), "enforce_target_mean = FALSE")
+) |>
+  ggplot(aes(year, value, colour = scenario)) +
+  geom_line(linewidth = 0.9) +
+  scale_colour_viridis_d(end = 0.85) +
+  labs(
+    title = "Enforcing the target mean flattens year-to-year variability",
+    x = NULL, y = "Annual mean wet-day precipitation (mm)", colour = NULL
+  ) +
+  theme(legend.position = "bottom")
+```
+
+# Fitting: `qm_fit_method`
+
+`qm_fit_method` chooses how the monthly Gamma distributions are estimated —
+`"mme"` (moment matching, the default) or `"mle"`.
+
+```{r}
+#| label: fit-method
+bind_rows(
+  summarise_series(perturb(fit_method = "mme"), "mme"),
+  summarise_series(perturb(fit_method = "mle"), "mle")
+)
+```
+
+They agree to three decimal places here, and that is the honest result: on a
+well-behaved Gamma sample the two estimators coincide.
+This is a robustness setting, not a scenario dimension — it earns attention when
+fitting is hard (short records, months with few wet days, heavily skewed
+samples), not as something to vary across a stress-test ensemble.
+`min_events`, which controls how many wet days a month needs before it is fitted
+at all, matters more often.
+
+# Transient versus step change {#sec-transient}
+
+The `*_transient` arguments live on `apply_climate_perturbations()`, so this
+section uses the wrapper.
+That needs grid metadata and temperature columns, which the mapper did not.
+
+```{r}
+#| label: wrapper-setup
+grid <- data.frame(id = 1L, lat = 0)
+
+set.seed(7)
+cell <- data.frame(
+  precip   = precip,
+  temp     = rnorm(length(date), 25, 3),
+  temp_min = rnorm(length(date), 20, 3)
+)
+cell$temp_max <- pmax(cell$temp_min + 5, rnorm(length(date), 30, 3))
+```
+
+A transient factor is specified by its **end state**, not by a per-year path.
+`transient = TRUE` ramps linearly from 1 to `2f - 1`, so the ramp averages to
+`f` over the period.
+A request for `f = 0.7` therefore means "ending 40% down, averaging 30% down",
+not "30% down every year".
+
+Occurrence shows this most clearly, because wet-day frequency is not touched by
+the mean-enforcement machinery above.
+
+```{r}
+#| label: transient-occurrence
+wet_fraction_by_year <- function(x) {
+  vapply(split(x, year_idx), function(v) mean(v > 0), numeric(1))
+}
+observed_fraction <- wet_fraction_by_year(precip)
+
+run_occurrence <- function(transient) {
+  out <- apply_climate_perturbations(
+    data = list(cell), grid = grid, date = date,
+    precip_mean_factor       = rep(1, 12),
+    precip_occurrence_factor = rep(0.7, 12),
+    temp_delta               = rep(0, 12),
+    precip_transient             = FALSE,
+    precip_occurrence_transient  = transient,
+    temp_transient               = FALSE,
+    compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE, seed = 1L
+  )
+  tibble(
+    year = start_year + seq_len(n_years) - 1L,
+    ratio = as.numeric(wet_fraction_by_year(out[[1]]$precip) / observed_fraction),
+    scenario = if (transient) "transient (ramp)" else "step change"
+  )
+}
+
+occurrence_paths <- bind_rows(run_occurrence(FALSE), run_occurrence(TRUE))
+
+occurrence_paths |>
+  group_by(scenario) |>
+  summarise(
+    first_year = first(ratio), last_year = last(ratio), period_mean = mean(ratio)
+  )
+```
+
+Both average to the requested 0.7.
+The step change holds it flat; the ramp starts at no change and ends near 0.4.
+
+```{r}
+#| label: fig-transient
+#| fig-cap: "Wet-day frequency relative to observed, for a step change and a transient ramp requesting the same 0.7 factor."
+#| fig-alt: "Two time series of the wet-day frequency ratio over thirty years: a flat line near 0.7 for the step change, and a declining line from 1.0 to about 0.4 for the transient ramp."
+#| fig-width: 8
+#| fig-height: 4
+ggplot(occurrence_paths, aes(year, ratio, colour = scenario)) +
+  geom_line(linewidth = 0.9) +
+  geom_hline(yintercept = 0.7, linetype = "dashed", colour = "grey40") +
+  scale_colour_viridis_d(end = 0.7) +
+  expand_limits(y = 0) +
+  labs(
+    title = "Same requested factor, two different paths",
+    subtitle = "Dashed line marks the requested 0.7",
+    x = NULL, y = "Wet-day frequency / observed", colour = NULL
+  ) +
+  theme(legend.position = "bottom")
+```
+
+## A transient factor takes a vector, not a year-varying matrix
+
+Because the ramp is built from the end state, only the first row of a factor is
+read in transient mode.
+Supplying a year-varying `n_years x 12` matrix *and* setting the transient flag
+is therefore a contradiction, and is an error rather than a silent truncation:
+
+```{r}
+#| label: transient-guard
+#| error: true
+varying <- matrix(0.5, nrow = n_years, ncol = 12)
+varying[1, ] <- 1.0
+
+apply_climate_perturbations(
+  data = list(cell), grid = grid, date = date,
+  precip_mean_factor = varying,
+  temp_delta = rep(0, 12),
+  precip_transient = TRUE,
+  compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
+)
+```
+
+Pass a length-12 vector and let the ramp build the path, or set the transient
+flag to `FALSE` to have the matrix applied year by year.
+A matrix whose rows are all identical is equivalent to a vector, so code that
+expanded a vector to a constant matrix is unaffected.
+
+## Intensity transients interact with the enforced mean
+
+The same ramp applied to intensity is harder to read, and the reason is
+@sec-two-knobs.
+
+```{r}
+#| label: transient-intensity
+observed_wetmean <- vapply(split(precip, year_idx),
+                           function(v) mean(v[v > 0]), numeric(1))
+
+run_intensity <- function(transient, enforce) {
+  out <- apply_climate_perturbations(
+    data = list(cell), grid = grid, date = date,
+    precip_mean_factor  = rep(0.7, 12),
+    temp_delta          = rep(0, 12),
+    precip_transient    = transient,
+    temp_transient      = FALSE,
+    enforce_target_mean = enforce,
+    compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE, seed = 1L
+  )
+  realised <- vapply(split(out[[1]]$precip, year_idx),
+                     function(v) mean(v[v > 0]), numeric(1))
+  tibble(
+    scenario = sprintf("transient=%s, enforce=%s", transient, enforce),
+    year_1   = unname(realised / observed_wetmean)[1],
+    year_30  = unname(realised / observed_wetmean)[n_years],
+    period_mean = mean(realised / observed_wetmean)
+  )
+}
+
+bind_rows(
+  run_intensity(FALSE, TRUE), run_intensity(TRUE, TRUE),
+  run_intensity(FALSE, FALSE), run_intensity(TRUE, FALSE)
+)
+```
+
+With `enforce_target_mean = FALSE` the step change sits at exactly 0.70 in every
+year, and the ramp tracks the intended path.
+With it `TRUE`, neither ratio matches: each group is pinned to
+`climatological mean x factor`, so the ratio against *that year's* observed mean
+is above the factor in dry years and below it in wet ones.
+
+Neither is wrong — they are different definitions of the target.
+`enforce_target_mean = TRUE` means "the wet-day mean shall be 70% of
+climatology"; `FALSE` means "each year gets 70% of whatever it had".
+For a transient scenario, where the point is a path through time, the second is
+usually the intended reading.
+
+# Choosing settings
+
+A summary of what the article establishes, rather than new results.
+
+| Argument | Controls | Reach for it when |
+|---|---|---|
+| `exaggerate_extremes`, `extreme_k` | Tail severity at fixed mean | Extremes are a stress dimension of their own |
+| `extreme_prob_threshold` | How much of the distribution counts as tail | The return period of interest is known |
+| `enforce_target_mean` | Whether the mean is exact or emergent | `TRUE` to hit a target; `FALSE` to keep interannual structure |
+| `scale_var_with_mean` | Wet-day shape under a mean change | `TRUE` for "same weather, less of it" |
+| `qm_fit_method` | Gamma estimation | Fitting is hard; not a scenario axis |
+| `precip_transient`, `precip_occurrence_transient` | Step change versus ramp to an end state | The scenario is a path, not a level |
+
+Two defaults are worth a deliberate decision rather than acceptance.
+`enforce_target_mean = TRUE` buys exact targeting at the cost of interannual
+variability, which is the thing the generator upstream exists to produce.
+And `scale_var_with_mean = TRUE` is a statement that a drier climate has
+proportionally similar wet days — defensible, and still a statement.
+
+# Session info
+
+```{r}
+#| label: session-info
+#| echo: false
+sessionInfo()
+```
