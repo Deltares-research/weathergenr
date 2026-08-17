@@ -10,7 +10,8 @@ create_all_diagnostic_plots(
   variables,
   show_title,
   save_plots,
-  output_dir
+  out_dir = NULL,
+  output_dir = NULL
 )
 }
 \arguments{
@@ -22,9 +23,12 @@ create_all_diagnostic_plots(
 
 \item{show_title}{Logical; if \code{TRUE}, titles/subtitles are added to plots where supported.}
 
-\item{save_plots}{Logical; if \code{TRUE}, plots are written to \code{output_dir}.}
+\item{save_plots}{Logical; if \code{TRUE}, plots are written to \code{out_dir}.}
 
-\item{output_dir}{Character; output directory for saved plots.}
+\item{out_dir}{Character; output directory for saved plots.}
+
+\item{output_dir}{Deprecated. The former name of \code{out_dir}. Supplying it
+still works but warns; supplying both is an error.}
 }
 \value{
 Named list of ggplot objects for all diagnostics created.
@@ -51,7 +55,7 @@ It does not validate plot input structure beyond basic use in downstream plottin
     variables = c("precip", "temp"),
     show_title = FALSE,
     save_plots = FALSE,
-    output_dir = NULL
+    out_dir = NULL
   )
 }
 

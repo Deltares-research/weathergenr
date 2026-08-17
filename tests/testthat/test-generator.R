@@ -300,7 +300,7 @@ testthat::test_that("run_weather_generator omits absent config entries rather th
 
   omitted <- c("dry_spell_factor", "wet_spell_factor", "wet_q", "extreme_q",
                "warm_var", "warm_signif", "warm_pool_size", "annual_knn_n",
-               "start_year", "year_start_month", "relax_priority",
+               "start_year", "year_start_month", "relax_order",
                "warm_filter_bounds", "n_years", "seed")
   for (nm in omitted) {
     testthat::expect_false(nm %in% names(calls$generate), info = nm)
@@ -470,4 +470,79 @@ testthat::test_that("run_weather_generator writes and merges a log when log_mess
 
   # the sink stack must be unwound even though logging was enabled
   testthat::expect_identical(sink.number(), 0L)
+})
+
+# ==============================================================================
+# Renamed arguments (2.0.0)
+# ==============================================================================
+
+# out_dir/output_dir and relax_order/relax_priority were each one concept under
+# two names across a boundary the value is forwarded over. The old spellings
+# still work, with a warning, and supplying both is an error rather than a
+# silent choice between them.
+
+test_that("generate_weather() accepts relax_priority with a deprecation warning", {
+  inputs <- make_generator_inputs()
+
+  expect_warning(
+    out <- generate_weather(
+      obs_data = inputs$obs_data, obs_grid = inputs$obs_grid,
+      obs_dates = inputs$obs_dates, vars = c("precip", "temp"),
+      n_realizations = 1L, warm_pool_size = 200L,
+      out_dir = tempdir(), seed = 1L, verbose = FALSE, save_plots = FALSE,
+      relax_priority = c("mean", "sd", "tail_low", "tail_high", "wavelet")
+    ),
+    "relax_priority.*deprecated"
+  )
+  expect_true(is.list(out))
+})
+
+test_that("supplying both relax_order and relax_priority is an error", {
+  inputs <- make_generator_inputs()
+
+  expect_error(
+    generate_weather(
+      obs_data = inputs$obs_data, obs_grid = inputs$obs_grid,
+      obs_dates = inputs$obs_dates, vars = c("precip", "temp"),
+      n_realizations = 1L, out_dir = tempdir(), verbose = FALSE,
+      save_plots = FALSE,
+      relax_order    = c("mean", "sd", "tail_low", "tail_high", "wavelet"),
+      relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean")
+    ),
+    "Both 'relax_order' and 'relax_priority'"
+  )
+})
+
+test_that("run_weather_generator() resolves config$relax_priority", {
+  expect_warning(
+    resolved <- .resolve_renamed_arg(
+      new = NULL, old = c("mean", "sd", "tail_low", "tail_high", "wavelet"),
+      new_name = "config$relax_order", old_name = "config$relax_priority",
+      new_supplied = FALSE, old_supplied = TRUE
+    ),
+    "config[$]relax_priority.*deprecated"
+  )
+  expect_identical(resolved[1], "mean")
+})
+
+test_that("the renamed-argument helper resolves on suppliedness, not on value", {
+  # An explicit NULL under the new name is a choice, not an absence, so it must
+  # win over a value carried under the old one.
+  expect_null(
+    .resolve_renamed_arg(
+      new = NULL, old = "stale",
+      new_name = "out_dir", old_name = "output_dir",
+      new_supplied = TRUE, old_supplied = FALSE
+    )
+  )
+
+  # Neither supplied: the new default passes through untouched, no warning.
+  expect_silent(
+    val <- .resolve_renamed_arg(
+      new = "default", old = NULL,
+      new_name = "out_dir", old_name = "output_dir",
+      new_supplied = FALSE, old_supplied = FALSE
+    )
+  )
+  expect_identical(val, "default")
 })

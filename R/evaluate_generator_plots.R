@@ -12,8 +12,10 @@
 #' @param plot_config List of plotting configuration options (theme, alpha, colors, subtitle).
 #' @param variables Character vector of variable names to loop over for monthly pattern plots.
 #' @param show_title Logical; if \code{TRUE}, titles/subtitles are added to plots where supported.
-#' @param save_plots Logical; if \code{TRUE}, plots are written to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, plots are written to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
+#' @param output_dir Deprecated. The former name of \code{out_dir}. Supplying it
+#'   still works but warns; supplying both is an error.
 #'
 #' @return Named list of ggplot objects for all diagnostics created.
 #'
@@ -31,7 +33,7 @@
 #'     variables = c("precip", "temp"),
 #'     show_title = FALSE,
 #'     save_plots = FALSE,
-#'     output_dir = NULL
+#'     out_dir = NULL
 #'   )
 #' }
 #'
@@ -40,7 +42,16 @@
 #' @import tidyr
 #' @export
 create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
-                                        show_title, save_plots, output_dir) {
+                                        show_title, save_plots, out_dir = NULL,
+                                        output_dir = NULL) {
+
+  # See evaluate_weather_generator(): 'output_dir' is the superseded name.
+  # Positional callers are unaffected -- out_dir occupies the same position.
+  out_dir <- .resolve_renamed_arg(
+    new = out_dir, old = output_dir,
+    new_name = "out_dir", old_name = "output_dir",
+    new_supplied = !missing(out_dir), old_supplied = !missing(output_dir)
+  )
 
   plots <- list()
 
@@ -49,7 +60,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   plots$daily_sd <- .create_daily_sd_plot(
@@ -57,7 +68,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   plots$spell_length <- .create_spell_length_plot(
@@ -65,7 +76,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   plots$wetdry_days_count <- .create_wetdry_days_plot(
@@ -73,7 +84,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   plots$crossgrid <- .create_crossgrid_cor_plot(
@@ -81,7 +92,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   plots$intergrid <- .create_intergrid_cor_plot(
@@ -89,7 +100,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   plots$precip_cond_cor <- .create_precip_cond_cor_plot(
@@ -97,7 +108,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   # Monthly patterns per variable (use var name as label)
@@ -110,7 +121,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
       plot_config = plot_config,
       show_title = show_title,
       save_plots = save_plots,
-      output_dir = output_dir
+      out_dir = out_dir
     )
   }
 
@@ -119,7 +130,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   plots$annual_precip <- .create_annual_precip_plot(
@@ -128,7 +139,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     plot_config = plot_config,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   plots
@@ -146,8 +157,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
@@ -155,7 +166,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_daily_mean_plot <- function(daily_stats_season, plot_config,
-                                   show_title, save_plots, output_dir) {
+                                   show_title, save_plots, out_dir) {
 
   data_mean <- daily_stats_season %>%
     dplyr::filter(stat == "mean")
@@ -191,7 +202,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Daily means for all grid cells and months",
     subtitle = plot_config$subtitle,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -207,8 +218,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
@@ -216,7 +227,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_daily_sd_plot <- function(daily_stats_season, plot_config,
-                                 show_title, save_plots, output_dir) {
+                                 show_title, save_plots, out_dir) {
 
   data_sd <- daily_stats_season %>%
     dplyr::filter(stat == "sd")
@@ -252,7 +263,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Daily standard deviations for all grid cells and months",
     subtitle = plot_config$subtitle,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -267,8 +278,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
@@ -277,7 +288,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import dplyr
 #' @import tidyr
 .create_spell_length_plot <- function(stats_wetdry, plot_config,
-                                     show_title, save_plots, output_dir) {
+                                     show_title, save_plots, out_dir) {
 
   data_spells <- stats_wetdry %>%
     dplyr::filter(type == "spells")
@@ -320,7 +331,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Average dry and wet spell length per month, across all grid cells",
     subtitle = plot_config$subtitle,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -335,8 +346,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
@@ -345,7 +356,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import dplyr
 #' @import tidyr
 .create_wetdry_days_plot <- function(stats_wetdry, plot_config,
-                                    show_title, save_plots, output_dir) {
+                                    show_title, save_plots, out_dir) {
 
   data_days <- stats_wetdry %>%
     dplyr::filter(type == "days")
@@ -388,7 +399,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Average number of dry and wet days per month across all grid cells",
     subtitle = plot_config$subtitle,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -404,15 +415,15 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
 .create_crossgrid_cor_plot <- function(stats_crosscor, plot_config,
-                                      show_title, save_plots, output_dir) {
+                                      show_title, save_plots, out_dir) {
 
   dummy_points <- generate_symmetric_dummy_points(
     df = stats_crosscor,
@@ -445,7 +456,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Cross-grid correlations",
     subtitle = paste0(plot_config$subtitle, "\nCorrelations calculated over daily series"),
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -461,15 +472,15 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
 #' @keywords internal
 #' @import ggplot2
 .create_intergrid_cor_plot <- function(stats_intercor, plot_config,
-                                      show_title, save_plots, output_dir) {
+                                      show_title, save_plots, out_dir) {
 
   dummy_points <- generate_symmetric_dummy_points(
     df = stats_intercor,
@@ -502,7 +513,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Inter-variable correlations",
     subtitle = paste0(plot_config$subtitle, "\nCorrelations calculated over daily series"),
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -520,8 +531,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
@@ -529,7 +540,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_precip_cond_cor_plot <- function(stats_precip_cor_cond, plot_config,
-                                        show_title, save_plots, output_dir) {
+                                        show_title, save_plots, out_dir) {
 
   dat <- stats_precip_cor_cond %>%
     dplyr::mutate(variable = paste0(variable1, ":", variable2)) %>%
@@ -566,7 +577,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Conditional precip-variable correlations (within-grid)",
     subtitle = "Rows: all/wet/dry. Wet uses log1p(precip) if enabled.",
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -581,8 +592,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @param variable Character; variable name to plot (must exist in the inputs).
 #' @param plot_config List of plotting configuration options (theme, alpha, colors, subtitle, etc.).
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
@@ -591,7 +602,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import dplyr
 .create_monthly_pattern_plot <- function(stats_mon_aavg_sim, stats_mon_aavg_obs,
                                         variable, plot_config,
-                                        show_title, save_plots, output_dir) {
+                                        show_title, save_plots, out_dir) {
 
   dat_sim <- stats_mon_aavg_sim %>%
     dplyr::filter(variable == !!variable) %>%
@@ -649,7 +660,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = paste0("Monthly patterns for ", variable),
     subtitle = paste0(plot_config$subtitle, "\nResults averaged across all grid cells"),
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -664,8 +675,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title/subtitle.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object (returned invisibly by \code{.export_figure()}).
 #'
@@ -673,7 +684,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_monthly_cycle_plot <- function(daily_stats_season, plot_config,
-                                      show_title, save_plots, output_dir) {
+                                      show_title, save_plots, out_dir) {
 
   sim_avg <- daily_stats_season %>%
     dplyr::group_by(rlz, mon, variable) %>%
@@ -734,7 +745,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     save_plots = save_plots,
     title = "Annual cycles of variables",
     subtitle = paste0(plot_config$subtitle, "\nResults averaged over all grid cells and across each month"),
-    output_dir = output_dir
+    out_dir = out_dir
   )
 }
 
@@ -750,8 +761,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'   colors, dpi, device). The theme is not among them: every builder calls
 #'   \code{\link{theme_weathergenr}} directly.
 #' @param show_title Logical; if \code{TRUE}, adds title to the plot.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
-#' @param output_dir Character; output directory for saved plots.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param out_dir Character; output directory for saved plots.
 #'
 #' @return ggplot object returned invisibly.
 #'
@@ -759,7 +770,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #' @import ggplot2
 #' @import dplyr
 .create_annual_precip_plot <- function(stats_annual_aavg_sim, stats_annual_aavg_obs,
-                                      plot_config, show_title, save_plots, output_dir) {
+                                      plot_config, show_title, save_plots, out_dir) {
 
   sim_precip <- stats_annual_aavg_sim %>%
     dplyr::filter(stat == "mean", variable == "precip")
@@ -801,7 +812,7 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
     show_title = show_title,
     save_plots = save_plots,
     title = "Annual mean precipitation",
-    output_dir = output_dir,
+    out_dir = out_dir,
     family = "wide"
   )
 }

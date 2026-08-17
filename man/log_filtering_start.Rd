@@ -4,13 +4,7 @@
 \alias{log_filtering_start}
 \title{Log filtering setup information}
 \usage{
-log_filtering_start(
-  n_obs,
-  n_sim,
-  n_realizations,
-  sample_target,
-  relax_priority
-)
+log_filtering_start(n_obs, n_sim, n_realizations, sample_target, relax_order)
 }
 \arguments{
 \item{n_obs}{Integer scalar. Length of the observed series in years.}
@@ -21,7 +15,7 @@ log_filtering_start(
 
 \item{sample_target}{Integer scalar. Number of realizations requested.}
 
-\item{relax_priority}{Character vector. Relaxation priority ordering.}
+\item{relax_order}{Character vector. Relaxation priority ordering.}
 }
 \value{
 Invisibly returns NULL.

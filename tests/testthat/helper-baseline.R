@@ -133,7 +133,7 @@ baseline_run_scenario <- function(cfg, ncdata, out_dir = tempfile("wgr-baseline-
     eval_max_grids   = cfg$eval_max_grids,
     wet_q            = cfg$wet_q,
     extreme_q        = cfg$extreme_q,
-    output_dir       = out_dir,
+    out_dir       = out_dir,
     save_plots       = FALSE,
     seed             = cfg$eval_seed
   )

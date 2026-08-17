@@ -36,9 +36,10 @@
 #'   (default = 0.2).
 #' @param extreme_q Numeric between 0 and 1. Quantile threshold for extremely
 #'   wet days (default = 0.8).
-#' @param output_dir Character. Directory path to save generated plots. If `NULL`,
-#'   plots are not saved to disk.
-#' @param save_plots Logical. Whether to save plots to `output_dir` (default = `TRUE`).
+#' @param out_dir Character. Directory path to save generated plots. If `NULL`,
+#'   plots are not saved to disk. Named `out_dir` to match
+#'   [generate_weather()] and [run_weather_generator()]; see `output_dir` below.
+#' @param save_plots Logical. Whether to save plots to `out_dir` (default = `TRUE`).
 #' @param show_title Logical. Whether to display titles in plots (default = `TRUE`).
 #' @param verbose Logical. Whether to emit console messages and the fit summary table.
 #' @param parallel Logical. Whether to parallelize per-realization summaries
@@ -58,6 +59,10 @@
 #'   Supplying a faster device, for example `ragg::agg_png`, typically halves
 #'   the remaining render cost. `ragg` is not a dependency of this package; pass
 #'   the function only if you have it installed.
+#' @param output_dir Deprecated. The former name of `out_dir`. Supplying it
+#'   still works but warns; supplying both is an error. Renamed in 2.0.0 so that
+#'   one directory argument has one name across [generate_weather()],
+#'   [run_weather_generator()] and this function.
 #'
 #' @return A named list of `ggplot2` plot objects with class "weather_assessment".
 #'   The returned object also contains attributes:
@@ -86,7 +91,7 @@
 #'   daily_obs = obs_grid,
 #'   vars = c("precip", "temp"),
 #'   n_realizations = 1,
-#'   output_dir = NULL,
+#'   out_dir = NULL,
 #'   save_plots = FALSE,
 #'   show_title = FALSE
 #' )
@@ -108,7 +113,7 @@ evaluate_weather_generator <- function(
     year_start_month = 1L,
     wet_q = 0.2,
     extreme_q = 0.8,
-    output_dir = NULL,
+    out_dir = NULL,
     save_plots = TRUE,
     show_title = TRUE,
     verbose = TRUE,
@@ -117,8 +122,23 @@ evaluate_weather_generator <- function(
     eval_max_grids = 25,
     seed = NULL,
     plot_dpi = 300,
-    plot_device = NULL
+    plot_device = NULL,
+    output_dir = NULL
 ) {
+
+  # ============================================================================
+  # RENAMED ARGUMENTS
+  # ============================================================================
+
+  # 'output_dir' was this function's name for the directory that
+  # generate_weather() and run_weather_generator() both call 'out_dir'. One
+  # concept under two names across the generate/evaluate boundary; 'out_dir'
+  # wins because two of the three entry points already used it.
+  out_dir <- .resolve_renamed_arg(
+    new = out_dir, old = output_dir,
+    new_name = "out_dir", old_name = "output_dir",
+    new_supplied = !missing(out_dir), old_supplied = !missing(output_dir)
+  )
 
   # ============================================================================
   # INPUT VALIDATION
@@ -183,9 +203,9 @@ evaluate_weather_generator <- function(
 
   if (is.null(variable_labels)) variable_labels <- vars
 
-  if (!is.null(output_dir)) {
-    if (!dir.exists(output_dir)) {
-      dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  if (!is.null(out_dir)) {
+    if (!dir.exists(out_dir)) {
+      dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
     }
   } else {
     save_plots <- FALSE
@@ -301,11 +321,11 @@ evaluate_weather_generator <- function(
     variables = vars,
     show_title = show_title,
     save_plots = save_plots,
-    output_dir = output_dir
+    out_dir = out_dir
   )
 
   if (save_plots) {
-    .log("Generated {format(length(plots): {output_dir}, big.mark = ',')} diagnostic plots.", verbose = verbose, tag = "EVAL")
+    .log("Generated {format(length(plots): {out_dir}, big.mark = ',')} diagnostic plots.", verbose = verbose, tag = "EVAL")
   }
 
   # ============================================================================

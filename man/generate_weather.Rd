@@ -17,7 +17,8 @@ generate_weather(
   warm_signif = 0.9,
   warm_pool_size = 5000,
   warm_filter_bounds = list(),
-  relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+  relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+  relax_priority = NULL,
   annual_knn_n = 120,
   wet_q = 0.3,
   extreme_q = 0.8,
@@ -87,11 +88,17 @@ before filtering down to \code{n_realizations}.}
 forwarded to \code{\link{filter_warm_pool}} as \code{filter_bounds}. Any entry
 overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}).}
 
-\item{relax_priority}{Character vector giving the relaxation priority
-for WARM filtering, forwarded to \code{\link{filter_warm_pool}} as \code{relax_order}.
+\item{relax_order}{Character vector giving the order in which WARM filtering
+criteria are relaxed, forwarded to \code{\link{filter_warm_pool}} under the
+same name.
 Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
 Filters are relaxed iteratively by loosening the currently most restrictive criterion
-(lowest pass rate), subject to this priority ordering.}
+(lowest pass rate), subject to this ordering.}
+
+\item{relax_priority}{Deprecated. The former name of \code{relax_order}.
+Supplying it still works but warns; supplying both is an error. Renamed in
+2.0.0 so this argument and the \code{\link{filter_warm_pool}} argument it is
+forwarded to share one name.}
 
 \item{annual_knn_n}{Integer number of historical analogue years considered in
 the annual KNN step of the disaggregation.}
@@ -131,7 +138,7 @@ realizations in parallel using a PSOCK cluster.}
 
 \item{verbose}{Logical; if \code{TRUE}, emits progress logs via \code{.log()}.}
 
-\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{output_dir}.}
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
 
 \item{plot_dpi}{Numeric; raster resolution for the diagnostic plots this
 function writes (default 300). Ignored when \code{save_plots = FALSE}.
