@@ -1389,7 +1389,8 @@ markov_next_state <- function(state_prev, u_rand, idx, p00, p01, p10, p11, p20, 
 #' match_transition_positions(1, 2, precip_vec, day0_idx, wet_threshold, extreme_threshold)
 #' match_transition_positions(2, 0, precip_vec, day0_idx, wet_threshold, extreme_threshold)
 #'
-#' @export
+#' @keywords internal
+#' @noRd
 match_transition_positions <- function(
     state_from,
     state_to,
@@ -1439,7 +1440,8 @@ match_transition_positions <- function(
 #' get_result_index(NA, candidate_precip)
 #' get_result_index(1, numeric(0))
 #'
-#' @export
+#' @keywords internal
+#' @noRd
 get_result_index <- function(idx, candidate_precip) {
   if (!length(candidate_precip)) {
     return(NA_integer_)

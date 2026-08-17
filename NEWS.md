@@ -1,5 +1,22 @@
 # weathergenr (development version)
 
+## Breaking changes
+
+* Five helpers are no longer exported: `criteria_string_compact()`,
+  `generate_symmetric_dummy_points()`, `get_result_index()`,
+  `match_transition_positions()` and `relax_bounds_one_filter()`. They format a
+  log string, build dummy points for a plot's symmetric axis limits, look up an
+  index, match Markov transition positions, and step one filter's bounds during
+  relaxation — package internals with no plausible external audience. They keep
+  their documentation in the source but no longer generate an `.Rd` page,
+  matching how the package's other internal helpers are handled.
+
+  Checked before removing: the `blueearth_cst` toolkit, the only known
+  consumer, references four exports — `run_weather_generator()`,
+  `read_netcdf()`, `write_netcdf()` and `apply_climate_perturbations()` — and
+  none of these five. If you call one of them, use `weathergenr:::` or open an
+  issue and it can be reinstated.
+
 ## New features
 
 * `theme_weathergenr()` is a new exported theme, applied to every figure the

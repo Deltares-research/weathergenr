@@ -837,7 +837,8 @@ create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
 #'
 #' @import dplyr
 #' @import rlang
-#' @export
+#' @keywords internal
+#' @noRd
 generate_symmetric_dummy_points <- function(df, facet_var, x_col, y_col) {
 
   if (!is.data.frame(df)) stop("df must be a data.frame.", call. = FALSE)
