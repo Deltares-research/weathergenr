@@ -446,14 +446,32 @@ bind_rows(
 
 ```{r}
 #| label: fit-method
+fit_mme <- perturb(fit_method = "mme")
+fit_mle <- perturb(fit_method = "mle")
+
 bind_rows(
-  summarise_series(perturb(fit_method = "mme"), "mme"),
-  summarise_series(perturb(fit_method = "mle"), "mle")
+  summarise_series(fit_mme, "mme"),
+  summarise_series(fit_mle, "mle")
 )
 ```
 
-They agree to three decimal places here, and that is the honest result: on a
-well-behaved Gamma sample the two estimators coincide.
+The two rows are identical at the printed precision, so it is worth looking at
+the difference directly rather than at a rounded table:
+
+```{r}
+#| label: fit-method-difference
+tibble(
+  wetday_mean_difference = mean(wet_of(fit_mle)) - mean(wet_of(fit_mme)),
+  largest_daily_difference = max(abs(fit_mle - fit_mme)),
+  as_fraction_of_wetday_mean =
+    max(abs(fit_mle - fit_mme)) / mean(wet_of(fit_mme))
+)
+```
+
+The wet-day means differ in the fourth decimal, and the largest single-day
+difference is a small fraction of a typical wet day.
+That is the honest result: on a well-behaved Gamma sample the two estimators
+effectively coincide.
 This is a robustness setting, not a scenario dimension — it earns attention when
 fitting is hard (short records, months with few wet days, heavily skewed
 samples), not as something to vary across a stress-test ensemble.
