@@ -83,7 +83,9 @@ across simulation years, preserving the same mean change. Also governs
 `temp_range_factor`, which ramps from 1 on the same principle.}
 
 \item{precip_transient}{Logical. If TRUE, precipitation mean and variance factors ramp linearly across
-simulation years using the same transient logic.}
+simulation years using the same transient logic: from 1 to `2f - 1`, so the
+ramp averages to `f` over the period. See the note below on what may be
+supplied alongside it.}
 
 \item{precip_occurrence_transient}{Logical. If TRUE, precipitation occurrence factors ramp linearly across
 simulation years.}
@@ -169,6 +171,22 @@ a factor matrix must then be `21 x 12`; a `20 x 12` matrix is rejected. When
 in doubt, size matrices from the date vector itself:
 `length(unique(format(date, "\%Y")))`. Supplying a length-12 vector instead of
 a matrix sidesteps the question entirely, since it applies to every year.
+}
+
+\section{Transient factors and year-varying matrices}{
+
+A transient factor is specified by its **end state**, not by a per-year path.
+`transient = TRUE` ramps linearly from 1 to `2f - 1`, so the ramp averages to
+`f` over the period, and only the first row of the factor is read -- in
+transient mode one number per month is the entire specification.
+
+Supplying a year-varying `n_years x 12` matrix *and* setting the matching
+transient flag is therefore a contradiction, and it is now an error. Rows
+`2:n_years` would otherwise be discarded silently, which is how a matrix
+encoding a 50 percent reduction could come back as no change at all. Either
+pass a length-12 vector and let the ramp build the path, or set the transient
+flag to `FALSE` and let the matrix be applied year by year. A matrix whose
+rows are all identical is equivalent to a vector and remains accepted.
 }
 
 \seealso{

@@ -42,6 +42,18 @@ library(testthat)
 
   precip
 }
+.handoff_cell <- function(date, seed = 5L) {
+  n <- length(date)
+  set.seed(seed)
+  cell <- data.frame(
+    precip   = .make_precip_with_min_wet(date, min_wet = 15L, seed = seed),
+    temp     = stats::rnorm(n, 25, 3),
+    temp_min = stats::rnorm(n, 20, 3)
+  )
+  cell$temp_max <- pmax(cell$temp_min + 5, stats::rnorm(n, 30, 3))
+  cell
+}
+
 
 # ==============================================================================
 # Core behavior tests
@@ -306,12 +318,45 @@ test_that("apply_climate_perturbations: occurrence factor increases wet-day coun
   wet0 <- precip > 0
   wet1 <- out1$precip > 0
 
-  expect_gte(sum(wet1), sum(wet0))
+  # Strictly greater, not >=. The >= form passed while occurrence perturbation
+  # was a no-op: apply_climate_perturbations() read base_gamma/target_gamma off
+  # the quantile-mapping result, which never returned them, so the branch was
+  # unreachable and wet1 always equalled wet0.
+  expect_gt(sum(wet1), sum(wet0))
+
+  # A 1.5 factor targets ~1.5x the wet days, subject to rounding per
+  # (month, year) group and to running out of dry days to convert.
+  expect_equal(sum(wet1) / sum(wet0), 1.5, tolerance = 0.1)
 
   added <- (!wet0) & wet1
-  if (any(added)) {
-    expect_true(all(out1$precip[added] > 0))
+  expect_true(any(added))
+  expect_true(all(out1$precip[added] > 0))
+})
+
+test_that("occurrence factors below 1 remove wet days", {
+  n_years <- 3L
+  date <- .make_dates_noleap_years("2000-01-01", n_years)
+  grid <- data.frame(id = 1L, lat = 0)
+  dat <- list(.handoff_cell(date, seed = 9L))
+
+  run <- function(f) {
+    out <- apply_climate_perturbations(
+      data = dat, grid = grid, date = date,
+      precip_mean_factor = rep(1, 12), precip_var_factor = rep(1, 12),
+      precip_occurrence_factor = rep(f, 12),
+      temp_delta = rep(0, 12), temp_transient = FALSE,
+      precip_transient = FALSE, precip_occurrence_transient = FALSE,
+      scale_var_with_mean = FALSE, enforce_target_mean = FALSE,
+      compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE, seed = 42L
+    )
+    mean(out[[1]]$precip > 0)
   }
+
+  base_frac <- mean(dat[[1]]$precip > 0)
+
+  expect_equal(run(1.0) / base_frac, 1.0, tolerance = 0.02)
+  expect_equal(run(0.6) / base_frac, 0.6, tolerance = 0.05)
+  expect_lt(run(0.6), run(1.0))
 })
 
 test_that("apply_climate_perturbations: safety rails enforce cap and floor", {
@@ -966,4 +1011,129 @@ test_that("matrix factors are sized by calendar years spanned, not generator n_y
       compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
     )
   )
+})
+
+# ==============================================================================
+# Transient factors reject year-varying matrices
+# ==============================================================================
+
+# A transient factor is specified by its end state and ramps from 1 to 2f-1,
+# reading row 1 alone. Combining that with a year-varying matrix used to discard
+# rows 2:n silently -- a matrix encoding a 50 percent reduction came back as no
+# change at all.
+
+test_that("a year-varying matrix with transient = TRUE is an error, not a silent discard", {
+  n_years <- 3L
+  date <- .make_dates_noleap_years("2000-01-01", n_years)
+  dat <- list(.handoff_cell(date))
+  grid <- data.frame(id = 1L, lat = 0)
+
+  varying <- matrix(0.5, nrow = n_years, ncol = 12)
+  varying[1, ] <- 1.0
+
+  run <- function(...) {
+    apply_climate_perturbations(
+      data = dat, grid = grid, date = date,
+      temp_delta = rep(0, 12), compute_pet = FALSE,
+      diagnostic = FALSE, verbose = FALSE, seed = 1L, ...
+    )
+  }
+
+  expect_error(
+    run(precip_mean_factor = varying, precip_transient = TRUE),
+    "precip_mean_factor.*varies by year"
+  )
+
+  # Same matrix is fine when the flag says apply it year by year.
+  expect_no_error(run(precip_mean_factor = varying, precip_transient = FALSE))
+
+  # A length-12 vector is the transient specification and stays accepted.
+  expect_no_error(run(precip_mean_factor = rep(0.5, 12), precip_transient = TRUE))
+
+  # A constant-row matrix is equivalent to a vector, so it is still accepted.
+  expect_no_error(
+    run(precip_mean_factor = matrix(0.5, nrow = n_years, ncol = 12),
+        precip_transient = TRUE)
+  )
+})
+
+test_that("the transient guard names the argument the caller actually supplied", {
+  n_years <- 3L
+  date <- .make_dates_noleap_years("2000-01-01", n_years)
+  dat <- list(.handoff_cell(date))
+  grid <- data.frame(id = 1L, lat = 0)
+
+  varying <- matrix(0.5, nrow = n_years, ncol = 12)
+  varying[1, ] <- 1.0
+  flat <- rep(1, 12)
+
+  # scale_var_with_mean = TRUE derives the variance factor from the mean, so a
+  # varying mean must be reported against precip_mean_factor rather than against
+  # a precip_var_factor the caller never passed.
+  expect_error(
+    apply_climate_perturbations(
+      data = dat, grid = grid, date = date,
+      precip_mean_factor = varying, scale_var_with_mean = TRUE,
+      temp_delta = rep(0, 12), precip_transient = TRUE,
+      compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
+    ),
+    "precip_mean_factor"
+  )
+
+  # With scale_var_with_mean = FALSE the variance factor is the caller's own.
+  expect_error(
+    apply_climate_perturbations(
+      data = dat, grid = grid, date = date,
+      precip_mean_factor = flat, precip_var_factor = varying,
+      scale_var_with_mean = FALSE,
+      temp_delta = rep(0, 12), precip_transient = TRUE,
+      compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
+    ),
+    "precip_var_factor.*varies by year"
+  )
+
+  # Occurrence and diurnal range route through the same guard.
+  expect_error(
+    apply_climate_perturbations(
+      data = dat, grid = grid, date = date,
+      precip_mean_factor = flat, precip_occurrence_factor = varying,
+      temp_delta = rep(0, 12), precip_occurrence_transient = TRUE,
+      compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
+    ),
+    "precip_occurrence_factor.*varies by year"
+  )
+
+  expect_error(
+    apply_climate_perturbations(
+      data = dat, grid = grid, date = date,
+      precip_mean_factor = flat, temp_range_factor = varying,
+      temp_delta = rep(0, 12), temp_transient = TRUE,
+      compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
+    ),
+    "temp_range_factor.*varies by year"
+  )
+})
+
+test_that("a transient ramp averages to the requested end-state factor", {
+  # The documented property: ramp from 1 to 2f-1, so the period mean is f.
+  n_years <- 5L
+  date <- .make_dates_noleap_years("2000-01-01", n_years)
+  dat <- list(.handoff_cell(date))
+  grid <- data.frame(id = 1L, lat = 0)
+
+  out <- apply_climate_perturbations(
+    data = dat, grid = grid, date = date,
+    precip_mean_factor = rep(0.6, 12),
+    temp_delta = rep(0, 12), precip_transient = TRUE,
+    compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE, seed = 1L
+  )
+
+  yidx <- as.integer(format(date, "%Y")) - 2000L + 1L
+  obs_ann <- tapply(dat[[1]]$precip, yidx, sum)
+  new_ann <- tapply(out[[1]]$precip, yidx, sum)
+  ratio <- as.numeric(new_ann / obs_ann)
+
+  # Declines across the period, and lands near 0.6 on average.
+  expect_lt(ratio[n_years], ratio[1])
+  expect_equal(mean(ratio), 0.6, tolerance = 0.15)
 })

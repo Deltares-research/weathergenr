@@ -108,7 +108,15 @@
 #' \itemize{
 #'   \item \code{adjusted}: numeric vector as above (with the same attributes)
 #'   \item \code{diagnostics}: output of \code{validate_quantile_mapping()}
+#'   \item \code{base_gamma}: fitted monthly Gamma parameters for the observed
+#'     wet-day series, as returned by \code{fit_monthly_distributions()}
+#'   \item \code{target_gamma}: perturbed monthly Gamma parameters by
+#'     (month, year), as returned by \code{compute_target_parameters()}
 #' }
+#'
+#' The two Gamma components are what a caller needs in order to place further
+#' values on the same fitted distributions -- for example drawing new wet-day
+#' amounts when changing wet-day frequency.
 #'
 #' @details
 #' \strong{Interpretation of mean/variance factors}
@@ -417,9 +425,17 @@ adjust_precipitation_qm <- function(
       print(d)
     }
 
+    # base_gamma and target_gamma are returned because the caller needs them to
+    # do anything downstream that has to place values on the same fitted
+    # distributions -- occurrence perturbation in apply_climate_perturbations()
+    # draws new wet-day amounts from target_gamma. It read these fields all
+    # along; they were simply never returned, so the occurrence branch was
+    # unreachable and precip_occurrence_factor did nothing at all.
     return(list(
       adjusted = precip_out,
-      diagnostics = d
+      diagnostics = d,
+      base_gamma = base_gamma,
+      target_gamma = target_gamma
     ))
   }
 
