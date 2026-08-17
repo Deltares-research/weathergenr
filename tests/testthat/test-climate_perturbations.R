@@ -784,3 +784,186 @@ testthat::test_that("temp_range_factor scales the diurnal range about its midpoi
   testthat::expect_true(all(narrow$temp_max >= narrow$temp_min))
   testthat::expect_lt(mean(narrow$pet), mean(base$pet))
 })
+
+# ==============================================================================
+# Stage handoff: prepare_evaluation_data() -> apply_climate_perturbations()
+# ==============================================================================
+
+# The README and the Climate Perturbations vignette document perturbation as a
+# stage applied to an already-generated series, chained through
+# prepare_evaluation_data(). That chain is a documented workflow with no
+# wrapper function holding it together, so these tests pin the interface
+# instead. generate_weather() is not called -- a stub gen_output carries the
+# same contract at a fraction of the cost.
+
+.make_gen_output_stub <- function(obs_dates, n_sim_days, n_realizations = 2L,
+                                  seed = 11L) {
+  set.seed(seed)
+  sim_dates <- .make_dates_noleap_years("2100-01-01", n_sim_days / 365L)
+
+  resampled <- as.data.frame(
+    lapply(
+      seq_len(n_realizations),
+      function(i) obs_dates[sample.int(length(obs_dates), length(sim_dates),
+                                       replace = TRUE)]
+    )
+  )
+  names(resampled) <- paste0("rlz_", seq_len(n_realizations))
+
+  list(resampled = resampled, dates = sim_dates)
+}
+
+.make_obs_for_handoff <- function(date, n_cells = 2L) {
+  lapply(seq_len(n_cells), function(i) {
+    n <- length(date)
+    set.seed(100L + i)
+    cell <- data.frame(
+      precip   = .make_precip_with_min_wet(date, min_wet = 15L, seed = 100L + i),
+      temp     = stats::rnorm(n, 25, 3),
+      temp_min = stats::rnorm(n, 20, 3)
+    )
+    cell$temp_max <- pmax(cell$temp_min + 5, stats::rnorm(n, 30, 3))
+    cell
+  })
+}
+
+test_that("prepare_evaluation_data() output feeds apply_climate_perturbations() unchanged", {
+  vars <- c("precip", "temp", "temp_min", "temp_max")
+  obs_dates <- .make_dates_noleap_years("2000-01-01", 4L)
+  obs_data <- .make_obs_for_handoff(obs_dates, n_cells = 2L)
+  grid <- data.frame(id = 1:2, lat = c(0, 10))
+
+  gen_output <- .make_gen_output_stub(obs_dates, n_sim_days = 365L * 3L)
+
+  eval_data <- prepare_evaluation_data(
+    gen_output = gen_output,
+    obs_data   = obs_data,
+    obs_dates  = obs_dates,
+    grid_ids   = seq_along(obs_data),
+    variables  = vars,
+    verbose    = FALSE
+  )
+
+  sim <- eval_data$sim_data[[1]]
+
+  # The documented shape: one data.frame per grid cell, date column first.
+  expect_length(sim, length(obs_data))
+  expect_equal(names(sim[[1]]), c("date", vars))
+
+  # The extra 'date' column must not trip the required-columns check, which is
+  # a setdiff() and so tolerates columns it did not ask for.
+  out <- apply_climate_perturbations(
+    data               = sim,
+    grid               = grid,
+    date               = sim[[1]]$date,
+    precip_mean_factor = rep(0.7, 12),
+    precip_var_factor  = rep(1.0, 12),
+    temp_delta         = rep(2, 12),
+    temp_transient     = FALSE,
+    precip_transient   = FALSE,
+    compute_pet        = FALSE,
+    seed               = 42L,
+    diagnostic         = FALSE,
+    verbose            = FALSE
+  )
+
+  expect_length(out, length(sim))
+  expect_equal(names(out[[1]]), c("date", vars))
+  expect_equal(nrow(out[[1]]), nrow(sim[[1]]))
+
+  # The perturbation lands on target through the chain.
+  expect_equal(mean(out[[1]]$temp) - mean(sim[[1]]$temp), 2, tolerance = 1e-8)
+  expect_equal(mean(out[[1]]$precip) / mean(sim[[1]]$precip), 0.7,
+               tolerance = 0.05)
+})
+
+test_that("the date vector must come from sim_data, not gen_output$dates", {
+  # prepare_evaluation_data() drops incomplete years, so its row count can be
+  # shorter than gen_output$dates. Taking the date vector from the returned
+  # frames is what keeps the two aligned; this pins the failure a naive recipe
+  # would hit rather than leaving it for a user to discover.
+  vars <- c("precip", "temp", "temp_min", "temp_max")
+  obs_dates <- .make_dates_noleap_years("2000-01-01", 4L)
+  obs_data <- .make_obs_for_handoff(obs_dates, n_cells = 2L)
+  grid <- data.frame(id = 1:2, lat = c(0, 10))
+
+  gen_output <- .make_gen_output_stub(obs_dates, n_sim_days = 365L * 3L)
+
+  # A water-year boundary drops the partial first and last years.
+  eval_data <- prepare_evaluation_data(
+    gen_output       = gen_output,
+    obs_data         = obs_data,
+    obs_dates        = obs_dates,
+    grid_ids         = seq_along(obs_data),
+    variables        = vars,
+    year_start_month = 10L,
+    verbose          = FALSE
+  )
+
+  sim <- eval_data$sim_data[[1]]
+  expect_lt(nrow(sim[[1]]), length(gen_output$dates))
+
+  # The trimmed vector works.
+  expect_no_error(
+    apply_climate_perturbations(
+      data = sim, grid = grid, date = sim[[1]]$date,
+      precip_mean_factor = rep(0.7, 12), temp_delta = rep(2, 12),
+      compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
+    )
+  )
+
+  # The untrimmed one does not, and says so by row count.
+  expect_error(
+    apply_climate_perturbations(
+      data = sim, grid = grid, date = gen_output$dates,
+      precip_mean_factor = rep(0.7, 12), temp_delta = rep(2, 12),
+      compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
+    ),
+    "row count"
+  )
+})
+
+test_that("matrix factors are sized by calendar years spanned, not generator n_years", {
+  # year_idx is calendar-based (cal_year - min(cal_year) + 1), so a series
+  # covering N water years spans N + 1 calendar years and needs (N + 1) x 12.
+  vars <- c("precip", "temp", "temp_min", "temp_max")
+  obs_dates <- .make_dates_noleap_years("2000-01-01", 4L)
+  obs_data <- .make_obs_for_handoff(obs_dates, n_cells = 2L)
+  grid <- data.frame(id = 1:2, lat = c(0, 10))
+
+  gen_output <- .make_gen_output_stub(obs_dates, n_sim_days = 365L * 3L)
+
+  eval_data <- prepare_evaluation_data(
+    gen_output = gen_output, obs_data = obs_data, obs_dates = obs_dates,
+    grid_ids = seq_along(obs_data), variables = vars,
+    year_start_month = 10L, verbose = FALSE
+  )
+  sim <- eval_data$sim_data[[1]]
+  sim_date <- sim[[1]]$date
+
+  n_cal <- length(unique(format(sim_date, "%Y")))
+  n_wy  <- length(unique(compute_water_year(sim_date, 10L)))
+  expect_gt(n_cal, n_wy)
+
+  run_with_nrow <- function(nr) {
+    apply_climate_perturbations(
+      data = sim, grid = grid, date = sim_date,
+      precip_mean_factor = matrix(0.7, nrow = nr, ncol = 12),
+      precip_var_factor  = matrix(1.0, nrow = nr, ncol = 12),
+      temp_delta = rep(2, 12), compute_pet = FALSE,
+      diagnostic = FALSE, verbose = FALSE
+    )
+  }
+
+  expect_no_error(run_with_nrow(n_cal))
+  expect_error(run_with_nrow(n_wy), "nrow")
+
+  # The length-12 vector form is indifferent to the distinction.
+  expect_no_error(
+    apply_climate_perturbations(
+      data = sim, grid = grid, date = sim_date,
+      precip_mean_factor = rep(0.7, 12), temp_delta = rep(2, 12),
+      compute_pet = FALSE, diagnostic = FALSE, verbose = FALSE
+    )
+  )
+})

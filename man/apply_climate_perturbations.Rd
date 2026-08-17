@@ -157,9 +157,18 @@ preserving realistic daily structure.
 }
 \section{Year indexing convention (critical)}{
 
-All precipitation perturbations rely on a simulation-year index `year_idx = 1..n_years`,
-derived internally from `date`. Calendar years are not passed downstream. Any factor
-matrices supplied as `n_years x 12` are indexed using this simulation-year convention.
+All precipitation perturbations rely on a year index `year_idx = 1..n_years`,
+derived internally from `date` as `calendar_year - min(calendar_year) + 1`.
+The absolute calendar year is not passed downstream, but the *counting* is by
+calendar year, so `n_years` here means the number of distinct calendar years
+spanned by `date` -- not the generator's `n_years` argument.
+
+The two coincide only for a calendar-year run. Under a water year
+(`year_start_month > 1`), a 20-water-year series spans 21 calendar years, and
+a factor matrix must then be `21 x 12`; a `20 x 12` matrix is rejected. When
+in doubt, size matrices from the date vector itself:
+`length(unique(format(date, "\%Y")))`. Supplying a length-12 vector instead of
+a matrix sidesteps the question entirely, since it applies to every year.
 }
 
 \seealso{
