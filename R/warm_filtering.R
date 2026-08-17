@@ -206,7 +206,7 @@ filter_warm_pool <- function(
       n_sim = n_sim0,
       n_realizations = n_rlz,
       sample_target = n_select,
-      relax_priority = RELAX_ORDER
+      relax_order = RELAX_ORDER
     )
   }
 
@@ -1952,11 +1952,11 @@ criteria_string_compact <- function(filter_name, bounds, tail_metrics,
 #' @param n_sim Integer scalar. Length of the simulated series in years.
 #' @param n_realizations Integer scalar. Number of candidate realizations.
 #' @param sample_target Integer scalar. Number of realizations requested.
-#' @param relax_priority Character vector. Relaxation priority ordering.
+#' @param relax_order Character vector. Relaxation priority ordering.
 #'
 #' @return Invisibly returns NULL.
 #' @keywords internal
-log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, relax_priority) {
+log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, relax_order) {
 
   .log("===========================================================================", tag = "FILTER")
   .log("FILTERING SETUP", tag = "FILTER")
@@ -1964,8 +1964,8 @@ log_filtering_start <- function(n_obs, n_sim, n_realizations, sample_target, rel
   .log("Observed series: {format(n_obs, big.mark = ',')} years", tag = "FILTER")
   .log("Simulated series: {format(n_sim, big.mark = ',')} years x {format(n_realizations, big.mark = ',')} candidate realizations", tag = "FILTER")
   .log("Target: select {format(sample_target, big.mark = ',')} realizations from pool", tag = "FILTER")
-  .log("Relaxation priority: {paste(relax_priority, collapse = ' > ')}", tag = "FILTER")
-  .log("Filters relax left-to-right: {relax_priority[1]} relaxes FIRST, {relax_priority[length(relax_priority)]} relaxes LAST", tag = "FILTER")
+  .log("Relaxation priority: {paste(relax_order, collapse = ' > ')}", tag = "FILTER")
+  .log("Filters relax left-to-right: {relax_order[1]} relaxes FIRST, {relax_order[length(relax_order)]} relaxes LAST", tag = "FILTER")
   .log("===========================================================================", tag = "FILTER")
 
   invisible(NULL)

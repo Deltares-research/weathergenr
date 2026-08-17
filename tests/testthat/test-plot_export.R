@@ -330,7 +330,7 @@ testthat::test_that(".export_figure always sets units, dpi and background", {
   rec <- local_ggsave_recorder()
   p <- ggplot2::ggplot(mtcars, ggplot2::aes(.data$wt, .data$mpg)) + ggplot2::geom_point()
 
-  .export_figure(p, "f.png", output_dir = tempdir(), family = "wide")
+  .export_figure(p, "f.png", out_dir = tempdir(), family = "wide")
 
   testthat::expect_length(rec$args, 1L)
   a <- rec$args[[1]]
@@ -347,10 +347,10 @@ testthat::test_that(".export_figure omits device rather than passing NULL", {
   rec <- local_ggsave_recorder()
   p <- ggplot2::ggplot(mtcars, ggplot2::aes(.data$wt, .data$mpg)) + ggplot2::geom_point()
 
-  .export_figure(p, "f.png", output_dir = tempdir(), device = NULL)
+  .export_figure(p, "f.png", out_dir = tempdir(), device = NULL)
   testthat::expect_false("device" %in% names(rec$args[[1]]))
 
-  .export_figure(p, "g.png", output_dir = tempdir(), device = grDevices::png)
+  .export_figure(p, "g.png", out_dir = tempdir(), device = grDevices::png)
   testthat::expect_true("device" %in% names(rec$args[[2]]))
 })
 
@@ -359,7 +359,7 @@ testthat::test_that(".export_figure lets plot_config carry dpi and device", {
   rec <- local_ggsave_recorder()
   p <- ggplot2::ggplot(mtcars, ggplot2::aes(.data$wt, .data$mpg)) + ggplot2::geom_point()
 
-  .export_figure(p, "f.png", output_dir = tempdir(),
+  .export_figure(p, "f.png", out_dir = tempdir(),
                  dpi = 300, plot_config = list(dpi = 150))
 
   testthat::expect_equal(rec$args[[1]]$dpi, 150)
@@ -370,13 +370,13 @@ testthat::test_that(".export_figure honours the dims and size overrides", {
   p <- ggplot2::ggplot(mtcars, ggplot2::aes(.data$wt, .data$mpg)) + ggplot2::geom_point()
 
   # dims overrides detection; the plot itself is unfaceted.
-  .export_figure(p, "a.png", output_dir = tempdir(), family = "square",
+  .export_figure(p, "a.png", out_dir = tempdir(), family = "square",
                  dims = c(ncol = 3L, nrow = 2L))
   testthat::expect_equal(rec$args[[1]]$width, 12)
   testthat::expect_equal(rec$args[[1]]$height, 8.5)
 
   # size overrides everything, which is what the patchwork call site uses.
-  .export_figure(p, "b.png", output_dir = tempdir(), family = "square",
+  .export_figure(p, "b.png", out_dir = tempdir(), family = "square",
                  dims = c(ncol = 3L, nrow = 2L), size = c(9, 4.5))
   testthat::expect_equal(rec$args[[2]]$width, 9)
   testthat::expect_equal(rec$args[[2]]$height, 4.5)
@@ -386,7 +386,7 @@ testthat::test_that(".export_figure adds the title block and its height together
   rec <- local_ggsave_recorder()
   p <- ggplot2::ggplot(mtcars, ggplot2::aes(.data$wt, .data$mpg)) + ggplot2::geom_point()
 
-  out <- .export_figure(p, "f.png", output_dir = tempdir(), family = "wide",
+  out <- .export_figure(p, "f.png", out_dir = tempdir(), family = "wide",
                         show_title = TRUE, title = "T", subtitle = "S")
 
   testthat::expect_identical(out$labels$title, "T")
@@ -394,7 +394,7 @@ testthat::test_that(".export_figure adds the title block and its height together
   testthat::expect_equal(rec$args[[1]]$height, 5.1)
 
   # show_title = TRUE with no title is not a title: neither label nor room.
-  .export_figure(p, "g.png", output_dir = tempdir(), family = "wide",
+  .export_figure(p, "g.png", out_dir = tempdir(), family = "wide",
                  show_title = TRUE, title = NULL)
   testthat::expect_equal(rec$args[[2]]$height, 4.5)
 })
@@ -410,7 +410,7 @@ testthat::test_that(".export_figure rescales type without discarding overrides",
     theme_weathergenr() +
     ggplot2::theme(axis.text.x = ggplot2::element_blank())
 
-  out <- .export_figure(p, "f.png", output_dir = tempdir(), family = "square",
+  out <- .export_figure(p, "f.png", out_dir = tempdir(), family = "square",
                         dims = c(ncol = 3L, nrow = 3L))
 
   written  <- rec$args[[1]]$plot
@@ -429,8 +429,8 @@ testthat::test_that(".export_figure writes nothing when told not to", {
   rec <- local_ggsave_recorder()
   p <- ggplot2::ggplot(mtcars, ggplot2::aes(.data$wt, .data$mpg)) + ggplot2::geom_point()
 
-  out1 <- .export_figure(p, "f.png", output_dir = tempdir(), save_plots = FALSE)
-  out2 <- .export_figure(p, "f.png", output_dir = NULL)
+  out1 <- .export_figure(p, "f.png", out_dir = tempdir(), save_plots = FALSE)
+  out2 <- .export_figure(p, "f.png", out_dir = NULL)
 
   testthat::expect_length(rec$args, 0L)
   testthat::expect_s3_class(out1, "ggplot")

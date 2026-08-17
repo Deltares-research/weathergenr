@@ -10,7 +10,7 @@
   plot_config,
   show_title,
   save_plots,
-  output_dir
+  out_dir
 )
 }
 \arguments{
@@ -24,9 +24,9 @@ colors, dpi, device). The theme is not among them: every builder calls
 
 \item{show_title}{Logical; if \code{TRUE}, adds title to the plot.}
 
-\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{output_dir}.}
+\item{save_plots}{Logical; if \code{TRUE}, writes plot to \code{out_dir}.}
 
-\item{output_dir}{Character; output directory for saved plots.}
+\item{out_dir}{Character; output directory for saved plots.}
 }
 \value{
 ggplot object returned invisibly.

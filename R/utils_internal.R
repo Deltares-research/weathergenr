@@ -497,3 +497,59 @@ format_elapsed <- function(start_time) {
     sprintf("%d hr %d min", hrs, mins)
   }
 }
+
+
+# ==============================================================================
+# RENAMED ARGUMENTS
+# ==============================================================================
+
+#' Resolve a renamed argument, warning if the old name was used
+#'
+#' @description
+#' Accepts a value under either the current or a superseded argument name and
+#' returns the one the caller supplied, warning when it was the old one.
+#'
+#' @details
+#' Hand-rolled rather than `lifecycle::deprecate_warn()`: this package's
+#' dependency set is deliberately small and CI builds on three OSes and three R
+#' versions, which one renamed argument does not justify expanding.
+#'
+#' Resolution is by *suppliedness*, not by value, so a deliberate
+#' `out_dir = NULL` is honoured rather than being overwritten by a stale value
+#' under the old name. Supplying both is an error: there is no defensible
+#' winner, and silently picking one is how a caller ends up writing to a
+#' directory it did not name.
+#'
+#' @param new,old The values received under each name.
+#' @param new_name,old_name Character. The argument names, for the messages.
+#' @param new_supplied,old_supplied Logical. Whether each was actually supplied
+#'   by the caller, normally `!missing(x)` at the call site.
+#'
+#' @return The resolved value.
+#'
+#' @keywords internal
+#' @noRd
+.resolve_renamed_arg <- function(new, old, new_name, old_name,
+                                 new_supplied, old_supplied) {
+
+  if (isTRUE(old_supplied)) {
+    if (isTRUE(new_supplied)) {
+      stop(
+        "Both '", new_name, "' and '", old_name, "' were supplied. '",
+        old_name, "' is the superseded name for the same setting; pass only '",
+        new_name, "'.",
+        call. = FALSE
+      )
+    }
+
+    warning(
+      "'", old_name, "' is deprecated and will be removed in a future ",
+      "release; use '", new_name, "' instead.",
+      call. = FALSE
+    )
+
+    return(old)
+  }
+
+  new
+}

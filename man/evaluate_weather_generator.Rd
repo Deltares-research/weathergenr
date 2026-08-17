@@ -13,7 +13,7 @@ evaluate_weather_generator(
   year_start_month = 1L,
   wet_q = 0.2,
   extreme_q = 0.8,
-  output_dir = NULL,
+  out_dir = NULL,
   save_plots = TRUE,
   show_title = TRUE,
   verbose = TRUE,
@@ -22,7 +22,8 @@ evaluate_weather_generator(
   eval_max_grids = 25,
   seed = NULL,
   plot_dpi = 300,
-  plot_device = NULL
+  plot_device = NULL,
+  output_dir = NULL
 )
 }
 \arguments{
@@ -51,10 +52,11 @@ complete years and align observation/simulation periods.}
 \item{extreme_q}{Numeric between 0 and 1. Quantile threshold for extremely
 wet days (default = 0.8).}
 
-\item{output_dir}{Character. Directory path to save generated plots. If `NULL`,
-plots are not saved to disk.}
+\item{out_dir}{Character. Directory path to save generated plots. If `NULL`,
+plots are not saved to disk. Named `out_dir` to match
+[generate_weather()] and [run_weather_generator()]; see `output_dir` below.}
 
-\item{save_plots}{Logical. Whether to save plots to `output_dir` (default = `TRUE`).}
+\item{save_plots}{Logical. Whether to save plots to `out_dir` (default = `TRUE`).}
 
 \item{show_title}{Logical. Whether to display titles in plots (default = `TRUE`).}
 
@@ -82,6 +84,11 @@ simplest way to speed up iterative work. Ignored when `save_plots = FALSE`.}
 Supplying a faster device, for example `ragg::agg_png`, typically halves
 the remaining render cost. `ragg` is not a dependency of this package; pass
 the function only if you have it installed.}
+
+\item{output_dir}{Deprecated. The former name of `out_dir`. Supplying it
+still works but warns; supplying both is an error. Renamed in 2.0.0 so that
+one directory argument has one name across [generate_weather()],
+[run_weather_generator()] and this function.}
 }
 \value{
 A named list of `ggplot2` plot objects with class "weather_assessment".
@@ -130,7 +137,7 @@ out <- evaluate_weather_generator(
   daily_obs = obs_grid,
   vars = c("precip", "temp"),
   n_realizations = 1,
-  output_dir = NULL,
+  out_dir = NULL,
   save_plots = FALSE,
   show_title = FALSE
 )

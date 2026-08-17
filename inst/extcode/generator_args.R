@@ -22,4 +22,4 @@ seed             = config$seed
 verbose          = config$verbose
 save_plots       = config$save_plots
 
-relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean")
+relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean")

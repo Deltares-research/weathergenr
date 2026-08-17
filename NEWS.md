@@ -26,6 +26,26 @@
 
 ## Breaking changes
 
+* Two arguments are renamed so that one concept has one name across the
+  functions that pass it to each other. `evaluate_weather_generator()` and
+  `create_all_diagnostic_plots()` take `out_dir` instead of `output_dir`,
+  matching `generate_weather()` and `run_weather_generator()`, which already
+  used that name. `generate_weather()` takes `relax_order` instead of
+  `relax_priority`, matching `filter_warm_pool()`, which it forwards the value
+  to; the same applies to `config$relax_order` in `run_weather_generator()`.
+
+  Both old names still work and emit a deprecation warning. Supplying both
+  names for one setting is an error rather than a silent choice between them.
+  Positional calls are unaffected — each new name occupies the position its
+  predecessor did.
+
+  Deliberately narrow. `generate_weather()`'s `warm_filter_bounds` is *not*
+  renamed to `filter_warm_pool()`'s `filter_bounds`, despite the same kind of
+  mismatch: it belongs to a coherent `warm_*` family alongside `warm_var`,
+  `warm_signif` and `warm_pool_size`, and breaking that family to match one
+  niche function would cost more than the inconsistency does. That drift is
+  now an accepted difference rather than an outstanding one.
+
 * Supplying a year-varying `n_years x 12` factor matrix together with its
   transient flag is now an error. A transient factor is specified by its end
   state and ramps from 1 to `2f - 1`, reading the first row alone, so rows

@@ -53,7 +53,7 @@ make_test_grid_df <- function(dates, id_shift = 0) {
 
   # Minimal plot list (must include keys used in tests)
   .mock_create_all_diagnostic_plots <- function(plot_data, plot_config, variables,
-                                                show_title, save_plots, output_dir) {
+                                                show_title, save_plots, out_dir) {
     plots <- list(
       daily_mean = .p(),
       daily_sd = .p(),
@@ -174,7 +174,7 @@ testthat::test_that("evaluate_weather_generator returns weather_assessment with 
       n_realizations = n_realizations,
       wet_q = 0.2,
       extreme_q = 0.8,
-      output_dir = NULL,
+      out_dir = NULL,
       save_plots = FALSE,
       show_title = FALSE,
       eval_max_grids = 25,
@@ -242,7 +242,7 @@ testthat::test_that("evaluate_weather_generator subsamples grids when exceeding 
       daily_obs = daily_obs,
       vars = c("precip", "temp"),
       n_realizations = n_realizations,
-      output_dir = NULL,
+      out_dir = NULL,
       save_plots = FALSE,
       show_title = FALSE,
       eval_max_grids = eval_max_grids,
@@ -492,7 +492,7 @@ testthat::test_that("evaluate_weather_generator handles leap days without error"
       daily_obs = daily_obs,
       vars = c("precip", "temp"),
       n_realizations = n_realizations,
-      output_dir = NULL,
+      out_dir = NULL,
       save_plots = FALSE,
       show_title = FALSE,
       verbose = FALSE
@@ -543,7 +543,7 @@ testthat::test_that("evaluate_weather_generator produces reproducible results wi
       n_realizations = n_realizations,
       eval_max_grids = eval_max_grids,
       seed = 12345,
-      output_dir = NULL,
+      out_dir = NULL,
       save_plots = FALSE,
       verbose = FALSE
     )
@@ -555,7 +555,7 @@ testthat::test_that("evaluate_weather_generator produces reproducible results wi
       n_realizations = n_realizations,
       eval_max_grids = eval_max_grids,
       seed = 12345,
-      output_dir = NULL,
+      out_dir = NULL,
       save_plots = FALSE,
       verbose = FALSE
     )
@@ -743,7 +743,7 @@ test_that("create_all_diagnostic_plots returns expected plot names and ggplot ob
     variables = variables,
     show_title = FALSE,
     save_plots = FALSE,
-    output_dir = NULL
+    out_dir = NULL
   )
 
   expect_true(is.list(plots))
@@ -929,7 +929,7 @@ test_that("create_all_diagnostic_plots calls ggsave when save_plots=TRUE (mocked
     variables = c("precip"),  # keep it minimal
     show_title = FALSE,
     save_plots = TRUE,
-    output_dir = out_dir
+    out_dir = out_dir
   )
 
   expect_true(is.list(plots))
@@ -1360,7 +1360,7 @@ testthat::test_that("evaluate_weather_generator prints the fit summary when verb
             n_realizations = n_realizations,
             wet_q = 0.2,
             extreme_q = 0.8,
-            output_dir = NULL,
+            out_dir = NULL,
             save_plots = FALSE,
             show_title = FALSE,
             eval_max_grids = 25,
@@ -1433,7 +1433,7 @@ testthat::test_that("evaluate_weather_generator produces a full assessment witho
         n_realizations = n_realizations,
         wet_q = 0.2,
         extreme_q = 0.8,
-        output_dir = NULL,
+        out_dir = NULL,
         save_plots = FALSE,
         show_title = FALSE,
         eval_max_grids = 25,

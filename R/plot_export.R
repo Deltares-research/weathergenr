@@ -305,7 +305,7 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
 #'
 #' @param p A ggplot or patchwork object.
 #' @param filename Character. Base filename, including extension.
-#' @param output_dir Character or NULL. Directory to write into. \code{NULL}
+#' @param out_dir Character or NULL. Directory to write into. \code{NULL}
 #'   writes nothing.
 #' @param save_plots Logical. \code{FALSE} writes nothing.
 #' @param show_title Logical. If \code{TRUE} and \code{title} is not \code{NULL},
@@ -328,7 +328,7 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
 #' @keywords internal
 #' @noRd
 #' @import ggplot2
-.export_figure <- function(p, filename, output_dir,
+.export_figure <- function(p, filename, out_dir,
                            save_plots = TRUE,
                            show_title = FALSE, title = NULL, subtitle = NULL,
                            family = c("square", "wide", "narrow"),
@@ -342,7 +342,7 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
   header <- isTRUE(show_title) && !is.null(title)
   if (header) p <- p + labs(title = title, subtitle = subtitle)
 
-  if (!isTRUE(save_plots) || is.null(output_dir)) return(invisible(p))
+  if (!isTRUE(save_plots) || is.null(out_dir)) return(invisible(p))
 
   # plot_config is the evaluation pipeline's carrier for the public plot_dpi and
   # plot_device arguments, so it wins over the defaults above.
@@ -365,7 +365,7 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
   p <- p + theme(text = element_text(size = .base_size_for(size)))
 
   args <- list(
-    filename = file.path(output_dir, filename),
+    filename = file.path(out_dir, filename),
     plot     = p,
     width    = unname(size[[1L]]),
     height   = unname(size[[2L]]),

@@ -135,11 +135,16 @@
 #' @param warm_filter_bounds Named list of filtering thresholds and relaxation controls
 #'   forwarded to \code{\link{filter_warm_pool}} as \code{filter_bounds}. Any entry
 #'   overrides internal defaults. Uses snake_case keys (e.g. \code{tail_low_p}).
-#' @param relax_priority Character vector giving the relaxation priority
-#'   for WARM filtering, forwarded to \code{\link{filter_warm_pool}} as \code{relax_order}.
+#' @param relax_order Character vector giving the order in which WARM filtering
+#'   criteria are relaxed, forwarded to \code{\link{filter_warm_pool}} under the
+#'   same name.
 #'   Must contain each of \code{c("mean","sd","tail_low","tail_high","wavelet")} exactly once.
 #'   Filters are relaxed iteratively by loosening the currently most restrictive criterion
-#'   (lowest pass rate), subject to this priority ordering.
+#'   (lowest pass rate), subject to this ordering.
+#' @param relax_priority Deprecated. The former name of \code{relax_order}.
+#'   Supplying it still works but warns; supplying both is an error. Renamed in
+#'   2.0.0 so this argument and the \code{\link{filter_warm_pool}} argument it is
+#'   forwarded to share one name.
 #' @param annual_knn_n Integer number of historical analogue years considered in
 #'   the annual KNN step of the disaggregation.
 #' @param wet_q Numeric in (0,1). Wet-day threshold quantile used in the daily
@@ -168,7 +173,7 @@
 #'   \code{NULL} and \code{parallel = TRUE}, defaults to
 #'   \code{max(1, parallel::detectCores() - 1)}.
 #' @param verbose Logical; if \code{TRUE}, emits progress logs via \code{.log()}.
-#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{output_dir}.
+#' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
 #' @param plot_dpi Numeric; raster resolution for the diagnostic plots this
 #'   function writes (default 300). Ignored when \code{save_plots = FALSE}.
 #'   Matches the argument of the same name on
@@ -237,7 +242,8 @@ generate_weather <- function(
     warm_signif = 0.90,
     warm_pool_size = 5000,
     warm_filter_bounds = list(),
-    relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+    relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+    relax_priority = NULL,
     annual_knn_n = 120,
     wet_q = 0.3,
     extreme_q = 0.8,
@@ -270,7 +276,19 @@ generate_weather <- function(
   # entry arrives as NULL rather than as a missing argument -- so the formal
   # defaults never fire. Treat NULL as "use the default".
   RELAX_FILTERS <- c("wavelet", "sd", "tail_low", "tail_high", "mean")
-  if (is.null(relax_priority)) relax_priority <- RELAX_FILTERS
+
+  # 'relax_priority' was this function's name for what filter_warm_pool() calls
+  # 'relax_order'. One concept under two names across the same call it is
+  # forwarded on; 'relax_order' wins because the argument is a sequence rather
+  # than a ranking. Resolved on suppliedness, so an explicit NULL still falls
+  # through to RELAX_FILTERS below.
+  relax_order <- .resolve_renamed_arg(
+    new = relax_order, old = relax_priority,
+    new_name = "relax_order", old_name = "relax_priority",
+    new_supplied = !missing(relax_order), old_supplied = !missing(relax_priority)
+  )
+
+  if (is.null(relax_order)) relax_order <- RELAX_FILTERS
   if (is.null(warm_filter_bounds)) warm_filter_bounds <- list()
 
   # ---------------------------------------------------------------------------
@@ -296,12 +314,12 @@ generate_weather <- function(
     "obs_grid must have required columns" = all(c("xind", "yind", "x", "y") %in% names(obs_grid)),
     "verbose must be TRUE or FALSE" = is.logical(verbose) && length(verbose) == 1L,
     "warm_filter_bounds must be a list" = is.list(warm_filter_bounds),
-    "relax_priority must be a character vector" = is.character(relax_priority),
+    "relax_order must be a character vector" = is.character(relax_order),
     # Checked here rather than left to filter_warm_pool, which validates the
     # same contract but only after the wavelet analysis and the WARM pool
     # simulation have already run. A typo should not cost that wait.
-    "relax_priority must contain each of 'mean', 'sd', 'tail_low', 'tail_high', 'wavelet' exactly once" =
-      setequal(relax_priority, RELAX_FILTERS) && !anyDuplicated(relax_priority)
+    "relax_order must contain each of 'mean', 'sd', 'tail_low', 'tail_high', 'wavelet' exactly once" =
+      setequal(relax_order, RELAX_FILTERS) && !anyDuplicated(relax_order)
   )
 
 
@@ -478,7 +496,7 @@ generate_weather <- function(
       # .panel_dims() reports a single canvas. The 9.0 splits at the
       # plot_layout(widths = c(3, 1.2)) ratio into a ~6.4 in power field and a
       # ~2.6 in spectrum companion.
-      .export_figure(p, "obs_power_spectra.png", output_dir = out_dir,
+      .export_figure(p, "obs_power_spectra.png", out_dir = out_dir,
                      size = c(9.0, 4.5), dpi = plot_dpi, device = plot_device),
       error = function(e) .log("Failed to save wavelet spectra plot: {e$message}", level = "warn", verbose = verbose)
     )
@@ -515,7 +533,7 @@ generate_weather <- function(
     n_select = n_realizations,
     seed = .seed_offset(warm_seed, 1L),
     filter_bounds = warm_filter_bounds,
-    relax_order = relax_priority,
+    relax_order = relax_order,
     # Follow save_plots: with it FALSE the three diagnostic panels were still
     # being built over every selected realization, and only the ggsave() was
     # skipped.
@@ -536,13 +554,13 @@ generate_weather <- function(
         # it takes the narrow family rather than square, which would give it
         # 16 in of width for four columns of points.
         .export_figure(sim_annual_sub$plots[[1]], "warm_annual_precip.png",
-                       output_dir = out_dir, family = "wide",
+                       out_dir = out_dir, family = "wide",
                        dpi = plot_dpi, device = plot_device)
         .export_figure(sim_annual_sub$plots[[2]], "warm_annual_stats.png",
-                       output_dir = out_dir, family = "narrow",
+                       out_dir = out_dir, family = "narrow",
                        dpi = plot_dpi, device = plot_device)
         .export_figure(sim_annual_sub$plots[[3]], "warm_annual_wavelet.png",
-                       output_dir = out_dir, family = "wide",
+                       out_dir = out_dir, family = "wide",
                        dpi = plot_dpi, device = plot_device)
       },
       error = function(e) .log("Failed to save warm filtering plots: {e$message}",
@@ -688,8 +706,10 @@ generate_weather <- function(
 #' @param out_dir Character. Output directory.
 #' @param config List. Full simulation/evaluation configuration. Entries are
 #'   forwarded to [generate_weather()] and [evaluate_weather_generator()] under
-#'   the same names, including `warm_filter_bounds`, `relax_priority`,
-#'   `variable_labels`, `plot_dpi` and `plot_device`. An entry that is absent
+#'   the same names, including `warm_filter_bounds`, `relax_order`,
+#'   `variable_labels`, `plot_dpi` and `plot_device`. `config$relax_priority` is
+#'   the superseded spelling of `config$relax_order` and still works, with a
+#'   warning. An entry that is absent
 #'   (`NULL`) is not forwarded at all, so it falls back to the receiving
 #'   function's default -- only `vars` and `n_realizations` are required. A
 #'   config therefore needs to name only what it wants to change.
@@ -723,6 +743,18 @@ run_weather_generator <- function(
   if (is.null(config$n_realizations)) {
     stop("'config$n_realizations' must be provided.", call. = FALSE)
   }
+
+  # config keys are generate_weather() argument names, so the relax_order rename
+  # reaches them too. Resolved here rather than left to generate_weather(),
+  # because a key is either present or absent -- there is no missing() to test
+  # once it has been unpacked from the list.
+  config$relax_order <- .resolve_renamed_arg(
+    new = config$relax_order, old = config$relax_priority,
+    new_name = "config$relax_order", old_name = "config$relax_priority",
+    new_supplied = !is.null(config$relax_order),
+    old_supplied = !is.null(config$relax_priority)
+  )
+  config$relax_priority <- NULL
 
   # ---------------------------------------------------------------------------
   # Optional console logging (console + file)
@@ -865,7 +897,7 @@ run_weather_generator <- function(
       warm_signif        = config$warm_signif,
       warm_pool_size     = config$warm_pool_size,
       warm_filter_bounds = config$warm_filter_bounds,
-      relax_priority     = config$relax_priority,
+      relax_order     = config$relax_order,
       annual_knn_n       = config$annual_knn_n,
       wet_q              = config$wet_q,
       extreme_q          = config$extreme_q,
@@ -911,7 +943,7 @@ run_weather_generator <- function(
       eval_max_grids  = eval_max_grids,
       wet_q           = config$wet_q,
       extreme_q       = config$extreme_q,
-      output_dir      = out_dir,
+      out_dir      = out_dir,
       save_plots      = isTRUE(config$save_plots),
       seed            = config$seed,
       plot_dpi        = if (is.null(config$plot_dpi)) 300 else config$plot_dpi,

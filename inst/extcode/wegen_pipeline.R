@@ -34,7 +34,7 @@ ncdata <- read_netcdf(nc_path  = paste0(ncfile_dir))
 
 ### ---> FOR RHINE BASIN
 #ncfile_dir   <- "C:/Users/taner/WS/Spongeworks/data/meteo/eobs_v31_1950_2024_allvars_clean.nc"
-#output_dir <- "C:/TEMP/vechte/"
+#out_dir <- "C:/TEMP/vechte/"
 
 # =============================================================================
 # KEY PARAMETERS
@@ -170,7 +170,7 @@ config$warm_filter_bounds <- list(
 #   eval_max_grids  = 25,
 #   wet_q           = config$wet_q,
 #   extreme_q       = config$extreme_q,
-#   output_dir      = out_dir,
+#   out_dir      = out_dir,
 #   save_plots      = TRUE,
 #   seed            = NULL
 # )
