@@ -73,6 +73,37 @@
 
 ## Other changes
 
+* Documented how climate perturbation composes with the generator, and corrected
+  the claim that it did so already. `README.md` described three "coupled"
+  components, but `apply_climate_perturbations()` is reachable from neither
+  entry point, so component 3 was left for every user to wire up themselves.
+  The wiring turns out to need no new code: `prepare_evaluation_data()` — which
+  `run_weather_generator()` already uses to turn resampled dates into daily
+  values — returns exactly the per-cell shape `apply_climate_perturbations()`
+  expects. `README.md` now says the first two components are coupled inside
+  `generate_weather()` while the third is a stage applied afterwards, and shows
+  the chain; the *Climate Perturbations* article gains a section doing the same
+  on a realization rather than on the observed record.
+
+  Perturbation stays outside `run_weather_generator()` deliberately. That entry
+  point evaluates its output against the observed record, and a perturbed series
+  is meant to depart from observations, so folding the two together would break
+  what the evaluation means.
+
+  Three traps in that chain are now documented and covered by tests: `vars` must
+  include `temp_min` and `temp_max`, which `generate_weather()` does not require
+  but `apply_climate_perturbations()` does; the date vector must come from the
+  returned frames rather than `gen_output$dates`, which can be longer because
+  incomplete years are dropped; and `n_years x 12` factor matrices are sized by
+  calendar years spanned, so a 20-water-year series needs 21 rows.
+
+* `apply_climate_perturbations()`'s "Year indexing convention" documentation is
+  corrected. It described `year_idx` as a simulation-year index running
+  `1..n_years`, but the index is derived as
+  `calendar_year - min(calendar_year) + 1`. The two agree only for calendar-year
+  runs; under a water year they differ by one, which is enough to have a
+  correctly sized factor matrix rejected. No behavior changed.
+
 * Figure dimensions are derived from the panel grid for every output rather than
   set per call site. Sizes remain internal — there are no width or height
   arguments. Most geometry is unchanged: the family used by the faceted
