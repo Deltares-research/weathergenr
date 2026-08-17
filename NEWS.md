@@ -1,6 +1,43 @@
 # weathergenr 2.0.0
 
+## Bug fixes
+
+* `precip_occurrence_factor` did nothing. `apply_climate_perturbations()` reads
+  the fitted Gamma parameters off the quantile-mapping result to draw amounts
+  for newly wet days, but `adjust_precipitation_qm()` never returned them, so
+  the guard on that branch could not be satisfied and occurrence perturbation
+  was skipped on every call. Factors of 0.5, 0.7, 1.0 and 1.3 all produced
+  byte-identical output. `adjust_precipitation_qm(diagnostics = TRUE)` now
+  returns `base_gamma` and `target_gamma` alongside `adjusted` and
+  `diagnostics`, which makes the existing occurrence code reachable.
+
+  Wet-day frequency is a stress-test axis in its own right, so this restores a
+  documented scenario dimension rather than adding one. `precip_occurrence_factor`
+  and `precip_occurrence_transient` now behave as their documentation describes:
+  a factor of 0.7 gives roughly 70% of the observed wet days, and the transient
+  form ramps from no change to twice the change, averaging to it.
+
+  The failure was invisible from the outside. The skip warning fired only under
+  `verbose = TRUE` and blamed the input data — "all-dry or insufficient wet
+  days" — for series with thousands of wet days. That warning is now
+  unconditional and describes the actual condition. The regression test passed
+  vacuously, asserting `>=` on a wet-day count that never moved; it now asserts
+  the count strictly increases and lands near the requested factor.
+
 ## Breaking changes
+
+* Supplying a year-varying `n_years x 12` factor matrix together with its
+  transient flag is now an error. A transient factor is specified by its end
+  state and ramps from 1 to `2f - 1`, reading the first row alone, so rows
+  `2:n_years` were being discarded without a word — a matrix encoding a 50%
+  reduction came back as no change at all. Affects `precip_mean_factor`,
+  `precip_var_factor`, `precip_occurrence_factor` and `temp_range_factor`
+  against their matching `*_transient` argument.
+
+  Pass a length-12 vector and let the ramp build the path, or set the transient
+  flag to `FALSE` and have the matrix applied year by year. A matrix whose rows
+  are all identical is equivalent to a vector and is still accepted, so code
+  that expanded a vector to a constant matrix keeps working.
 
 * Five helpers are no longer exported: `criteria_string_compact()`,
   `generate_symmetric_dummy_points()`, `get_result_index()`,

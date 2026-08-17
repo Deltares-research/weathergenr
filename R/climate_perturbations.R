@@ -36,6 +36,20 @@
 #' `length(unique(format(date, "\%Y")))`. Supplying a length-12 vector instead of
 #' a matrix sidesteps the question entirely, since it applies to every year.
 #'
+#' @section Transient factors and year-varying matrices:
+#' A transient factor is specified by its **end state**, not by a per-year path.
+#' `transient = TRUE` ramps linearly from 1 to `2f - 1`, so the ramp averages to
+#' `f` over the period, and only the first row of the factor is read -- in
+#' transient mode one number per month is the entire specification.
+#'
+#' Supplying a year-varying `n_years x 12` matrix *and* setting the matching
+#' transient flag is therefore a contradiction, and it is now an error. Rows
+#' `2:n_years` would otherwise be discarded silently, which is how a matrix
+#' encoding a 50 percent reduction could come back as no change at all. Either
+#' pass a length-12 vector and let the ramp build the path, or set the transient
+#' flag to `FALSE` and let the matrix be applied year by year. A matrix whose
+#' rows are all identical is equivalent to a vector and remains accepted.
+#'
 #' @param data List of data.frames, one per grid cell. Each data.frame must contain `precip`,
 #'   `temp`, `temp_min`, and `temp_max`. If `compute_pet = TRUE`, a column `pet` is added or
 #'   overwritten.
@@ -75,7 +89,9 @@
 #'   across simulation years, preserving the same mean change. Also governs
 #'   `temp_range_factor`, which ramps from 1 on the same principle.
 #' @param precip_transient Logical. If TRUE, precipitation mean and variance factors ramp linearly across
-#'   simulation years using the same transient logic.
+#'   simulation years using the same transient logic: from 1 to `2f - 1`, so the
+#'   ramp averages to `f` over the period. See the note below on what may be
+#'   supplied alongside it.
 #' @param precip_occurrence_transient Logical. If TRUE, precipitation occurrence factors ramp linearly across
 #'   simulation years.
 #' @param compute_pet Logical. If TRUE, recompute PET from perturbed temperature using
@@ -282,7 +298,34 @@ apply_climate_perturbations <- function(
   }
 
   # Return n_year x 12 (years x months)
-  .ramp_matrix <- function(mat_year_month) {
+  #
+  # A transient factor is built from the *end state*, not from a per-year path:
+  # the ramp runs from 1 to 2f-1 so its mean over the period is f. Only row 1 is
+  # read, because in transient mode a single number per month is the whole
+  # specification.
+  #
+  # That makes a year-varying matrix and `transient = TRUE` contradictory
+  # instructions, and taking row 1 silently would discard the rest of the
+  # scenario -- a matrix encoding a 50 percent reduction came back as no change
+  # at all. Reject it rather than pick a winner.
+  .ramp_matrix <- function(mat_year_month, name) {
+    varies <- vapply(
+      seq_len(12L),
+      function(m) diff(range(mat_year_month[, m])) > 1e-12,
+      logical(1)
+    )
+
+    if (any(varies)) {
+      stop(
+        "'", name, "' varies by year, but its transient flag is TRUE. A ",
+        "transient factor ramps from 1 to 2f-1 using row 1 alone, so rows 2:",
+        n_year, " would be discarded. Supply a length-12 vector (the end-state ",
+        "change, whose ramp averages to it), or set the transient flag to ",
+        "FALSE to apply the matrix year by year.",
+        call. = FALSE
+      )
+    }
+
     out <- matrix(NA_real_, nrow = n_year, ncol = 12)
 
     for (m in 1:12) {
@@ -413,7 +456,7 @@ apply_climate_perturbations <- function(
   range_day <- NULL
   if (!is.null(temp_range_factor)) {
     range_in <- .as_change_matrix(temp_range_factor, "temp_range_factor")
-    range_mat <- if (isTRUE(temp_transient)) .ramp_matrix(range_in) else range_in
+    range_mat <- if (isTRUE(temp_transient)) .ramp_matrix(range_in, "temp_range_factor") else range_in
     # Floored explicitly rather than reusing min_factor, which is defined with
     # the precipitation factors further down.
     range_mat <- pmax(range_mat, 0.01)
@@ -437,8 +480,8 @@ apply_climate_perturbations <- function(
     var_mat_in <- .as_change_matrix(precip_var_factor, "precip_var_factor")
   }
 
-  mean_mat <- if (isTRUE(precip_transient)) .ramp_matrix(mean_mat_in) else mean_mat_in
-  var_mat  <- if (isTRUE(precip_transient)) .ramp_matrix(var_mat_in)  else var_mat_in
+  mean_mat <- if (isTRUE(precip_transient)) .ramp_matrix(mean_mat_in, "precip_mean_factor") else mean_mat_in
+  var_mat  <- if (isTRUE(precip_transient)) .ramp_matrix(var_mat_in, if (isTRUE(scale_var_with_mean)) "precip_mean_factor" else "precip_var_factor") else var_mat_in
 
   mean_mat <- pmax(mean_mat, min_factor)
   var_mat  <- pmax(var_mat,  min_factor)
@@ -450,7 +493,7 @@ apply_climate_perturbations <- function(
   occ_mat <- NULL
   if (!is.null(precip_occurrence_factor)) {
     occ_in <- .as_change_matrix(precip_occurrence_factor, "precip_occurrence_factor")
-    occ_mat <- if (isTRUE(precip_occurrence_transient)) .ramp_matrix(occ_in) else occ_in
+    occ_mat <- if (isTRUE(precip_occurrence_transient)) .ramp_matrix(occ_in, "precip_occurrence_factor") else occ_in
     occ_mat <- pmax(occ_mat, min_factor)
   }
 
@@ -520,10 +563,15 @@ apply_climate_perturbations <- function(
         target_gamma = target_gamma,
         occ_mat = occ_mat
       )
-    } else if (!is.null(occ_mat) && isTRUE(verbose)) {
+    } else if (!is.null(occ_mat)) {
+      # Warn unconditionally, not only under verbose. A silently skipped
+      # occurrence perturbation is a scenario the caller asked for and did not
+      # get, which is worth interrupting for even in a quiet run.
       warning(
         "Skipping precipitation occurrence perturbation for grid cell ", i,
-        " because Gamma fit outputs are unavailable (likely all-dry or insufficient wet days).",
+        ": the quantile mapping returned no Gamma fit, so there is no ",
+        "distribution to draw new wet days from. This happens when the cell ",
+        "is all dry, or when no month has at least 10 wet days.",
         call. = FALSE
       )
     }
