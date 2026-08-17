@@ -1788,7 +1788,7 @@ compute_tailmass_metrics <- function(obs_use, sim_series_stats,
 #'   \code{changed} logical scalar indicating whether a bound was changed,
 #'   \code{msg} character message describing the applied change.
 #' @keywords internal
-#' @export
+#' @noRd
 relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
                                     recompute_tailmass_fn) {
 
@@ -1910,7 +1910,7 @@ relax_bounds_one_filter <- function(filter_name, bounds_env, wavelet_active_env,
 #'
 #' @return Character scalar. A compact criteria string.
 #' @keywords internal
-#' @export
+#' @noRd
 criteria_string_compact <- function(filter_name, bounds, tail_metrics,
                                     wavelet_active, spectral_diag) {
 
