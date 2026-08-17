@@ -38,7 +38,8 @@ generate_weather(
   warm_signif = 0.9,
   warm_pool_size = 5000,
   warm_filter_bounds = list(),
-  relax_priority = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+  relax_order = c("wavelet", "sd", "tail_low", "tail_high", "mean"),
+  relax_priority = NULL,
   annual_knn_n = 120,
   wet_q = 0.3,
   extreme_q = 0.8,
@@ -49,7 +50,9 @@ generate_weather(
   parallel = FALSE,
   n_cores = NULL,
   verbose = FALSE,
-  save_plots = TRUE
+  save_plots = TRUE,
+  plot_dpi = 300,
+  plot_device = NULL
 )
 ```
 
@@ -136,16 +139,23 @@ generate_weather(
   as `filter_bounds`. Any entry overrides internal defaults. Uses
   snake_case keys (e.g. `tail_low_p`).
 
-- relax_priority:
+- relax_order:
 
-  Character vector giving the relaxation priority for WARM filtering,
-  forwarded to
+  Character vector giving the order in which WARM filtering criteria are
+  relaxed, forwarded to
   [`filter_warm_pool`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
-  as `relax_order`. Must contain each of
+  under the same name. Must contain each of
   `c("mean","sd","tail_low","tail_high","wavelet")` exactly once.
   Filters are relaxed iteratively by loosening the currently most
-  restrictive criterion (lowest pass rate), subject to this priority
-  ordering.
+  restrictive criterion (lowest pass rate), subject to this ordering.
+
+- relax_priority:
+
+  Deprecated. The former name of `relax_order`. Supplying it still works
+  but warns; supplying both is an error. Renamed in 2.0.0 so this
+  argument and the
+  [`filter_warm_pool`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
+  argument it is forwarded to share one name.
 
 - annual_knn_n:
 
@@ -208,7 +218,26 @@ generate_weather(
 
 - save_plots:
 
-  Logical; if `TRUE`, writes plot to `output_dir`.
+  Logical; if `TRUE`, writes plot to `out_dir`.
+
+- plot_dpi:
+
+  Numeric; raster resolution for the diagnostic plots this function
+  writes (default 300). Ignored when `save_plots = FALSE`. Matches the
+  argument of the same name on
+  [`evaluate_weather_generator`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md);
+  before it existed here, the four figures written by this function
+  ignored the setting entirely.
+
+- plot_device:
+
+  Optional graphics device passed to
+  [`ggsave`](https://ggplot2.tidyverse.org/reference/ggsave.html).
+  `NULL` (the default) lets `ggsave()` infer it from the file extension.
+  Supplying a faster device, for example
+  [`ragg::agg_png`](https://ragg.r-lib.org/reference/agg_png.html),
+  typically halves the render cost. `ragg` is not a dependency of this
+  package; pass the function only if you have it installed.
 
 ## Value
 

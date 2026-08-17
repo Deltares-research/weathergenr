@@ -18,7 +18,7 @@ evaluate_weather_generator(
   year_start_month = 1L,
   wet_q = 0.2,
   extreme_q = 0.8,
-  output_dir = NULL,
+  out_dir = NULL,
   save_plots = TRUE,
   show_title = TRUE,
   verbose = TRUE,
@@ -27,7 +27,8 @@ evaluate_weather_generator(
   eval_max_grids = 25,
   seed = NULL,
   plot_dpi = 300,
-  plot_device = NULL
+  plot_device = NULL,
+  output_dir = NULL
 )
 ```
 
@@ -75,14 +76,16 @@ evaluate_weather_generator(
   Numeric between 0 and 1. Quantile threshold for extremely wet days
   (default = 0.8).
 
-- output_dir:
+- out_dir:
 
   Character. Directory path to save generated plots. If \`NULL\`, plots
-  are not saved to disk.
+  are not saved to disk. Named \`out_dir\` to match
+  \[generate_weather()\] and \[run_weather_generator()\]; see
+  \`output_dir\` below.
 
 - save_plots:
 
-  Logical. Whether to save plots to \`output_dir\` (default = \`TRUE\`).
+  Logical. Whether to save plots to \`out_dir\` (default = \`TRUE\`).
 
 - show_title:
 
@@ -128,6 +131,13 @@ evaluate_weather_generator(
   Supplying a faster device, for example \`ragg::agg_png\`, typically
   halves the remaining render cost. \`ragg\` is not a dependency of this
   package; pass the function only if you have it installed.
+
+- output_dir:
+
+  Deprecated. The former name of \`out_dir\`. Supplying it still works
+  but warns; supplying both is an error. Renamed in 2.0.0 so that one
+  directory argument has one name across \[generate_weather()\],
+  \[run_weather_generator()\] and this function.
 
 ## Value
 
@@ -175,32 +185,32 @@ out <- evaluate_weather_generator(
   daily_obs = obs_grid,
   vars = c("precip", "temp"),
   n_realizations = 1,
-  output_dir = NULL,
+  out_dir = NULL,
   save_plots = FALSE,
   show_title = FALSE
 )
-#> 22:22:29 - eval - Evaluation Started: Variables = precip,temp
-#> 22:22:29 - eval - Parameters: wet.q = 0.2 | extreme.q = 0.8
-#> 22:22:29 - eval - Standardizing obs/sim periods to full years and equal length
-#> 22:22:29 - eval - Standardized period | Obs = 2001-2001 | Sim = 2001-2001
-#> 22:22:29 - eval - Processing observed data
-#> 22:22:29 - eval - Processing simulated data (1 realizations)
-#> 22:22:29 - eval - Generating diagnostic plots
+#> 14:54:39 - eval - Evaluation Started: Variables = precip,temp
+#> 14:54:39 - eval - Parameters: wet.q = 0.2 | extreme.q = 0.8
+#> 14:54:39 - eval - Standardizing obs/sim periods to full years and equal length
+#> 14:54:39 - eval - Standardized period | Obs = 2001-2001 | Sim = 2001-2001
+#> 14:54:39 - eval - Processing observed data
+#> 14:54:40 - eval - Processing simulated data (1 realizations)
+#> 14:54:40 - eval - Generating diagnostic plots
 #> Warning: There were 2 warnings in `dplyr::summarise()`.
 #> The first warning was:
 #> ℹ In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm
 #>   = TRUE)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
-#> ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
-#> 22:22:29 - eval - Computing fit metrics for all realizations
+#> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
+#> 14:54:40 - eval - Computing fit metrics for all realizations
 #> Warning: There were 2 warnings in `dplyr::mutate()`.
 #> The first warning was:
 #> ℹ In argument: `dplyr::across(...)`.
 #> Caused by warning in `min()`:
 #> ! no non-missing arguments to min; returning Inf
-#> ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
-#> 22:22:29 - eval - Displaying fit assessment summary
+#> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
+#> 14:54:40 - eval - Displaying fit assessment summary
 #> 
 #> =============================================================================================== 
 #>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS
@@ -227,7 +237,7 @@ out <- evaluate_weather_generator(
 #>   - Worst realization : 1 (score = 0.0000)
 #>   - Median score      : 0.0000
 #> 
-#> 22:22:29 - eval - Assessment completed successfully
+#> 14:54:41 - eval - Assessment completed successfully
 class(out)
 #> [1] "weather_assessment" "list"              
 ```

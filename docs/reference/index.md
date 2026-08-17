@@ -34,19 +34,12 @@
   : Find leap-day (Feb 29) indices in a date vector
 - [`generate_noleap_dates()`](https://deltares-research.github.io/weathergenr/reference/generate_noleap_dates.md)
   : Generate a no-leap (365-day) daily date sequence
-- [`generate_symmetric_dummy_points()`](https://deltares-research.github.io/weathergenr/reference/generate_symmetric_dummy_points.md)
-  : Generate Dummy Points to Enforce Symmetric Facet Axes
 - [`generate_weather()`](https://deltares-research.github.io/weathergenr/reference/generate_weather.md)
   : Generate Synthetic Gridded Daily Weather Series
-- [`get_result_index()`](https://deltares-research.github.io/weathergenr/reference/get_result_index.md)
-  : Safely Get or Sample an Index from a Vector
 - [`knn_sample()`](https://deltares-research.github.io/weathergenr/reference/knn_sample.md)
   : K-Nearest Neighbor (KNN) Sampling from Candidates
 - [`markov_next_state()`](https://deltares-research.github.io/weathergenr/reference/markov_next_state.md)
   : Determine Next State in a First-Order Markov Chain
-- [`match_transition_positions()`](https://deltares-research.github.io/weathergenr/reference/match_transition_positions.md)
-  : Get Positions of a Specific Occurrence State Transition Within
-  Candidate Indices
 - [`modwt_mra()`](https://deltares-research.github.io/weathergenr/reference/modwt_mra.md)
   : MODWT multiresolution analysis (MRA)
 - [`normalize_calendar()`](https://deltares-research.github.io/weathergenr/reference/normalize_calendar.md)
@@ -72,6 +65,8 @@
   (WARM)
 - [`summary(`*`<precip_qm_diagnostics>`*`)`](https://deltares-research.github.io/weathergenr/reference/summary.precip_qm_diagnostics.md)
   : Summarize precipitation QM diagnostics
+- [`theme_weathergenr()`](https://deltares-research.github.io/weathergenr/reference/theme_weathergenr.md)
+  : weathergenr house theme
 - [`validate_quantile_mapping()`](https://deltares-research.github.io/weathergenr/reference/validate_quantile_mapping.md)
   : Validate precipitation quantile mapping adjustments
 - [`write_netcdf()`](https://deltares-research.github.io/weathergenr/reference/write_netcdf.md)

@@ -14,7 +14,7 @@ across realizations.
   plot_config,
   show_title,
   save_plots,
-  output_dir
+  out_dir
 )
 ```
 
@@ -43,13 +43,12 @@ across realizations.
 
 - save_plots:
 
-  Logical; if `TRUE`, writes plot to `output_dir`.
+  Logical; if `TRUE`, writes plot to `out_dir`.
 
-- output_dir:
+- out_dir:
 
   Character; output directory for saved plots.
 
 ## Value
 
-ggplot object (returned invisibly by
-[`.export_multipanel_plot()`](https://deltares-research.github.io/weathergenr/reference/dot-export_multipanel_plot.md)).
+ggplot object (returned invisibly by `.export_figure()`).

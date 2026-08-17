@@ -13,7 +13,8 @@ create_all_diagnostic_plots(
   variables,
   show_title,
   save_plots,
-  output_dir
+  out_dir = NULL,
+  output_dir = NULL
 )
 ```
 
@@ -41,11 +42,16 @@ create_all_diagnostic_plots(
 
 - save_plots:
 
-  Logical; if `TRUE`, plots are written to `output_dir`.
+  Logical; if `TRUE`, plots are written to `out_dir`.
+
+- out_dir:
+
+  Character; output directory for saved plots.
 
 - output_dir:
 
-  Character; output directory for saved plots.
+  Deprecated. The former name of `out_dir`. Supplying it still works but
+  warns; supplying both is an error.
 
 ## Value
 
@@ -65,8 +71,7 @@ if (FALSE) { # \dontrun{
   plot_config <- list(
     subtitle = "Example",
     alpha = 0.4,
-    colors = c(Observed = "blue3", Simulated = "gray40"),
-    theme = ggplot2::theme_bw()
+    colors = c(Observed = "blue3", Simulated = "gray40")
   )
   plots <- create_all_diagnostic_plots(
     plot_data = plot_data,
@@ -74,7 +79,7 @@ if (FALSE) { # \dontrun{
     variables = c("precip", "temp"),
     show_title = FALSE,
     save_plots = FALSE,
-    output_dir = NULL
+    out_dir = NULL
   )
 } # }
 ```

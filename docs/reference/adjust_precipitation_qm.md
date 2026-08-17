@@ -184,6 +184,18 @@ If `diagnostics = TRUE`, returns a list:
 - `diagnostics`: output of
   [`validate_quantile_mapping()`](https://deltares-research.github.io/weathergenr/reference/validate_quantile_mapping.md)
 
+- `base_gamma`: fitted monthly Gamma parameters for the observed wet-day
+  series, as returned by
+  [`fit_monthly_distributions()`](https://deltares-research.github.io/weathergenr/reference/fit_monthly_distributions.md)
+
+- `target_gamma`: perturbed monthly Gamma parameters by (month, year),
+  as returned by
+  [`compute_target_parameters()`](https://deltares-research.github.io/weathergenr/reference/compute_target_parameters.md)
+
+The two Gamma components are what a caller needs in order to place
+further values on the same fitted distributions – for example drawing
+new wet-day amounts when changing wet-day frequency.
+
 ## Details
 
 **Interpretation of mean/variance factors**

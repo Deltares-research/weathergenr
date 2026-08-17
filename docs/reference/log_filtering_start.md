@@ -7,13 +7,7 @@ selection target, and the relaxation priority.
 ## Usage
 
 ``` r
-log_filtering_start(
-  n_obs,
-  n_sim,
-  n_realizations,
-  sample_target,
-  relax_priority
-)
+log_filtering_start(n_obs, n_sim, n_realizations, sample_target, relax_order)
 ```
 
 ## Arguments
@@ -34,7 +28,7 @@ log_filtering_start(
 
   Integer scalar. Number of realizations requested.
 
-- relax_priority:
+- relax_order:
 
   Character vector. Relaxation priority ordering.
 

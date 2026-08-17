@@ -13,3 +13,9 @@
 
   Applying monthly perturbations to stochastic weather, and validate
   precipitation changes.
+
+- [Precipitation Perturbation
+  Parameters](https://deltares-research.github.io/weathergenr/articles/perturbation_parameters.md):
+
+  How the precipitation perturbation arguments change the outcome,
+  measured against a common baseline on one stylized site.
