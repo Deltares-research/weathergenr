@@ -330,11 +330,6 @@ evaluate_weather_generator <- function(
     out_dir = out_dir
   )
 
-  if (save_plots) {
-    .log("Generated {format(length(plots), big.mark = ',')} diagnostic plots{out_note}",
-         verbose = verbose, tag = "EVAL")
-  }
-
   # ============================================================================
   # COMPUTE FIT METRICS SUMMARY TABLE
   # ============================================================================
@@ -357,7 +352,7 @@ evaluate_weather_generator <- function(
     .print_fit_summary_table(fit_summary)
   }
 
-  .log("Assessment completed successfully in {format_elapsed(eval_start)}{out_note}",
+  .log("Completed in {format_elapsed(eval_start)}{out_note}",
        verbose = verbose, tag = "EVAL")
 
   structure(
