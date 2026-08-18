@@ -187,6 +187,8 @@ evaluate_weather_generator <- function(
   # SETUP
   # ============================================================================
 
+  eval_start <- Sys.time()  # nolint: object_usage_linter. used in a .log() glue string
+
   .log(
     paste0(
       "Evaluation Started: Variables = {paste(vars, collapse = ',')}"
@@ -210,6 +212,10 @@ evaluate_weather_generator <- function(
   } else {
     save_plots <- FALSE
   }
+
+  # save_plots is forced FALSE just above when out_dir is NULL, so this note is
+  # non-empty only when a directory was actually written to.
+  out_note <- if (isTRUE(save_plots)) paste0(" | Saved to: ", out_dir) else ""  # nolint: object_usage_linter. used in a .log() glue string
 
   options(dplyr.summarise.inform = FALSE, tidyverse.quiet = TRUE)
 
@@ -325,7 +331,8 @@ evaluate_weather_generator <- function(
   )
 
   if (save_plots) {
-    .log("Generated {format(length(plots): {out_dir}, big.mark = ',')} diagnostic plots.", verbose = verbose, tag = "EVAL")
+    .log("Generated {format(length(plots), big.mark = ',')} diagnostic plots{out_note}",
+         verbose = verbose, tag = "EVAL")
   }
 
   # ============================================================================
@@ -350,7 +357,8 @@ evaluate_weather_generator <- function(
     .print_fit_summary_table(fit_summary)
   }
 
-  .log("Assessment completed successfully", verbose = verbose, tag = "EVAL")
+  .log("Assessment completed successfully in {format_elapsed(eval_start)}{out_note}",
+       verbose = verbose, tag = "EVAL")
 
   structure(
     plots,
