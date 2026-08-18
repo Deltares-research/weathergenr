@@ -337,9 +337,8 @@ filter_warm_pool <- function(
   if (isTRUE(wavelet_active) && isTRUE(spectral_diag$n_sig_peaks_found == 0L)) {
     .log(
       paste0(
-        "No observed spectral peak is testable ({spectral_diag$n_testable_scales} of ",
-        "{spectral_diag$n_periods} scales have enough degrees of freedom inside the ",
-        "cone of influence); the wavelet peak criterion admits every candidate"
+        "No testable wavelet peak ({spectral_diag$n_testable_scales}/",
+        "{spectral_diag$n_periods} scales); admits all candidates"
       ),
       tag = "FILTER", verbose = verbose
     )
