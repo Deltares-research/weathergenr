@@ -587,6 +587,9 @@ generate_weather <- function(
          tag = "RESAMPLE", verbose = verbose)
   }
 
+  .log("Processing {n_realizations} realizations...", tag = "RESAMPLE", verbose = verbose)
+  resample_start <- Sys.time()  # nolint: object_usage_linter. used in a .log() glue string
+
   if (use_parallel_daily) {
 
     # Create the cluster here, not at setup: filter_warm_pool() above spawns its
@@ -596,9 +599,8 @@ generate_weather <- function(
     if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = daily_seed)
     on.exit(parallel::stopCluster(cl), add = TRUE)
 
-    # Parallel: foreach %dopar%
-    .log("Processing {n_realizations} realizations...", tag = "RESAMPLE", verbose = verbose)
-
+    # Parallel: foreach %dopar%. Workers cannot report progress to this console,
+    # so the start and completion lines are the only signal here.
     resampled_ini <- foreach::foreach(n = seq_len(n_realizations)) %dopar% {
       resample_weather_dates(
         sim_annual_precip = sim_annual_sub$selected[, n],
@@ -620,13 +622,15 @@ generate_weather <- function(
 
   } else {
 
-    # Sequential: plain for loop with progress
+    # Sequential: plain for loop with milestone progress. Emitting one line per
+    # realization is unreadable past a few dozen; a single line assembled after
+    # the loop reports nothing while the work is actually running. Cap the
+    # output at ~10 timestamped lines so the rate is visible at any ensemble
+    # size.
     resampled_ini <- vector("list", n_realizations)
-    progress_parts <- character(n_realizations)
+    progress_every <- max(1L, ceiling(n_realizations / 10))
 
     for (n in seq_len(n_realizations)) {
-
-      progress_parts[n] <- paste0(n, "/", n_realizations)
 
       resampled_ini[[n]] <-  resample_weather_dates(
         sim_annual_precip = sim_annual_sub$selected[, n],
@@ -644,11 +648,17 @@ generate_weather <- function(
         dry_spell_factor = dry_spell_factor,
         wet_spell_factor = wet_spell_factor,
         seed = .seed_offset(daily_seed, n))
-    }
 
-    progress_str <- paste(progress_parts, collapse = "..")  # nolint: object_usage_linter. used in a .log() glue string
-    .log("Processing realization: {progress_str}", tag = "RESAMPLE", verbose = verbose)
+      if (n %% progress_every == 0L || n == n_realizations) {
+        pct <- round(100 * n / n_realizations)  # nolint: object_usage_linter. used in a .log() glue string
+        .log("Realization {n}/{n_realizations} ({pct}%)",
+             tag = "RESAMPLE", verbose = verbose)
+      }
+    }
   }
+
+  .log("Resampled {n_realizations} realizations in {format_elapsed(resample_start)}",
+       tag = "RESAMPLE", verbose = verbose)
 
   # ---------------------------------------------------------------------------
   # Map internal simulated dates -> original historical observation dates (dateo)
