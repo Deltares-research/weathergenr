@@ -922,8 +922,7 @@ write_netcdf <- function(
 
   .log(
     msg = sprintf(
-      "NetCDF written: %s | vars=%s | dims=%s time x %s y x %s x | grids=%s",
-      nc_file_path,
+      "NetCDF written: %s | grids=%s", nc_file_path,
       paste(var, collapse = ", "),
       format(nt, big.mark = ","),
       format(ny, big.mark = ","),
