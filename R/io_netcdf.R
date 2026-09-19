@@ -921,14 +921,7 @@ write_netcdf <- function(
   }
 
   .log(
-    msg = sprintf(
-      "NetCDF written: %s | grids=%s", nc_file_path,
-      paste(var, collapse = ", "),
-      format(nt, big.mark = ","),
-      format(ny, big.mark = ","),
-      format(nx, big.mark = ","),
-      format(n_grids, big.mark = ",")
-    ),
+    msg = sprintf("NetCDF written: %s", nc_file_path),
     verbose = verbose,
     tag = "IO"
   )

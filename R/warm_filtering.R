@@ -334,13 +334,12 @@ filter_warm_pool <- function(
   # A wavelet criterion with no testable peak admits every candidate and then
   # reports a 100 percent pass rate, which is indistinguishable from a criterion
   # that ran and was satisfied. Say which it was.
-  if (isTRUE(wavelet_active) && isTRUE(spectral_diag$n_sig_peaks_found == 0L)) {
+  if (isTRUE(wavelet_active) &&
+      isTRUE(spectral_diag$n_sig_peaks_found == 0L)) {
     .log(
-      paste0(
-        "No testable wavelet peak ({spectral_diag$n_testable_scales}/",
-        "{spectral_diag$n_periods} scales); admits all candidates"
-      ),
-      tag = "FILTER", verbose = verbose
+      "No testable spectral peak; admitting all candidates",
+      tag = "FILTER",
+      verbose = verbose
     )
   }
   # ---------------------------------------------------------------------------
