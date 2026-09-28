@@ -98,7 +98,7 @@ source that file instead.
 - New dev-only files at the repo root must be added to `.Rbuildignore`, or `R CMD check`
   raises a non-standard-file NOTE.
 - Vendored agent pins (`.claude/skills/`, `.agents/skills/`, `.claude/agents/`,
-  `.codex/agents/`) are resync artifacts of `.claude/agent-manifest.yml` — never edit
+  `.codex/agents/`) are resync artifacts of `.agent-system/agent-manifest.yml` — never edit
   them in place; see the global `AGENTS.md` self-improvement rule.
 
 ## Workflow
