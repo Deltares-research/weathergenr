@@ -1,0 +1,41 @@
+# weathergenr/.agent-system/agent-manifest.yml
+
+roles:
+  - r-developer
+  - critical-thinker
+  - dataviz-designer
+  - geospatial-data-analyst
+  - git-steward
+  - model-validator
+
+skills:
+  - climate-stress-testing
+  - console-formatting
+  - design-scoping
+  - design-review-loop
+  - design-document
+  - design-audit
+  - quarto
+  - r-discipline
+  - r-vignettes
+  - reproducible-computing
+  - testing-policy
+  - time-series
+  - scientific-workflows
+  - ggplot2
+
+  # Project process — the dev/ board and layout lifecycle
+  - todo-board
+  - project-system
+
+  # Domain skill for this generator
+  - weathergenr
+
+  # Explicit project bindings make these skills reachable across runtimes.
+  - bug-diagnosis
+  - r-package-development
+  - testing-r-packages
+  - tidyverse-patterns
+  - r-oop
+  - r-performance
+  - rlang-patterns
