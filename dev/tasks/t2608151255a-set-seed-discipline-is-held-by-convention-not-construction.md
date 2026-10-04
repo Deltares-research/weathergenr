@@ -11,9 +11,9 @@ updated: 2026-08-15
 ---
 
 > [!note] Overview
-> **What** — .set_seed_fixed_kind() is called only from resample.R; six other set.seed() sites use the bare form. None currently runs on a PSOCK worker -- .compute_gws_batch()'s parLapplyLB body is fully deterministic -- so this is not a live bug.
-> **Why** — AGENTS.md marks the rule IMPORTANT because a bare set.seed() under clusterSetRNGStream makes one seed mean two streams. Nothing enforces it today.
-> **Effort** — Start when: Any function containing a bare set.seed() gains a worker call site -- most likely simulate_warm() gaining parallel = TRUE.
+> **What changes** — .set_seed_fixed_kind() is called only from resample.R; six other set.seed() sites use the bare form. None currently runs on a PSOCK worker -- .compute_gws_batch()'s parLapplyLB body is fully deterministic -- so this is not a live bug.
+> **Why it matters** — AGENTS.md marks the rule IMPORTANT because a bare set.seed() under clusterSetRNGStream makes one seed mean two streams. Nothing enforces it today.
+> **What it takes** — Start when: Any function containing a bare set.seed() gains a worker call site -- most likely simulate_warm() gaining parallel = TRUE.
 
 ## Progress
 
