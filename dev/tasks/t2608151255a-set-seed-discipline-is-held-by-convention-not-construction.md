@@ -1,8 +1,11 @@
 ---
 title: set.seed() discipline is held by convention, not construction
-type: watch-item
+type: todo-item
+status: backlog
+effort: 1
 area: warm
 origin: review-2026-08-15
+queue:
 created: 2026-08-15
 updated: 2026-08-15
 ---
@@ -10,7 +13,11 @@ updated: 2026-08-15
 > [!note] Overview
 > **What** — .set_seed_fixed_kind() is called only from resample.R; six other set.seed() sites use the bare form. None currently runs on a PSOCK worker -- .compute_gws_batch()'s parLapplyLB body is fully deterministic -- so this is not a live bug.
 > **Why** — AGENTS.md marks the rule IMPORTANT because a bare set.seed() under clusterSetRNGStream makes one seed mean two streams. Nothing enforces it today.
-> **Trigger** — Any function containing a bare set.seed() gains a worker call site -- most likely simulate_warm() gaining parallel = TRUE.
+> **Effort** — Start when: Any function containing a bare set.seed() gains a worker call site -- most likely simulate_warm() gaining parallel = TRUE.
+
+## Progress
+
+- [ ] Reassess once the start condition in Effort holds
 
 ## Refs
 
