@@ -11,9 +11,9 @@ updated: 2026-08-15
 ---
 
 > [!note] Overview
-> **What** — Dot-prefixed (.markov_month_probs, .date_parts), bare-unexported (fit_monthly_distributions, find_local_maxima, log_filter_iteration), and @keywords internal but exported (criteria_string_compact, get_result_index). All three appear within single files.
-> **Why** — Costs nothing today, but it means neither the prefix nor the export list reliably signals whether a function is internal.
-> **Effort** — Start when: A convention is chosen and written into the AGENTS.md Conventions section.
+> **What changes** — Dot-prefixed (.markov_month_probs, .date_parts), bare-unexported (fit_monthly_distributions, find_local_maxima, log_filter_iteration), and @keywords internal but exported (criteria_string_compact, get_result_index). All three appear within single files.
+> **Why it matters** — Costs nothing today, but it means neither the prefix nor the export list reliably signals whether a function is internal.
+> **What it takes** — Start when: A convention is chosen and written into the AGENTS.md Conventions section.
 
 ## Progress
 
