@@ -24,6 +24,8 @@ climate vulnerability assessment. See `README.md` for the method framing.
 
 ## Key Commands
 
+For a fresh clone or an R/library mismatch, follow `dev/README.md` before running checks.
+
 ```r
 devtools::load_all()                                   # iterate
 testthat::test_file("tests/testthat/test-calendar.R")  # single file

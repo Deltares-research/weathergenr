@@ -53,9 +53,8 @@ versioning:
       #
       # Not `tools/lint.R --changed`: that diffs the working tree against HEAD,
       # which is clean at a release gate by definition, so it passed having
-      # linted nothing. Nor plain `tools/lint.R` — full-package mode currently
-      # exits 1 on the .lintr baseline's 28 findings and would block every
-      # release (tracked as t2608061641).
+      # linted nothing. Full-package lint runs separately in CI; its result
+      # must be checked against a current installed package (see AGENTS.md).
       validate: ["Rscript", "-e", "source('tools/build_site_tools.R'); check_only(build_vignettes = TRUE, document = FALSE)"]
       # Deliberately null. The R-CMD-check, pkgdown, and lint workflows run on
       # push/PR, not as a release step; publishing stays a separate owner gate.

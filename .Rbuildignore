@@ -67,5 +67,8 @@
 ^\.claude$
 ^\.codex$
 ^\.agents$
+^\.agent-system$
+^\.env($|\.)
+^\.Renviron($|\.)
 ^CLAUDE\.md$
 ^AGENTS\.md$

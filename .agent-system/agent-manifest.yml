@@ -1,4 +1,4 @@
-# weathergenr/.claude/agent-manifest.yml
+# weathergenr/.agent-system/agent-manifest.yml
 
 roles:
   - r-developer
@@ -31,8 +31,8 @@ skills:
   # Domain skill for this generator
   - weathergenr
 
-  # Promoted from r-developer's conditional bindings: Codex routes these
-  # per-agent, Claude has no load path until they are named here.
+  # Explicitly available to the main agent as well as r-developer.
+  # Other conditional bindings resolve through the provider's skill loader.
   - bug-diagnosis
   - r-package-development
   - testing-r-packages
