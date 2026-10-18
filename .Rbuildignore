@@ -62,4 +62,7 @@
 
 # Agent instructions / vendored agent system (dev-only)
 ^\.agents$
+^\.agent-system$
+^\.env($|\.)
+^\.Renviron($|\.)
 ^AGENTS\.md$

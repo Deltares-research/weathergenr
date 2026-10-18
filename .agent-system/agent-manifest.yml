@@ -31,7 +31,8 @@ skills:
   # Domain skill for this generator
   - weathergenr
 
-  # Explicit project bindings make these skills reachable across runtimes.
+  # Explicitly available to the main agent as well as r-developer.
+  # Other conditional bindings resolve through the provider's skill loader.
   - bug-diagnosis
   - r-package-development
   - testing-r-packages
