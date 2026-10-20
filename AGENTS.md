@@ -1,7 +1,6 @@
 # AGENTS.md
 
-> **Canonical.** Source-of-truth agent instructions for every runtime: Codex reads
-> `AGENTS.md` directly; `CLAUDE.md` imports it verbatim (`@AGENTS.md`).
+`AGENTS.md` is canonical; `CLAUDE.md` imports it with `@AGENTS.md`.
 
 ## Overview
 
@@ -11,8 +10,8 @@ climate vulnerability assessment. See `README.md` for the method framing.
 
 ## Repo Map
 
-- `R/` — package source; the only place to change behavior.
-- `man/`, `NAMESPACE` — roxygen2 output. Regenerate with `devtools::document()`.
+- `R/` — package source; change package behavior here.
+- `man/`, `NAMESPACE` — roxygen2 output.
 - `docs/` — generated pkgdown site.
 - `tools/` — repo-only dev scripts, `.Rbuildignore`d and not shipped.
 - `dev/` — development process: the work board (`tasks/`, `TODO.md`), the closed-work
@@ -35,47 +34,31 @@ source("tools/build_site_tools.R"); check_only()       # R CMD check
 check_only(build_vignettes = TRUE)                     # release gate — matches CI
 ```
 
-```bash
-Rscript tools/lint.R --changed   # lint changed R files; exit 1 = lints found
+```powershell
+Rscript tools/lint.R --changed   # lint changed R files
 Rscript tools/lint.R             # lint whole package — what CI runs
 ```
 
-IMPORTANT: `object_usage_linter` resolves symbols against the **installed** package, not
-the working tree, so a change that adds new internal objects or functions reports
-"no visible binding for global variable" for every one of them until
-`devtools::install()` runs. The findings are an artifact of a stale install, not a
-defect — do not "fix" them by restructuring the code or by adding names to
-`R/globals.R`. Install first, then re-lint, and only treat what survives as real.
+`object_usage_linter` resolves symbols against the installed package. After adding
+internal objects, run `devtools::install()` before interpreting binding warnings;
+do not mask stale-install findings with code changes or additions to `R/globals.R`.
 
-End-to-end numeric baseline — opt-in local gate, ~40 s (see *Workflow* below).
-The gate reads the `WEATHERGENR_BASELINE` environment variable, so the run command
-is shell-specific; the repo's default shell is PowerShell 7:
+For the opt-in numeric baseline gate (see Workflow), use PowerShell:
 
 ```powershell
-$env:WEATHERGENR_BASELINE = "1"                       # PowerShell — NOT VAR=1 cmd
+$env:WEATHERGENR_BASELINE = "1"
 Rscript -e 'devtools::test(filter = "baseline-e2e")'
 Rscript tools/record_baseline.R --dry-run             # inspect the delta
 Rscript tools/record_baseline.R --force               # re-record, once accepted
 ```
 
-From an R console (RStudio), no shell variable needed:
-
-```r
-Sys.setenv(WEATHERGENR_BASELINE = "1")
-devtools::test(filter = "baseline-e2e")
-```
-
-IMPORTANT: never `source("tools/dev_workflow.R")`. It is a runnable notes file whose top
-level calls `publish_docs()` — the full 9-step clean, render, check, install, and site
-build. The functions it documents are defined in `tools/build_site_tools.R`
-(`check_only`, `quick_site`, `build_vignettes_only`, `deep_clean`, `publish_docs`);
-source that file instead.
+IMPORTANT: never `source("tools/dev_workflow.R")`: its top level calls `publish_docs()`
+and runs the full publishing pipeline. Source `tools/build_site_tools.R` for helpers.
 
 ## Conventions
 
-- Exports come from roxygen `@export` plus `devtools::document()`; never hand-edit
-  `NAMESPACE` or `man/*.Rd`.
-- Dates run on a 365-day no-leap calendar (`calendar.R`). Assume Feb 29 is absent from
+- Exports come from roxygen `@export`; regenerate with `devtools::document()`.
+- Dates run on a 365-day no-leap calendar (`R/calendar.R`). Assume Feb 29 is absent from
   any date vector reaching the generator; keep new date logic leap-free rather than
   special-casing leap days downstream.
 - Realization iteration runs in a PSOCK cluster (`parallel::makeCluster` +
@@ -86,22 +69,18 @@ source that file instead.
 - IMPORTANT: seed with `.set_seed_fixed_kind()`, never a bare `set.seed()`, in
   any code that can run on a worker. `clusterSetRNGStream()` switches workers to
   L'Ecuyer-CMRG, and `set.seed()` applies the seed to whatever generator is
-  active — so a bare call makes one seed mean two different streams, which is
-  exactly how `parallel = TRUE` came to disagree with `parallel = FALSE`.
-- IMPORTANT: `devtools::load_all()` does **not** reach PSOCK workers; they load
-  the *installed* package. Anything verified through a worker under
-  `devtools::test()` is testing the installed build, not the working tree. Run
-  `devtools::install()` first, or use `R CMD check`, which installs before
-  testing. The baseline gate's parallel scenario detects this and skips rather
-  than reporting a meaningless pass.
+  active, so a bare call can give serial and parallel runs different streams.
+- `devtools::load_all()` does not reach PSOCK workers; they load the installed
+  package. Run `devtools::install()` before worker tests, or use `R CMD check`,
+  which installs before testing. A skipped parallel baseline is not verification.
 - Plotting lives in the `*_plots.R` sibling of its module
   (`warm_filtering_plots.R`, `wavelet_plots.R`, `evaluate_generator_plots.R`); keep
   ggplot2 code out of the computational files.
 - New dev-only files at the repo root must be added to `.Rbuildignore`, or `R CMD check`
   raises a non-standard-file NOTE.
-- Vendored agent pins (`.claude/skills/`, `.agents/skills/`, `.claude/agents/`,
-  `.codex/agents/`) are resync artifacts of `.agent-system/agent-manifest.yml` — never edit
-  them in place; see the global `AGENTS.md` self-improvement rule.
+- `.agent-system/agent-manifest.yml` owns project agent selection. Provider directories
+  (`.agents/`, `.claude/`, `.codex/`, `.github/agents/`) are links or generated
+  projections; edit canonical sources, never these projections.
 
 ## Workflow
 
@@ -110,62 +89,46 @@ source that file instead.
   `# weathergenr (development version)` heading, in the same commit. User-visible means
   a user of the package could notice: exported functions, arguments, defaults, outputs,
   errors, or documented workflows. Internal-only work — refactors, tests, CI, tooling,
-  roxygen fixes — gets no entry. Writing entries as the work lands is what keeps a
-  release cheap; do not reconstruct them from `git log` at release time.
-- Before finishing: run the affected test file, then `devtools::test()`. Run
-  `check_only()` when the change touches exports, documentation, or dependencies.
-- Change anything that could move **numeric output** — resampling, WARM, wavelets,
+  roxygen fixes — gets no entry.
+- For package changes, run the affected test file, then `devtools::test()`. Run
+  `check_only()` when exports, package documentation, or dependencies change.
+  Instruction-only edits need reference and diff checks, not package execution.
+- Change anything that could move numeric output — resampling, WARM, wavelets,
   calendar logic, evaluation statistics, or a "behavior-preserving" refactor of any of
-  them — run the end-to-end baseline gate **before and after** the change. It is opt-in
-  and local: `devtools::test()`, `R CMD check`, and CI all skip it, so **a green CI does
-  not mean the baseline was checked**. Definitions live in
-  `tests/testthat/helper-baseline.R`, which `tools/record_baseline.R` sources — there is
-  one definition of the scenarios and the fingerprint, never two. A failure names which
-  keys moved; treat it as a question, not a chore, and re-record only once the delta is
-  reviewed and intended. Recording blesses whatever the package currently produces.
-- Report which commands were run and what they returned; never describe a check that
-  did not run.
-- The `DESCRIPTION` version is **not** bumped per commit. `.git-workflow.yml` sets
-  `cadence: manual`, and `1.2.0.9000`-style development versions hold steady until an
-  explicitly requested release. See that file for the release gate and apply command.
-- IMPORTANT: a downstream consumer pins this package by **Git tag**. The `blueearth_cst`
-  toolkit installs `Deltares-research/weathergenr@v1.2.0` via `remotes::install_github()` from
-  `dev/scripts/install_weathergenr.R`, driven by `pixi run install-rdeps`. Consequences:
-  a release is not delivered until its tag is **pushed to `origin`** — with
-  `auto_push: false` that is a deliberate, owner-run final step, so never report a
-  release as complete at the commit. Tags are consumed artifacts: never move, delete, or
-  re-point a published one. And user-visible change stranded on an unreleased `.9000`
-  is invisible downstream, which is the reason to cut releases promptly rather than let
-  development versions drift.
+  them — run the end-to-end baseline gate before and after the change. It is opt-in
+  and local; ordinary tests, R CMD check, and CI skip it. Keep scenario and fingerprint
+  definitions in `tests/testthat/helper-baseline.R`, shared by the test and recorder.
+  Investigate moved keys; re-record only after the delta is reviewed and intended.
+- Versioning is manual under `.git-workflow.yml`; hold development versions steady
+  until an explicitly requested release.
+- `blueearth_cst` consumes Git tags. A local release commit does not deliver a release;
+  follow `dev/workflows/release-and-publish.md` for publication and downstream handoff.
 
 ### Work board
 
 - Admit before you track: open a `dev/` board item only when work spans sessions or
   needs visibility beyond the current one. Work that its diff and commit message fully
   explain gets no board item, no task ID, and no draft note.
-- `dev/tasks/` is the live board — one note per open item. `dev/TODO.md` is generated
-  by `brain todo render`; never hand-edit it. Close with `brain todo done <id>`, which
-  appends the `dev/LOG.md` row and removes the note.
+- `dev/tasks/` is the live board; `dev/TODO.md` is generated. Use `todo-board` for
+  board operations and `project-system` for lifecycle; see `dev/README.md` for setup.
 - A `dev/drafts/` note that anything durable cites — a test, a module, a tracked
   document — is promoted at closure with its citations updated, never deleted.
-- The `todo-board` skill owns the board mechanic; `project-system` owns the
-  surrounding lifecycle. Neither is restated here.
 
 ## Hard Constraints
 
 - IMPORTANT: do not hand-edit generated output — `man/`, `NAMESPACE`, `docs/`, or
   built vignette artifacts.
-- Do not add to `Imports` in `DESCRIPTION` without justification; the dependency set is
-  deliberately small and CI builds on three OSes and three R versions.
+- Do not add to `Imports` in `DESCRIPTION` without justification; keep dependencies small.
 - Do not touch `.github/workflows/`, the `DESCRIPTION` version, or release tags unless
   the task asks for it.
 
 ## References
 
-- `README.md` — method framing and the three coupled components; read before changing
-  WARM, resampling, or perturbation behavior.
-- `tools/build_site_tools.R` — read before running or debugging any docs or site build.
-- `_pkgdown.yml` — read when adding or renaming a vignette; its `articles` list is
-  explicit and breaks the site build when stale.
-- `.github/workflows/R-CMD-check.yaml` — read when a change might behave differently on
-  macOS, Windows, or oldrel R.
+- Before changing WARM, resampling, or perturbation behavior, read `README.md`.
+- Before running or debugging a docs or site build, read `tools/build_site_tools.R`.
+- Before adding or renaming a vignette, read the explicit articles list in `_pkgdown.yml`.
+- When a change might behave differently across OSes or R versions, read
+  `.github/workflows/R-CMD-check.yaml`.
+- For development setup, agent activation, and board setup, see `dev/README.md`.
+- Before releasing, read `dev/workflows/release-and-publish.md`; use the apply and
+  validate commands defined in `.git-workflow.yml`.
