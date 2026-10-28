@@ -1424,7 +1424,7 @@ testthat::test_that("evaluate_weather_generator produces a full assessment witho
     })
   })
 
-  run_real <- function() {
+  run_real <- function(plot_style = NULL) {
     suppressMessages(
       evaluate_weather_generator(
         daily_sim = daily_sim,
@@ -1438,7 +1438,8 @@ testthat::test_that("evaluate_weather_generator produces a full assessment witho
         show_title = FALSE,
         eval_max_grids = 25,
         verbose = FALSE,
-        seed = 7
+        seed = 7,
+        plot_style = plot_style
       )
     )
   }
@@ -1506,4 +1507,22 @@ testthat::test_that("evaluate_weather_generator produces a full assessment witho
     as.data.frame(attr(again, "fit_summary")),
     as.data.frame(fs)
   )
+  rng <- .Random.seed
+  style <- list(
+    theme = ggplot2::theme(text = ggplot2::element_text(size = 9)),
+    colors = c(observed = "orange", simulated = "purple", reference = "green"),
+    ensemble_palette = c("pink", "navy")
+  )
+  styled <- run_real(style)
+  testthat::expect_identical(attr(styled, "fit_summary"), attr(again, "fit_summary"))
+  testthat::expect_identical(.Random.seed, rng)
+  for (nm in expected_plots) {
+    testthat::expect_equal(styled[[nm]]$theme$text$size, 9, info = nm)
+    testthat::expect_equal(styled[[nm]]$data, again[[nm]]$data, info = nm)
+    testthat::expect_no_error(ggplot2::ggplot_build(styled[[nm]]))
+  }
+  testthat::expect_identical(styled$daily_mean$layers[[2]]$aes_params$colour, "purple")
+  testthat::expect_identical(styled$daily_mean$layers[[4]]$aes_params$colour, "green")
+  scale <- ggplot2::ggplot_build(styled$annual_pattern_precip)$plot$scales$get_scales("fill")
+  testthat::expect_identical(unname(scale$map(c("Observed", "Simulated"))), c("orange", "purple"))
 })

@@ -114,6 +114,38 @@ Install the latest version from GitHub:
 A quick tutorial is available here:  
 https://deltares-research.github.io/weathergenr/articles/getting_started.html
 
+## Styling and exporting diagnostics
+
+Use `config$return_plots = TRUE` with `config$save_plots = FALSE` to collect
+all diagnostics without writing figures. `run_weather_generator()` returns
+four generation figures in `result$gen_output$plots` and the evaluation plots
+in `result$evaluation`. Direct `generate_weather()` calls accept the same
+`return_plots`, `save_plots` and `plot_style` arguments.
+
+```r
+config$save_plots <- FALSE
+config$return_plots <- TRUE
+config$plot_style <- list(
+  theme = ggplot2::theme(text = ggplot2::element_text(size = 10, family = "sans")),
+  colors = c(observed = "#0072B2", simulated = "#666666", reference = "#D55E00"),
+  ensemble_palette = c("#B3CDE3", "#005B96"),
+  power_palette = c("#FFFFCC", "#253494")
+)
+result <- run_weather_generator(
+  obs_data = ncdata$data, obs_grid = ncdata$grid, obs_dates = ncdata$date,
+  config = config, out_dir = "output"
+)
+export_weather_plot(
+  result$gen_output$plots$obs_power_spectra, "output/spectra.png",
+  width = 180, height = 90, dpi = 300, bg = "white"
+)
+```
+
+`plot_style` is an ordinary R list; callers own YAML parsing or token translation.
+Omitted settings retain existing defaults. Partial themes preserve local layout
+unless explicitly overridden, and explicit font sizes survive automatic export
+scaling. See `?export_weather_plot` for color-role and palette semantics.
+
 # References
 
 > Steinschneider, S., & Brown, C. (2013). *A semiparametric

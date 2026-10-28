@@ -75,6 +75,8 @@
 #' print(p)
 #' }
 #'
+#' @param plot_style Optional presentation list; see the Plot styles section of
+#'   \code{\link{export_weather_plot}}. Default NULL preserves existing styling.
 #' @export
 #' @import ggplot2
 #' @import patchwork
@@ -89,8 +91,11 @@ plot_wavelet_power <- function(
     gws_signif,
     coi,
     signif_mask,
-    unit = "mm"
+    unit = "mm",
+    plot_style = NULL
 ) {
+
+  .validate_plot_style(plot_style)
 
   if (!is.numeric(series)) stop("'series' must be numeric.", call. = FALSE)
   n_time <- length(series)
@@ -138,15 +143,20 @@ plot_wavelet_power <- function(
     geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = z)) +
     scale_y_reverse(expand = c(0, 0)) +
     scale_x_continuous(expand = c(0, 0)) +
-    scale_fill_viridis_c(option = "C", na.value = "white",
-      limits = zlims, oob = scales::squish) +
+    (if (is.null(plot_style$power_palette)) {
+      scale_fill_viridis_c(option = "C", na.value = "white",
+                          limits = zlims, oob = scales::squish)
+    } else {
+      scale_fill_gradientn(colors = plot_style$power_palette, na.value = "white",
+                           limits = zlims, oob = scales::squish)
+    }) +
     coord_cartesian(xlim = x_limits, ylim = rev(y_limits), expand = FALSE) +
     labs(x = "Time", y = "Period (years)") +
     guides(fill = "none") +
     geom_line(
       data = data.frame(x = time_axis, y = coi),
       aes(x = x, y = y),
-      linetype = "dashed", color = "red",
+      linetype = "dashed", color = .plot_color(plot_style, "reference", "red"),
       linewidth = .PLOT_GEOM$line$reference$linewidth
     ) +
     stat_contour(
@@ -157,20 +167,22 @@ plot_wavelet_power <- function(
       ),
       aes(x = x, y = y, z = z),
       breaks = 1,
-      color = "black")
+      color = .plot_color(plot_style, "reference", "black"))
 
   gws_df <- data.frame(period = period, gws = gws, signif = gws_signif)
 
   p_gws <- ggplot(gws_df, aes(x = period, y = gws)) +
     theme_weathergenr() +
-    geom_line(color = "blue", linewidth = .PLOT_GEOM$line$observed$linewidth) +
-    geom_line(aes(y = signif), color = "red", linetype = "dashed",
+    geom_line(color = .plot_color(plot_style, "observed", "blue"), linewidth = .PLOT_GEOM$line$observed$linewidth) +
+    geom_line(aes(y = signif), color = .plot_color(plot_style, "reference", "red"), linetype = "dashed",
               linewidth = .PLOT_GEOM$line$reference$linewidth) +
     scale_x_reverse(expand = c(0,0)) +
     coord_flip(xlim = range(period), expand = FALSE) +
     labs(y = bquote(Power ~ (.(unit)^2)), x = "")
 
-  p_spectrum + p_gws + plot_layout(widths = c(3, 1.2))
+  p <- .style_plot(p_spectrum + p_gws + plot_layout(widths = c(3, 1.2)), plot_style)
+  attr(p, "weathergenr_geometry") <- list(size = c(9, 4.5))
+  p
 }
 
 
@@ -219,6 +231,8 @@ plot_wavelet_power <- function(
 #' print(p)
 #' }
 #'
+#' @param plot_style Optional presentation list; see the Plot styles section of
+#'   \code{\link{export_weather_plot}}. Default NULL preserves existing styling.
 #' @export
 #' @import ggplot2
 #' @importFrom tibble tibble
@@ -226,8 +240,11 @@ plot_wavelet_global_spectrum <- function(
     period,
     signif,
     obs_power,
-    sim_power = NULL
+    sim_power = NULL,
+    plot_style = NULL
 ) {
+
+  .validate_plot_style(plot_style)
 
   df_obs <- data.frame(
     period = period,
@@ -237,8 +254,8 @@ plot_wavelet_global_spectrum <- function(
 
   p <- ggplot(df_obs, aes(x = period)) +
     theme_weathergenr() +
-    geom_line(aes(y = obs), color = "blue", linewidth = .PLOT_GEOM$line$observed$linewidth) +
-    geom_line(aes(y = signif), color = "red", linetype = "dashed",
+    geom_line(aes(y = obs), color = .plot_color(plot_style, "observed", "blue"), linewidth = .PLOT_GEOM$line$observed$linewidth) +
+    geom_line(aes(y = signif), color = .plot_color(plot_style, "reference", "red"), linetype = "dashed",
               linewidth = .PLOT_GEOM$line$reference$linewidth) +
     scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)) +
@@ -249,10 +266,10 @@ plot_wavelet_global_spectrum <- function(
     p <- p + geom_line(
       data = tibble(period = period, sim_mu = sim_mu),
       aes(x = period, y = sim_mu),
-      color = "black",
+      color = .plot_color(plot_style, "simulated", "black"),
       linewidth = .PLOT_GEOM$line$reference$linewidth
     )
   }
 
-  p
+  .style_plot(p, plot_style)
 }

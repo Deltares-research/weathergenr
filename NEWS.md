@@ -1,5 +1,14 @@
 # weathergenr (development version)
 
+* Plotting functions accept a consumer-independent `plot_style` list for partial
+  themes, semantic colors and ensemble/power palettes. Defaults remain unchanged.
+  `export_weather_plot()` exports returned figures with optional millimetre
+  dimensions and preserves explicit font sizes.
+* `generate_weather(return_plots = TRUE)` returns its four generation/WARM
+  diagnostics, including when `save_plots = FALSE`. `run_weather_generator()`
+  forwards `config$return_plots` and `config$plot_style`; evaluation diagnostics
+  remain available in its `evaluation` result.
+
 # weathergenr 2.0.1
 
 # weathergenr 2.0.0

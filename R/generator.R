@@ -174,6 +174,14 @@
 #'   \code{max(1, parallel::detectCores() - 1)}.
 #' @param verbose Logical; if \code{TRUE}, emits progress logs via \code{.log()}.
 #' @param save_plots Logical; if \code{TRUE}, writes plot to \code{out_dir}.
+#' @param return_plots Logical; if TRUE, add a named \code{plots} list containing
+#'   \code{obs_power_spectra}, \code{warm_annual_precip},
+#'   \code{warm_annual_stats}, and \code{warm_annual_wavelet}. Works independently
+#'   of \code{save_plots}; FALSE preserves the original return shape and avoids
+#'   plot construction when saving is also disabled.
+#' @param plot_style Optional presentation list; see the Plot styles section of
+#'   \code{\link{export_weather_plot}}. These controls do not change scientific
+#'   configuration, seeds or generated weather values.
 #' @param plot_dpi Numeric; raster resolution for the diagnostic plots this
 #'   function writes (default 300). Ignored when \code{save_plots = FALSE}.
 #'   Matches the argument of the same name on
@@ -256,13 +264,18 @@ generate_weather <- function(
     verbose = FALSE,
     save_plots = TRUE,
     plot_dpi = 300,
-    plot_device = NULL
+    plot_device = NULL,
+    plot_style = NULL,
+    return_plots = FALSE
 ) {
 
 
   start_time <- Sys.time()  # nolint: object_usage_linter. used in a .log() glue string
   verbose <- isTRUE(verbose)
   save_plots <- isTRUE(save_plots)
+  .validate_plot_style(plot_style)
+  return_plots <- isTRUE(return_plots)
+  generation_plots <- list()
 
   # ---------------------------------------------------------------------------
   # Setup
@@ -476,7 +489,7 @@ generate_weather <- function(
     diagnostics = FALSE
   )
 
-  if(save_plots) {
+  if (save_plots || return_plots) {
 
     # Use CWT results for power spectrum visualization
     p <- plot_wavelet_power(
@@ -487,7 +500,8 @@ generate_weather <- function(
       gws = warm_analysis$cwt$gws_unmasked,
       gws_signif = warm_analysis$cwt$gws_signif_unmasked,
       coi = warm_analysis$cwt$coi,
-      signif_mask = warm_analysis$cwt$sigm
+      signif_mask = warm_analysis$cwt$sigm,
+      plot_style = plot_style
     )
 
     tryCatch(
@@ -496,8 +510,10 @@ generate_weather <- function(
       # .panel_dims() reports a single canvas. The 9.0 splits at the
       # plot_layout(widths = c(3, 1.2)) ratio into a ~6.4 in power field and a
       # ~2.6 in spectrum companion.
-      .export_figure(p, "obs_power_spectra.png", out_dir = out_dir,
-                     size = c(9.0, 4.5), dpi = plot_dpi, device = plot_device),
+      generation_plots$obs_power_spectra <- .export_figure(
+        p, "obs_power_spectra.png", out_dir = out_dir,
+        save_plots = save_plots, size = c(9.0, 4.5),
+        dpi = plot_dpi, device = plot_device),
       error = function(e) .log("Failed to save wavelet spectra plot: {e$message}", level = "warn", verbose = verbose)
     )
 
@@ -534,10 +550,8 @@ generate_weather <- function(
     seed = .seed_offset(warm_seed, 1L),
     filter_bounds = warm_filter_bounds,
     relax_order = relax_order,
-    # Follow save_plots: with it FALSE the three diagnostic panels were still
-    # being built over every selected realization, and only the ggsave() was
-    # skipped.
-    make_plots = save_plots,
+    make_plots = save_plots || return_plots,
+    plot_style = plot_style,
     wavelet_args = list(
       signif_level = warm_signif,
       noise_type = "red",
@@ -547,20 +561,23 @@ generate_weather <- function(
     parallel = parallel,
     n_cores  = n_cores)
 
-  if(save_plots) {
+  if (save_plots || return_plots) {
     tryCatch(
       {
         # [[2]] is the four-panel jitter strip: one column of dots per panel, so
         # it takes the narrow family rather than square, which would give it
         # 16 in of width for four columns of points.
-        .export_figure(sim_annual_sub$plots[[1]], "warm_annual_precip.png",
-                       out_dir = out_dir, family = "wide",
+        generation_plots$warm_annual_precip <- .export_figure(
+                       sim_annual_sub$plots[[1]], "warm_annual_precip.png",
+                       out_dir = out_dir, save_plots = save_plots, family = "wide",
                        dpi = plot_dpi, device = plot_device)
-        .export_figure(sim_annual_sub$plots[[2]], "warm_annual_stats.png",
-                       out_dir = out_dir, family = "narrow",
+        generation_plots$warm_annual_stats <- .export_figure(
+                       sim_annual_sub$plots[[2]], "warm_annual_stats.png",
+                       out_dir = out_dir, save_plots = save_plots, family = "narrow",
                        dpi = plot_dpi, device = plot_device)
-        .export_figure(sim_annual_sub$plots[[3]], "warm_annual_wavelet.png",
-                       out_dir = out_dir, family = "wide",
+        generation_plots$warm_annual_wavelet <- .export_figure(
+                       sim_annual_sub$plots[[3]], "warm_annual_wavelet.png",
+                       out_dir = out_dir, save_plots = save_plots, family = "wide",
                        dpi = plot_dpi, device = plot_device)
       },
       error = function(e) .log("Failed to save warm filtering plots: {e$message}",
@@ -693,7 +710,9 @@ generate_weather <- function(
   .log("Output: `{out_dir}`", tag = "COMPLETE", verbose = verbose)
   .log("Elapsed time: {format_elapsed(start_time)}", tag = "COMPLETE", verbose = verbose)
 
-  list(resampled = resampled_dates, dates = sim_dates_d$dateo)
+  result <- list(resampled = resampled_dates, dates = sim_dates_d$dateo)
+  if (return_plots) result$plots <- generation_plots
+  result
 }
 
 
@@ -717,7 +736,11 @@ generate_weather <- function(
 #' @param config List. Full simulation/evaluation configuration. Entries are
 #'   forwarded to [generate_weather()] and [evaluate_weather_generator()] under
 #'   the same names, including `warm_filter_bounds`, `relax_order`,
-#'   `variable_labels`, `plot_dpi` and `plot_device`. `config$relax_priority` is
+#'   `variable_labels`, `plot_dpi`, `plot_device`, `plot_style` and `return_plots`.
+#'   With `save_plots = FALSE, return_plots = TRUE`, generation diagnostics are in
+#'   `gen_output$plots` and evaluation diagnostics are in `evaluation`, ready for
+#'   [export_weather_plot()]. Presentation controls are not scientific parameters.
+#'   `config$relax_priority` is
 #'   the superseded spelling of `config$relax_order` and still works, with a
 #'   warning. An entry that is absent
 #'   (`NULL`) is not forwarded at all, so it falls back to the receiving
@@ -922,7 +945,9 @@ run_weather_generator <- function(
       # Same defaulting as the evaluate_weather_generator() call below, so both
       # halves of a run honour one setting.
       plot_dpi           = if (is.null(config$plot_dpi)) 300 else config$plot_dpi,
-      plot_device        = config$plot_device
+      plot_device        = config$plot_device,
+      plot_style         = config$plot_style,
+      return_plots       = config$return_plots
     )
 
     # -------------------------------------------------------------------------
@@ -957,7 +982,8 @@ run_weather_generator <- function(
       save_plots      = isTRUE(config$save_plots),
       seed            = config$seed,
       plot_dpi        = if (is.null(config$plot_dpi)) 300 else config$plot_dpi,
-      plot_device     = config$plot_device
+      plot_device     = config$plot_device,
+      plot_style      = config$plot_style
     )
 
     list(

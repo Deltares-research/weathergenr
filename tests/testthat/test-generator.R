@@ -21,6 +21,40 @@ make_generator_inputs <- function() {
   )
 }
 
+testthat::test_that("returning styled generation plots preserves scientific output and RNG", {
+  inputs <- make_generator_inputs()
+  out_dir <- tempfile("wgr-return-plots-")
+  on.exit(unlink(out_dir, recursive = TRUE), add = TRUE)
+  args <- c(inputs, list(
+    n_years = 16, n_realizations = 2, warm_pool_size = 10,
+    annual_knn_n = 3, year_start_month = 1, seed = 42,
+    out_dir = out_dir, save_plots = FALSE, verbose = FALSE
+  ))
+  plain <- suppressWarnings(do.call(generate_weather, args))
+  rng <- .Random.seed
+  style <- list(colors = c(observed = "orange", simulated = "purple", reference = "green"),
+                theme = ggplot2::theme(text = ggplot2::element_text(size = 9)))
+  styled <- suppressWarnings(do.call(generate_weather, c(args, list(
+    return_plots = TRUE, plot_style = style
+  ))))
+  testthat::expect_named(plain, c("resampled", "dates"))
+  testthat::expect_identical(styled$resampled, plain$resampled)
+  testthat::expect_identical(styled$dates, plain$dates)
+  testthat::expect_identical(.Random.seed, rng)
+  testthat::expect_named(styled$plots, c(
+    "obs_power_spectra", "warm_annual_precip", "warm_annual_stats", "warm_annual_wavelet"
+  ))
+  testthat::expect_length(list.files(out_dir, pattern = "\\.png$"), 0)
+  for (p in styled$plots) testthat::expect_equal(p$theme$text$size, 9)
+  testthat::expect_s3_class(styled$plots$warm_annual_stats$theme$axis.text.x, "element_blank")
+  testthat::expect_identical(
+    styled$plots$warm_annual_precip$layers[[2]]$aes_params$colour, "orange"
+  )
+  testthat::expect_identical(
+    styled$plots$warm_annual_wavelet$layers[[1]]$aes_params$fill, "purple"
+  )
+})
+
 testthat::test_that("generate_weather returns expected structure quickly", {
   inputs <- make_generator_inputs()
   out_dir <- file.path(tempdir(), "weathergenr-generator")
@@ -177,6 +211,22 @@ testthat::test_that("generate_weather validates required daily variables", {
     list(...)
   )
 }
+
+testthat::test_that("run wrapper forwards presentation controls independently of saving", {
+  inputs <- make_generator_inputs()
+  calls <- new.env(parent = emptyenv())
+  .local_mock_run_steps(calls)
+  style <- list(colors = c(observed = "orange"))
+  run_weather_generator(inputs$obs_data, inputs$obs_grid, inputs$obs_dates,
+    out_dir = tempdir(), config = .run_config(
+      return_plots = TRUE, plot_style = style, save_plots = FALSE
+    ))
+  testthat::expect_true(calls$generate$return_plots)
+  testthat::expect_false(calls$generate$save_plots)
+  testthat::expect_false(calls$evaluate$save_plots)
+  testthat::expect_identical(calls$generate$plot_style, style)
+  testthat::expect_identical(calls$evaluate$plot_style, style)
+})
 
 testthat::test_that("run_weather_generator rejects a malformed config", {
   inputs <- make_generator_inputs()

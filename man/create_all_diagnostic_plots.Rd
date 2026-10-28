@@ -11,7 +11,8 @@ create_all_diagnostic_plots(
   show_title,
   save_plots,
   out_dir = NULL,
-  output_dir = NULL
+  output_dir = NULL,
+  plot_style = NULL
 )
 }
 \arguments{
@@ -29,6 +30,9 @@ create_all_diagnostic_plots(
 
 \item{output_dir}{Deprecated. The former name of \code{out_dir}. Supplying it
 still works but warns; supplying both is an error.}
+
+\item{plot_style}{Optional presentation list; see the Plot styles section of
+\code{\link{export_weather_plot}}. Default NULL preserves existing styling.}
 }
 \value{
 Named list of ggplot objects for all diagnostics created.

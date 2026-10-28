@@ -23,3 +23,8 @@ articles:
       - getting_started
       - climate_perturbation
       - perturbation_parameters
+
+reference:
+  - title: Package functions
+    contents:
+      - matches(".*")

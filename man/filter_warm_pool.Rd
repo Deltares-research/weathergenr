@@ -18,7 +18,8 @@ filter_warm_pool(
   parallel = FALSE,
   n_cores = NULL,
   cache_gws = FALSE,
-  verbose = FALSE
+  verbose = FALSE,
+  plot_style = NULL
 )
 }
 \arguments{
@@ -66,6 +67,9 @@ spectra for diagnostics; this can increase memory use.}
 
 \item{verbose}{Logical scalar. If TRUE, logs setup information, per iteration
 pass rates, and relaxation actions.}
+
+\item{plot_style}{Optional presentation list; see the Plot styles section of
+\code{\link{export_weather_plot}}. Default NULL preserves existing styling.}
 }
 \value{
 Named list with the following elements:
