@@ -26,7 +26,11 @@ run_weather_generator(
 \item{config}{List. Full simulation/evaluation configuration. Entries are
 forwarded to [generate_weather()] and [evaluate_weather_generator()] under
 the same names, including `warm_filter_bounds`, `relax_order`,
-`variable_labels`, `plot_dpi` and `plot_device`. `config$relax_priority` is
+`variable_labels`, `plot_dpi`, `plot_device`, `plot_style` and `return_plots`.
+With `save_plots = FALSE, return_plots = TRUE`, generation diagnostics are in
+`gen_output$plots` and evaluation diagnostics are in `evaluation`, ready for
+[export_weather_plot()]. Presentation controls are not scientific parameters.
+`config$relax_priority` is
 the superseded spelling of `config$relax_order` and still works, with a
 warning. An entry that is absent
 (`NULL`) is not forwarded at all, so it falls back to the receiving

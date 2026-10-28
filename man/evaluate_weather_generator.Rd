@@ -23,7 +23,8 @@ evaluate_weather_generator(
   seed = NULL,
   plot_dpi = 300,
   plot_device = NULL,
-  output_dir = NULL
+  output_dir = NULL,
+  plot_style = NULL
 )
 }
 \arguments{
@@ -89,6 +90,9 @@ the function only if you have it installed.}
 still works but warns; supplying both is an error. Renamed in 2.0.0 so that
 one directory argument has one name across [generate_weather()],
 [run_weather_generator()] and this function.}
+
+\item{plot_style}{Optional presentation list; see the Plot styles section of
+\code{\link{export_weather_plot}}. Default NULL preserves existing styling.}
 }
 \value{
 A named list of `ggplot2` plot objects with class "weather_assessment".

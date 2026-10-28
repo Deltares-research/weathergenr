@@ -13,7 +13,8 @@ plot_wavelet_power(
   gws_signif,
   coi,
   signif_mask,
-  unit = "mm"
+  unit = "mm",
+  plot_style = NULL
 )
 }
 \arguments{
@@ -43,6 +44,9 @@ A contour is drawn at \code{1}. This is typically a significance ratio or a bina
 encoded as 0/1 (or NA).}
 
 \item{unit}{Character. Unit label used in the global spectrum axis label (default: \code{"mm"}).}
+
+\item{plot_style}{Optional presentation list; see the Plot styles section of
+\code{\link{export_weather_plot}}. Default NULL preserves existing styling.}
 }
 \value{
 A \code{patchwork} object combining the power-field panel and the global spectrum panel.

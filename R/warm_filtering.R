@@ -64,6 +64,8 @@
 #' @param modwt_n_levels Integer or NULL. Number of MODWT levels used in WARM.
 #'   This value is used only for diagnostics. If NULL, a value is estimated from
 #'   the series length.
+#' @param plot_style Optional presentation list; see the Plot styles section of
+#'   \code{\link{export_weather_plot}}. Default NULL preserves existing styling.
 #' @param make_plots Logical scalar. If TRUE, compute diagnostic plots for the
 #'   selected realizations and return them in \code{plots}.
 #' @param parallel Logical scalar. If TRUE, allows spectral metrics to be
@@ -111,7 +113,8 @@ filter_warm_pool <- function(
     parallel = FALSE,
     n_cores = NULL,
     cache_gws = FALSE,
-    verbose = FALSE
+    verbose = FALSE,
+    plot_style = NULL
 ) {
 
   # ---------------------------------------------------------------------------
@@ -128,6 +131,7 @@ filter_warm_pool <- function(
   }
   n_select <- as.integer(n_select)
 
+  .validate_plot_style(plot_style)
   make_plots <- isTRUE(make_plots)
   verbose <- isTRUE(verbose)
 
@@ -568,7 +572,8 @@ filter_warm_pool <- function(
         # Display curve, not the inference one: see compute_spectral_metrics().
         power_signif  = if (is.null(gws_signif_display)) gws_signif else gws_signif_display,
         wavelet_pars  = wavelet_args,
-        wavelet_q     = b$plot_wavelet_q
+        wavelet_q     = b$plot_wavelet_q,
+        plot_style    = plot_style
       )
     }
   }

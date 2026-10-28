@@ -54,6 +54,8 @@
 #'   (default = 300). Rendering and writing the PNGs is roughly a quarter of an
 #'   evaluation run, and that cost scales with `dpi`, so lowering this is the
 #'   simplest way to speed up iterative work. Ignored when `save_plots = FALSE`.
+#' @param plot_style Optional presentation list; see the Plot styles section of
+#'   \code{\link{export_weather_plot}}. Default NULL preserves existing styling.
 #' @param plot_device Optional graphics device passed to [ggplot2::ggsave()]
 #'   (default `NULL`, letting `ggsave()` infer it from the file extension).
 #'   Supplying a faster device, for example `ragg::agg_png`, typically halves
@@ -123,12 +125,15 @@ evaluate_weather_generator <- function(
     seed = NULL,
     plot_dpi = 300,
     plot_device = NULL,
-    output_dir = NULL
+    output_dir = NULL,
+    plot_style = NULL
 ) {
 
   # ============================================================================
   # RENAMED ARGUMENTS
   # ============================================================================
+
+  .validate_plot_style(plot_style)
 
   # 'output_dir' was this function's name for the directory that
   # generate_weather() and run_weather_generator() both call 'out_dir'. One
@@ -226,6 +231,7 @@ evaluate_weather_generator <- function(
   # theme_weathergenr() directly instead, which is what makes one theme reach
   # all three plot modules.
   plot_config <- list(
+    plot_style = plot_style,
     subtitle = "Value range and median from all simulations shown against observed",
     dpi = plot_dpi,
     device = plot_device,

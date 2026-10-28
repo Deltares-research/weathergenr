@@ -4,7 +4,13 @@
 \alias{plot_wavelet_global_spectrum}
 \title{Plot Global Wavelet Spectrum}
 \usage{
-plot_wavelet_global_spectrum(period, signif, obs_power, sim_power = NULL)
+plot_wavelet_global_spectrum(
+  period,
+  signif,
+  obs_power,
+  sim_power = NULL,
+  plot_style = NULL
+)
 }
 \arguments{
 \item{period}{Numeric vector of wavelet periods (scales), typically in years (or days).
@@ -18,6 +24,9 @@ global wavelet spectrum.}
 
 \item{sim_power}{Optional numeric matrix of simulated global spectra with
 \code{nrow(sim_power) == length(period)} and one column per simulation.}
+
+\item{plot_style}{Optional presentation list; see the Plot styles section of
+\code{\link{export_weather_plot}}. Default NULL preserves existing styling.}
 }
 \value{
 A \code{ggplot} object.

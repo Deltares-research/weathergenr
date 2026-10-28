@@ -335,12 +335,16 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
                            dims = NULL,
                            size = NULL,
                            dpi = 300, device = NULL,
-                           plot_config = NULL) {
+                           plot_config = NULL, bg = "white", scale_text = TRUE) {
 
   family <- match.arg(family)
 
   header <- isTRUE(show_title) && !is.null(title)
   if (header) p <- p + labs(title = title, subtitle = subtitle)
+
+  p <- .style_plot(p, plot_config$plot_style)
+  attr(p, "weathergenr_geometry") <- list(family = family, dims = dims,
+                                         size = size, header = header)
 
   if (!isTRUE(save_plots) || is.null(out_dir)) return(invisible(p))
 
@@ -362,7 +366,7 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
   # replaces, which keeps the per-plot overrides -- the inside legend on the
   # monthly-pattern figures, the blanked x axis on the WARM stats strip -- that
   # adding a complete theme here would silently discard.
-  p <- p + theme(text = element_text(size = .base_size_for(size)))
+  if (scale_text) p <- .scale_plot_text(p, size)
 
   args <- list(
     filename = file.path(out_dir, filename),
@@ -371,7 +375,7 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
     height   = unname(size[[2L]]),
     units    = "in",
     dpi      = dpi,
-    bg       = "white"
+    bg       = bg
   )
 
   # Only pass `device` when set: ggsave() infers it from the extension
@@ -385,4 +389,147 @@ theme_weathergenr <- function(base_size = 12, base_family = "") {
   do.call(ggsave, args)
 
   invisible(p)
+}
+
+
+# Validate the deliberately small, consumer-independent presentation contract.
+.validate_plot_style <- function(plot_style) {
+  if (is.null(plot_style)) return(invisible(NULL))
+  if (is.list(plot_style) && !length(plot_style)) return(invisible(plot_style))
+  fields <- c("theme", "colors", "ensemble_palette", "power_palette")
+  if (!is.list(plot_style) || is.null(names(plot_style)) ||
+      anyNA(names(plot_style)) || anyDuplicated(names(plot_style)) ||
+      any(!names(plot_style) %in% fields)) {
+    stop("plot_style must be a named list of theme, colors, ensemble_palette or power_palette.",
+         call. = FALSE)
+  }
+  th <- plot_style$theme
+  if (!is.null(th) && (!inherits(th, "theme") || isTRUE(attr(th, "complete")))) {
+    stop("plot_style$theme must be a partial ggplot2 theme.", call. = FALSE)
+  }
+  colors <- plot_style$colors
+  if (!is.null(colors) && (is.null(names(colors)) || anyNA(names(colors)) ||
+      anyDuplicated(names(colors)) ||
+      any(!names(colors) %in% c("observed", "simulated", "reference")))) {
+    stop("plot_style$colors must have unique names observed, simulated or reference.",
+         call. = FALSE)
+  }
+  for (field in c("colors", "ensemble_palette", "power_palette")) {
+    values <- plot_style[[field]]
+    if (is.null(values)) next
+    if (!is.character(values) || !length(values) || anyNA(values) ||
+        any(!nzchar(values))) {
+      stop(paste0("plot_style$", field, " must contain color strings."), call. = FALSE)
+    }
+    tryCatch(grDevices::col2rgb(values), error = function(e) {
+      stop(paste0("plot_style$", field, " contains an invalid color."), call. = FALSE)
+    })
+  }
+  invisible(plot_style)
+}
+
+.plot_color <- function(plot_style, role, default) {
+  if (!role %in% names(plot_style$colors)) return(default)
+  unname(plot_style$colors[[role]])
+}
+
+# Add partial themes after local layout choices; patchwork's & reaches all panels.
+.add_plot_theme <- function(p, th) {
+  if (is.null(th)) return(p)
+  if (inherits(p, "patchwork")) p & th else p + th
+}
+
+.style_plot <- function(p, plot_style) {
+  p <- .add_plot_theme(p, plot_style$theme)
+  if (!is.null(plot_style$theme)) {
+    attr(p, "weathergenr_style_theme") <- plot_style$theme
+  }
+  if (is.null(attr(p, "weathergenr_text_size"))) {
+    attr(p, "weathergenr_text_size") <- p$theme$text$size
+  }
+  p
+}
+
+.scale_plot_text <- function(p, size) {
+  custom <- attr(p, "weathergenr_style_theme")
+  previous <- attr(p, "weathergenr_text_size")
+  # A caller's subsequent text-size edit also wins over automatic scaling.
+  automatic <- is.null(p$theme$text$size) ||
+    (!is.null(previous) && identical(p$theme$text$size, previous))
+  if (automatic && is.null(custom$text$size)) {
+    p <- p + theme(text = element_text(size = .base_size_for(size)))
+  }
+  attr(p, "weathergenr_text_size") <- p$theme$text$size
+  p
+}
+
+#' Export a weather diagnostic figure
+#'
+#' Saves a returned ggplot or patchwork using the package's automatic geometry,
+#' or explicit dimensions in millimetres. No scientific data are recomputed.
+#'
+#' @param plot A ggplot or patchwork object.
+#' @param filename Output path, including extension. Its parent must exist.
+#' @param width,height Positive dimensions in millimetres. Either may be omitted
+#'   to use that dimension from automatic geometry. Package-produced plots retain
+#'   their figure family and explicit canvas size; other plots use square panels.
+#' @param dpi Positive raster resolution. Default 300.
+#' @param device Graphics device function or name; NULL infers from extension.
+#' @param bg Background color. Default white; use "transparent" for transparency.
+#'
+#' @section Plot styles:
+#' Plotting entry points accept \code{plot_style = NULL} or a named list with:
+#' \describe{
+#'   \item{theme}{A partial \code{ggplot2::theme()}. Applied after local settings,
+#'     so unspecified layout choices survive. Explicit font sizes win over
+#'     automatic export scaling. No global theme or options are changed.}
+#'   \item{colors}{A named character vector, with any of \code{observed},
+#'     \code{simulated}, \code{reference}. Observed covers measured series;
+#'     simulated covers ensemble summaries, monochrome members and ribbons;
+#'     reference covers identity/zero guides, significance thresholds, contours
+#'     and cone-of-influence lines. Omitted roles retain each plot's original
+#'     colors, which can differ between figures. Invisible layout points do not
+#'     carry semantic colors.}
+#'   \item{ensemble_palette}{Color vector interpolated across realization IDs
+#'     in the evaluation monthly-cycle plot. Other ensemble plots use the
+#'     simulated color. Omitted: retain the existing hue scale.}
+#'   \item{power_palette}{Color vector interpolated across log2 wavelet power.
+#'     Existing limits, squishing and white missing-value cells are preserved.
+#'     Omitted: retain the existing viridis C scale.}
+#' }
+#' These are presentation settings only. YAML parsing and any consumer-specific
+#' translation belong to the caller. Unknown fields and color roles are errors.
+#'
+#' @return The exported plot, invisibly, with effective export typography.
+#' @examples
+#' p <- plot_wavelet_global_spectrum(1:4, rep(2, 4), c(1, 3, 2, 1))
+#' export_weather_plot(p, tempfile(fileext = ".png"), width = 160, height = 100)
+#' @export
+export_weather_plot <- function(plot, filename, width = NULL, height = NULL,
+                                dpi = 300, device = NULL, bg = "white") {
+  if (!inherits(plot, "ggplot")) {
+    stop("plot must be a ggplot or patchwork object.", call. = FALSE)
+  }
+  for (value in list(width, height, dpi)) {
+    if (!is.null(value) && (!is.numeric(value) || length(value) != 1L ||
+        !is.finite(value) || value <= 0)) {
+      stop("width, height and dpi must be single positive numbers.", call. = FALSE)
+    }
+  }
+  if (is.null(dpi)) stop("dpi must be a single positive number.", call. = FALSE)
+  scale_text <- !is.null(attr(plot, "weathergenr_text_size")) ||
+    is.null(plot$theme$text$size)
+  geometry <- attr(plot, "weathergenr_geometry")
+  size <- geometry$size
+  if (is.null(size)) {
+    dims <- geometry$dims
+    if (is.null(dims)) dims <- .panel_dims(plot)
+    family <- if (is.null(geometry$family)) "square" else geometry$family
+    size <- .figure_size(dims[["nrow"]], dims[["ncol"]], family,
+                         header = isTRUE(geometry$header))
+  }
+  if (!is.null(width)) size[[1L]] <- width / 25.4
+  if (!is.null(height)) size[[2L]] <- height / 25.4
+  .export_figure(plot, basename(filename), dirname(filename), size = size,
+                 dpi = dpi, device = device, bg = bg, scale_text = scale_text)
 }

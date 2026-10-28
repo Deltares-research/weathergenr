@@ -31,7 +31,9 @@ generate_weather(
   verbose = FALSE,
   save_plots = TRUE,
   plot_dpi = 300,
-  plot_device = NULL
+  plot_device = NULL,
+  plot_style = NULL,
+  return_plots = FALSE
 )
 }
 \arguments{
@@ -151,6 +153,16 @@ figures written by this function ignored the setting entirely.}
 infer it from the file extension. Supplying a faster device, for example
 \code{ragg::agg_png}, typically halves the render cost. \code{ragg} is not a
 dependency of this package; pass the function only if you have it installed.}
+
+\item{plot_style}{Optional presentation list; see the Plot styles section of
+\code{\link{export_weather_plot}}. These controls do not change scientific
+configuration, seeds or generated weather values.}
+
+\item{return_plots}{Logical; if TRUE, add a named \code{plots} list containing
+\code{obs_power_spectra}, \code{warm_annual_precip},
+\code{warm_annual_stats}, and \code{warm_annual_wavelet}. Works independently
+of \code{save_plots}; FALSE preserves the original return shape and avoids
+plot construction when saving is also disabled.}
 }
 \value{
 A list with:

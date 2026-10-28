@@ -28,13 +28,17 @@
 #' @keywords internal
 #' @import ggplot2
 #' @importFrom stats quantile
+#' @param plot_style Optional presentation list; see the Plot styles section of
+#'   \code{\link{export_weather_plot}}. Default NULL preserves existing styling.
 #' @export
 plot_filter_diagnostics <- function(obs_series, sim_series, pool,
                                     rel_diff_mean, rel_diff_sd, tail_metrics,
                                     power_period, power_obs, power_signif,
                                     wavelet_pars,
-                                    wavelet_q = c(0.05, 0.95))
+                                    wavelet_q = c(0.05, 0.95), plot_style = NULL)
   {
+
+  .validate_plot_style(plot_style)
 
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' required for plotting.", call. = FALSE)
@@ -130,10 +134,11 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
 
   p_timeseries <- ggplot() + theme_weathergenr() +
     geom_line(data = df_ts_sim_long, aes(x = year, y = value, group = series),
+              color = .plot_color(plot_style, "simulated", "black"),
               linewidth = .PLOT_GEOM$line$trace_mono$linewidth,
               alpha = .PLOT_GEOM$line$trace_mono$alpha) +
     geom_line(data = df_ts_obs, aes(x = year, y = value),
-              color = "blue", linewidth = .PLOT_GEOM$line$observed$linewidth) +
+              color = .plot_color(plot_style, "observed", "blue"), linewidth = .PLOT_GEOM$line$observed$linewidth) +
     labs(x = "Year index", y = "Value")
 
   # ===========================================================================
@@ -154,9 +159,10 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
   # theme_light() -- the clearest case of the drift the house theme removes.
   p_stats <- ggplot(stats_plot, aes(x = "a", y = .data$value)) +
     theme_weathergenr() +
-    geom_hline(yintercept = 0, linewidth = .PLOT_GEOM$line$reference$linewidth, color = "blue") +
+    geom_hline(yintercept = 0, linewidth = .PLOT_GEOM$line$reference$linewidth,
+               color = .plot_color(plot_style, "reference", "blue")) +
     geom_point(size = .PLOT_GEOM$point$member$size, alpha = .PLOT_GEOM$point$member$alpha,
-               color = "black", position = "jitter") +
+               color = .plot_color(plot_style, "simulated", "black"), position = "jitter") +
     facet_wrap(~par, nrow = 1, labeller = as_labeller(par_labels)) +
     labs(x = "Filtered realizations", y = "Relative difference (%)") +
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
@@ -189,23 +195,28 @@ plot_filter_diagnostics <- function(obs_series, sim_series, pool,
     geom_line(
       data = df_gws_sum,
       aes(x = .data$period, y = .data$mean),
+      color = .plot_color(plot_style, "simulated", "black"),
       linewidth = .PLOT_GEOM$line$reference$linewidth
     ) +
     geom_line(
       data = df_gws_lines,
       aes(x = .data$period, y = .data$obs),
-      color = "blue",
+      color = .plot_color(plot_style, "observed", "blue"),
       linewidth = .PLOT_GEOM$line$observed$linewidth
     ) +
     geom_line(
       data = df_gws_lines,
       aes(x = .data$period, y = .data$signif),
-      color = "red",
+      color = .plot_color(plot_style, "reference", "red"),
       linewidth = .PLOT_GEOM$line$reference$linewidth,
       linetype = "dashed"
     ) +
     labs(x = "Period", y = "Power")
 
 
-  list(timeseries = p_timeseries, stats = p_stats, wavelet_gws = p_gws)
+  if ("simulated" %in% names(plot_style$colors)) {
+    p_gws$layers[[1]]$aes_params$fill <- .plot_color(plot_style, "simulated", NULL)
+  }
+  plots <- list(timeseries = p_timeseries, stats = p_stats, wavelet_gws = p_gws)
+  lapply(plots, .style_plot, plot_style = plot_style)
 }
