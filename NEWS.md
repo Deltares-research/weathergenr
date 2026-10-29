@@ -1,5 +1,9 @@
 # weathergenr (development version)
 
+* `style_weather_plot()` applies an opt-in compact diagnostic profile.
+  `arrange_weather_panels()` measures fixed physical plotting areas and wraps
+  panels into a fitting row-major grid without scaling fonts or marks.
+
 * Plotting functions accept a consumer-independent `plot_style` list for partial
   themes, semantic colors and ensemble/power palettes. Defaults remain unchanged.
   `export_weather_plot()` exports returned figures with optional millimetre
