@@ -61,9 +61,9 @@ A typical workflow is:
 3.  **Evaluate the results.** Check the statistics and diagnostics that
     matter for your application, including seasonality, spell lengths
     and spatial relationships.
-4.  **Build stress scenarios.** Use `apply_climate_perturbations()` to
-    change the generated climate, then run your impact model to assess
-    system performance.
+4.  **Build climate change scenarios.** Use
+    `apply_climate_perturbations()` to change the generated climate,
+    then run your impact model to assess system performance.
 
 The quality of the historical data and the generator’s fit to your
 catchment matter. Review the diagnostics before using an ensemble for
