@@ -146,6 +146,25 @@ Omitted settings retain existing defaults. Partial themes preserve local layout
 unless explicitly overridden, and explicit font sizes survive automatic export
 scaling. See `?export_weather_plot` for color-role and palette semantics.
 
+
+For the optional compact diagnostic profile, restyle returned objects explicitly:
+
+```r
+p <- style_weather_plot(result$evaluation$daily_mean, "daily_mean",
+  plot_style = config$plot_style,
+  panel_layout = list(panel_width_mm = 70, panel_height_mm = 70,
+    preferred_columns = c(3, 2), max_width_mm = 180))
+export_weather_plot(p, "output/daily_mean.png", dpi = 600)
+```
+
+This profile uses gray stochastic traces, black central summaries, blue observations
+and red significance guides. Comparison circles are ensemble medians; boxplot
+diamonds are means. Wavelet composites and the narrow WARM summary retain their
+local layouts. `arrange_weather_panels()` also arranges other single-panel ggplots
+with fixed physical plotting areas, measured label space and row-major order.
+It never shrinks text or marks to fit. See `?style_weather_plot` and
+`?arrange_weather_panels` for profile semantics and layout settings.
+
 # References
 
 > Steinschneider, S., & Brown, C. (2013). *A semiparametric
