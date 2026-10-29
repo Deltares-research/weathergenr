@@ -1,7 +1,7 @@
 Package: weathergenr
 Type: Package
 Title: Gridded semi-parametric weather generator
-Version: 2.0.1
+Version: 2.1.0
 Authors@R: person(
     given = "Mehmet Umit",
     family = "Taner",
