@@ -1,4 +1,4 @@
-# weathergenr (development version)
+# weathergenr 2.1.0
 
 * `style_weather_plot()` applies an opt-in compact diagnostic profile.
   `arrange_weather_panels()` measures fixed physical plotting areas and wraps
