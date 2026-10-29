@@ -11,10 +11,9 @@ roles:
 skills:
   - climate-stress-testing
   - console-formatting
-  - design-scoping
+  - design-exploration
   - design-review-loop
   - design-document
-  - design-audit
   - quarto
   - r-discipline
   - r-vignettes
@@ -34,8 +33,6 @@ skills:
   # Explicitly available to the main agent as well as r-developer.
   # Other conditional bindings resolve through the provider's skill loader.
   - bug-diagnosis
-  - r-package-development
-  - testing-r-packages
   - tidyverse-patterns
   - r-oop
   - r-performance
