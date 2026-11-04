@@ -19,7 +19,7 @@ while continuing to display output on the console."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -92,7 +92,11 @@ while continuing to display output on the console.</p>
 <dd><p>List. Full simulation/evaluation configuration. Entries are
 forwarded to [generate_weather()] and [evaluate_weather_generator()] under
 the same names, including `warm_filter_bounds`, `relax_order`,
-`variable_labels`, `plot_dpi` and `plot_device`. `config$relax_priority` is
+`variable_labels`, `plot_dpi`, `plot_device`, `plot_style` and `return_plots`.
+With `save_plots = FALSE, return_plots = TRUE`, generation diagnostics are in
+`gen_output$plots` and evaluation diagnostics are in `evaluation`, ready for
+[export_weather_plot()]. Presentation controls are not scientific parameters.
+`config$relax_priority` is
 the superseded spelling of `config$relax_order` and still works, with a
 warning. An entry that is absent
 (`NULL`) is not forwarded at all, so it falls back to the receiving

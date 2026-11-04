@@ -94,4 +94,4 @@ climate risk assessments.* Water Resources Research, 49(11), 7205–7220.
 
 ## License
 
-weathergenr is available under the [MIT License](LICENSE).
+weathergenr is available under the [MIT License](LICENSE.md).

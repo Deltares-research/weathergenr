@@ -31,5 +31,4 @@ each date.
 ``` r
 dates <- as.Date(c("2022-09-30", "2022-10-01", "2023-06-15"))
 compute_water_year(dates, water_year_start_month = 10)
-#> [1] 2022 2023 2023
 ```

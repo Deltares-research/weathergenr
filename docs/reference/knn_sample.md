@@ -115,18 +115,14 @@ target <- c(0, 0)
 
 # Sample 1 index from 5 nearest neighbors, uniform probability
 knn_sample(candidates, target, k = 5, n = 1)
-#> [1] 21
 
 # Sample 3 indices from 5 nearest neighbors, rank-weighted probability
 knn_sample(candidates, target, k = 5, n = 3, prob = TRUE, seed = 123)
-#> [1] 15  6 15
 
 # Using feature weights (weight first dimension more heavily)
 knn_sample(candidates, target, k = 5, n = 2, weights = c(2, 1), seed = 10)
-#> [1] 17 10
 
 # Distance-based sampling with custom bandwidth
 knn_sample(candidates, target, k = 10, n = 5, prob = TRUE,
            sampling = "distance", bandwidth = 1.5)
-#> [1]  6  6 10  8  8
 ```

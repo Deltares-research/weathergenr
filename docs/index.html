@@ -23,7 +23,7 @@
 
     <a class="navbar-brand me-2" href="index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,95 +48,71 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="getting-started">Getting started<a class="anchor" aria-label="anchor" href="#getting-started"></a>
+<div class="page-header"><h1 id="weathergenr">weathergenr<a class="anchor" aria-label="anchor" href="#weathergenr"></a>
 </h1></div>
-<p><a href="https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml?query=branch%3Amaster" class="external-link"><img src="https://github.com/Deltares-research/weathergenr/actions/workflows/R-CMD-check.yaml/badge.svg?branch=master" alt="R-CMD-check"></a> <a href="https://CRAN.R-project.org/package=weathergenr" class="external-link"><img src="https://www.r-pkg.org/badges/version/weathergenr.png" alt="CRAN status"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a> <a href="https://lifecycle.r-lib.org/articles/stages.html" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></p>
-</div>
-<div class="section level1">
-<h1 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
-</h1>
-<p><strong>weathergenr</strong> is an R package that implements a semiparametric, multivariate, multisite stochastic weather generator designed for climate risk and stress-testing applications. The approach is conceptually based on the framework of Steinschneider &amp; Brown (2013) and is adapted here for gridded datasets and netcdf-based workflows.</p>
-<p>The package is intended for workflows such as:</p>
+<p><strong>Stochastic weather generation for water resources and climate risk assessment.</strong></p>
+<p>weathergenr is an R package for generating alternative daily precipitation and temperature sequences from historical weather data. Use these sequences as inputs to hydrological and water-resources models to explore how climate variability and changing climate conditions affect your system.</p>
+<div class="section level2">
+<h2 id="what-can-you-use-it-for">What can you use it for?<a class="anchor" aria-label="anchor" href="#what-can-you-use-it-for"></a>
+</h2>
 <ul>
-<li>climate risk and stress testing</li>
-<li>hydrological and water-resources modelling</li>
-<li>scenario analysis for climate adaptation studies</li>
+<li>Explore how different sequences of wet and dry years affect streamflow, storage and water supply.</li>
+<li>Test a system’s sensitivity to changes in precipitation, temperature and other climate characteristics.</li>
+<li>Compare adaptation options across many possible weather sequences.</li>
 </ul>
-<div class="section level2">
-<h2 id="methodological-framework">Methodological framework<a class="anchor" aria-label="anchor" href="#methodological-framework"></a>
-</h2>
-<p>The generator represents climate variability across multiple time scales by coupling low-frequency climate dynamics with realistic daily weather sequences. It consists of three components. The first two are coupled inside <code><a href="reference/generate_weather.html">generate_weather()</a></code> — the annual states from (1) condition the daily resampling in (2). The third is a separate stage you apply to the generated series, not a step inside the generator; see <em>Composing the stages</em> below.</p>
-<p><strong>1. Low-frequency climate variability (WARM)</strong> Interannual to decadal variability is modeled with wavelet autoregressive methods applied to annual climate aggregates. This preserves persistence and spectral structure and defines annual climate states that condition daily weather.</p>
-<p><strong>2. Daily weather generation (Markov chain + KNN)</strong> Wet-dry persistence is simulated with a multi-state Markov chain, while daily precipitation and temperature values are generated via K-nearest-neighbour resampling. This maintains seasonality, cross-variable dependence, and spatial coherence.</p>
-<p><strong>3. Climate perturbation and stress testing</strong> Quantile-based perturbations impose controlled changes in means, variability, and extremes, enabling systematic climate stress testing while preserving internal consistency. Applied by <code><a href="reference/apply_climate_perturbations.html">apply_climate_perturbations()</a></code> to an already-generated series.</p>
+<p>The package supports gridded data, multiple weather variables and NetCDF input and output. It includes diagnostics for comparing generated weather with the historical record.</p>
 </div>
 <div class="section level2">
-<h2 id="composing-the-stages">Composing the stages<a class="anchor" aria-label="anchor" href="#composing-the-stages"></a>
+<h2 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
 </h2>
-<p><code><a href="reference/run_weather_generator.html">run_weather_generator()</a></code> runs stages 1–2 and evaluates the result against the observed record. Perturbation is deliberately outside that pipeline: evaluation asks whether the synthetic series reproduces the observed climate, whereas a perturbed series is <em>meant</em> to depart from it. So stress scenarios are built by generating first, then perturbing:</p>
+<p>The generator combines year-to-year climate variability with daily weather resampling. It is designed to represent seasonality, wet and dry spells, and relationships between variables and locations. Generated sequences provide alternative realizations of climate variability; they are not forecasts.</p>
+<p>For climate stress testing, first generate and evaluate weather under historical conditions. Then apply controlled climate changes in a separate perturbation step. This lets you explore conditions that would challenge a water system without tying the assessment to a single climate projection.</p>
+</div>
+<div class="section level2">
+<h2 id="get-started">Get started<a class="anchor" aria-label="anchor" href="#get-started"></a>
+</h2>
+<p>Install from GitHub in R:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">gen</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/generate_weather.html">generate_weather</a></span><span class="op">(</span></span>
-<span>  obs_data <span class="op">=</span> <span class="va">ncdata</span><span class="op">$</span><span class="va">data</span>, obs_grid <span class="op">=</span> <span class="va">ncdata</span><span class="op">$</span><span class="va">grid</span>, obs_dates <span class="op">=</span> <span class="va">ncdata</span><span class="op">$</span><span class="va">date</span>,</span>
-<span>  vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"precip"</span>, <span class="st">"temp"</span>, <span class="st">"temp_min"</span>, <span class="st">"temp_max"</span><span class="op">)</span>, <span class="va">...</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Turn resampled dates into daily values</span></span>
-<span><span class="va">eval_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/prepare_evaluation_data.html">prepare_evaluation_data</a></span><span class="op">(</span></span>
-<span>  gen_output <span class="op">=</span> <span class="va">gen</span>, obs_data <span class="op">=</span> <span class="va">ncdata</span><span class="op">$</span><span class="va">data</span>, obs_dates <span class="op">=</span> <span class="va">ncdata</span><span class="op">$</span><span class="va">date</span>,</span>
-<span>  grid_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">ncdata</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>,</span>
-<span>  variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"precip"</span>, <span class="st">"temp"</span>, <span class="st">"temp_min"</span>, <span class="st">"temp_max"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="va">eval_data</span><span class="op">$</span><span class="va">sim_data</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
-<span></span>
-<span><span class="va">future</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/apply_climate_perturbations.html">apply_climate_perturbations</a></span><span class="op">(</span></span>
-<span>  data <span class="op">=</span> <span class="va">sim</span>, grid <span class="op">=</span> <span class="va">ncdata</span><span class="op">$</span><span class="va">grid</span>,</span>
-<span>  date <span class="op">=</span> <span class="va">sim</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">date</span>,</span>
-<span>  precip_mean_factor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.7</span>, <span class="fl">12</span><span class="op">)</span>,</span>
-<span>  temp_delta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">12</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Note <code>vars</code> must include <code>temp_min</code> and <code>temp_max</code>, which <code><a href="reference/apply_climate_perturbations.html">apply_climate_perturbations()</a></code> requires, and that the date vector comes from <code>sim</code>, not from <code>gen$dates</code>. The <a href="https://deltares-research.github.io/weathergenr/articles/climate_perturbation.html">Climate Perturbations</a> article covers both points.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span>  <span class="co"># Once, if needed</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"Deltares-research/weathergenr"</span><span class="op">)</span></span></code></pre></div>
+<p>Start with the <a href="https://deltares-research.github.io/weathergenr/articles/getting_started.html">worked example</a>, which uses the included ERA5 dataset for the Ntoum Basin in Gabon. It walks through reading weather data, generating sequences and evaluating the results.</p>
+<p>A typical workflow is:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Prepare historical data.</strong> Supply daily precipitation and temperature for your study area. The package uses a 365-day calendar, excluding 29 February.</li>
+<li>
+<strong>Generate an ensemble.</strong> Create multiple weather sequences with <code><a href="reference/run_weather_generator.html">run_weather_generator()</a></code>.</li>
+<li>
+<strong>Evaluate the results.</strong> Check the statistics and diagnostics that matter for your application, including seasonality, spell lengths and spatial relationships.</li>
+<li>
+<strong>Build climate change scenarios.</strong> Use <code><a href="reference/apply_climate_perturbations.html">apply_climate_perturbations()</a></code> to change the generated climate, then run your impact model to assess system performance.</li>
+</ol>
+<p>The quality of the historical data and the generator’s fit to your catchment matter. Review the diagnostics before using an ensemble for decisions, especially where drought persistence or extremes drive the outcome.</p>
 </div>
 <div class="section level2">
-<h2 id="intended-use">Intended use<a class="anchor" aria-label="anchor" href="#intended-use"></a>
-</h2>
-<p>The resulting framework is intended for <em>bottom-up climate vulnerability assessments</em> to explore system response under a wide range of plausible climate conditions.</p>
-</div>
-<div class="section level2">
-<h2 id="key-features">Key features<a class="anchor" aria-label="anchor" href="#key-features"></a>
+<h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h2>
 <ul>
-<li>netcdf i/o for convenient coupling with other models</li>
-<li>efficient generation, filtering, and evaluation of large stochastic ensembles</li>
-<li>integrated diagnostics and visualization for validation and analysis</li>
+<li>
+<a href="https://deltares-research.github.io/weathergenr/articles/getting_started.html">Getting started</a> — a worked generation and evaluation example.</li>
+<li>
+<a href="https://deltares-research.github.io/weathergenr/articles/climate_perturbation.html">Climate perturbations</a> — setting up climate stress scenarios and their required inputs.</li>
+<li>
+<a href="https://deltares-research.github.io/weathergenr/reference/index.html">Function reference</a> — arguments, data formats and available tools.</li>
 </ul>
 </div>
+<div class="section level2">
+<h2 id="method-and-citation">Method and citation<a class="anchor" aria-label="anchor" href="#method-and-citation"></a>
+</h2>
+<p>The package adapts the weather-generation framework of Steinschneider and Brown (2013) for gridded datasets and NetCDF workflows:</p>
+<p>Steinschneider, S., &amp; Brown, C. (2013). <em>A semiparametric multivariate, multisite weather generator with low-frequency variability for use in climate risk assessments.</em> Water Resources Research, 49(11), 7205–7220. <a href="https://doi.org/10.1002/wrcr.20528" class="external-link">doi:10.1002/wrcr.20528</a></p>
 </div>
-<div class="section level1">
-<h1 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
-</h1>
-<p>Install the latest version from GitHub:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
-<span><span class="co"># devtools::install_github("Deltares-research/weathergenr")</span></span></code></pre></div>
+<div class="section level2">
+<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+</h2>
+<p>weathergenr is available under the <a href="LICENSE.html">MIT License</a>.</p>
 </div>
-<div class="section level1">
-<h1 id="getting-started-1">Getting started<a class="anchor" aria-label="anchor" href="#getting-started-1"></a>
-</h1>
-<p>A quick tutorial is available here:<br><a href="https://deltares-research.github.io/weathergenr/articles/getting_started.html" class="uri">https://deltares-research.github.io/weathergenr/articles/getting_started.html</a></p>
 </div>
-<div class="section level1">
-<h1 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
-</h1>
-<blockquote>
-<p>Steinschneider, S., &amp; Brown, C. (2013). <em>A semiparametric multivariate, multisite weather generator with low-frequency variability for use in climate risk assessments.</em> <strong>Water Resources Research</strong>, 49(11), 7205-7220. (<a href="https://doi.org/10.1002/wrcr.20528" class="external-link uri">https://doi.org/10.1002/wrcr.20528</a>)</p>
-</blockquote>
-</div>
-<div class="section level1">
-<h1 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
-</h1>
-<p>Licensed under the MIT License. See <code>LICENSE</code> for details.</p>
-</div>
-
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">

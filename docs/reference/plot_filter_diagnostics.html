@@ -9,7 +9,7 @@ Shows time series, statistics scatter, and wavelet GWS comparisons."></head><bod
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,7 +53,8 @@ Shows time series, statistics scatter, and wavelet GWS comparisons.</p>
 <span>  <span class="va">power_obs</span>,</span>
 <span>  <span class="va">power_signif</span>,</span>
 <span>  <span class="va">wavelet_pars</span>,</span>
-<span>  wavelet_q <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.95</span><span class="op">)</span></span>
+<span>  wavelet_q <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.95</span><span class="op">)</span>,</span>
+<span>  plot_style <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -107,6 +108,11 @@ noise_type, period_lower_limit, detrend).</p></dd>
 
 <dt id="arg-wavelet-q">wavelet_q<a class="anchor" aria-label="anchor" href="#arg-wavelet-q"></a></dt>
 <dd><p>Two quantiles for ribbon (e.g., c(0.50, 0.95))</p></dd>
+
+
+<dt id="arg-plot-style">plot_style<a class="anchor" aria-label="anchor" href="#arg-plot-style"></a></dt>
+<dd><p>Optional presentation list; see the Plot styles section of
+<code><a href="export_weather_plot.html">export_weather_plot</a></code>. Default NULL preserves existing styling.</p></dd>
 
 </dl></div>
     <div class="section level2">

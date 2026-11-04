@@ -14,7 +14,8 @@ create_all_diagnostic_plots(
   show_title,
   save_plots,
   out_dir = NULL,
-  output_dir = NULL
+  output_dir = NULL,
+  plot_style = NULL
 )
 ```
 
@@ -52,6 +53,12 @@ create_all_diagnostic_plots(
 
   Deprecated. The former name of `out_dir`. Supplying it still works but
   warns; supplying both is an error.
+
+- plot_style:
+
+  Optional presentation list; see the Plot styles section of
+  [`export_weather_plot`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md).
+  Default NULL preserves existing styling.
 
 ## Value
 

@@ -25,7 +25,5 @@ none.
 
 ``` r
 find_leap_day_indices(as.Date(c("1980-02-28", "1980-02-29", "1981-01-01")))
-#> [1] 2
 find_leap_day_indices(as.Date(c("2001-01-01", "2001-12-31")))
-#> NULL
 ```

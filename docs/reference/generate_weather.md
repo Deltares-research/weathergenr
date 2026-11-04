@@ -52,7 +52,9 @@ generate_weather(
   verbose = FALSE,
   save_plots = TRUE,
   plot_dpi = 300,
-  plot_device = NULL
+  plot_device = NULL,
+  plot_style = NULL,
+  return_plots = FALSE
 )
 ```
 
@@ -233,11 +235,28 @@ generate_weather(
 
   Optional graphics device passed to
   [`ggsave`](https://ggplot2.tidyverse.org/reference/ggsave.html).
-  `NULL` (the default) lets `ggsave()` infer it from the file extension.
-  Supplying a faster device, for example
+  `NULL` (the default) lets
+  [`ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html)
+  infer it from the file extension. Supplying a faster device, for
+  example
   [`ragg::agg_png`](https://ragg.r-lib.org/reference/agg_png.html),
   typically halves the render cost. `ragg` is not a dependency of this
   package; pass the function only if you have it installed.
+
+- plot_style:
+
+  Optional presentation list; see the Plot styles section of
+  [`export_weather_plot`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md).
+  These controls do not change scientific configuration, seeds or
+  generated weather values.
+
+- return_plots:
+
+  Logical; if TRUE, add a named `plots` list containing
+  `obs_power_spectra`, `warm_annual_precip`, `warm_annual_stats`, and
+  `warm_annual_wavelet`. Works independently of `save_plots`; FALSE
+  preserves the original return shape and avoids plot construction when
+  saving is also disabled.
 
 ## Value
 

@@ -1,5 +1,28 @@
 # Changelog
 
+## weathergenr 2.1.0
+
+- [`style_weather_plot()`](https://deltares-research.github.io/weathergenr/reference/style_weather_plot.md)
+  applies an opt-in compact diagnostic profile.
+  [`arrange_weather_panels()`](https://deltares-research.github.io/weathergenr/reference/arrange_weather_panels.md)
+  measures fixed physical plotting areas and wraps panels into a fitting
+  row-major grid without scaling fonts or marks.
+
+- Plotting functions accept a consumer-independent `plot_style` list for
+  partial themes, semantic colors and ensemble/power palettes. Defaults
+  remain unchanged.
+  [`export_weather_plot()`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md)
+  exports returned figures with optional millimetre dimensions and
+  preserves explicit font sizes.
+
+- `generate_weather(return_plots = TRUE)` returns its four
+  generation/WARM diagnostics, including when `save_plots = FALSE`.
+  [`run_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/run_weather_generator.md)
+  forwards `config$return_plots` and `config$plot_style`; evaluation
+  diagnostics remain available in its `evaluation` result.
+
+## weathergenr 2.0.1
+
 ## weathergenr 2.0.0
 
 ### Bug fixes

@@ -38,7 +38,8 @@ filter_warm_pool(
   parallel = FALSE,
   n_cores = NULL,
   cache_gws = FALSE,
-  verbose = FALSE
+  verbose = FALSE,
+  plot_style = NULL
 )
 ```
 
@@ -114,6 +115,12 @@ filter_warm_pool(
 
   Logical scalar. If TRUE, logs setup information, per iteration pass
   rates, and relaxation actions.
+
+- plot_style:
+
+  Optional presentation list; see the Plot styles section of
+  [`export_weather_plot`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md).
+  Default NULL preserves existing styling.
 
 ## Value
 

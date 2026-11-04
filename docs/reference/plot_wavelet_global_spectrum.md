@@ -8,7 +8,13 @@ spectra.
 ## Usage
 
 ``` r
-plot_wavelet_global_spectrum(period, signif, obs_power, sim_power = NULL)
+plot_wavelet_global_spectrum(
+  period,
+  signif,
+  obs_power,
+  sim_power = NULL,
+  plot_style = NULL
+)
 ```
 
 ## Arguments
@@ -32,6 +38,12 @@ plot_wavelet_global_spectrum(period, signif, obs_power, sim_power = NULL)
 
   Optional numeric matrix of simulated global spectra with
   `nrow(sim_power) == length(period)` and one column per simulation.
+
+- plot_style:
+
+  Optional presentation list; see the Plot styles section of
+  [`export_weather_plot`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md).
+  Default NULL preserves existing styling.
 
 ## Value
 

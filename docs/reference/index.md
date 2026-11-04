@@ -1,6 +1,6 @@
 # Package index
 
-## All functions
+## Package functions
 
 - [`adjust_precipitation_qm()`](https://deltares-research.github.io/weathergenr/reference/adjust_precipitation_qm.md)
   : Adjust Daily Precipitation with Gamma Quantile Mapping Under Monthly
@@ -11,6 +11,8 @@
   : Continuous Wavelet Spectral Analysis with COI-Aware Significance
 - [`apply_climate_perturbations()`](https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.md)
   : Apply Monthly Climate Perturbations to Gridded Daily Weather Series
+- [`arrange_weather_panels()`](https://deltares-research.github.io/weathergenr/reference/arrange_weather_panels.md)
+  : Arrange plots at a fixed physical panel size
 - [`build_historical_dates()`](https://deltares-research.github.io/weathergenr/reference/build_historical_dates.md)
   : Build Historical Date Table
 - [`calculate_monthly_pet()`](https://deltares-research.github.io/weathergenr/reference/calculate_monthly_pet.md)
@@ -27,6 +29,8 @@
   : Estimate Monthly Occurrence-State Markov Transition Probabilities
 - [`evaluate_weather_generator()`](https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.md)
   : Evaluate Stochastic Weather Generator Performance
+- [`export_weather_plot()`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md)
+  : Export a weather diagnostic figure
 - [`filter_warm_pool()`](https://deltares-research.github.io/weathergenr/reference/filter_warm_pool.md)
   : Filter and sample WARM realizations using distributional, tail, and
   spectral criteria
@@ -63,6 +67,8 @@
 - [`simulate_warm()`](https://deltares-research.github.io/weathergenr/reference/simulate_warm.md)
   : Simulate synthetic series with Wavelet Autoregressive Modeling
   (WARM)
+- [`style_weather_plot()`](https://deltares-research.github.io/weathergenr/reference/style_weather_plot.md)
+  : Apply the compact diagnostic presentation profile
 - [`summary(`*`<precip_qm_diagnostics>`*`)`](https://deltares-research.github.io/weathergenr/reference/summary.precip_qm_diagnostics.md)
   : Summarize precipitation QM diagnostics
 - [`theme_weathergenr()`](https://deltares-research.github.io/weathergenr/reference/theme_weathergenr.md)

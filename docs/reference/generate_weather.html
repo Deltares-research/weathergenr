@@ -35,7 +35,7 @@ year_start_month != 1: water-year simulation starting in year_start_month.
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -102,7 +102,9 @@ The workflow combines:</p><ul><li><p>Wavelet Autoregressive Modeling (WARM) on a
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  save_plots <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  plot_dpi <span class="op">=</span> <span class="fl">300</span>,</span>
-<span>  plot_device <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  plot_device <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  plot_style <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  return_plots <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -271,10 +273,24 @@ figures written by this function ignored the setting entirely.</p></dd>
 
 <dt id="arg-plot-device">plot_device<a class="anchor" aria-label="anchor" href="#arg-plot-device"></a></dt>
 <dd><p>Optional graphics device passed to
-<code><a href="https://ggplot2.tidyverse.org/reference/ggsave.html" class="external-link">ggsave</a></code>. <code>NULL</code> (the default) lets <code>ggsave()</code>
+<code><a href="https://ggplot2.tidyverse.org/reference/ggsave.html" class="external-link">ggsave</a></code>. <code>NULL</code> (the default) lets <code><a href="https://ggplot2.tidyverse.org/reference/ggsave.html" class="external-link">ggsave()</a></code>
 infer it from the file extension. Supplying a faster device, for example
 <code><a href="https://ragg.r-lib.org/reference/agg_png.html" class="external-link">ragg::agg_png</a></code>, typically halves the render cost. <code>ragg</code> is not a
 dependency of this package; pass the function only if you have it installed.</p></dd>
+
+
+<dt id="arg-plot-style">plot_style<a class="anchor" aria-label="anchor" href="#arg-plot-style"></a></dt>
+<dd><p>Optional presentation list; see the Plot styles section of
+<code><a href="export_weather_plot.html">export_weather_plot</a></code>. These controls do not change scientific
+configuration, seeds or generated weather values.</p></dd>
+
+
+<dt id="arg-return-plots">return_plots<a class="anchor" aria-label="anchor" href="#arg-return-plots"></a></dt>
+<dd><p>Logical; if TRUE, add a named <code>plots</code> list containing
+<code>obs_power_spectra</code>, <code>warm_annual_precip</code>,
+<code>warm_annual_stats</code>, and <code>warm_annual_wavelet</code>. Works independently
+of <code>save_plots</code>; FALSE preserves the original return shape and avoids
+plot construction when saving is also disabled.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -360,34 +376,33 @@ risk assessments. <em>Water Resources Research</em>, 49(11), 7205-7220.
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># obs_data: list of grid-cell data.frames with columns precip/temp</span></span></span>
-<span class="r-in"><span><span class="co"># obs_grid: data.frame with xind/yind/x/y</span></span></span>
-<span class="r-in"><span><span class="co"># obs_dates: Date vector aligned with rows of each obs_data[[i]]</span></span></span>
-<span class="r-in"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">generate_weather</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  obs_data <span class="op">=</span> <span class="va">obs_data</span>,</span></span>
-<span class="r-in"><span>  obs_grid <span class="op">=</span> <span class="va">obs_grid</span>,</span></span>
-<span class="r-in"><span>  obs_dates <span class="op">=</span> <span class="va">obs_dates</span>,</span></span>
-<span class="r-in"><span>  vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"precip"</span>, <span class="st">"temp"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  start_year <span class="op">=</span> <span class="fl">2020</span>,</span></span>
-<span class="r-in"><span>  n_years <span class="op">=</span> <span class="fl">30</span>,</span></span>
-<span class="r-in"><span>  year_start_month <span class="op">=</span> <span class="fl">10</span>,</span></span>
-<span class="r-in"><span>  n_realizations <span class="op">=</span> <span class="fl">20</span>,</span></span>
-<span class="r-in"><span>  warm_var <span class="op">=</span> <span class="st">"precip"</span>,</span></span>
-<span class="r-in"><span>  warm_signif <span class="op">=</span> <span class="fl">0.90</span>,</span></span>
-<span class="r-in"><span>  warm_pool_size <span class="op">=</span> <span class="fl">5000</span>,</span></span>
-<span class="r-in"><span>  annual_knn_n <span class="op">=</span> <span class="fl">120</span>,</span></span>
-<span class="r-in"><span>  wet_q <span class="op">=</span> <span class="fl">0.30</span>,</span></span>
-<span class="r-in"><span>  extreme_q <span class="op">=</span> <span class="fl">0.80</span>,</span></span>
-<span class="r-in"><span>  out_dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  seed <span class="op">=</span> <span class="fl">123</span>,</span></span>
-<span class="r-in"><span>  parallel <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
-<span class="r-in"><span>  n_cores <span class="op">=</span> <span class="fl">4</span>,</span></span>
-<span class="r-in"><span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
-<span class="r-in"><span></span></span>
-</code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span>
+<span><span class="co"># obs_data: list of grid-cell data.frames with columns precip/temp</span></span>
+<span><span class="co"># obs_grid: data.frame with xind/yind/x/y</span></span>
+<span><span class="co"># obs_dates: Date vector aligned with rows of each obs_data[[i]]</span></span>
+<span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">generate_weather</span><span class="op">(</span></span>
+<span>  obs_data <span class="op">=</span> <span class="va">obs_data</span>,</span>
+<span>  obs_grid <span class="op">=</span> <span class="va">obs_grid</span>,</span>
+<span>  obs_dates <span class="op">=</span> <span class="va">obs_dates</span>,</span>
+<span>  vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"precip"</span>, <span class="st">"temp"</span><span class="op">)</span>,</span>
+<span>  start_year <span class="op">=</span> <span class="fl">2020</span>,</span>
+<span>  n_years <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>  year_start_month <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  n_realizations <span class="op">=</span> <span class="fl">20</span>,</span>
+<span>  warm_var <span class="op">=</span> <span class="st">"precip"</span>,</span>
+<span>  warm_signif <span class="op">=</span> <span class="fl">0.90</span>,</span>
+<span>  warm_pool_size <span class="op">=</span> <span class="fl">5000</span>,</span>
+<span>  annual_knn_n <span class="op">=</span> <span class="fl">120</span>,</span>
+<span>  wet_q <span class="op">=</span> <span class="fl">0.30</span>,</span>
+<span>  extreme_q <span class="op">=</span> <span class="fl">0.80</span>,</span>
+<span>  out_dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span>,</span>
+<span>  parallel <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  n_cores <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="op">}</span> <span class="co"># }</span></span>
+<span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

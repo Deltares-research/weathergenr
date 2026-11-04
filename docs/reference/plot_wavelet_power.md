@@ -17,7 +17,8 @@ plot_wavelet_power(
   gws_signif,
   coi,
   signif_mask,
-  unit = "mm"
+  unit = "mm",
+  plot_style = NULL
 )
 ```
 
@@ -70,6 +71,12 @@ plot_wavelet_power(
 
   Character. Unit label used in the global spectrum axis label (default:
   `"mm"`).
+
+- plot_style:
+
+  Optional presentation list; see the Plot styles section of
+  [`export_weather_plot`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md).
+  Default NULL preserves existing styling.
 
 ## Value
 

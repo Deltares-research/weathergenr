@@ -37,7 +37,7 @@ smallest absolute relative mean difference."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -98,7 +98,8 @@ smallest absolute relative mean difference.</p>
 <span>  parallel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  n_cores <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cache_gws <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  plot_style <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -175,6 +176,11 @@ spectra for diagnostics; this can increase memory use.</p></dd>
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical scalar. If TRUE, logs setup information, per iteration
 pass rates, and relaxation actions.</p></dd>
+
+
+<dt id="arg-plot-style">plot_style<a class="anchor" aria-label="anchor" href="#arg-plot-style"></a></dt>
+<dd><p>Optional presentation list; see the Plot styles section of
+<code><a href="export_weather_plot.html">export_weather_plot</a></code>. Default NULL preserves existing styling.</p></dd>
 
 </dl></div>
     <div class="section level2">

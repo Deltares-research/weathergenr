@@ -47,9 +47,7 @@ than becoming a package-wide rule inferred from a single case.
 
 ``` r
 library(ggplot2)
-#> Warning: package 'ggplot2' was built under R version 4.6.1
 ggplot(mtcars, aes(wt, mpg)) +
   geom_point() +
   theme_weathergenr()
-
 ```

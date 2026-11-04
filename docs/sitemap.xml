@@ -14,6 +14,7 @@
 <url><loc>https://deltares-research.github.io/weathergenr/reference/analyze_wavelet_spectrum.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/apply_climate_perturbations.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/apply_quantile_mapping.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/reference/arrange_weather_panels.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/assess_moment_changes.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/build_historical_dates.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/calculate_monthly_pet.html</loc></url>
@@ -100,6 +101,7 @@
 <url><loc>https://deltares-research.github.io/weathergenr/reference/estimate_monthly_markov_probs.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/evaluate_weather_generator.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/expand_indices.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/reference/export_weather_plot.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/extract_signif_curve.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/extract_wavelet_components.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/fill_nearest.html</loc></url>
@@ -140,6 +142,7 @@
 <url><loc>https://deltares-research.github.io/weathergenr/reference/resample_weather_dates.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/run_weather_generator.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/simulate_warm.html</loc></url>
+<url><loc>https://deltares-research.github.io/weathergenr/reference/style_weather_plot.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/summary.precip_qm_diagnostics.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/theme_weathergenr.html</loc></url>
 <url><loc>https://deltares-research.github.io/weathergenr/reference/validate_quantile_mapping.html</loc></url>

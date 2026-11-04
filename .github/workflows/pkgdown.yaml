@@ -1,10 +1,9 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 #
-# Deploys the pkgdown site to the `gh-pages` branch. Until the repository's
-# Pages source is switched from `/docs` to `gh-pages`, the committed `docs/`
-# directory remains the live site — see AGENTS.md § Key Commands for the
-# cutover sequence.
+# Pages serves the reviewed, committed docs/ directory from master.
+# This workflow validates the site build. Refresh docs/ with the local site
+# tools and include the generated output in the reviewed commit.
 on:
   push:
     branches: [main, master]
@@ -17,7 +16,7 @@ on:
 name: pkgdown
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   pkgdown:
@@ -45,7 +44,7 @@ jobs:
           needs: website
 
       - name: Build site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        run: pkgdown::build_site(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
 
       # pkgdown renders every *.md in the package root -- package_mds() globs
@@ -64,11 +63,3 @@ jobs:
           pkgdown::build_search()
           pkgdown:::build_sitemap()
         shell: Rscript {0}
-
-      - name: Deploy to GitHub pages 🚀
-        if: github.event_name != 'pull_request'
-        uses: JamesIves/github-pages-deploy-action@v4.5.0
-        with:
-          clean: false
-          branch: gh-pages
-          folder: docs

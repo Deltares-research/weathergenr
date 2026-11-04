@@ -46,5 +46,4 @@ uniqueness or sorting of the output.
 base_idx <- c(5, 10)
 offset_vec <- -1:1
 weathergenr:::expand_indices(base_idx, offset_vec, n_max = 15)
-#> [1]  4  5  6  9 10 11
 ```

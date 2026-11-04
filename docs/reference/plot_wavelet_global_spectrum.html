@@ -11,7 +11,7 @@ Optionally overlays the ensemble mean of simulated global spectra."></head><body
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -45,7 +45,13 @@ Optionally overlays the ensemble mean of simulated global spectra.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_wavelet_global_spectrum</span><span class="op">(</span><span class="va">period</span>, <span class="va">signif</span>, <span class="va">obs_power</span>, sim_power <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_wavelet_global_spectrum</span><span class="op">(</span></span>
+<span>  <span class="va">period</span>,</span>
+<span>  <span class="va">signif</span>,</span>
+<span>  <span class="va">obs_power</span>,</span>
+<span>  sim_power <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  plot_style <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -71,6 +77,11 @@ global wavelet spectrum.</p></dd>
 <dd><p>Optional numeric matrix of simulated global spectra with
 <code>nrow(sim_power) == length(period)</code> and one column per simulation.</p></dd>
 
+
+<dt id="arg-plot-style">plot_style<a class="anchor" aria-label="anchor" href="#arg-plot-style"></a></dt>
+<dd><p>Optional presentation list; see the Plot styles section of
+<code><a href="export_weather_plot.html">export_weather_plot</a></code>. Default NULL preserves existing styling.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -93,17 +104,16 @@ envelope (e.g., min/max or quantiles) add it outside this function.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">plot_wavelet_global_spectrum</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  period   <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">period</span>,</span></span>
-<span class="r-in"><span>  signif   <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">gws_signif</span>,</span></span>
-<span class="r-in"><span>  obs_power <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">gws</span>,</span></span>
-<span class="r-in"><span>  sim_power <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">gws_sim</span>  <span class="co"># matrix: period x n_sim (optional)</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
-<span class="r-in"><span></span></span>
-</code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">plot_wavelet_global_spectrum</span><span class="op">(</span></span>
+<span>  period   <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">period</span>,</span>
+<span>  signif   <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">gws_signif</span>,</span>
+<span>  obs_power <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">gws</span>,</span>
+<span>  sim_power <span class="op">=</span> <span class="va">w</span><span class="op">$</span><span class="va">gws_sim</span>  <span class="co"># matrix: period x n_sim (optional)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
+<span><span class="op">}</span> <span class="co"># }</span></span>
+<span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

@@ -77,5 +77,4 @@ markov_next_state(
   p20 = rep(0.1, 10),
   p21 = rep(0.3, 10)
 )
-#> [1] 0
 ```

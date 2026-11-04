@@ -28,7 +28,8 @@ evaluate_weather_generator(
   seed = NULL,
   plot_dpi = 300,
   plot_device = NULL,
-  output_dir = NULL
+  output_dir = NULL,
+  plot_style = NULL
 )
 ```
 
@@ -139,6 +140,12 @@ evaluate_weather_generator(
   directory argument has one name across \[generate_weather()\],
   \[run_weather_generator()\] and this function.
 
+- plot_style:
+
+  Optional presentation list; see the Plot styles section of
+  [`export_weather_plot`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md).
+  Default NULL preserves existing styling.
+
 ## Value
 
 A named list of \`ggplot2\` plot objects with class
@@ -189,55 +196,5 @@ out <- evaluate_weather_generator(
   save_plots = FALSE,
   show_title = FALSE
 )
-#> 14:54:39 - eval - Evaluation Started: Variables = precip,temp
-#> 14:54:39 - eval - Parameters: wet.q = 0.2 | extreme.q = 0.8
-#> 14:54:39 - eval - Standardizing obs/sim periods to full years and equal length
-#> 14:54:39 - eval - Standardized period | Obs = 2001-2001 | Sim = 2001-2001
-#> 14:54:39 - eval - Processing observed data
-#> 14:54:40 - eval - Processing simulated data (1 realizations)
-#> 14:54:40 - eval - Generating diagnostic plots
-#> Warning: There were 2 warnings in `dplyr::summarise()`.
-#> The first warning was:
-#> ℹ In argument: `.min = min(c(.data[["Observed"]], .data[["Simulated"]]), na.rm
-#>   = TRUE)`.
-#> Caused by warning in `min()`:
-#> ! no non-missing arguments to min; returning Inf
-#> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> 14:54:40 - eval - Computing fit metrics for all realizations
-#> Warning: There were 2 warnings in `dplyr::mutate()`.
-#> The first warning was:
-#> ℹ In argument: `dplyr::across(...)`.
-#> Caused by warning in `min()`:
-#> ! no non-missing arguments to min; returning Inf
-#> ℹ Run dplyr::last_dplyr_warnings() to see the 1 remaining warning.
-#> 14:54:40 - eval - Displaying fit assessment summary
-#> 
-#> =============================================================================================== 
-#>  FIT ASSESSMENT SUMMARY - ALL REALIZATIONS
-#> =============================================================================================== 
-#> 
-#>  Metrics shown (Mean Absolute Error, lower is better):
-#>   MAE measures average magnitude of errors between simulated and observed
-#> 
-#>   - Mean.precip   : MAE of monthly means
-#>   - SD.precip     : MAE of monthly standard deviations
-#>   - Days.Wet   : MAE of wet/dry day counts
-#>   - Spell.Wet  : MAE of wet/dry spell lengths (days)
-#>   - Cor.Cross   : MAE of cross-grid correlations
-#>   - Cor.Inter   : MAE of inter-variable correlations
-#>   - Score       : Normalized overall score across all metrics
-#> 
-#>    Rlz   Rank   Mean.precip   SD.precip   Days.Wet   Spell.Wet   Cor.Cross   Cor.Inter    Score 
-#> ----------------------------------------------------------------------------------------------- 
-#>      1      1        0.6260      0.5144     2.8333      2.5618          NA      0.0479   0.0000 
-#> =============================================================================================== 
-#> 
-#>  Summary:
-#>   - Best realization  : 1 (score = 0.0000)
-#>   - Worst realization : 1 (score = 0.0000)
-#>   - Median score      : 0.0000
-#> 
-#> 14:54:41 - eval - Assessment completed successfully
 class(out)
-#> [1] "weather_assessment" "list"              
 ```

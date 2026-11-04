@@ -13,7 +13,7 @@ reference positions (e.g., expanding event days to adjacent days)."></head><body
 
     <a class="navbar-brand me-2" href="../index.html">weathergenr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -84,12 +84,10 @@ uniqueness or sorting of the output.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">base_idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span>, <span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">offset_vec</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">1</span><span class="op">:</span><span class="fl">1</span></span></span>
-<span class="r-in"><span><span class="fu">weathergenr</span><span class="fu">:::</span><span class="fu">expand_indices</span><span class="op">(</span><span class="va">base_idx</span>, <span class="va">offset_vec</span>, n_max <span class="op">=</span> <span class="fl">15</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1]  4  5  6  9 10 11</span>
-<span class="r-in"><span></span></span>
-</code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="va">base_idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="va">offset_vec</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">1</span><span class="op">:</span><span class="fl">1</span></span>
+<span><span class="fu">weathergenr</span><span class="fu">:::</span><span class="fu">expand_indices</span><span class="op">(</span><span class="va">base_idx</span>, <span class="va">offset_vec</span>, n_max <span class="op">=</span> <span class="fl">15</span><span class="op">)</span></span>
+<span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

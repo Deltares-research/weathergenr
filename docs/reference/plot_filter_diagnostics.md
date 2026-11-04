@@ -17,7 +17,8 @@ plot_filter_diagnostics(
   power_obs,
   power_signif,
   wavelet_pars,
-  wavelet_q = c(0.05, 0.95)
+  wavelet_q = c(0.05, 0.95),
+  plot_style = NULL
 )
 ```
 
@@ -70,6 +71,12 @@ plot_filter_diagnostics(
 - wavelet_q:
 
   Two quantiles for ribbon (e.g., c(0.50, 0.95))
+
+- plot_style:
+
+  Optional presentation list; see the Plot styles section of
+  [`export_weather_plot`](https://deltares-research.github.io/weathergenr/reference/export_weather_plot.md).
+  Default NULL preserves existing styling.
 
 ## Value
 
