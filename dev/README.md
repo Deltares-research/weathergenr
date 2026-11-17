@@ -92,11 +92,11 @@ and `.github/agents/` are ignored links or generated projections; edit their can
 sources instead. Start a fresh agent session after activation to verify discovery. A passing status
 check establishes configuration compatibility, not execution by every runtime.
 
-For the board CLI without an installed `todoboard` command, use the activated skill:
+For the board CLI without an installed `todoboard` command, run the wrapper, which loads the
+activated skill:
 
 ```powershell
-$env:PYTHONPATH = (Resolve-Path '.agents/skills/todo-board').Path
-python -m todoboard --help
+python dev/scripts/todo.py --help
 ```
 
 This repository retains its existing R layout without Copier adoption. There is no
