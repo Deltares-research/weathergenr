@@ -5,12 +5,14 @@ cssclasses: [todo-board]
 
 # TODO
 
-| ID                 | #   | Item                                                          | Area         | Status     |
-| ------------------ | --- | ------------------------------------------------------------- | ------------ | ---------- |
-| [t2608151255c][]   |     | Internal helpers use three competing naming conventions       | architecture | backlog    |
-| [t2608151255a][]   |     | set.seed() discipline is held by convention, not construction | warm         | backlog    |
-| [t2608151255][]    |     | warm_filtering.R and evaluate_generator.R are god modules     | architecture | backlog    |
+| #   | ID                 | Item                                                          | Area         | Status        |
+| --- | ------------------ | ------------------------------------------------------------- | ------------ | ------------- |
+|     | [t004][]           | Journal figures for the perturbed climate                     | plots        | active (6/7)  |
+|     | [t003][]           | Internal helpers use three competing naming conventions       | architecture | backlog (0/1) |
+|     | [t002][]           | set.seed() discipline is held by convention, not construction | warm         | backlog (0/1) |
+|     | [t001][]           | warm_filtering.R and evaluate_generator.R are god modules     | architecture | backlog (0/1) |
 
-[t2608151255c]: tasks/t2608151255c-internal-helpers-use-three-competing-naming-conventions.md
-[t2608151255a]: tasks/t2608151255a-set-seed-discipline-is-held-by-convention-not-construction.md
-[t2608151255]: tasks/t2608151255-warm-filtering-r-and-evaluate-generator-r-are-god-modules.md
+[t004]: tasks/t004/t004-perturbed-climate-journal-figures.md
+[t003]: tasks/t003/t003-internal-helpers-use-three-competing-naming-conventions.md
+[t002]: tasks/t002/t002-set-seed-discipline-is-held-by-convention-not-construction.md
+[t001]: tasks/t001/t001-warm-filtering-r-and-evaluate-generator-r-are-god-modules.md
