@@ -30,7 +30,6 @@ skills:
 
   # Explicitly available to the main agent as well as r-developer.
   # Other conditional bindings resolve through the provider's skill loader.
-  - bug-diagnosis
   - tidyverse-patterns
   - r-oop
   - r-performance
