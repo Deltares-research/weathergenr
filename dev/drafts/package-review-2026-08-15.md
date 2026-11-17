@@ -22,10 +22,10 @@ rather than deleted with any one item.
 | B11 `.Rbuildignore` for `vignettes/.quarto` | `t2608151254i` | ci | 14 |
 | B8 duplicated `test-wavelet.R` | `t2608151254j` | tests | 15 |
 | A4 export surface | `t2608151254k` | api | 16 |
-| A2 god modules | `t2608151255` | architecture | *watch* |
-| B2 `set.seed()` discipline | `t2608151255a` | warm | *watch* |
+| A2 god modules | `t001` (was `t2608151255`) | architecture | *watch* |
+| B2 `set.seed()` discipline | `t002` (was `t2608151255a`) | warm | *watch* |
 | B6 argument-name drift | `t2608151255b` | api | *watch* |
-| A5 internal naming conventions | `t2608151255c` | architecture | *watch* |
+| A5 internal naming conventions | `t003` (was `t2608151255c`) | architecture | *watch* |
 | B10 lint / glue opacity | recorded on `t2608061641` | ci | — |
 
 B10 has no item of its own. The pre-existing lint item covers clearing the

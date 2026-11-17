@@ -10,8 +10,8 @@ surrounding lifecycle (handoffs, reviews, closure promotion) is `project-system`
 |---|---|
 | `TODO.base` | The open-work board, rendered live by Obsidian (Obsidian projects only) |
 | `TODO.md` | The open-work board as a generated read-only table (non-Obsidian projects only; `todoboard render` writes it) |
-| `LOG.md` | The closed-work ledger -- one row per item closed off the board |
-| `tasks/` | Board notes -- one `t*.md` per **open** item (`type: todo-item`); the source the board renders |
+| `LOG.md` | Historical closed-work ledger from before the persistent board; no longer appended |
+| `tasks/` | The persistent board: `.board.yml`, one `t<NNN>/` folder per open task, and `_completed/<id>/` for closed tasks with their evidence |
 | `drafts/` | Ephemeral task-backing notes: designs, reviews, audits, plans, handoffs -- pruned on ship or by age |
 | `decisions/` | Decision records (context, alternatives, consequences) |
 | `reviews/` | Periodic and milestone review summaries |
@@ -123,9 +123,11 @@ Both views show the same lean columns: `ID` · `Item` · `Area` · `#` · `State
   substantial enough that its scope, progress, or decisions need tracking, or
   needs visibility beyond the current session. Small work fully explained by its
   diff and Git history creates no board item.
-- **One note per item** at `tasks/t<YYMMDDHHMM>[letter]-<slug>.md` -- the local
-  creation minute, with `a`, `b`, … only for a same-minute collision. IDs are
-  never reused or renamed. `todoboard add "<title>"` scaffolds one.
+- **One note per item** at `tasks/t<NNN>/t<NNN>-<slug>.md`, with its evidence
+  beside it. IDs are a project-local sequence (`t001`, `t002`, …) allocated by
+  `todoboard add "<title>"`; never reuse one. Tasks t001–t004 were renumbered from
+  the earlier timestamp IDs at adoption (2026-11-17) and keep them as `former_id`;
+  `LOG.md` and older branch names still use timestamp IDs.
 - **Body opens with a `> [!note] Overview`** -- What / Why / Effort, written for
   a reader who has forgotten the context: gloss every name, **What** = the change
   only, **Why** = what it costs to leave it undone, **Effort** = the shape of the
@@ -139,11 +141,11 @@ Both views show the same lean columns: `ID` · `Item` · `Area` · `#` · `State
 - **State = the `status` field** -- `backlog` (default) · `active` · `blocked`.
   Completeness is not a frontmatter field; it lives in `## Progress`.
   Items sort by `queue` (lowest first, unranked last).
-- **Long-form backing material lives in `drafts/`**, pointed at by the note's
-  `doc:` field -- not inlined into the task note.
-- **Closing = `todoboard done <id>`** -- appends one row to `LOG.md`, `git rm`s
-  the note and its eligible tracked `doc:` draft, and compacts the queue. There
-  is no "done" state on the board; Git history carries the detail.
+- **Long-form backing material lives in the task folder**, pointed at by the
+  note's `doc:` field -- not inlined into the task note.
+- **Closing = `todoboard done <id> --result "..."`** -- records the result and
+  moves the task folder to `tasks/_completed/<id>/`, keeping its evidence. Board
+  edits are committed on `master`; implementation branches never carry them.
 - **Handoffs are self-contained.** A note handed to another session or runtime
   states objective, state, decisions, location, validation, next action, and
   blockers.

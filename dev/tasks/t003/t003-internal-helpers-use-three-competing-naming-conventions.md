@@ -1,6 +1,8 @@
 ---
 title: Internal helpers use three competing naming conventions
 type: todo-item
+sequence: 3
+former_id: t2608151255c
 status: backlog
 effort: 1
 area: architecture

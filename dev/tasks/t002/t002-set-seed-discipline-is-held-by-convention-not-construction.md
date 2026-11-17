@@ -1,6 +1,8 @@
 ---
 title: set.seed() discipline is held by convention, not construction
 type: todo-item
+sequence: 2
+former_id: t2608151255a
 status: backlog
 effort: 1
 area: warm

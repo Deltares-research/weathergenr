@@ -1,6 +1,8 @@
 ---
 title: warm_filtering.R and evaluate_generator.R are god modules
 type: todo-item
+sequence: 1
+former_id: t2608151255
 status: backlog
 effort: 1
 area: architecture

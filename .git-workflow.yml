@@ -4,6 +4,10 @@
 # before this file existed (an absent file already resolves to `full`), so
 # adding versioning changes no Git behavior on its own.
 mode: full
+trunk: master
+# Persistent todo board (2026-11-17): primary may host development; each
+# additional writer works in its own worktree, and board edits stay on trunk.
+worktree_policy: concurrent
 
 # This repository's remote is public/shared, so a push is a publishing act, not
 # a backup. git-workflow's auto-push checkpoint does not apply here.
