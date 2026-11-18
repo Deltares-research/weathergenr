@@ -36,6 +36,9 @@ vignettes/.quarto/
 # `.github/agents/` holds generated Copilot role profiles; the rest of
 # `.github/` (workflows) stays tracked.
 /.agents/
+/.claude/agents
+/.claude/skills
+/.codex/agents
 /.github/agents/
 
 # Misc local / manual

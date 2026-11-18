@@ -2,27 +2,19 @@
 
 roles:
   - r-developer
-  - critical-thinker
   - dataviz-designer
   - geospatial-analyst
-  - git-steward
   - model-validator
 
 skills:
   - climate-stress-testing
   - console-formatting
-  - design-exploration
-  - design-document
   - quarto
+  - software-documentation
   - r-discipline
-  - testing-policy
   - time-series
   - scientific-workflows
   - ggplot2
-
-  # Project process — the dev/ board and layout lifecycle
-  - todo-board
-  - project-system
 
   # Domain skill for this generator
   - weathergenr
